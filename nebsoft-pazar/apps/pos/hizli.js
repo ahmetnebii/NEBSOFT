@@ -39,7 +39,7 @@ window.QCHUB = (function () {
     const lines = o.items.filter((i) => !i.removed);
     const t = total(o);
     const sale = db.insert('sales', { no: db.nextNo('sales', 'F'), at: new Date().toISOString(), type: 'sale', items: lines.map((l) => { const p = P(l.pid); return { pid: l.pid, name: l.name, qty: l.qty, price: l.price, disc: 0, vat: p.vat, buy: p.buy, unit: p.unit }; }), subtotal: t, discount: 0, total: t, vat: r2(sum(lines, (l) => (l.qty * l.price * (P(l.pid).vat || 0)) / (100 + (P(l.pid).vat || 0)))), campDiscs: [], payments: [{ type: 'online', amount: t, channel: QC[o.ch].name }], channel: o.ch, channelNo: o.no, user: NS.currentUser && NS.currentUser.id }, true);
-    lines.forEach((l) => { const p = P(l.pid); p.stock = r2(p.stock - l.qty); db.insert('moves', { at: sale.at, pid: p.id, qty: -l.qty, type: 'Satış (' + QC[o.ch].name + ')', ref: sale.no }, true); });
+    lines.filter((l) => l.pid).forEach((l) => { const p = P(l.pid); p.stock = r2(p.stock - l.qty); db.insert('moves', { at: sale.at, pid: p.id, qty: -l.qty, type: 'Satış (' + QC[o.ch].name + ')', ref: sale.no }, true); });
     o.saleNo = sale.no; o.doneAt = sale.at;
     sendI(o.ch, 'stok-guncelle', { items: lines.map((l) => ({ barcode: P(l.pid).barcode, stock: avail(P(l.pid), o.ch) })) });
   }
@@ -66,7 +66,20 @@ window.QCHUB = (function () {
     const get = (id) => db.get('qcOrders', id);
     const save = () => { db.save(); draw(); };
     on(el, 'click', '[data-tab]', (e, b) => { tab = b.dataset.tab; draw(); });
-    on(el, 'click', '#pull', () => { db.load(); const open = Object.keys(QC).filter((k) => cfg(k).connected && cfg(k).open); if (!open.length) return toast('Açık kanal yok', 'err'); const o = mkOrder(NS.pick(open), 0, 'yeni'); db.data.qcOrders.push(o); NS.beep(1200, 200); toast(`${QC[o.ch].name}: yeni sipariş ${o.no}`, 'ok'); save(); });
+    on(el, 'click', '#pull', async () => {
+      db.load();
+      // Canlı: webhook gelen kutusu (server.js /api/webhook/getircarsi, ysmarket, trendyolgo)
+      if (NS.inbox && (await NS.inbox.online())) {
+        const KEYS = { getir: 'getircarsi', ys: 'ysmarket', tygo: 'trendyolgo' }; let n = 0;
+        for (const [k, hook] of Object.entries(KEYS)) {
+          const got = (await NS.inbox.drain(hook)) || [];
+          got.forEach((x) => { if (db.find('qcOrders', (o) => o.no === x.orderNo)) return; const items = x.items.map((it) => { const p = db.find('products', (q) => q.barcode && q.barcode === it.code) || db.find('products', (q) => q.name.toLocaleLowerCase('tr') === it.name.toLocaleLowerCase('tr')); return { pid: p ? p.id : '', name: p ? p.name : it.name || it.code, qty: it.qty, price: it.price || (p ? chPrice(p, k) : 0), picked: false, removed: false }; }); db.data.qcOrders.push({ id: NS.uid(), no: x.orderNo, ch: k, at: x.receivedAt || new Date().toISOString(), status: 'yeni', items, customer: x.customer.name, address: x.customer.address, note: x.note }); n++; });
+        }
+        if (n) { NS.beep(1200, 200); toast(`${n} yeni sipariş alındı`, 'ok'); return save(); }
+      }
+      const open = Object.keys(QC).filter((k) => cfg(k).connected && cfg(k).open); if (!open.length) return toast('Açık kanal yok', 'err');
+      const o = mkOrder(NS.pick(open), 0, 'yeni'); db.data.qcOrders.push(o); NS.beep(1200, 200); toast(`${QC[o.ch].name}: yeni sipariş ${o.no} (simülasyon)`, 'ok'); save();
+    });
     on(el, 'click', '[data-acc]', (e, b) => { const o = get(b.dataset.acc); o.status = 'toplaniyor'; o.acceptedAt = new Date().toISOString(); sendI(o.ch, 'siparis-kabul', { orderNo: o.no }); save(); });
     on(el, 'click', '[data-rej]', async (e, b) => { const o = get(b.dataset.rej); const r = await NS.prompt('Red nedeni', 'Ürün stokta yok', { title: 'Siparişi reddet' }); if (r === null) return; o.status = 'iptal'; o.reason = r; sendI(o.ch, 'siparis-red', { orderNo: o.no, reason: r }); save(); });
     on(el, 'change', '[data-pk]', (e, c) => { const [id, pid] = c.dataset.pk.split('|'); const i = get(id).items.find((x) => x.pid === pid); i.picked = c.checked; db.save(); });
