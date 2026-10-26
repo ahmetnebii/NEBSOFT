@@ -4,6 +4,8 @@
   const { esc, $, $$, on, icon, money, num, toast, modal, confirm, formModal, table, chart, badge, kpi, pageHead, sum, uid, addDays } = NS;
 
   const db = new NS.DB('adisyon', window.ADISYON_SEED);
+  const PH = window.PLATHUB;
+  PH.ensure(db, (c) => totals(c));
   const S = () => db.settings({ service: 0, qrOrder: true, receiptFooter: '' });
   const r2 = (n) => Math.round(n * 100) / 100;
   const PAY = { nakit: 'Nakit', kart: 'Kredi Kartı', yemekkarti: 'Yemek Kartı', online: 'Online Ödeme', havale: 'Havale' };
@@ -397,7 +399,7 @@
     $('#pf', el).onclick = async () => {
       if (!NS.integ) return; const r = await NS.integ.call('yemekplatform', 'siparis-cek', { since: S().platformPull || '' }); if (!r || !r.ok) return;
       let orders = r.data && Array.isArray(r.data.orders) ? r.data.orders : [];
-      if (r.simulated) { const menu = db.all('menu', (m) => m.active !== false); orders = [{ platform: NS.pick(['Yemeksepeti', 'Getir Yemek', 'Trendyol Yemek', 'Migros Yemek']), orderNo: String(NS.rand(10000000, 99999999)), customer: { name: NS.pick(['Ayşe K.', 'Mehmet D.', 'Zeynep A.', 'Can T.']), phone: NS.phone(), address: NS.pick(['Moda Cad. No:12 D:4 Kadıköy', 'Bağdat Cad. 210/7 Maltepe', 'Halitağa Cad. 33 Kadıköy']) }, paid: true, note: NS.pick(['', 'Zile basmayın', 'Bol sos']), items: [NS.pick(menu), NS.pick(menu)].map((m) => ({ id: m.id, qty: NS.rand(1, 2) })) }]; }
+      if (r.simulated) { const menu = db.all('menu', (m) => m.active !== false); const openP = Object.keys(PH.PL).filter((n) => ((db.data.platforms || {})[n] || {}).connected && db.data.platforms[n].open); if (!openP.length) { toast('Açık platform yok — Yemek Platformları sayfasından açın', 'err'); return; } orders = [{ platform: NS.pick(openP), orderNo: String(NS.rand(10000000, 99999999)), customer: { name: NS.pick(['Ayşe K.', 'Mehmet D.', 'Zeynep A.', 'Can T.']), phone: NS.phone(), address: NS.pick(['Moda Cad. No:12 D:4 Kadıköy', 'Bağdat Cad. 210/7 Maltepe', 'Halitağa Cad. 33 Kadıköy']) }, paid: true, note: NS.pick(['', 'Zile basmayın', 'Bol sos']), items: [NS.pick(menu), NS.pick(menu)].map((m) => ({ id: m.id, qty: NS.rand(1, 2) })) }]; }
       let n = 0;
       orders.forEach((o) => { if (db.find('checks', (c) => c.platformNo === o.orderNo)) return; const c = newCheck({ type: 'paket', table: null, guests: 1, source: o.platform, platformNo: o.orderNo, customer: o.customer, pstatus: 'hazirlaniyor', payOnDelivery: o.paid ? 'online' : 'nakit', paidOnline: !!o.paid, note: o.note }); o.items.forEach((it) => { const m = M(it.id); if (!m) return; c.items.push({ id: uid(), pid: m.id, name: m.name, price: m.price, qty: it.qty, note: '', status: 'new', station: m.station }); }); sendKitchen(c, () => {}); n++; if (S().autoAccept !== false) NS.integ.call('yemekplatform', 'durum', { platform: o.platform, orderNo: o.orderNo, status: 'onaylandi' }, { silent: true }); });
       db.saveSettings({ platformPull: new Date().toISOString() }); db.save(); if (n) NS.beep(1200, 200); toast(`${n} platform siparişi alındı ve mutfağa düştü`, n ? 'ok' : ''); app.refresh();
@@ -603,6 +605,7 @@
       { id: 'paket', label: 'Paket Servis', icon: 'truck', roles: ['garson', 'kasa'], badge: true },
       { id: 'rezervasyon', label: 'Rezervasyonlar', icon: 'calendar', roles: ['garson', 'kasa'] },
       { id: 'adisyonlar', label: 'Adisyonlar', icon: 'receipt', roles: ['kasa'] },
+      PH.nav,
       { sec: 'Yönetim' },
       { id: 'menu', label: 'Menü & Reçeteler', icon: 'book', roles: ['admin'] },
       { id: 'stok', label: 'Malzeme Stoku', icon: 'box', roles: ['admin'] },
@@ -612,7 +615,7 @@
     ],
     badges: () => ({ mutfak: sum(openChecks(), (c) => c.items.filter((i) => i.status === 'sent' && !i.cancel).length) || '', paket: openChecks().filter((c) => c.type === 'paket').length || '' }),
     routes: {
-      masalar: tablesPage, siparis: orderPage, mutfak: kitchenPage, paket: packagePage, rezervasyon: reservationsPage, adisyonlar: historyPage, menu: menuPage, stok: stockPage, qr: qrPage, raporlar: reportsPage,
+      ...PH.routes, masalar: tablesPage, siparis: orderPage, mutfak: kitchenPage, paket: packagePage, rezervasyon: reservationsPage, adisyonlar: historyPage, menu: menuPage, stok: stockPage, qr: qrPage, raporlar: reportsPage,
       ayarlar: (el, p, a) => NS.settingsPage(el, a, { roles: ROLES, fields: [{ type: 'section', label: 'Restoran ayarları' }, { name: 'service', label: 'Servis ücreti (%)', type: 'number' }, { name: 'wifi', label: 'Wi-Fi şifresi (fişte yazar)' }, { name: 'receiptFooter', label: 'Fiş alt yazısı', full: true }] }),
     },
   });
