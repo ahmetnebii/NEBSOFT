@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Veli Portalı</title>
+<link rel="stylesheet" href="../../core/core.css">
+<link rel="stylesheet" href="../../core/track.css">
+<style>
+  :root { --app-accent: #ea580c; --app-accent-soft: #ffedd5; --app-accent-soft-dark: #431407; }
+  .tabs2 { display: flex; gap: 6px; margin-bottom: 16px; overflow-x: auto; }
+  .tabs2 button { flex: none; border: 1px solid var(--border); background: var(--surface); color: var(--text-2); border-radius: 99px; padding: 8px 14px; font: 600 13px var(--font); cursor: pointer; }
+  .tabs2 button[aria-selected="true"] { background: var(--text); color: var(--surface); border-color: var(--text); }
+  .kid { display: flex; gap: 12px; align-items: center; }
+  .av { width: 52px; height: 52px; border-radius: 50%; display: grid; place-items: center; color: #fff; font-weight: 800; font-size: 18px; flex: none; }
+  .meals { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+  .meal { border: 1px solid var(--border); border-radius: 14px; padding: 12px; background: var(--surface); text-align: center; }
+  .meal .e { font-size: 26px; }
+  .ln { display: grid; grid-template-columns: 1fr auto; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--border); }
+  .ln:last-child { border-bottom: 0; }
+  .ph { display: grid; grid-template-columns: repeat(auto-fill, minmax(90px, 1fr)); gap: 8px; }
+  .ph div { aspect-ratio: 1; border-radius: 12px; background: linear-gradient(135deg, var(--accent-soft), var(--bg-2)); display: grid; place-items: center; color: var(--text-3); }
+  @media (max-width: 520px) { .meals { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<header class="tk-bar"><div class="in" id="bar"></div></header>
+<main class="tk-wrap" id="root" style="max-width:760px"></main>
+<script src="../../core/core.js"></script>
+<script src="data.js"></script>
+<script>
+(function () {
+  const { esc, $, $$, icon, money, toast, sum, today } = NS;
+  const A = window.ANK; const db = new NS.DB('anaokulu', A.seed); const S = () => db.settings({});
+  const KEY = 'nebsoft:anaokulu:veli';
+  const sget = () => { try { return sessionStorage.getItem(KEY); } catch (e) { return null; } };
+  const sset = (v) => { try { v ? sessionStorage.setItem(KEY, v) : sessionStorage.removeItem(KEY); } catch (e) { /* yok */ } };
+  const digits = (x) => String(x || '').replace(/\D/g, '').slice(-10);
+  const EMO = { hepsi: '😋', yarisi: '🙂', az: '😐', yemedi: '🙅' };
+  let tab = 'bugun', kid = null;
+  $('#bar').innerHTML = `<div class="tk-mark">${icon('heart')}</div><div class="grow"><b>${esc(S().bizName)}</b><span>Veli portalı</span></div><span id="out"></span>`;
+  function login() {
+    $('#out').innerHTML = '';
+    $('#root').innerHTML = `<div class="tk-intro"><h1>Çocuğunuzun günü, cebinizde</h1><p>Ne yedi, ne kadar uyudu, kim teslim aldı — okulun gönderdiği kodla girin.</p></div><div class="tk-find" style="flex-wrap:wrap"><input class="input" id="ph" type="tel" placeholder="05xx xxx xx xx" aria-label="Telefon"><input class="input" id="cd" placeholder="Kod" aria-label="Kod" style="max-width:140px;text-transform:uppercase"><button class="btn primary lg" id="go">Giriş</button></div><p class="small muted">Demo için <a href="#" id="hint">örnek veli bilgisini doldurun</a>.</p>
+      <div class="tk-how"><div>${icon('coffee')}<b>Yemek ve uyku</b>Öğretmenin işaretlediği gün raporu.</div><div>${icon('check')}<b>Giriş-çıkış</b>Geliş saati ve teslim alan kişi.</div><div>${icon('message')}<b>İzin bildirin</b>Gelmeyecekse veya erken alacaksanız tek dokunuşla.</div></div>`;
+    const go = () => { db.load(); const L = db.all('students', (s) => s.parents.some((p) => digits(p.phone) === digits($('#ph').value)) && A.code(s) === $('#cd').value.trim().toUpperCase()); if (!L.length) return toast('Telefon veya kod hatalı', 'err'); sset(digits($('#ph').value)); kid = L[0].id; render(); };
+    $('#go').onclick = go; $('#cd').onkeydown = (e) => { if (e.key === 'Enter') go(); };
+    $('#hint').onclick = (e) => { e.preventDefault(); const s = db.all('students').find((x) => db.data.reports[`${x.id}|${today()}`]) || db.all('students')[0]; $('#ph').value = s.parents[0].phone; $('#cd').value = A.code(s); };
+  }
+  function bugun(s) {
+    const a = db.data.att[`${s.id}|${today()}`]; const r = db.data.reports[`${s.id}|${today()}`] || {}; const c = db.get('classes', s.cls);
+    return `<section class="tk-panel"><h3>${icon('check')} Bugün</h3><div class="b">${!a ? 'Henüz okula giriş yapılmadı.' : a.st === 'yok' ? `Bugün gelmedi (${esc(a.note || '')}).` : `<b>${esc(a.in)}</b>'de okula geldi${a.out ? ` · <b>${esc(a.out)}</b>'de <b>${esc(a.by)}</b> teslim aldı` : ' · şu an okulda'}.`}</div></section>
+      ${r.kahvalti || r.ogle ? `<div class="meals mb">${Object.entries(A.MEALS).map(([k, l]) => `<div class="meal"><div class="e">${r[k] ? EMO[r[k]] : '⏳'}</div><b>${l}</b><div class="small muted">${r[k] ? A.EAT[r[k]][0] : 'Henüz değil'}</div></div>`).join('')}</div>
+      <section class="tk-panel"><h3>${icon('heart')} Günün özeti</h3><div class="b">${r.mood ? `<div class="ln"><span>Ruh hali</span><b>${A.MOOD[r.mood][0]} ${A.MOOD[r.mood][1]}</b></div>` : ''}${c.nap && r.sleep ? `<div class="ln"><span>Uyku</span><b>${esc(r.sleep)}</b></div>` : ''}${r.toilet ? `<div class="ln"><span>Bez / tuvalet</span><b>${esc(r.toilet)}</b></div>` : ''}${r.note ? `<p>${esc(r.note)}</p><div class="small muted">— ${esc(r.by || c.teacher)}</div>` : ''}</div></section>
+      ${r.photos ? `<section class="tk-panel"><h3>${icon('star')} Bugünün fotoğrafları</h3><div class="b ph">${Array.from({ length: r.photos }, () => `<div>${icon('star')}</div>`).join('')}</div></section>` : ''}` : '<p class="muted">Öğretmen günlük raporu gün içinde dolduracak.</p>'}`;
+  }
+  function menu() { const d = ['Pazar', 'Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi'][new Date().getDay()]; return `<section class="tk-panel"><h3>${icon('coffee')} Haftalık menü</h3><div class="b">${db.all('menu').map((m) => `<div class="ln" style="grid-template-columns:1fr"><span><b>${esc(m.day)}</b>${m.day === d ? ' ' + NS.badge('Bugün', 'acc') : ''}<div class="small">Kahvaltı: ${esc(m.kahvalti)}</div><div class="small">Öğle: ${esc(m.ogle)}</div><div class="small">İkindi: ${esc(m.ikindi)}</div></span></div>`).join('')}</div></section>`; }
+  function duyuru(s) { return `<section class="tk-panel"><h3>${icon('bell')} Duyurular</h3><div class="b">${db.all('posts', (p) => !p.cls || p.cls === s.cls).sort((a, b) => b.at.localeCompare(a.at)).map((p) => `<div class="ln" style="grid-template-columns:1fr"><span><b>${esc(p.title)}</b> <span class="small muted">${NS.date(p.at)}</span><div>${esc(p.body)}</div></span></div>`).join('')}</div></section>`; }
+  function odeme(s) { const fees = db.all('fees', (f) => f.student === s.id).sort((a, b) => b.period.localeCompare(a.period)); const pays = db.all('payments', (p) => p.student === s.id); const bal = sum(fees, (f) => f.amount) - sum(pays, (p) => p.amount); return `${bal > 0 ? `<div class="tk-call"><h3>${icon('alert')} Ödenmemiş aidat: ${money(bal)}</h3><p>IBAN: ${esc(S().iban || '')} — açıklamaya çocuğunuzun adını yazın.</p></div>` : `<div class="tk-call" style="--c:var(--ok)"><h3>${icon('check')} Ödemeleriniz güncel</h3></div>`}<section class="tk-panel"><h3>${icon('receipt')} Aidatlar</h3><div class="b">${fees.map((f) => `<div class="ln"><span>${NS.MONTHS[Number(f.period.slice(5)) - 1]} ${f.period.slice(0, 4)}</span><b>${money(f.amount)}</b></div>`).join('')}</div></section>`; }
+  function mesaj(s) { const ms = db.all('messages', (m) => m.student === s.id).sort((a, b) => b.at.localeCompare(a.at)); return `<section class="tk-panel"><h3>${icon('message')} Okula bildirin</h3><div class="b"><select class="input mb" id="mt"><option value="izin">Gelmeyecek (izin / hastalık)</option><option value="alma">Erken / farklı kişi alacak</option><option value="mesaj">Öğretmene mesaj</option></select><textarea class="input" id="mx" rows="3" placeholder="Ör. Yarın doktor kontrolü var, gelmeyecek."></textarea><button class="btn primary mt" id="ms">${icon('send')} Gönder</button></div></section><section class="tk-panel"><h3>${icon('list')} Yazışmalar</h3><div class="b">${ms.map((m) => `<div class="ln" style="grid-template-columns:1fr"><span><b>${m.from === 'veli' ? 'Siz' : 'Okul'}</b> <span class="small muted">${NS.dt(m.at)}</span><div>${esc(m.text)}</div></span></div>`).join('') || '<span class="small muted">Mesaj yok</span>'}</div></section>`; }
+  function render() {
+    db.load(); const ph = sget(); if (!ph) return login();
+    const kids = db.all('students', (s) => s.parents.some((p) => digits(p.phone) === ph)); if (!kids.length) return login();
+    const s = kids.find((k) => k.id === kid) || kids[0]; kid = s.id; const c = db.get('classes', s.cls);
+    $('#out').innerHTML = `<button class="btn ghost" id="lo">${icon('logout')} Çıkış</button>`; $('#lo').onclick = () => { sset(null); login(); };
+    const T = { bugun: ['Bugün', bugun], menu: ['Menü', menu], duyuru: ['Duyurular', duyuru], odeme: ['Ödemeler', odeme], mesaj: ['Mesaj / izin', mesaj] };
+    $('#root').innerHTML = `<div class="tk-head"><div class="kid"><span class="av" style="background:${c.color}">${esc(s.name.split(' ').map((w) => w[0]).join('').slice(0, 2))}</span><div><h2 style="margin:0">${esc(s.name)}</h2><p class="muted" style="margin:2px 0 0">${esc(c.name)} sınıfı · ${A.age(s.birth)} · öğretmen ${esc(c.teacher)}</p></div></div>${kids.length > 1 ? `<div class="row mt" style="gap:6px">${kids.map((k) => `<button class="btn sm ${k.id === kid ? 'primary' : ''}" data-k="${k.id}">${esc(k.name.split(' ')[0])}</button>`).join('')}</div>` : ''}</div>
+      <div class="tabs2" role="tablist">${Object.entries(T).map(([k, [l]]) => `<button role="tab" data-tab="${k}" aria-selected="${k === tab}">${l}</button>`).join('')}</div><div>${T[tab][1](s)}</div>`;
+    $$('[data-tab]').forEach((b) => { b.onclick = () => { tab = b.dataset.tab; render(); }; });
+    $$('[data-k]').forEach((b) => { b.onclick = () => { kid = b.dataset.k; render(); }; });
+    if ($('#ms')) $('#ms').onclick = () => { const t = $('#mx').value.trim(); if (!t) return; db.insert('messages', { student: s.id, at: new Date().toISOString(), from: 'veli', text: t, type: $('#mt').value }); toast('Okula iletildi', 'ok'); render(); };
+  }
+  render();
+})();
+</script>
+</body>
+</html>

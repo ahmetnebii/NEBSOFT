@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Satılık Araçlar</title>
+<link rel="stylesheet" href="../../core/core.css">
+<link rel="stylesheet" href="../../core/track.css">
+<style>
+  :root { --app-accent: #be123c; --app-accent-soft: #ffe4e6; --app-accent-soft-dark: #4c0519; }
+  .flt { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
+  .flt select { max-width: 180px; }
+  .grid3 { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px; }
+  .car { border: 1px solid var(--border); border-radius: 16px; background: var(--surface); overflow: hidden; cursor: pointer; text-align: left; padding: 0; color: var(--text); font: inherit; display: flex; flex-direction: column; transition: transform .15s, box-shadow .15s; }
+  .car:hover { transform: translateY(-2px); box-shadow: 0 14px 30px rgba(15, 23, 42, .1); }
+  .pic { aspect-ratio: 16 / 9; display: grid; place-items: center; background: linear-gradient(160deg, var(--bg-2), var(--surface)); position: relative; }
+  .pic svg { width: 72%; }
+  .pic .tag { position: absolute; top: 10px; left: 10px; }
+  .car .b { padding: 14px; display: flex; flex-direction: column; gap: 4px; }
+  .car .p { font-size: 20px; font-weight: 800; margin-top: 6px; }
+  .spec { display: flex; gap: 6px; flex-wrap: wrap; }
+  .spec span { font-size: 12px; background: var(--bg-2); border-radius: 6px; padding: 2px 8px; color: var(--text-2); }
+  .parts { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 14px; font-size: 13px; }
+  .parts div { display: flex; justify-content: space-between; border-bottom: 1px solid var(--border); padding: 4px 0; }
+</style>
+</head>
+<body>
+<header class="tk-bar"><div class="in" id="bar"></div></header>
+<main class="tk-wrap" id="root" style="max-width:1100px"></main>
+<script src="../../core/core.js"></script>
+<script src="data.js"></script>
+<script>
+(function () {
+  const { esc, $, $$, icon, money, toast } = NS;
+  const G = window.GLR; const db = new NS.DB('galeri', G.seed); const S = () => db.settings({});
+  const HEX = { Beyaz: '#f3f4f6', Gri: '#9ca3af', Siyah: '#111827', Lacivert: '#1e3a8a', Kırmızı: '#b91c1c', Gümüş: '#cbd5e1' };
+  const carSvg = (v) => `<svg viewBox="0 0 220 90" aria-hidden="true"><path d="M18 62c0-9 5-14 14-16l26-6 22-18c4-3 9-5 14-5h44c6 0 11 2 15 6l18 17 26 4c9 2 14 8 14 17v6H18z" fill="${HEX[v.color] || '#94a3b8'}" stroke="rgba(0,0,0,.25)" stroke-width="1.5"/><path d="M84 24h34v18H64zM124 24h22c3 0 6 1 8 3l14 15h-44z" fill="rgba(186,230,253,.85)"/><circle cx="56" cy="70" r="13" fill="#1f2937"/><circle cx="56" cy="70" r="6" fill="#9ca3af"/><circle cx="168" cy="70" r="13" fill="#1f2937"/><circle cx="168" cy="70" r="6" fill="#9ca3af"/></svg>`;
+  const title = (v) => `${v.year} ${v.brand} ${v.model}`;
+  let f = { body: '', fuel: '', gear: '', max: '' };
+  $('#bar').innerHTML = `<div class="tk-mark">${icon('car')}</div><div class="grow"><b>${esc(S().bizName)}</b><span>Satılık araçlar</span></div><a class="btn ghost" href="tel:${esc(String(S().bizPhone || '').replace(/\s/g, ''))}">${icon('phone')} Ara</a>`;
+  const list = () => db.all('vehicles', (v) => ['satista', 'opsiyon'].includes(v.status) && (!f.body || v.body === f.body) && (!f.fuel || v.fuel === f.fuel) && (!f.gear || v.gear === f.gear) && (!f.max || v.listPrice <= Number(f.max))).sort((a, b) => a.listPrice - b.listPrice);
+  function render() {
+    db.load(); const all = db.all('vehicles', (v) => v.status !== 'satildi' && v.status !== 'hazirlik'); const L = list();
+    const opt = (k, vals, label) => `<select class="input" data-f="${k}" aria-label="${label}"><option value="">${label}</option>${vals.map((x) => `<option ${f[k] === x ? 'selected' : ''}>${esc(x)}</option>`).join('')}</select>`;
+    $('#root').innerHTML = `<div class="tk-intro"><h1>Ekspertizli, garantili ikinci el araçlar</h1><p>${all.length} araç satışta · tüm araçların boya-değişen ve tramer bilgisi açık.</p></div>
+      <div class="flt">${opt('body', [...new Set(all.map((v) => v.body))], 'Kasa tipi')}${opt('fuel', [...new Set(all.map((v) => v.fuel))], 'Yakıt')}${opt('gear', ['Manuel', 'Otomatik'], 'Vites')}<select class="input" data-f="max" aria-label="Bütçe"><option value="">Bütçe</option>${[1000000, 1500000, 2000000, 3000000].map((x) => `<option value="${x}" ${String(f.max) === String(x) ? 'selected' : ''}>${money(x)} altı</option>`).join('')}</select></div>
+      <div class="grid3">${L.map((v) => `<button class="car" data-v="${v.id}"><div class="pic">${carSvg(v)}${v.status === 'opsiyon' ? `<span class="tag">${NS.badge('Opsiyonlu', 'info')}</span>` : ''}</div><div class="b"><b>${esc(title(v))}</b><span class="small muted">${esc(v.pkg || '')}</span><div class="spec"><span>${NS.num(v.km)} km</span><span>${esc(v.fuel)}</span><span>${esc(v.gear)}</span><span>${esc(v.color)}</span></div><span class="p">${money(v.listPrice)}</span><span class="small" style="color:var(--${v.tramer ? 'warn' : 'ok'})">${v.tramer ? 'Tramer ' + money(v.tramer) : 'Tramer kaydı yok'}</span></div></button>`).join('') || '<p class="muted">Bu kriterlere uygun araç yok — aşağıdan talebinizi bırakın, gelince haber verelim.</p>'}</div>
+      <section class="tk-panel" style="margin-top:22px"><h3>${icon('bell')} Aradığınız aracı bulamadınız mı?</h3><div class="b"><div class="row" style="gap:8px;flex-wrap:wrap"><input class="input" id="ln" placeholder="Ad soyad" style="max-width:200px"><input class="input" id="lp" type="tel" placeholder="Telefon" style="max-width:180px"><input class="input" id="lt" placeholder="Aradığınız araç ve bütçe" style="flex:1;min-width:200px"><button class="btn primary" id="ls">Haber ver</button></div></div></section>`;
+    $$('[data-f]').forEach((s) => { s.onchange = () => { f[s.dataset.f] = s.value; render(); }; });
+    $$('[data-v]').forEach((b) => { b.onclick = () => detail(db.get('vehicles', b.dataset.v)); });
+    $('#ls').onclick = () => lead($('#ln').value, $('#lp').value, $('#lt').value, '');
+  }
+  function lead(name, phone, note, vid) {
+    if (!name.trim() || String(phone).replace(/\D/g, '').length < 10) return toast('Ad ve telefon gerekli', 'err');
+    db.load(); const v = vid && db.get('vehicles', vid); db.insert('leads', { name: name.trim(), phone, note: v ? `${title(v)} (${v.stockNo}) için bilgi istedi. ${note}` : note, body: v ? v.body : '', budget: v ? v.listPrice : 0, at: new Date().toISOString(), status: 'yeni', source: 'Vitrin sayfası' }); toast('Talebiniz alındı, sizi arayacağız', 'ok'); return true;
+  }
+  function detail(v) {
+    NS.modal({ title: title(v), size: 'wide', body: `<div class="grid g2"><div><div class="pic" style="border-radius:14px">${carSvg(v)}</div><p class="small muted mt">${esc(v.desc || '')}</p><div class="spec mt"><span>${v.year}</span><span>${NS.num(v.km)} km</span><span>${esc(v.fuel)}</span><span>${esc(v.gear)}</span><span>${esc(v.body)}</span><span>${esc(v.color)}</span></div><div class="mt" style="font-size:26px;font-weight:800">${money(v.listPrice)}</div></div>
+      <div><h3 class="mb">Ekspertiz</h3><div class="parts">${G.PARTS.map((p) => { const s = (v.parts || {})[p] || 'orijinal'; return `<div><span>${esc(p)}</span>${NS.badge(G.PST[s][0], G.PST[s][1])}</div>`; }).join('')}</div><p class="small mt">${v.tramer ? `Tramer (hasar) kaydı: <b>${money(v.tramer)}</b>` : 'Tramer kaydı yoktur.'}</p>
+      <div class="field mt"><label for="dn">Ad soyad</label><input class="input" id="dn"></div><div class="field"><label for="dp">Telefon</label><input class="input" id="dp" type="tel"></div></div></div>`,
+      actions: [{ label: 'WhatsApp', icon: 'message', onClick: () => window.open(`https://wa.me/90${String(S().bizPhone || '').replace(/\D/g, '').replace(/^0/, '')}?text=${encodeURIComponent(`${title(v)} (${v.stockNo}) hakkında bilgi almak istiyorum.`)}`, '_blank') }, { label: 'Beni arayın', cls: 'primary', onClick: (c, b) => { if (lead($('#dn', b).value, $('#dp', b).value, '', v.id)) c(); } }] });
+  }
+  render();
+})();
+</script>
+</body>
+</html>

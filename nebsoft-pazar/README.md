@@ -87,6 +87,27 @@ server.js             Bağımlılıksız yerel sunucu + donanım/servis köprüs
 
 Entegrasyon merkezinde ilgili bağlantı kapalıyken merkezler **simülasyon modunda** çalışır ve bunu ekranda belirtir.
 
+## Yeni ürünler (alıcı potansiyeline göre seçilen 10 ürün)
+
+| Ürün | Klasör | Müşteriye açık sayfa | Tanıtım |
+|---|---|---|---|
+| Pazaryeri Satıcı Paneli | apps/pazaryeri | — | /pazaryeriprogrami |
+| Butik & Giyim | apps/butik | — | /butikprogrami |
+| Oto Servis & Sanayi | apps/otoservis | onay.html (teklif onayı, online ödeme) | /otoservisprogrami |
+| Mali Müşavir Bürosu | apps/musavir | portal.html (mükellef portalı) | /malimusavirprogrami |
+| Toptancı & Plasiyer | apps/toptan | bayi.html (B2B sipariş) | /toptanciprogrami |
+| Kâr & Fiyat Robotu | apps/fiyatrobotu | — | /pazaryerikarhesaplama |
+| Kuyumcu | apps/kuyumcu | ekran.html (vitrin TV kur ekranı) | /kuyumcuprogrami |
+| Oto Galeri | apps/galeri | vitrin.html (araç vitrini) | /otogaleriprogrami |
+| Hukuk Bürosu | apps/hukuk | muvekkil.html (müvekkil portalı) | /hukukburosuprogrami |
+| Anaokulu & Kreş | apps/anaokulu | veli.html (veli portalı) | /anaokuluprogrami |
+
+Notlar:
+- Fiyat robotu ve mali müşavir ekranlarındaki oranlar/son günler örnek ve genel kuraldır; kullanıcı kendi sözleşme/duyuruya göre günceller.
+- Hukuk süre hesaplayıcı adli tatil, hafta sonu ve sabit resmi tatilleri dikkate alır; dini bayramlar Ayarlar'dan eklenir.
+- Kuyumcu kuru elle girilir veya Ayarlar'dan JSON kur servisi tanımlanır.
+- Rakip fiyatları (fiyat robotu) demo verisidir.
+
 ## Pazaryeri Satıcı Paneli (apps/pazaryeri)
 
 Yalnız pazaryerinde satan işletmeler için: Trendyol, Hepsiburada, n11, Amazon TR, Pazarama, Çiçeksepeti ve İdefix siparişleri tek listede.

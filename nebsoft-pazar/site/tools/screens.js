@@ -14,11 +14,16 @@ const PREP = {
   'kurs/veli.html': () => { const db = new NS.DB('kurs'); sessionStorage.setItem('nebsoft:kurs:veli', String(db.all('students')[0].parentPhone).replace(/\D/g, '').slice(-10)); },
   'veteriner/karne.html': () => { const db = new NS.DB('veteriner'); const o = db.all('owners').find((x) => db.all('pets', (p) => p.owner === x.id).length > 1) || db.all('owners')[0]; sessionStorage.setItem('nebsoft:vet:sahip', o.id); },
   'fabrika/bayi.html': () => { sessionStorage.setItem('nebsoft:fab:bayi', 'm0'); },
+  'musavir/portal.html': () => { sessionStorage.setItem('nebsoft:musavir:portal', 'm1'); },
+  'toptan/bayi.html': () => { sessionStorage.setItem('nebsoft:toptan:bayi', 'c2'); },
+  'hukuk/muvekkil.html': () => { sessionStorage.setItem('nebsoft:hukuk:portal', 'k1'); },
+  'anaokulu/veli.html': () => { const db = new NS.DB('anaokulu'); const s = db.all('students').find((x) => db.data.reports[`${x.id}|${NS.today()}`]) || db.all('students')[0]; sessionStorage.setItem('nebsoft:anaokulu:veli', String(s.parents[0].phone).replace(/\D/g, '').slice(-10)); },
 };
 // Sorgu gerektiren sayfalar için örnek kayıt
 const QUERY = {
   'servis/takip.html': () => '?kod=' + (new NS.DB('servis').all('tickets').find((t) => t.status === 'onay') || new NS.DB('servis').all('tickets')[0]).code,
   'kargo/takip.html': () => '?no=' + (new NS.DB('kargo').all('ships').find((s) => s.status === 'dagitimda') || new NS.DB('kargo').all('ships')[0]).no,
+  'otoservis/onay.html': () => '?k=' + OTS.token(new NS.DB('otoservis').all('jobs').find((j) => j.status === 'onay') || new NS.DB('otoservis').all('jobs').find((j) => j.status === 'islemde')),
   'oto/arac.html': () => '?plaka=' + encodeURIComponent((new NS.DB('oto').all('jobs').find((j) => j.status === 'bekliyor') || {}).plate || ''),
 };
 
