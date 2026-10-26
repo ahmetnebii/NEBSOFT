@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Veli Portalı</title>
+<link rel="stylesheet" href="../../core/core.css">
+<link rel="stylesheet" href="../../core/track.css">
+<style>
+  :root { --app-accent: #4338ca; --app-accent-soft: #e0e7ff; --app-accent-soft-dark: #1e1b4b; }
+  .kids { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
+  .kids button { display: flex; align-items: center; gap: 10px; border: 1px solid var(--border); background: var(--surface); color: var(--text); border-radius: 99px; padding: 5px 16px 5px 5px; font: 600 14px var(--font); cursor: pointer; }
+  .kids button[aria-pressed="true"] { border-color: var(--accent); background: var(--accent-soft); }
+  .av { width: 34px; height: 34px; border-radius: 50%; background: var(--accent); color: #fff; display: grid; place-items: center; font-weight: 800; font-size: 13px; flex: none; }
+  .tabs2 { display: flex; gap: 6px; margin-bottom: 16px; overflow-x: auto; }
+  .tabs2 button { flex: none; border: 1px solid var(--border); background: var(--surface); color: var(--text-2); border-radius: 99px; padding: 8px 14px; font: 600 13px var(--font); cursor: pointer; }
+  .tabs2 button[aria-selected="true"] { background: var(--text); color: var(--surface); border-color: var(--text); }
+  .stat3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 16px; }
+  .stat3 div { border: 1px solid var(--border); border-radius: 12px; background: var(--surface); padding: 12px 14px; }
+  .stat3 b { display: block; font-size: 22px; font-variant-numeric: tabular-nums; }
+  .stat3 span { font-size: 12px; color: var(--text-3); }
+  .ln { display: grid; grid-template-columns: 54px 1fr auto; gap: 10px; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--border); font-size: 14px; }
+  .ln:last-child { border-bottom: 0; }
+  .ln .tm { font-weight: 800; font-variant-numeric: tabular-nums; }
+  .dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; margin-right: 6px; background: var(--c); }
+  .wkt { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .wkt th { font-size: 11px; color: var(--text-3); text-align: left; padding: 6px 4px; border-bottom: 1px solid var(--border); }
+  .wkt td { padding: 6px 4px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  .wkt .c { border-left: 3px solid var(--c); padding-left: 6px; line-height: 1.25; }
+  .bars { display: grid; gap: 10px; }
+  .bar { display: grid; grid-template-columns: 110px 1fr 70px; gap: 10px; align-items: center; font-size: 13px; }
+  .bar .tr { height: 10px; border-radius: 5px; background: var(--bg-2); position: relative; }
+  .bar .tr i { position: absolute; inset: 0 auto 0 0; border-radius: 5px; background: var(--accent); }
+  .bar .tr u { position: absolute; top: -3px; bottom: -3px; width: 2px; background: var(--text-2); }
+  .spark { width: 100%; height: 100px; }
+  @media (max-width: 760px) { .stat3 b { font-size: 18px; } .bar { grid-template-columns: 84px 1fr 56px; } .wkt-wrap { overflow-x: auto; } }
+</style>
+</head>
+<body>
+<header class="tk-bar"><div class="in" id="bar"></div></header>
+<main class="tk-wrap" id="root" style="max-width:880px"></main>
+<script src="../../core/core.js"></script>
+<script>
+(function () {
+  const { esc, $, $$, on, icon, money, toast, iso, today, addDays, sum } = NS;
+  const db = new NS.DB('kurs');
+  const S = () => db.settings({});
+  const KEY = 'nebsoft:kurs:veli';
+  const sget = () => { try { return sessionStorage.getItem(KEY); } catch (e) { return null; } };
+  const sset = (v) => { try { v ? sessionStorage.setItem(KEY, v) : sessionStorage.removeItem(KEY); } catch (e) { /* yok */ } };
+  const digits = (x) => String(x || '').replace(/\D/g, '').slice(-10);
+  const AT = { v: ['Var', 'ok'], y: ['Yok', 'err'], g: ['Geç', 'warn'], i: ['İzinli', 'info'] };
+  const cls = (id) => db.get('classes', id) || { name: '-' };
+  const tch = (id) => db.get('teachers', id) || { name: '-', color: '#64748b' };
+  const ini = (n) => String(n).split(' ').map((w) => w[0]).slice(0, 2).join('');
+  const total = (e, sid) => sum(Object.values(e.scores[sid] || {}));
+  let kid = null, tab = 'genel';
+
+  $('#bar').innerHTML = `<div class="tk-mark">${icon('school')}</div><div class="grow"><b>${esc(S().bizName || 'Kurs')}</b><span>Veli portalı</span></div><span id="out"></span><button class="btn ghost icon" id="th" data-theme-ico aria-label="Tema">${icon(NS.getTheme() === 'dark' ? 'sun' : 'moon')}</button>`;
+  $('#th').onclick = NS.toggleTheme;
+
+  function login() {
+    $('#out').innerHTML = '';
+    $('#root').innerHTML = `<div class="tk-view"><div class="tk-intro"><h1>Çocuğunuzun eğitimi, her gün yanınızda</h1><p>Kayıtta verdiğiniz veli telefon numarasıyla girin; devam durumu, deneme sonuçları, ders programı ve ödemeler tek yerde.</p></div>
+      <div class="tk-find"><input class="input" id="ph" type="tel" inputmode="tel" placeholder="05xx xxx xx xx" aria-label="Veli telefonu" autocomplete="tel" style="text-transform:none;letter-spacing:.02em"><button class="btn primary lg" id="go">Giriş</button></div>
+      <p class="small muted">Demo için <a href="#" id="hint">örnek veli numarası kullanın</a>.</p>
+      <div class="tk-how"><div>${icon('check')}<b>Günlük yoklama</b>Her dersin yoklaması işlendiği anda burada.</div><div>${icon('chart')}<b>Deneme analizi</b>Ders bazında sınıf ortalamasıyla karşılaştırma ve gelişim grafiği.</div><div>${icon('message')}<b>Öğretmene mesaj</b>Mazeret bildirin, soru sorun; yanıt SMS ile gelir.</div></div></div>`;
+    const go = () => { db.load(); const d = digits($('#ph').value); if (d.length !== 10 || !db.all('students').some((s) => digits(s.parentPhone) === d)) return toast('Bu numarayla kayıtlı öğrenci bulunamadı', 'err'); sset(d); kid = null; render(); };
+    $('#go').onclick = go; $('#ph').onkeydown = (e) => { if (e.key === 'Enter') go(); };
+    $('#hint').onclick = (e) => { e.preventDefault(); const s = db.all('students')[0]; if (s) $('#ph').value = s.parentPhone; };
+  }
+
+  function genel(s) {
+    const att = db.all('attendance', (a) => a.student === s.id).sort((a, b) => b.date.localeCompare(a.date));
+    const rate = att.length ? Math.round((att.filter((a) => a.st === 'v' || a.st === 'g').length / att.length) * 100) : 100;
+    const abs = att.filter((a) => a.st !== 'v');
+    const dow = new Date().getDay();
+    const todayL = db.all('lessons', (l) => l.cls === s.cls && l.day === dow).sort((a, b) => a.time.localeCompare(b.time));
+    const exams = db.all('exams', (e) => e.cls === s.cls && e.scores[s.id]).sort((a, b) => b.date.localeCompare(a.date));
+    const debt = sum(s.installments.filter((i) => !i.paid && i.due <= today()), (i) => i.amount);
+    return `${debt ? `<div class="tk-call" style="--c:var(--err)"><h3>${icon('alert')} Vadesi geçen taksit: ${money(debt)}</h3><button class="btn primary" data-tab="odeme">Ödemelere git</button></div>` : ''}
+      <div class="stat3"><div><b>%${rate}</b><span>Devam (son 3 hafta)</span></div><div><b>${abs.filter((a) => a.st === 'y').length}</b><span>Devamsız ders</span></div><div><b>${exams[0] ? total(exams[0], s.id) : '—'}</b><span>Son deneme toplamı</span></div></div>
+      <div class="tk-grid"><div><section class="tk-panel"><h3>${icon('calendar')} Bugünkü dersler</h3><div class="b">${todayL.map((l) => { const a = att.find((x) => x.lesson === l.id && x.date === today()); return `<div class="ln"><span class="tm">${esc(l.time)}</span><span><span class="dot" style="--c:${tch(l.teacher).color}"></span><b>${esc(l.subject)}</b><div class="small muted">${esc(tch(l.teacher).name)}</div></span>${a ? NS.badge(AT[a.st][0], AT[a.st][1]) : '<span class="small muted">Yoklama bekliyor</span>'}</div>`; }).join('') || '<div class="small muted">Bugün ders yok.</div>'}</div></section></div>
+        <div><section class="tk-panel"><h3>${icon('alert')} Son devamsızlık ve gecikmeler</h3><div class="b">${abs.slice(0, 8).map((a) => { const l = db.get('lessons', a.lesson) || {}; return `<div class="ln" style="grid-template-columns:1fr auto"><span><b>${esc(l.subject || '')}</b><div class="small muted">${NS.dateLong(a.date)} · ${esc(l.time || '')}</div></span>${NS.badge(AT[a.st][0], AT[a.st][1])}</div>`; }).join('') || '<div class="small muted">Devamsızlık yok, harika!</div>'}<button class="btn block mt" data-tab="mesaj">${icon('message')} Mazeret bildir</button></div></section></div></div>`;
+  }
+  function program(s) {
+    const L = db.all('lessons', (l) => l.cls === s.cls);
+    const times = [...new Set(L.map((l) => l.time))].sort();
+    const days = [1, 2, 3, 4, 5, 6];
+    return `<section class="tk-panel"><h3>${icon('calendar')} Haftalık program · ${esc(cls(s.cls).name)}</h3><div class="b wkt-wrap"><table class="wkt"><thead><tr><th></th>${days.map((d) => `<th>${NS.DAYS[d].slice(0, 3)}</th>`).join('')}</tr></thead><tbody>${times.map((t) => `<tr><th>${t}</th>${days.map((d) => { const l = L.find((x) => x.day === d && x.time === t); return `<td>${l ? `<div class="c" style="--c:${tch(l.teacher).color}"><b>${esc(l.subject)}</b><div class="small muted">${esc(tch(l.teacher).name.split(' ')[0])}</div></div>` : ''}</td>`; }).join('')}</tr>`).join('')}</tbody></table><p class="small muted">${esc(cls(s.cls).room || '')} · ${esc(S().bizAddress || '')}</p></div></section>`;
+  }
+  function denemeler(s) {
+    const ex = db.all('exams', (e) => e.cls === s.cls && e.scores[s.id]).sort((a, b) => a.date.localeCompare(b.date));
+    if (!ex.length) return '<section class="tk-panel"><div class="b small muted">Henüz deneme sonucu yok.</div></section>';
+    const last = ex[ex.length - 1]; const ids = Object.keys(last.scores);
+    const rank = ids.map((id) => ({ id, t: total(last, id) })).sort((a, b) => b.t - a.t).findIndex((x) => x.id === s.id) + 1;
+    const avg = (sub) => sum(ids, (id) => last.scores[id][sub] || 0) / ids.length;
+    const tots = ex.map((e) => total(e, s.id)); const W = 300, H = 90, P = 10; const mx = last.max * last.subjects.length;
+    const pts = tots.map((v, i) => [P + (tots.length > 1 ? (i * (W - 2 * P)) / (tots.length - 1) : (W - 2 * P) / 2), H - P - (v / mx) * (H - 2 * P)]);
+    return `<div class="stat3"><div><b>${total(last, s.id)}</b><span>${esc(last.name)} toplam net</span></div><div><b>${rank}. / ${ids.length}</b><span>Sınıf sırası</span></div><div><b>${tots.length > 1 ? `${tots[tots.length - 1] - tots[tots.length - 2] >= 0 ? '+' : ''}${(tots[tots.length - 1] - tots[tots.length - 2]).toFixed(2)}` : '—'}</b><span>Önceki denemeye göre</span></div></div>
+      <section class="tk-panel"><h3>${icon('chart')} Ders bazında · ${esc(last.name)}</h3><div class="b"><div class="bars">${last.subjects.map((sub) => { const v = last.scores[s.id][sub] || 0; const a = avg(sub); return `<div class="bar"><b>${esc(sub)}</b><div class="tr" title="Sınıf ort. ${a.toFixed(1)}"><i style="width:${(v / last.max) * 100}%"></i><u style="left:${(a / last.max) * 100}%"></u></div><span class="num" style="text-align:right">${v} <span class="small ${v >= a ? '' : 'muted'}" style="color:${v >= a ? 'var(--ok)' : 'var(--err)'}">${v >= a ? '▲' : '▼'}</span></span></div>`; }).join('')}</div><p class="small muted" style="margin:12px 0 0">Çizgi sınıf ortalamasını gösterir. Her ders ${last.max} soru üzerinden net.</p></div></section>
+      <section class="tk-panel"><h3>${icon('trend')} Gelişim</h3><div class="b"><svg class="spark" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img" aria-label="Deneme gelişimi"><polyline fill="none" stroke="var(--accent)" stroke-width="2.5" points="${pts.map((p) => p.join(',')).join(' ')}"/>${pts.map((p) => `<circle cx="${p[0]}" cy="${p[1]}" r="4" fill="var(--accent)"/>`).join('')}</svg><div class="row between small muted">${ex.map((e) => `<span>${esc(e.name.replace(/^(TYT|LGS) /, ''))}<br><b style="color:var(--text)">${total(e, s.id)}</b></span>`).join('')}</div></div></section>`;
+  }
+  function odeme(s) {
+    const ins = s.installments.slice().sort((a, b) => a.due.localeCompare(b.due));
+    const debt = sum(ins.filter((i) => !i.paid && i.due <= today()), (i) => i.amount);
+    const paid = sum(ins.filter((i) => i.paid), (i) => i.amount);
+    return `<div class="stat3"><div><b>${money(s.fee)}</b><span>Dönem ücreti</span></div><div><b>${money(paid)}</b><span>Ödenen</span></div><div><b style="color:${debt ? 'var(--err)' : 'inherit'}">${money(debt)}</b><span>Vadesi geçen</span></div></div>
+      ${debt ? `<button class="btn primary lg block mb" data-pay>${icon('card')} Geciken ${money(debt)} tutarı kartla öde</button>` : ''}
+      <section class="tk-panel"><h3>${icon('calendar')} Taksit planı</h3><div class="b">${ins.map((i, k) => `<div class="ln" style="grid-template-columns:1fr auto auto"><span><b>${k + 1}. taksit</b><div class="small muted">${NS.date(i.due)}</div></span><b>${money(i.amount)}</b>${i.paid ? NS.badge('Ödendi', 'ok') : i.due <= today() ? NS.badge('Gecikti', 'err') : NS.badge('Bekliyor')}</div>`).join('')}</div></section>
+      <p class="small muted">Havale/EFT için açıklamaya öğrenci no <b>${esc(s.no)}</b> yazınız.</p>`;
+  }
+  function mesaj(s, phone) {
+    const msgs = db.all('parentMsgs', (m) => m.student === s.id).sort((a, b) => b.at.localeCompare(a.at));
+    return `<section class="tk-panel"><h3>${icon('message')} Kuruma / öğretmene yaz</h3><div class="b"><div class="field mb"><label for="mt">Konu</label><select class="input" id="mt"><option value="mazeret">Devamsızlık mazereti</option><option value="soru">Soru / görüşme isteği</option><option value="diger">Diğer</option></select></div>
+      <div class="field mb" id="mdw"><label for="md">Mazeret günü</label><input class="input" type="date" id="md" value="${today()}"></div><div class="field mb"><label for="mx">Mesajınız</label><textarea class="input" id="mx" rows="4" placeholder="Ör. Bugün rahatsız olduğu için katılamayacak."></textarea></div><button class="btn primary" id="ms">${icon('send')} Gönder</button></div></section>
+      <section class="tk-panel"><h3>${icon('list')} Gönderilenler</h3><div class="b"><ul class="tk-tl">${msgs.map((m) => `<li><b>${m.type === 'mazeret' ? `Mazeret · ${NS.date(m.date)}` : m.type === 'soru' ? 'Soru / görüşme' : 'Mesaj'}</b>${esc(m.text)}${m.reply ? `<div class="small" style="margin-top:4px;color:var(--accent)">Yanıt: ${esc(m.reply)}</div>` : ''}<br><span>${NS.dt(m.at)} · ${m.reply ? 'Yanıtlandı' : 'Okunmayı bekliyor'}</span></li>`).join('') || '<li><b>Henüz mesaj yok</b></li>'}</ul></div></section>`;
+  }
+
+  function render() {
+    db.load();
+    const phone = sget(); const kids = phone ? db.all('students', (s) => digits(s.parentPhone) === phone) : [];
+    if (!kids.length) return login();
+    if (!kids.find((k) => k.id === kid)) kid = kids[0].id;
+    const s = db.get('students', kid);
+    $('#out').innerHTML = `<button class="btn ghost" id="lo">${icon('logout')}<span class="hide-sm">Çıkış</span></button>`;
+    $('#lo').onclick = () => { sset(null); login(); };
+    $('#root').innerHTML = `<div class="tk-view"><p class="small muted" style="margin:0 0 10px">Merhaba ${esc(String(s.parent || '').split(' ')[0])}</p>
+      <div class="kids" role="group" aria-label="Öğrenciler">${kids.map((k) => `<button data-kid="${k.id}" aria-pressed="${k.id === s.id}"><span class="av">${esc(ini(k.name))}</span>${esc(k.name)}<span class="small muted">${esc(cls(k.cls).name)}</span></button>`).join('')}</div>
+      <div class="tabs2" role="tablist">${[['genel', 'Genel'], ['program', 'Ders programı'], ['deneme', 'Denemeler'], ['odeme', 'Ödemeler'], ['mesaj', 'Mesaj & mazeret']].map(([k, l]) => `<button role="tab" data-tab="${k}" aria-selected="${tab === k}">${l}</button>`).join('')}</div>
+      <div>${tab === 'program' ? program(s) : tab === 'deneme' ? denemeler(s) : tab === 'odeme' ? odeme(s) : tab === 'mesaj' ? mesaj(s, phone) : genel(s)}</div>
+      <p class="tk-help">${icon('phone')} <a href="tel:${esc(String(S().bizPhone || '').replace(/\s/g, ''))}">${esc(S().bizPhone || '')}</a></p></div>`;
+    if ($('#mt')) $('#mt').onchange = () => { $('#mdw').hidden = $('#mt').value !== 'mazeret'; };
+  }
+  // Dinleyiciler bir kez bağlanır
+  const root = $('#root');
+  on(root, 'click', '[data-kid]', (e, b) => { kid = b.dataset.kid; render(); });
+  on(root, 'click', '[data-tab]', (e, b) => { tab = b.dataset.tab; render(); window.scrollTo(0, 0); });
+  on(root, 'click', '#ms', () => {
+    const text = $('#mx').value.trim(); if (text.length < 5) return toast('Lütfen mesajınızı yazın', 'err');
+    const type = $('#mt').value; db.load(); const s = db.get('students', kid);
+    db.insert('parentMsgs', { student: s.id, type, date: type === 'mazeret' ? $('#md').value : '', text, from: s.parent, phone: s.parentPhone, at: new Date().toISOString(), status: 'yeni' });
+    toast('Mesajınız iletildi', 'ok'); render();
+  });
+  on(root, 'click', '[data-pay]', () => {
+    db.load(); const s = db.get('students', kid); const due = s.installments.filter((i) => !i.paid && i.due <= today()); const amt = sum(due, (i) => i.amount);
+    const md = NS.modal({ title: `Taksit ödemesi · ${money(amt)}`, body: `<div class="form-grid"><div class="field full"><label>Kart numarası</label><input class="input mono" id="cc" inputmode="numeric" placeholder="0000 0000 0000 0000" autocomplete="cc-number"></div><div class="field"><label>Son kullanma</label><input class="input mono" id="ce" placeholder="AA/YY" autocomplete="cc-exp"></div><div class="field"><label>CVC</label><input class="input mono" id="cv" maxlength="4" placeholder="•••" autocomplete="cc-csc"></div></div><p class="small faint mt">Demo: gerçek ödeme alınmaz.</p>`,
+      actions: [{ label: 'Vazgeç' }, { label: 'Öde', cls: 'primary', icon: 'lock', onClick: (close, b) => {
+        if ($('#cc', b).value.replace(/\D/g, '').length !== 16 || $('#cv', b).value.length < 3) return toast('Kart bilgilerini kontrol edin', 'err');
+        db.load(); const x = db.get('students', kid); x.installments.forEach((i) => { if (!i.paid && i.due <= today()) i.paid = true; }); db.insert('payments', { student: x.id, amount: amt, at: new Date().toISOString(), type: 'online kart' }, true); db.save(); close(); toast('Ödemeniz alındı, teşekkürler', 'ok'); render();
+      } }] });
+    $('#cc', md.root).oninput = (e) => { e.target.value = e.target.value.replace(/\D/g, '').slice(0, 16).replace(/(\d{4})(?=\d)/g, '$1 '); };
+  });
+  render();
+})();
+</script>
+</body>
+</html>
