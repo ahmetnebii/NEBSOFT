@@ -20,7 +20,7 @@ const PORT = Number(process.env.PORT) || 5050;
 const TYPES = {
   '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8',
   '.json': 'application/json; charset=utf-8', '.svg': 'image/svg+xml', '.png': 'image/png', '.jpg': 'image/jpeg', '.webp': 'image/webp',
-  '.ico': 'image/x-icon', '.webmanifest': 'application/manifest+json', '.txt': 'text/plain; charset=utf-8',
+  '.ico': 'image/x-icon', '.webmanifest': 'application/manifest+json', '.txt': 'text/plain; charset=utf-8', '.xml': 'application/xml; charset=utf-8',
 };
 
 const json = (res, code, obj) => { res.writeHead(code, { 'Content-Type': 'application/json; charset=utf-8' }); res.end(JSON.stringify(obj)); };
@@ -84,9 +84,17 @@ async function api(req, res, p) {
   return json(res, 404, { ok: false, error: 'Bilinmeyen uç nokta' });
 }
 
+const SITES = new Set(fs.existsSync(path.join(ROOT, 'site')) ? fs.readdirSync(path.join(ROOT, 'site')).filter((d) => fs.existsSync(path.join(ROOT, 'site', d, 'index.html'))) : []);
+
 http.createServer((req, res) => {
   let p = decodeURIComponent(req.url.split('?')[0]);
   if (p.startsWith('/api/')) return api(req, res, p).catch((e) => json(res, 500, { ok: false, error: e.message }));
+  // Tanıtım siteleri: /randevusistemi → site/randevusistemi/index.html (görseller /randevusistemi/img/…)
+  const seg = p.split('/')[1] || '';
+  if (/^[a-z0-9-]+$/.test(seg) && SITES.has(seg)) {
+    if (p === '/' + seg + '/') { res.writeHead(301, { Location: '/' + seg }); return res.end(); }
+    p = '/site' + (p === '/' + seg ? p + '/index.html' : p);
+  } else if (p === '/sitemap.xml') p = '/site/sitemap.xml';
   if (p.endsWith('/')) p += 'index.html';
   const file = path.normalize(path.join(ROOT, p));
   if (!file.startsWith(ROOT)) { res.writeHead(403); return res.end('Yasak'); }
