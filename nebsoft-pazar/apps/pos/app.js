@@ -91,12 +91,13 @@
   }
 
   const db = new NS.DB('pos', seed);
+  const QH = window.QCHUB; QH.ensure(db);
   const S = () => db.settings({ weighPrefix: '27', pointsRate: 1, autoPrint: false, allowNegative: true, receiptFooter: '' });
   const P = (id) => db.get('products', id);
   const cat = (id) => db.get('cats', id) || { name: '-', color: '#64748b' };
   const custName = (id) => (db.get('customers', id) || {}).name || '-';
   const userName = (id) => (db.get('users', id) || {}).name || '-';
-  const PAY = { nakit: 'Nakit', kart: 'Kredi Kartı', veresiye: 'Veresiye', havale: 'Havale/EFT', yemek: 'Yemek Kartı' };
+  const PAY = { nakit: 'Nakit', kart: 'Kredi Kartı', veresiye: 'Veresiye', havale: 'Havale/EFT', yemek: 'Yemek Kartı', online: 'Online kanal' };
   const qtyFmt = (q, u) => (u === 'kg' ? num(q) + ' kg' : num(q));
   const r2 = (n) => Math.round(n * 100) / 100;
 
@@ -995,6 +996,7 @@
       { id: 'ozet', label: 'Özet', icon: 'home', roles: ['admin'] },
       { id: 'satislar', label: 'Satış Geçmişi', icon: 'receipt' },
       { id: 'kasa', label: 'Kasa & Gün Sonu', icon: 'cash' },
+      QH.nav,
       { sec: 'Stok' },
       { id: 'urunler', label: 'Ürünler', icon: 'box', roles: ['admin', 'depo'] },
       { id: 'kategoriler', label: 'Kategoriler', icon: 'grid', roles: ['admin', 'depo'] },
@@ -1010,7 +1012,7 @@
       { id: 'ayarlar', label: 'Ayarlar', icon: 'settings', roles: ['admin'] },
     ],
     routes: {
-      satis: salePage, ozet: dashboard, satislar: salesPage, kasa: cashPage, urunler: productsPage, stok: stockPage, alis: purchasesPage, etiket: labelsPage,
+      ...QH.routes, satis: salePage, ozet: dashboard, satislar: salesPage, kasa: cashPage, urunler: productsPage, stok: stockPage, alis: purchasesPage, etiket: labelsPage,
       musteriler: customersPage, tedarikciler: suppliersPage, kampanyalar: campaignsPage, raporlar: reportsPage,
       kategoriler: (el, p, a) => NS.crud(el, a, { col: 'cats', title: 'Kategoriler', single: 'Kategori', addLabel: 'Yeni kategori', fields: [{ name: 'name', label: 'Kategori adı', required: true }, { name: 'color', label: 'Renk', type: 'color', value: '#4f46e5' }], columns: [{ key: 'name', label: 'Kategori', render: (c) => `<div class="row nw"><span class="dot" style="background:${c.color};width:12px;height:12px"></span><b>${esc(c.name)}</b></div>` }, { label: 'Ürün sayısı', cls: 'right', render: (c) => db.all('products', (p) => p.cat === c.id).length }], sort: (a, b) => a.name.localeCompare(b.name, 'tr') }),
       ayarlar: (el, p, a) => NS.settingsPage(el, a, {
