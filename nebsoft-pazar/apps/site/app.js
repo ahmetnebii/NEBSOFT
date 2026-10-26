@@ -156,12 +156,74 @@
   function requestsPage(el, p, app) {
     NS.crud(el, app, {
       col: 'requests', title: 'Talep & Arıza', sub: 'Sakinlerin portaldan veya telefonla ilettiği talepler', single: 'Talep', addLabel: 'Yeni talep', emptyIcon: 'wrench',
-      fields: () => [{ name: 'flat', label: 'Daire', type: 'select', options: db.all('flats').map((f) => ({ value: f.id, label: `${f.id} — ${resident(f)}` })) }, { name: 'cat', label: 'Kategori', type: 'select', options: ['Elektrik', 'Su/Tesisat', 'Asansör', 'Bahçe', 'Temizlik', 'Güvenlik', 'Genel'] }, { name: 'title', label: 'Başlık', required: true, full: true }, { name: 'desc', label: 'Açıklama', type: 'textarea', full: true }, { name: 'status', label: 'Durum', type: 'select', options: Object.entries(RQ).map(([value, v]) => ({ value, label: v[0] })) }],
+      fields: () => [{ name: 'flat', label: 'Daire', type: 'select', options: db.all('flats').map((f) => ({ value: f.id, label: `${f.id} — ${resident(f)}` })) }, { name: 'cat', label: 'Kategori', type: 'select', options: ['Elektrik', 'Su/Tesisat', 'Asansör', 'Bahçe', 'Temizlik', 'Güvenlik', 'Genel'] }, { name: 'title', label: 'Başlık', required: true, full: true }, { name: 'desc', label: 'Açıklama', type: 'textarea', full: true }, { name: 'status', label: 'Durum', type: 'select', options: Object.entries(RQ).map(([value, v]) => ({ value, label: v[0] })) }, { name: 'urgent', label: 'Acil', type: 'checkbox' }, { name: 'reply', label: 'Sakine yanıt (portalda görünür)', type: 'textarea', full: true }],
       defaults: { status: 'acik' }, beforeSave: (v, rec) => { if (!rec) v.at = new Date().toISOString(); },
       filters: [{ value: 'all', label: 'Tümü' }, { value: 'o', label: 'Açık', test: (r) => r.status !== 'cozuldu' }],
-      columns: [{ key: 'title', label: 'Talep', render: (r) => `<b>${esc(r.title)}</b><div class="small muted">${esc(r.desc || '')}</div>` }, { key: 'flat', label: 'Daire' }, { key: 'cat', label: 'Kategori' }, { label: 'Tarih', render: (r) => NS.ago(r.at) }, { key: 'status', label: 'Durum', render: (r) => badge(RQ[r.status][0], RQ[r.status][1]) }],
+      sort: (a, b) => ((a.status === 'cozuldu') - (b.status === 'cozuldu')) || ((b.urgent ? 1 : 0) - (a.urgent ? 1 : 0)) || String(b.at).localeCompare(String(a.at)),
+      columns: [{ key: 'title', label: 'Talep', render: (r) => `${r.urgent ? badge('Acil', 'err') + ' ' : ''}<b>${esc(r.title)}</b><div class="small muted">${esc(r.desc || '')}</div>${r.reply ? `<div class="small" style="color:var(--accent)">↳ ${esc(r.reply)}</div>` : ''}${r.rating === 'kotu' ? `<div class="small" style="color:var(--err)">Sakin: sorun devam ediyor</div>` : ''}` }, { key: 'flat', label: 'Daire' }, { key: 'cat', label: 'Kategori' }, { label: 'Tarih', render: (r) => NS.ago(r.at) }, { key: 'status', label: 'Durum', render: (r) => badge(RQ[r.status][0], RQ[r.status][1]) }],
     });
   }
+  // Sakin portalından gelen ortak alan rezervasyonları
+  function bookingsPage(el, p, app) {
+    SITE.ensure(db);
+    const facName = (id) => (SITE.FAC.find((x) => x.id === id) || { name: id }).name;
+    NS.crud(el, app, {
+      col: 'bookings', title: 'Ortak Alan Rezervasyonları', sub: 'Tenis kortu, toplantı salonu, barbekü ve fitness — sakin portalından veya telefonla', single: 'Rezervasyon', addLabel: 'Yeni rezervasyon', emptyIcon: 'calendar',
+      fields: () => [{ name: 'flat', label: 'Daire', type: 'select', options: db.all('flats').map((f) => ({ value: f.id, label: `${f.id} — ${resident(f)}` })) }, { name: 'facility', label: 'Alan', type: 'select', options: SITE.FAC.map((x) => ({ value: x.id, label: x.name })) }, { name: 'date', label: 'Tarih', type: 'date', required: true }, { name: 'slot', label: 'Saat', type: 'time', required: true }, { name: 'people', label: 'Kişi', type: 'number' }, { name: 'note', label: 'Not', full: true }],
+      defaults: () => ({ date: today(), slot: '18:00', people: 2, status: 'aktif' }),
+      beforeSave: (v, rec) => { if (!rec) { v.status = 'aktif'; v.at = new Date().toISOString(); } },
+      filters: [{ value: 'up', label: 'Yaklaşan', test: (b) => b.status === 'aktif' && b.date >= today() }, { value: 'all', label: 'Tümü' }, { value: 'x', label: 'İptal', test: (b) => b.status === 'iptal' }],
+      sort: (a, b) => (a.date + a.slot).localeCompare(b.date + b.slot),
+      searchFields: (b) => [b.flat, facName(b.facility), b.note],
+      columns: [{ key: 'date', label: 'Tarih', render: (b) => `<b>${NS.date(b.date)}</b> ${esc(b.slot)}` }, { key: 'facility', label: 'Alan', render: (b) => esc(facName(b.facility)), csv: (b) => facName(b.facility) }, { key: 'flat', label: 'Daire', render: (b) => `${esc(b.flat)} <span class="small muted">${esc(resident(flat(b.flat)))}</span>` }, { key: 'people', label: 'Kişi', cls: 'right' }, { key: 'note', label: 'Not' }, { key: 'status', label: 'Durum', render: (b) => (b.status === 'iptal' ? badge('İptal', 'err') : b.date < today() ? badge('Tamamlandı') : badge('Aktif', 'ok')) }],
+      extraActions: [{ icon: 'x', act: 'cancel', title: 'İptal et' }],
+      onAction: async (a, b, redraw) => { if (b.status === 'iptal') return toast('Zaten iptal'); if (await confirm(`${b.flat} dairesinin rezervasyonu iptal edilsin mi?`)) { db.update('bookings', b.id, { status: 'iptal' }); toast('İptal edildi'); redraw(); } },
+    });
+  }
+  // Güvenlik: beklenen ziyaretçiler, kod ile giriş onayı
+  function visitorsPage(el, p, app) {
+    SITE.ensure(db);
+    const VT = { misafir: 'Misafir', kargo: 'Kargo / kurye', servis: 'Teknik servis', taksi: 'Taksi', nakliye: 'Nakliye' };
+    NS.crud(el, app, {
+      col: 'visitors', title: 'Ziyaretçiler', sub: 'Sakinlerin bildirdiği misafir ve kuryeler — girişte kodu doğrulayın', single: 'Ziyaretçi', canAdd: false, emptyIcon: 'users',
+      fields: [{ name: 'name', label: 'Ziyaretçi', required: true, full: true }, { name: 'plate', label: 'Plaka' }, { name: 'date', label: 'Tarih', type: 'date' }, { name: 'time', label: 'Saat', type: 'time' }, { name: 'note', label: 'Not', full: true }],
+      filters: [{ value: 'today', label: 'Bugün', test: (v) => v.date === today() && v.status !== 'iptal' }, { value: 'wait', label: 'Bekleniyor', test: (v) => v.status === 'bekleniyor' && v.date >= today() }, { value: 'all', label: 'Tümü' }],
+      sort: (a, b) => (a.date + (a.time || '')).localeCompare(b.date + (b.time || '')),
+      searchFields: (v) => [v.name, v.code, v.plate, v.flat],
+      columns: [{ key: 'code', label: 'Kod', render: (v) => `<b class="mono">${esc(v.code)}</b>` }, { key: 'name', label: 'Ziyaretçi', render: (v) => `<b>${esc(v.name)}</b><div class="small muted">${esc(VT[v.type] || v.type || '')}${v.note ? ' · ' + esc(v.note) : ''}</div>` }, { key: 'flat', label: 'Daire', render: (v) => `${esc(v.flat)} <span class="small muted">${esc(resident(flat(v.flat)))}</span>` }, { key: 'plate', label: 'Plaka' }, { key: 'date', label: 'Beklenen', render: (v) => `${NS.date(v.date)} ${esc(v.time || '')}` }, { key: 'status', label: 'Durum', render: (v) => (v.status === 'geldi' ? badge('Giriş ' + NS.time(v.arrivedAt), 'ok') : v.status === 'iptal' ? badge('İptal', 'err') : badge('Bekleniyor', 'warn')) }],
+      extraActions: [{ icon: 'check', act: 'in', title: 'Giriş yaptı' }],
+      onAction: (a, v, redraw) => { if (v.status !== 'bekleniyor') return toast('Bu ziyaretçi bekleniyor durumunda değil'); db.update('visitors', v.id, { status: 'geldi', arrivedAt: new Date().toISOString() }); toast(`${v.name} girişi kaydedildi`, 'ok'); redraw(); },
+    });
+    // Girişte kodu hızlı doğrulama
+    const bar = document.createElement('div'); bar.className = 'card pad mb row nw';
+    bar.innerHTML = `${icon('qr')}<input class="input lg mono grow" id="vc" placeholder="Ziyaretçi kodunu yazın veya okutun" style="text-transform:uppercase"><button class="btn primary lg" id="vk">Doğrula</button>`;
+    el.insertBefore(bar, el.children[1] || null);
+    const check = () => {
+      const c = $('#vc', el).value.trim().toUpperCase(); if (!c) return;
+      db.load(); const v = db.find('visitors', (x) => x.code === c);
+      if (!v) return toast('Bu koda ait bildirim yok', 'err');
+      if (v.status !== 'bekleniyor') return toast(`Kod geçersiz: ${v.status === 'geldi' ? 'zaten kullanıldı' : 'iptal edilmiş'}`, 'err');
+      if (v.date !== today()) return toast(`Bu ziyaret ${NS.date(v.date)} için bildirilmiş`, 'err');
+      db.update('visitors', v.id, { status: 'geldi', arrivedAt: new Date().toISOString() }); $('#vc', el).value = '';
+      toast(`${v.name} → ${v.flat} (${resident(flat(v.flat))}) girişi onaylandı`, 'ok'); app.refresh();
+    };
+    $('#vk', el).onclick = check; $('#vc', el).onkeydown = (e) => { if (e.key === 'Enter') check(); };
+  }
+  // Anketler: portalda daire başına bir oy
+  function pollsPage(el, p, app) {
+    SITE.ensure(db);
+    const total = () => db.all('flats').length;
+    NS.crud(el, app, {
+      col: 'polls', title: 'Anketler', sub: 'Sakin portalında yayınlanır; her daire bir oy kullanır', single: 'Anket', addLabel: 'Yeni anket', emptyIcon: 'list',
+      fields: [{ name: 'title', label: 'Soru', required: true, full: true }, { name: 'opts', label: 'Seçenekler (her satıra bir seçenek)', type: 'textarea', required: true, full: true }, { name: 'until', label: 'Bitiş tarihi', type: 'date', required: true }, { name: 'active', label: 'Yayında', type: 'checkbox' }],
+      defaults: () => ({ until: iso(addDays(new Date(), 14)), active: true, opts: 'Evet\nHayır\nFikrim yok' }),
+      toForm: (r) => ({ ...r, opts: (r.options || []).join('\n') }),
+      beforeSave: (v, rec) => { v.options = String(v.opts || '').split('\n').map((x) => x.trim()).filter(Boolean); delete v.opts; if (v.options.length < 2) { v.options.push('Evet', 'Hayır'); } if (!rec) { v.votes = {}; v.at = new Date().toISOString(); } },
+      sort: (a, b) => (b.active - a.active) || String(b.at).localeCompare(String(a.at)),
+      columns: [{ key: 'title', label: 'Anket', render: (r) => { const n = Object.keys(r.votes || {}).length; return `<b>${esc(r.title)}</b><div class="mt">${r.options.map((o, i) => { const c = Object.values(r.votes || {}).filter((v) => v === i).length; const pc = n ? Math.round((c / n) * 100) : 0; return `<div class="row nw small" style="gap:8px;margin:2px 0"><span style="width:140px" class="muted">${esc(o)}</span><div class="progress grow" style="height:6px"><i style="width:${pc}%"></i></div><b style="width:70px;text-align:right">${c} · %${pc}</b></div>`; }).join('')}</div>`; } }, { label: 'Katılım', cls: 'right', render: (r) => { const n = Object.keys(r.votes || {}).length; return `${n}/${total()}<div class="small muted">%${Math.round((n / total()) * 100)}</div>`; } }, { key: 'until', label: 'Bitiş', render: (r) => NS.date(r.until) }, { key: 'active', label: 'Durum', render: (r) => (r.active && r.until >= today() ? badge('Yayında', 'ok') : badge('Kapalı')) }],
+    });
+  }
+
   function reportsPage(el) {
     const year = new Date().getFullYear();
     const byCat = NS.groupBy(db.all('expenses', (e) => e.date.startsWith(String(year))), (e) => e.cat);
@@ -178,7 +240,7 @@
   const ROLES = { admin: 'Yönetici', muhasebe: 'Muhasebe', gorevli: 'Görevli' };
   NS.shell({
     id: 'site', integrations: ['sms', 'whatsapp', 'email', 'payment', 'efatura', 'printer', 'webhook', 'backup'], name: 'Site Yönetimi', tagline: 'Apartman & Site', icon: 'home', accent: '#059669', db, home: 'ozet', auth: { roles: ROLES }, titles: { daire: 'Daire' },
-    nav: [{ sec: 'Yönetim' }, { id: 'ozet', label: 'Özet', icon: 'home' }, { id: 'daireler', label: 'Daireler & Sakinler', icon: 'building' }, { id: 'aidat', label: 'Aidat & Tahakkuk', icon: 'wallet', roles: ['muhasebe'] }, { id: 'giderler', label: 'Giderler', icon: 'receipt', roles: ['muhasebe'] }, { sec: 'İletişim' }, { id: 'duyurular', label: 'Duyurular', icon: 'bell' }, { id: 'talepler', label: 'Talep & Arıza', icon: 'wrench' }, { id: 'raporlar', label: 'Raporlar', icon: 'chart', roles: ['muhasebe'] }, { id: 'ayarlar', label: 'Ayarlar', icon: 'settings', roles: ['admin'] }],
-    routes: { ozet: dashboard, daireler: flatsPage, daire: flatPage, aidat: duesPage, giderler: expensesPage, duyurular: announcementsPage, talepler: requestsPage, raporlar: reportsPage, ayarlar: (el, p, a) => NS.settingsPage(el, a, { roles: ROLES, fields: [{ type: 'section', label: 'Aidat ayarları' }, { name: 'baseDue', label: 'Standart aidat (₺)', type: 'number' }, { name: 'dueDay', label: 'Son ödeme günü', type: 'number' }, { name: 'lateFee', label: 'Aylık gecikme faizi (%)', type: 'number' }, { name: 'bank', label: 'Banka' }, { name: 'iban', label: 'IBAN', full: true }, { name: 'manager', label: 'Yönetici adı' }] }) },
+    nav: [{ sec: 'Yönetim' }, { id: 'ozet', label: 'Özet', icon: 'home' }, { id: 'daireler', label: 'Daireler & Sakinler', icon: 'building' }, { id: 'aidat', label: 'Aidat & Tahakkuk', icon: 'wallet', roles: ['muhasebe'] }, { id: 'giderler', label: 'Giderler', icon: 'receipt', roles: ['muhasebe'] }, { sec: 'İletişim' }, { id: 'duyurular', label: 'Duyurular', icon: 'bell' }, { id: 'talepler', label: 'Talep & Arıza', icon: 'wrench' }, { id: 'ziyaretciler', label: 'Ziyaretçiler', icon: 'users' }, { id: 'rezervasyonlar', label: 'Rezervasyonlar', icon: 'calendar' }, { id: 'anketler', label: 'Anketler', icon: 'list' }, { id: 'raporlar', label: 'Raporlar', icon: 'chart', roles: ['muhasebe'] }, { id: 'ayarlar', label: 'Ayarlar', icon: 'settings', roles: ['admin'] }],
+    routes: { ozet: dashboard, daireler: flatsPage, daire: flatPage, aidat: duesPage, giderler: expensesPage, duyurular: announcementsPage, talepler: requestsPage, ziyaretciler: visitorsPage, rezervasyonlar: bookingsPage, anketler: pollsPage, raporlar: reportsPage, ayarlar: (el, p, a) => NS.settingsPage(el, a, { roles: ROLES, fields: [{ type: 'section', label: 'Aidat ayarları' }, { name: 'baseDue', label: 'Standart aidat (₺)', type: 'number' }, { name: 'dueDay', label: 'Son ödeme günü', type: 'number' }, { name: 'lateFee', label: 'Aylık gecikme faizi (%)', type: 'number' }, { name: 'bank', label: 'Banka' }, { name: 'iban', label: 'IBAN', full: true }, { name: 'manager', label: 'Yönetici adı' }] }) },
   });
 })();
