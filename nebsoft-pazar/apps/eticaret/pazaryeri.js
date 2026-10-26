@@ -30,6 +30,21 @@ window.MPHUB = (function () {
   const chPrice = (p, k) => { const base = p.sale || p.price; const c = ch(k); const v = base * (1 + (Number(c.markup) || 0) / 100); return Math.max(1, Math.ceil(v) - 0.1); };
   const chStock = (p, k) => sum(p.variants, (v) => Math.max(0, v.stock - (Number(ch(k).buffer) || 0)));
   const listing = (pid, k) => db.find('listings', (x) => x.pid === pid && x.ch === k);
+  // ---- Canlı bağlantı: server.js köprüsündeki adaptörler (server/connectors) ----
+  const LIVE = ['trendyol', 'hepsiburada'];
+  const isLive = (k) => LIVE.includes(k) && ch(k).connected && ch(k).mode === 'live';
+  const anyLive = () => connected().some(isLive);
+  async function live(k, action, payload = {}, credsOverride) {
+    const c = { ...ch(k), ...(credsOverride || {}) };
+    try {
+      const r = await fetch('/api/kanal', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ channel: k, action, creds: { sellerId: c.sellerId, apiKey: c.apiKey, apiSecret: c.apiSecret, stage: !!c.stage, integrator: c.integrator || '' }, payload }) });
+      const j = await r.json(); log(k, action + ' (canlı)', j.ok ? 'başarılı' : j.error || 'hata', !!j.ok); return j;
+    } catch (e) { const j = { ok: false, error: 'Sunucu köprüsüne ulaşılamadı — uygulamayı "node server.js" ile açın' }; log(k, action + ' (canlı)', j.error, false); return j; }
+  }
+  // Varyant barkodu yoksa stok kodu (SKU) barkod olarak gönderilir
+  const variantItems = (k, pairs) => pairs.map(({ p, v }) => ({ barcode: v.barcode || v.sku, sku: v.sku, hbSku: v.hbSku, stock: Math.max(0, v.stock - (Number(ch(k).buffer) || 0)), price: chPrice(p, k), listPrice: Math.max(chPrice(p, k), Math.ceil(p.price * (1 + (Number(ch(k).markup) || 0) / 100)) - 0.1) }));
+  const listedPairs = (k) => db.all('products', (p) => (listing(p.id, k) || {}).status === 'yayinda').flatMap((p) => p.variants.map((v) => ({ p, v })));
+  const findVariant = (code) => { for (const p of db.all('products')) { const v = p.variants.find((x) => x.sku === code || x.barcode === code); if (v) return { p, v }; } return null; };
   // Sipariş başına komisyon, hizmet bedeli, kargo ve net hakediş
   const settle = (o) => {
     const c = ch(o.channel); const gross = o.total; const com = Math.round(gross * (Number(c.commission) || 0)) / 100; const fee = Number(c.fixedFee) || 0; const ship = o.channelShip ?? 0;
@@ -72,12 +87,12 @@ window.MPHUB = (function () {
     const own = db.all('orders', (o) => !CH[o.channel] && o.at.slice(0, 10) >= since && o.status !== 'iptal');
     const rows = Object.keys(CH).map((k) => { const os = orders.filter((o) => o.channel === k); const st = os.map(settle); const ls = db.all('listings', (x) => x.ch === k); return { id: k, k, c: ch(k), n: os.length, gross: sum(st, (x) => x.gross), com: sum(st, (x) => x.com + x.fee), net: sum(st, (x) => x.net), live: ls.filter((x) => x.status === 'yayinda').length, err: ls.filter((x) => x.status === 'hata').length }; });
     const openQ = db.all('mpQuestions', (q) => !q.answer).length;
-    el.innerHTML = pageHead('Pazaryeri Merkezi', 'Tüm pazaryerlerinizi tek panelden yönetin: ürün, stok, fiyat, sipariş, soru ve hakediş', `<button class="btn" id="sync">${icon('refresh')} Şimdi senkronize et</button>`) + `
-      ${NS.integ && NS.integ.isOn('pazaryeri') ? '' : `<div class="card pad mb row" style="border-color:var(--warn)">${icon('info')}<span class="grow small">Şu an <b>demo / simülasyon</b> modundasınız: işlemler kaydedilir ama pazaryerine gönderilmez. Canlıya almak için <a href="#/entegrasyonlar">Entegrasyonlar &gt; Pazaryerleri</a> bağlantısını açın.</span></div>`}
+    el.innerHTML = pageHead('Pazaryeri Merkezi', 'Tüm pazaryerlerinizi tek panelden yönetin: ürün, stok, fiyat, sipariş, soru ve hakediş', `<button class="btn" id="pull">${icon('download')} Siparişleri çek</button><button class="btn" id="sync">${icon('refresh')} Stok & fiyat gönder</button>`) + `
+      ${anyLive() ? `<div class="card pad mb row" style="border-color:var(--ok)">${icon('check')}<span class="grow small"><b>Canlı mod:</b> ${connected().filter(isLive).map((k) => esc(CH[k].name)).join(', ')} gerçek API ile çalışıyor. Diğer kanallar simülasyonda.</span></div>` : `<div class="card pad mb row" style="border-color:var(--warn)">${icon('info')}<span class="grow small">Tüm kanallar <b>simülasyon</b> modunda: işlemler kaydedilir ama pazaryerine gitmez. Canlıya almak için kanalın ⚙ ayarında <b>Canlı mod</b>'u seçip API bilgilerini girin (Trendyol ve Hepsiburada doğrudan bağlanır; uygulama <code>node server.js</code> ile çalışmalı).</span></div>`}
       <div class="grid g4 mb">${kpi('Pazaryeri cirosu (30 gün)', money(sum(rows, (r) => r.gross)), 'store', 'info')}${kpi('Komisyon + hizmet bedeli', money(sum(rows, (r) => r.com)), 'percent', 'warn')}${kpi('Kendi mağaza cirosu', money(sum(own, (o) => o.total)), 'globe', 'ok')}${kpi('Yanıt bekleyen soru', openQ, 'message', openQ ? 'err' : '')}</div>
       <div class="card mb"><div class="card-h"><h3>Kanallar</h3></div>${table({ rows, columns: [
         { label: 'Pazaryeri', render: (r) => `${chBadge(r.k)}<div class="small faint mt">${r.c.connected ? `Satıcı no ${esc(r.c.sellerId || '-')}` : 'Bağlı değil'}</div>` },
-        { label: 'Durum', render: (r) => (r.c.connected ? `${badge('Bağlı', 'ok')}${r.c.autoStock ? ' ' + badge('Oto stok', 'info') : ''}${r.c.autoPrice ? ' ' + badge('Oto fiyat', 'info') : ''}` : badge('Pasif')) },
+        { label: 'Durum', render: (r) => (r.c.connected ? `${isLive(r.k) ? badge('Canlı', 'ok') : badge('Simülasyon', 'warn')}${r.c.autoStock ? ' ' + badge('Oto stok', 'info') : ''}${r.c.autoPrice ? ' ' + badge('Oto fiyat', 'info') : ''}` : badge('Pasif')) },
         { label: 'Fiyat farkı / tampon', render: (r) => (r.c.connected ? `+%${Number(r.c.markup) || 0} · ${Number(r.c.buffer) || 0} adet` : '-') },
         { label: 'Listeleme', cls: 'right', render: (r) => (r.c.connected ? `${r.live} yayında${r.err ? ` · <span style="color:var(--err)">${r.err} hata</span>` : ''}` : '-') },
         { label: 'Sipariş (30g)', cls: 'right', key: 'n' }, { label: 'Ciro', cls: 'right', render: (r) => money(r.gross) }, { label: 'Komisyon', cls: 'right', render: (r) => `${money(r.com)}<div class="small faint">%${Number(r.c.commission) || 0} + ${money(Number(r.c.fixedFee) || 0)}</div>` }, { label: 'Net', cls: 'right', render: (r) => `<b>${money(r.net)}</b>` },
@@ -87,23 +102,33 @@ window.MPHUB = (function () {
     on(el, 'click', '[data-act="cfg"]', (e, b) => cfgModal(b.dataset.id, app));
     $('#sync', el).onclick = async () => {
       const ks = connected(); if (!ks.length) return toast('Bağlı pazaryeri yok', 'err');
+      let bad = 0;
       for (const k of ks) {
-        const n = db.all('listings', (x) => x.ch === k && x.status === 'yayinda').length;
-        if (NS.integ) await NS.integ.call('pazaryeri', 'stok-fiyat', { channel: k, count: n }, { silent: true });
-        log(k, 'Stok & fiyat senkronu', `${n} ürün gönderildi`);
-        db.all('listings', (x) => x.ch === k && x.status === 'onay').forEach((x) => { x.status = 'yayinda'; x.syncedAt = new Date().toISOString(); });
+        if (isLive(k)) {
+          const items = variantItems(k, listedPairs(k)); if (!items.length) continue;
+          const r = await live(k, 'stok-fiyat', { items }); if (!r.ok) { bad++; toast(`${CH[k].name}: ${r.error}`, 'err'); continue; }
+          db.data.mpBatches = (db.data.mpBatches || []).concat((r.data.batches || []).filter(Boolean).map((id) => ({ ch: k, id, kind: 'stok', at: new Date().toISOString() })));
+          await checkBatches(k);
+        } else {
+          const n = db.all('listings', (x) => x.ch === k && x.status === 'yayinda').length;
+          log(k, 'Stok & fiyat senkronu (simülasyon)', `${n} ürün`);
+          db.all('listings', (x) => x.ch === k && x.status === 'onay').forEach((x) => { x.status = 'yayinda'; x.syncedAt = new Date().toISOString(); });
+        }
       }
-      db.save(); toast(`${ks.length} kanal senkronize edildi`, 'ok'); app.refresh();
+      db.save(); toast(bad ? `${ks.length - bad} kanal gönderildi, ${bad} hatalı (günlüğe bakın)` : `${ks.length} kanala stok ve fiyat gönderildi`, bad ? 'err' : 'ok'); app.refresh();
+    };
+    $('#pull', el).onclick = async () => { const n = await pullOrders(); toast(n.err ? n.err : `${n.count} yeni pazaryeri siparişi alındı`, n.err ? 'err' : n.count ? 'ok' : ''); app.refresh();
     };
   }
   function cfgModal(k, app) {
     const c = ch(k);
-    modal({ title: `${CH[k].name} bağlantısı`, size: 'wide', body: `<div class="form-grid">${NS.fieldsHtml([{ type: 'section', label: 'API bilgileri (satıcı paneli > entegrasyon)' }, { name: 'sellerId', label: 'Satıcı / mağaza no', value: c.sellerId }, { name: 'apiKey', label: 'API anahtarı', value: c.apiKey || '' }, { name: 'apiSecret', label: 'API gizli anahtar', type: 'password', value: c.apiSecret || '' },
+    modal({ title: `${CH[k].name} bağlantısı`, size: 'wide', body: `<div class="form-grid">${NS.fieldsHtml([{ type: 'section', label: 'API bilgileri (satıcı paneli > entegrasyon)' }, ...(LIVE.includes(k) ? [{ name: 'mode', label: 'Çalışma modu', type: 'select', options: [{ value: 'sim', label: 'Simülasyon (pazaryerine gitmez)' }, { value: 'live', label: 'Canlı (gerçek API)' }], value: c.mode || 'sim' }, { name: 'stage', label: 'Test ortamı (stage / sit)', type: 'checkbox', value: !!c.stage }] : []), { name: 'sellerId', label: k === 'hepsiburada' ? 'Merchant ID' : 'Satıcı / mağaza no', value: c.sellerId }, { name: 'apiKey', label: k === 'hepsiburada' ? 'Servis kullanıcı adı' : 'API anahtarı', value: c.apiKey || '' }, { name: 'apiSecret', label: k === 'hepsiburada' ? 'Servis anahtarı' : 'API gizli anahtar', type: 'password', value: c.apiSecret || '' }, ...(k === 'trendyol' ? [{ name: 'brandId', label: 'Trendyol marka ID (ürün gönderimi için)', type: 'number', value: c.brandId || '' }, { name: 'cargoId', label: 'Kargo firması ID', type: 'number', value: c.cargoId || '' }] : []),
         { type: 'section', label: 'Kurallar' }, { name: 'markup', label: 'Fiyat farkı % (komisyonu karşılamak için)', type: 'number', value: c.markup ?? 0 }, { name: 'buffer', label: 'Stok tamponu (varyant başına düşülecek adet)', type: 'number', value: c.buffer ?? 0 }, { name: 'commission', label: 'Komisyon % (sözleşmenize göre)', type: 'number', step: '0.01', value: c.commission }, { name: 'fixedFee', label: 'Sipariş başı hizmet bedeli (₺)', type: 'number', step: '0.01', value: c.fixedFee }, { name: 'payoutDays', label: 'Hakediş vadesi (teslimden sonra gün)', type: 'number', value: c.payoutDays }, { name: 'autoStock', label: 'Stok değişince otomatik gönder', type: 'checkbox', value: c.autoStock }, { name: 'autoPrice', label: 'Fiyat değişince otomatik gönder', type: 'checkbox', value: c.autoPrice }])}</div><p class="small faint">Kargo: ${esc(CH[k].ship)}</p>`,
       actions: [...(c.connected ? [{ label: 'Bağlantıyı kes', cls: 'danger', onClick: async (close) => { if (!(await confirm(`${CH[k].name} bağlantısı kesilsin mi? Listelemeler pasife alınır.`))) return; db.data.mpChannels[k] = { ...(chs()[k] || {}), connected: false }; db.all('listings', (x) => x.ch === k).forEach((x) => { x.status = 'pasif'; }); log(k, 'Bağlantı', 'Kesildi'); db.save(); close(); app.refresh(); } }] : []), { label: 'Vazgeç' }, { label: c.connected ? 'Kaydet' : 'Bağlan ve test et', cls: 'primary', onClick: async (close, b) => {
         const v = NS.readForm(b);
-        if (!c.connected && (!v.sellerId || !v.apiKey)) return toast('Satıcı no ve API anahtarı gerekli', 'err');
-        if (!c.connected && NS.integ && NS.integ.isOn('pazaryeri')) { const r = await NS.integ.call('pazaryeri', 'baglanti-test', { channel: k, sellerId: v.sellerId }, { silent: true }); if (r && r.ok === false) { log(k, 'Bağlantı testi', r.error || 'Başarısız', false); db.save(); return toast('Bağlantı kurulamadı', 'err'); } }
+        if (!v.sellerId || !v.apiKey) return toast('Satıcı no ve API anahtarı gerekli', 'err');
+        // Canlı modda kayıttan önce gerçek bağlantı testi yapılır
+        if (v.mode === 'live') { toast('Bağlantı test ediliyor…'); const r = await live(k, 'baglanti-test', {}, v); if (!r.ok) { db.save(); return toast(`${CH[k].name} bağlantısı kurulamadı: ${r.error}`, 'err'); } toast(`${CH[k].name} canlı bağlantı başarılı`, 'ok'); }
         db.data.mpChannels[k] = { ...(chs()[k] || {}), ...v, connected: true }; if (!c.connected) { log(k, 'Bağlantı', 'Kuruldu, test başarılı'); db.data.mpCatMap[k] = db.data.mpCatMap[k] || {}; }
         db.save(); close(); toast(`${CH[k].name} kaydedildi`, 'ok'); app.refresh();
       } }] });
@@ -126,13 +151,23 @@ window.MPHUB = (function () {
     on(el, 'click', '[data-push]', async (e, b) => {
       const k = b.dataset.push; const map = db.data.mpCatMap[k] || {}; let ok = 0, bad = 0;
       const items = [...sel].map((id) => db.get('products', id));
-      if (NS.integ) await NS.integ.call('pazaryeri', 'urun-gonder', { channel: k, items: items.map((x) => ({ name: x.name, price: chPrice(x, k), variants: x.variants.map((v) => ({ sku: v.sku, stock: Math.max(0, v.stock - (Number(ch(k).buffer) || 0)) })) })) }, { silent: true });
+      // Canlı: Trendyol'a ürün kartı + varyantlar, Hepsiburada'ya stok/fiyat (katalog eşleşmesi HB panelinde yapılır)
+      let liveErr = '', batches = [];
+      if (isLive(k)) {
+        const ok2 = items.filter((x) => map[x.cat] && x.desc && x.desc.length >= 30);
+        let r;
+        if (k === 'trendyol') r = await live(k, 'urun-gonder', { items: ok2.flatMap((x) => x.variants.map((v) => ({ barcode: v.barcode || v.sku, title: `${x.name} ${v.color} ${v.size}`, productMainId: x.id, brandId: ch(k).brandId, categoryId: ((db.data.mpCatId || {})[k] || {})[x.cat], stock: Math.max(0, v.stock - (Number(ch(k).buffer) || 0)), price: chPrice(x, k), vat: 10, desc: x.desc, cargoCompanyId: ch(k).cargoId, images: (window.SHOP && SHOP.PHOTOS && SHOP.PHOTOS[x.id] ? SHOP.PHOTOS[x.id].map((id) => `https://images.unsplash.com/photo-${id}?w=1200&h=1800&fit=crop`) : []), attributes: [] }))) });
+        else r = await live(k, 'stok-fiyat', { items: variantItems(k, ok2.flatMap((p) => p.variants.map((v) => ({ p, v })))) });
+        if (r && !r.ok) liveErr = r.error; else batches = (r.data && r.data.batches) || [];
+      }
       items.forEach((x) => {
         let l = listing(x.id, k); if (!l) { l = { id: NS.uid(), pid: x.id, ch: k }; db.data.listings.push(l); }
-        const err = !map[x.cat] ? 'Kategori eşleştirmesi yok' : !x.desc || x.desc.length < 30 ? 'Açıklama çok kısa' : '';
-        Object.assign(l, { status: err ? 'hata' : 'onay', error: err, syncedAt: new Date().toISOString() }); err ? bad++ : ok++;
+        const err = !map[x.cat] ? 'Kategori eşleştirmesi yok' : !x.desc || x.desc.length < 30 ? 'Açıklama çok kısa' : liveErr;
+        Object.assign(l, { status: err ? 'hata' : 'onay', error: err, syncedAt: new Date().toISOString(), batch: batches[0] || null }); err ? bad++ : ok++;
       });
-      log(k, 'Ürün gönderimi', `${ok} ürün onaya gönderildi${bad ? `, ${bad} hatalı` : ''}`, !bad); db.save(); sel.clear();
+      log(k, 'Ürün gönderimi', `${ok} ürün onaya gönderildi${bad ? `, ${bad} hatalı` : ''}`, !bad);
+      if (batches.length) db.data.mpBatches = (db.data.mpBatches || []).concat(batches.filter(Boolean).map((id) => ({ ch: k, id, kind: 'urun', at: new Date().toISOString() })));
+      db.save(); sel.clear();
       toast(`${CH[k].name}: ${ok} ürün onaya gönderildi${bad ? `, ${bad} hatalı (Kategori Eşleştirme'ye bakın)` : ''}`, bad ? 'err' : 'ok'); draw();
     });
     draw();
@@ -142,8 +177,9 @@ window.MPHUB = (function () {
   function catMapPage(el, p, app) {
     const ks = connected(); const cats = db.all('cats');
     el.innerHTML = pageHead('Kategori Eşleştirme', 'Kendi kategorilerinizi her pazaryerinin kategori ağacıyla bir kez eşleştirin', `<button class="btn" id="auto">${icon('sparkles')} Boşları otomatik öner</button>`) + `
-      <div class="card"><div class="tbl-wrap"><table class="tbl"><thead><tr><th>Mağaza kategorisi</th>${ks.map((k) => `<th>${chBadge(k)}</th>`).join('')}</tr></thead><tbody>${cats.map((c) => `<tr><td><b>${esc(c.name)}</b><div class="small faint">${db.all('products', (x) => x.cat === c.id).length} ürün</div></td>${ks.map((k) => { const v = (db.data.mpCatMap[k] || {})[c.id] || ''; return `<td><select class="input" data-map="${k}|${c.id}" style="min-width:220px;${v ? '' : 'border-color:var(--warn)'}"><option value="">— Eşleştirilmedi —</option>${TREE.map((t) => `<option ${t === v ? 'selected' : ''}>${esc(t)}</option>`).join('')}</select></td>`; }).join('')}</tr>`).join('')}</tbody></table></div>
+      <div class="card"><div class="tbl-wrap"><table class="tbl"><thead><tr><th>Mağaza kategorisi</th>${ks.map((k) => `<th>${chBadge(k)}</th>`).join('')}</tr></thead><tbody>${cats.map((c) => `<tr><td><b>${esc(c.name)}</b><div class="small faint">${db.all('products', (x) => x.cat === c.id).length} ürün</div></td>${ks.map((k) => { const v = (db.data.mpCatMap[k] || {})[c.id] || ''; const idv = ((db.data.mpCatId || {})[k] || {})[c.id] || ''; return `<td><select class="input" data-map="${k}|${c.id}" style="min-width:220px;${v ? '' : 'border-color:var(--warn)'}"><option value="">— Eşleştirilmedi —</option>${TREE.map((t) => `<option ${t === v ? 'selected' : ''}>${esc(t)}</option>`).join('')}</select>${isLive(k) && k === 'trendyol' ? `<input class="input mt" data-catid="${k}|${c.id}" type="number" placeholder="Trendyol kategori ID" value="${esc(idv)}" style="max-width:220px">` : ''}</td>`; }).join('')}</tr>`).join('')}</tbody></table></div>
       <div class="card-b small faint">Eşleşmeyen kategorideki ürünler o pazaryerine gönderilemez. Zorunlu özellikler (kumaş, kalıp, yaka tipi…) ürün açıklamasından ve varyantlardan doldurulur.</div></div>`;
+    on(el, 'change', '[data-catid]', (e, i) => { const [k, c] = i.dataset.catid.split('|'); db.data.mpCatId = db.data.mpCatId || {}; db.data.mpCatId[k] = db.data.mpCatId[k] || {}; db.data.mpCatId[k][c] = Number(i.value) || ''; db.save(); toast('Kategori ID kaydedildi', 'ok'); });
     on(el, 'change', '[data-map]', (e, s) => { const [k, c] = s.dataset.map.split('|'); db.data.mpCatMap[k] = db.data.mpCatMap[k] || {}; db.data.mpCatMap[k][c] = s.value; s.style.borderColor = s.value ? '' : 'var(--warn)'; db.save(); toast('Eşleştirme kaydedildi', 'ok'); });
     $('#auto', el).onclick = () => { let n = 0; ks.forEach((k) => { db.data.mpCatMap[k] = db.data.mpCatMap[k] || {}; cats.forEach((c) => { if (!db.data.mpCatMap[k][c.id] && GUESS[c.id]) { db.data.mpCatMap[k][c.id] = GUESS[c.id]; n++; } }); }); db.save(); toast(`${n} eşleştirme önerildi — kontrol edin`, n ? 'ok' : ''); app.refresh(); };
   }
@@ -170,22 +206,69 @@ window.MPHUB = (function () {
     const TPL = ['Merhaba, ürünümüz normal kalıptır; kendi bedeninizi tercih edebilirsiniz. İyi alışverişler dileriz.', 'Merhaba, siparişiniz aynı gün kargoya verilir. İyi günler dileriz.', 'Merhaba, ürünümüz 30 derecede makinede yıkanabilir. İyi alışverişler.', 'Merhaba, ilgili renk önümüzdeki hafta stoklarımıza girecektir; ürünü favorilerinize ekleyebilirsiniz.'];
     const draw = () => {
       db.load(); const qs = db.all('mpQuestions').sort((a, b) => (!!a.answer - !!b.answer) || b.at.localeCompare(a.at));
-      el.innerHTML = pageHead('Müşteri Soruları', 'Pazaryerlerinden gelen ürün soruları — hızlı yanıt mağaza puanınızı yükseltir') + `<div class="card"><div class="card-b">${qs.map((q) => { const pr = db.get('products', q.pid) || {}; const age = (Date.now() - new Date(q.at)) / 3600e3; return `<div class="list-item" style="align-items:flex-start"><div class="grow"><div class="row nw" style="gap:8px">${chBadge(q.ch)}<b>${esc(pr.name || '')}</b><span class="small faint">${esc(q.customer)} · ${NS.ago(q.at)}</span>${!q.answer && age > 24 ? badge('24 saati geçti', 'err') : !q.answer ? badge(`${Math.max(0, Math.round(24 - age))} sa kaldı`, 'warn') : badge('Yanıtlandı', 'ok')}</div><div class="mt">${esc(q.text)}</div>${q.answer ? `<div class="small mt" style="color:var(--accent)">↳ ${esc(q.answer)}</div>` : `<div class="row nw mt" style="gap:6px"><select class="input" data-tpl="${q.id}" style="max-width:200px"><option value="">Hazır yanıt…</option>${TPL.map((t, i) => `<option value="${i}">${esc(t.slice(9, 50))}…</option>`).join('')}</select><input class="input grow" id="a-${q.id}" placeholder="Yanıtınız"><button class="btn primary" data-ans="${q.id}">Gönder</button></div>`}</div></div>`; }).join('') || '<div class="empty">Soru yok</div>'}</div></div>`;
+      el.innerHTML = pageHead('Müşteri Soruları', 'Pazaryerlerinden gelen ürün soruları — hızlı yanıt mağaza puanınızı yükseltir', anyLive() ? `<button class="btn" id="qpull">${icon('download')} Soruları çek</button>` : '') + `<div class="card"><div class="card-b">${qs.map((q) => { const pr = db.get('products', q.pid) || { name: q.product || '' }; const age = (Date.now() - new Date(q.at)) / 3600e3; return `<div class="list-item" style="align-items:flex-start"><div class="grow"><div class="row nw" style="gap:8px">${chBadge(q.ch)}<b>${esc(pr.name || '')}</b><span class="small faint">${esc(q.customer)} · ${NS.ago(q.at)}</span>${!q.answer && age > 24 ? badge('24 saati geçti', 'err') : !q.answer ? badge(`${Math.max(0, Math.round(24 - age))} sa kaldı`, 'warn') : badge('Yanıtlandı', 'ok')}</div><div class="mt">${esc(q.text)}</div>${q.answer ? `<div class="small mt" style="color:var(--accent)">↳ ${esc(q.answer)}</div>` : `<div class="row nw mt" style="gap:6px"><select class="input" data-tpl="${q.id}" style="max-width:200px"><option value="">Hazır yanıt…</option>${TPL.map((t, i) => `<option value="${i}">${esc(t.slice(9, 50))}…</option>`).join('')}</select><input class="input grow" id="a-${q.id}" placeholder="Yanıtınız"><button class="btn primary" data-ans="${q.id}">Gönder</button></div>`}</div></div>`; }).join('') || '<div class="empty">Soru yok</div>'}</div></div>`;
     };
+    on(el, 'click', '#qpull', async () => {
+      let n = 0;
+      for (const k of connected().filter(isLive)) {
+        const r = await live(k, 'soru-cek'); if (!r.ok) { if (!r.unsupported) toast(`${CH[k].name}: ${r.error}`, 'err'); continue; }
+        (r.data.questions || []).forEach((x) => { if (db.find('mpQuestions', (q) => q.ch === k && q.extId === x.id)) return; const fv = findVariant(x.barcode || ''); db.data.mpQuestions.push({ id: NS.uid(), extId: x.id, ch: k, pid: fv ? fv.p.id : '', text: x.text, product: x.product, customer: x.customer || 'Müşteri', at: x.at || new Date().toISOString(), answer: '' }); n++; });
+      }
+      db.save(); toast(`${n} yeni soru alındı`, n ? 'ok' : ''); draw();
+    });
     on(el, 'change', '[data-tpl]', (e, s) => { if (s.value !== '') $('#a-' + s.dataset.tpl, el).value = TPL[Number(s.value)]; });
     on(el, 'click', '[data-ans]', async (e, b) => {
       const q = db.get('mpQuestions', b.dataset.ans); const a = $('#a-' + q.id, el).value.trim(); if (a.length < 5) return toast('Yanıt yazın', 'err');
-      if (NS.integ) await NS.integ.call('pazaryeri', 'soru-yanitla', { channel: q.ch, question: q.id, answer: a }, { silent: true });
+      if (isLive(q.ch) && q.extId) { const r = await live(q.ch, 'soru-yanitla', { question: q.extId, answer: a }); if (!r.ok) return toast(`Yanıt gönderilemedi: ${r.error}`, 'err'); }
       q.answer = a; q.answeredAt = new Date().toISOString(); log(q.ch, 'Soru yanıtı', (db.get('products', q.pid) || {}).name || ''); db.save(); toast('Yanıt pazaryerine gönderildi', 'ok'); draw();
     });
     draw();
   }
 
   // Mağazada stok değişince bağlı kanallara otomatik stok gönderimi (app.js çağırır)
+  // items: [{ vid }] — değişen varyantların güncel stoğu otomatik stok açık kanallara gider
   function stockChanged(items) {
-    connected().filter((k) => ch(k).autoStock).forEach((k) => { if (NS.integ) NS.integ.call('pazaryeri', 'stok-guncelle', { channel: k, items }, { silent: true }); log(k, 'Otomatik stok', `${items.length} varyant`); });
+    const vids = new Set(items.map((i) => i.vid));
+    const pairs = db.all('products').flatMap((p) => p.variants.filter((v) => vids.has(v.id)).map((v) => ({ p, v })));
+    connected().filter((k) => ch(k).autoStock).forEach((k) => { if (isLive(k)) live(k, 'stok-fiyat', { items: variantItems(k, pairs) }); else log(k, 'Otomatik stok (simülasyon)', `${pairs.length} varyant`); });
+  }
+  // Toplu işlemlerin (batch) sonucunu sorgular, listeleme durumlarını günceller
+  async function checkBatches(k) {
+    const open = (db.data.mpBatches || []).filter((b) => b.ch === k && !b.done);
+    for (const b of open) {
+      const r = await live(k, 'batch-durum', { batchId: b.id }); if (!r.ok) continue;
+      const st = String(r.data.status || '').toUpperCase(); if (!/COMPLETED|DONE|SUCCESS/.test(st)) continue;
+      b.done = true;
+      (r.data.items || []).forEach((it) => { const fv = findVariant(it.barcode); if (!fv) return; const l = listing(fv.p.id, k); if (!l) return; if (/SUCCESS/i.test(it.status)) { l.status = 'yayinda'; l.error = ''; } else { l.status = 'hata'; l.error = (it.reasons || []).join(', ') || 'Pazaryeri reddetti'; } });
+      if (!(r.data.items || []).length) db.all('listings', (x) => x.ch === k && x.batch === b.id && x.status === 'onay').forEach((x) => { x.status = 'yayinda'; });
+    }
+  }
+  // Canlı kanallardan yeni siparişleri çeker, mağaza siparişi olarak kaydeder ve stoğu düşer
+  async function pullOrders() {
+    const ks = connected().filter(isLive); if (!ks.length) return { count: 0, err: 'Canlı modda kanal yok' };
+    let count = 0; const touched = []; let err = '';
+    for (const k of ks) {
+      const r = await live(k, 'siparis-cek', { since: ch(k).lastPull }); if (!r.ok) { err = `${CH[k].name}: ${r.error}`; continue; }
+      (r.data.orders || []).forEach((o) => {
+        if (db.find('orders', (x) => x.channel === k && x.channelNo === o.orderNo)) return;
+        const items = o.items.map((i) => { const fv = findVariant(i.sku || i.barcode); if (fv) { fv.v.stock = Math.max(0, fv.v.stock - i.qty); touched.push({ vid: fv.v.id }); } return { pid: fv ? fv.p.id : null, vid: fv ? fv.v.id : null, name: fv ? fv.p.name : i.name, variant: fv ? `${fv.v.color} / ${fv.v.size}` : i.sku || '', qty: i.qty, price: i.price, lineId: i.lineId }; });
+        const total = Math.round(items.reduce((t, i) => t + i.qty * i.price, 0) * 100) / 100;
+        db.insert('orders', { no: 'PY' + db.nextNo('mp'), at: o.at, channel: k, channelNo: o.orderNo, packageId: o.packageId || null, channelShip: 0, ship: { name: o.customer.name, phone: o.customer.phone, city: o.customer.city, address: [o.customer.address, o.customer.district].filter(Boolean).join(', ') }, items, subtotal: total, shipping: 0, discount: 0, total: o.total || total, pay: 'kart', status: 'yeni', unmatched: items.some((i) => !i.pid), note: `${CH[k].name} sipariş no ${o.orderNo}` }, true);
+        count++;
+      });
+      db.data.mpChannels[k].lastPull = new Date().toISOString();
+    }
+    db.save();
+    if (touched.length) stockChanged(touched);
+    return { count, err };
+  }
+  // Kargo/fatura bilgisini pazaryerine bildirir (sipariş kargoya verilince app.js çağırır)
+  async function shipNotify(o) {
+    if (!o.channel || !CH[o.channel]) return;
+    if (isLive(o.channel)) { const r = await live(o.channel, 'kargo-bildir', { packageId: o.packageId, lines: o.items.filter((i) => i.lineId).map((i) => ({ lineId: i.lineId, qty: i.qty })), status: 'Invoiced', invoiceNo: o.invoiceNo || '', tracking: o.tracking, ownCargo: !!o.tracking }); if (!r.ok && !r.unsupported) toast(`${CH[o.channel].name} kargo bildirimi: ${r.error}`, 'err'); db.save(); }
+    else log(o.channel, 'Kargo bildirimi (simülasyon)', o.channelNo || '');
   }
 
-  return { CH, ensure, settle, chBadge, stockChanged, nav: [{ sec: 'Pazaryeri' }, { id: 'pazaryeri', label: 'Pazaryeri Merkezi', icon: 'store', roles: ['admin'] }, { id: 'listeleme', label: 'Ürün Listeleme', icon: 'upload', roles: ['admin'] }, { id: 'eslestirme', label: 'Kategori Eşleştirme', icon: 'link', roles: ['admin'] }, { id: 'hakedis', label: 'Hakediş', icon: 'wallet', roles: ['admin'] }, { id: 'sorular', label: 'Müşteri Soruları', icon: 'message' }],
+  return { CH, ensure, settle, chBadge, stockChanged, pullOrders, shipNotify, isLive, nav: [{ sec: 'Pazaryeri' }, { id: 'pazaryeri', label: 'Pazaryeri Merkezi', icon: 'store', roles: ['admin'] }, { id: 'listeleme', label: 'Ürün Listeleme', icon: 'upload', roles: ['admin'] }, { id: 'eslestirme', label: 'Kategori Eşleştirme', icon: 'link', roles: ['admin'] }, { id: 'hakedis', label: 'Hakediş', icon: 'wallet', roles: ['admin'] }, { id: 'sorular', label: 'Müşteri Soruları', icon: 'message' }],
     routes: { pazaryeri: hubPage, listeleme: listingsPage, eslestirme: catMapPage, hakedis: payoutPage, sorular: questionsPage } };
 })();

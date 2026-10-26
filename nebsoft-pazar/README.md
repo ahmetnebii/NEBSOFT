@@ -104,6 +104,26 @@ Entegrasyon merkezinde ilgili bağlantı kapalıyken merkezler **simülasyon mod
 Depo kökündeki `.claude/skills` altında Claude Code oturumlarında otomatik yüklenen tasarım rehberleri bulunur:
 `design-taste-frontend`, `ui-ux-pro-max`, `design-motion-principles`.
 
+## Canlıya geçiş (pazaryeri API'leri)
+
+Kanal merkezleri her kanal için **Simülasyon** veya **Canlı** modda çalışır. Canlı mod `server.js` köprüsündeki
+adaptörleri kullanır (`server/connectors`), bu yüzden uygulama `node server.js` ile açılmalıdır.
+
+| Kanal | Bağlantı | Yapılabilenler |
+|---|---|---|
+| Trendyol | Doğrudan API (satıcı no + API anahtarı + gizli anahtar) | Bağlantı testi, sipariş çekme, stok/fiyat (1000'lik partiler), toplu işlem sonucu, ürün gönderme (marka/kategori ID ile), paket durum ve kargo bildirimi, soru çekme/yanıtlama, hakediş |
+| Hepsiburada | Doğrudan API (merchantId + servis kullanıcı adı + servis anahtarı) | Bağlantı testi, sipariş çekme, stok/fiyat yükleme ve durum sorgusu |
+| Getir, Yemeksepeti, Trendyol Go/Yemek, Migros Yemek, n11, Amazon, Pazarama, Çiçeksepeti | Webhook (`/api/webhook/<kanal>?token=…`) veya yetkili entegratör adresi | Siparişler webhook ile gelen kutusuna düşer (`/api/inbox`); gönderim entegratör üzerinden |
+
+1. Satıcı panelinden API bilgilerini alın (Trendyol: Hesap Bilgilerim > Entegrasyon Bilgileri; Hepsiburada: Entegrasyon > API bilgileri).
+2. E-ticaret > Pazaryeri Merkezi > kanal ⚙ > **Canlı mod**; önce **Test ortamı** işaretliyken deneyin. Kayıttan önce gerçek bağlantı testi yapılır.
+3. Trendyol'a ürün göndermek için kanal ayarına marka ID ve kargo firması ID, Kategori Eşleştirme'ye Trendyol kategori ID'lerini girin.
+4. Webhook belirteci ilk çalıştırmada `data/webhook-token.txt` içinde üretilir; `GET /api/kanal` tam adresi verir.
+5. Pazaryeri bir adresi değiştirirse kod değil `data/endpoints.local.json` güncellenir (yapı: `server/connectors/endpoints.json`).
+
+Adaptör testleri: `node server/test/kanal.test.js` (sahte pazaryeri sunucusuna karşı 12 test).
+`data/` klasörü gizli bilgiler ve gelen kutusu içerir, sürüm kontrolüne eklenmez.
+
 ## Kullanım kolaylıkları (tüm ürünlerde)
 
 - **Tutar ve sayı alanları:** yazarken binlik ayıracı eklenir (100000 → 100.000), ondalık için virgül,

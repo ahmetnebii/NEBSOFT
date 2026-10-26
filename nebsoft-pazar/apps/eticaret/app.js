@@ -45,7 +45,7 @@
     const eirs = v.eirs; delete v.eirs;
     Object.assign(o, v, { status: 'kargoda', shippedAt: new Date().toISOString() }); db.log('Kargoya verildi', o.no); db.save();
     if (eirs && NS.integ) { const r = await NS.integ.sendEInvoice({ buyer: o.ship.name, no: o.no, total: o.total, buyerEmail: (db.get('customers', o.customer) || {}).email, address: `${o.ship.address || ''} ${o.ship.city || ''}`, lines: [...o.items.map((i) => ({ name: `${i.name} ${i.variant || ''}`.trim(), qty: i.qty, vat: 20, total: i.qty * i.price })), ...(o.shipping ? [{ name: 'Kargo bedeli', qty: 1, vat: 20, total: o.shipping }] : [])] }); if (r.ok) { o.ebelge = { type: r.type, no: r.no }; db.save(); } }
-    if (o.channelNo && NS.integ && NS.integ.isOn('pazaryeri')) NS.integ.call('pazaryeri', 'kargo-bildir', { channel: o.channel, orderNo: o.channelNo, carrier: o.carrier, tracking: o.tracking }, { silent: true });
+    if (o.channelNo && MP.CH[o.channel]) MP.shipNotify(o);
     if (NS.integ) NS.integ.sms(o.ship.phone, `${S().bizName}: ${o.no} nolu siparişiniz ${o.carrier} ile kargoya verildi. Takip no: ${o.tracking}`, { silent: true }); toast('Kargoya verildi, müşteriye SMS gönderildi', 'ok'); printLabel(o); app.refresh();
   }
   function printSlip(o) { NS.printHtml(`<div class="doc"><h2>${esc(S().bizName)}</h2><h3>PAKET FİŞİ — ${esc(o.no)}</h3><p><b>${esc(o.ship.name)}</b> · ${esc(o.ship.phone)}<br>${esc(o.ship.address)}, ${esc(o.ship.city)}</p><table><tr><th>Ürün</th><th>Varyant</th><th>SKU</th><th>Adet</th><th>✓</th></tr>${o.items.map((i) => `<tr><td>${esc(i.name)}</td><td>${esc(i.variant)}</td><td>${esc((prod(i.pid).variants.find((v) => v.id === i.vid) || {}).sku || '')}</td><td>${i.qty}</td><td>☐</td></tr>`).join('')}</table><p>Ödeme: ${PAY[o.pay]} ${o.pay === 'kapida' ? `— <b>Kapıda tahsil: ${money(o.total)}</b>` : ''}</p><p style="margin-top:30px">Bizi tercih ettiğiniz için teşekkürler 💜</p></div>`, { title: o.no }); }
@@ -61,6 +61,8 @@
     on(el, 'click', '[data-act=v]', (e, b) => orderModal(app, db.get('orders', b.dataset.id)));
     // Trendyol / Hepsiburada / n11... siparişleri mağaza siparişi gibi düşer, stok varyanttan düşülür
     $('#mp', el).onclick = async () => {
+      // Canlı kanal varsa doğrudan pazaryeri API'sinden çekilir
+      if (Object.keys(MP.CH).some((k) => MP.isLive(k))) { const n = await MP.pullOrders(); toast(n.err || `${n.count} pazaryeri siparişi alındı`, n.err ? 'err' : n.count ? 'ok' : ''); return app.refresh(); }
       if (!NS.integ) return; const r = await NS.integ.call('pazaryeri', 'siparis-cek', { since: S().mpSince || '' }); if (!r || !r.ok) return;
       let list = r.data && Array.isArray(r.data.orders) ? r.data.orders : [];
       if (r.simulated) { const ps = db.all('products', (x) => x.active && x.variants.some((v) => v.stock > 0)); const pr = NS.pick(ps); const vr = pr ? pr.variants.find((v) => v.stock > 0) : null; const conn = Object.keys(MP.CH).filter((k) => (db.data.mpChannels[k] || {}).connected); list = vr && conn.length ? [{ channel: NS.pick(conn), orderNo: String(NS.rand(1e8, 9e8)), customer: { name: NS.pick(['Selin Yurt', 'Burak Er', 'Ece Kaya']), phone: NS.phone(), address: 'Atatürk Mah. 12. Sok. No:4', city: NS.pick(['İstanbul', 'Ankara', 'İzmir']) }, items: [{ pid: pr.id, vid: vr.id, qty: 1, price: pr.sale || pr.price }] }] : []; }
