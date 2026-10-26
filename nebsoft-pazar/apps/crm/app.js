@@ -26,6 +26,21 @@
     db.data.quotes = [];
   }
   const db = new NS.DB('crm', seed);
+  const ctcName = (id) => (db.get('contacts', id) || {}).name || 'Yetkili';
+  // Demo: teklif aşamasındaki fırsatlara örnek teklifler (bir kez)
+  if (!db.meta('demoQuotes')) {
+    const T = window.CRMQ; let n = 0;
+    db.all('deals', (d) => ['teklif', 'pazarlik', 'kazanildi', 'kaybedildi'].includes(d.stage)).slice(0, 14).forEach((d, i) => {
+      const st0 = d.stage === 'kazanildi' ? 'kabul' : d.stage === 'kaybedildi' ? 'red' : 'gonderildi';
+      const date = iso(addDays(new Date(), -(st0 === 'gonderildi' ? NS.rand(1, 9) : NS.rand(15, 40))));
+      const lines = [{ name: d.title, qty: 1, price: Math.round(d.value * 0.8) }, { name: 'Kurulum ve eğitim', qty: 1, price: Math.round(d.value * 0.2) }];
+      const st = d.stage === 'kazanildi' ? 'kabul' : d.stage === 'kaybedildi' ? 'red' : 'gonderildi';
+      const k = T.calc({ lines, disc: 0, vat: 20 });
+      db.data.quotes.push({ id: NS.uid(), deal: d.id, no: 'TKL-' + (2001 + n++), rev: 1, date, valid: iso(addDays(new Date(date), 15)), lines, disc: 0, vat: 20, payment: 'Sipariş onayında %50, teslimde %50', note: 'Kurulum ve 1 yıl destek dahildir.', total: k.net, grand: k.grand, status: st, token: T.token(), owner: d.owner, viewedAt: st !== 'gonderildi' || i % 2 ? addDays(new Date(date), 1).toISOString() : null, respondedAt: st === 'gonderildi' ? null : addDays(new Date(date), 3).toISOString(), signer: st === 'kabul' ? ctcName(d.contact) : null, rejectReason: st === 'red' ? (d.lostReason || 'Fiyat yüksek') : null });
+    });
+    db.data._meta._seq_quotes = 2000 + n;
+    db.meta('demoQuotes', 1);
+  }
   const S = () => db.settings({ target: 2000000 });
   const comp = (id) => db.get('companies', id) || { name: '-' };
   const ctc = (id) => db.get('contacts', id) || { name: '-' };
@@ -94,7 +109,7 @@
       <div class="grid g-21"><div class="card"><div class="card-h"><h3>Aktiviteler</h3>${Object.entries(ACT).map(([k, v]) => `<button class="btn sm" data-add="${k}">${icon(v[1])} ${v[0]}</button>`).join('')}</div><div class="card-b">${acts.map((a) => `<div class="act"><div class="ai">${icon(ACT[a.type][1])}</div><div class="grow"><div class="row between"><b>${ACT[a.type][0]}</b><span class="small faint">${NS.dt(a.date)} · ${esc(usr(a.owner).name)}</span></div><div>${esc(a.text)}</div>${a.type === 'gorev' ? `<label class="check small mt"><input type="checkbox" data-done="${a.id}" ${a.done ? 'checked' : ''}> Tamamlandı · son tarih ${NS.date(a.due)}</label>` : ''}</div></div>`).join('') || '<div class="faint small">Aktivite yok</div>'}</div></div>
       <div class="col" style="gap:16px"><div class="card pad"><h3 class="mb">${icon('building')} ${esc(c.name)}</h3><div class="small muted">${esc(c.sector || '')} · ${esc(c.city || '')} · ${esc(c.size || '')} çalışan</div><div class="small mt">${esc(c.phone || '')} · ${esc(c.web || '')}</div>${ct.name !== '-' ? `<hr><b>${esc(ct.name)}</b><div class="small muted">${esc(ct.title || '')}</div><div class="small">${esc(ct.phone || '')}<br>${esc(ct.email || '')}</div><div class="row mt"><a class="btn sm" href="tel:${esc(String(ct.phone).replace(/\s/g, ''))}">${icon('phone')}</a><a class="btn sm" href="mailto:${esc(ct.email || '')}">${icon('mail')}</a><a class="btn sm" target="_blank" rel="noopener" href="https://wa.me/90${String(ct.phone).replace(/\D/g, '').replace(/^0/, '')}">${icon('message')}</a></div>` : ''}</div>
       <div class="card pad small"><div class="list-item"><span class="grow muted">Sorumlu</span><b>${esc(usr(d.owner).name)}</b></div><div class="list-item"><span class="grow muted">Kaynak</span>${esc(d.source || '-')}</div><div class="list-item"><span class="grow muted">Oluşturma</span>${NS.date(d.created)}</div>${d.lostReason ? `<div class="list-item"><span class="grow muted">Kayıp nedeni</span>${badge(d.lostReason, 'err')}</div>` : ''}</div>
-      <div class="card"><div class="card-h"><h3>Teklifler</h3></div><div class="card-b">${db.all('quotes', (q) => q.deal === id).map((q) => `<div class="list-item small"><span class="grow">${esc(q.no)} · ${NS.date(q.date)}</span><b>${money(q.total)}</b><button class="btn sm icon ghost" data-pq="${q.id}">${icon('print')}</button></div>`).join('') || '<div class="faint small">Teklif yok</div>'}</div></div></div></div>`;
+      <div class="card"><div class="card-h"><h3>Teklifler</h3></div><div class="card-b">${db.all('quotes', (q) => q.deal === id).map((q) => { const st = Q.status(q); return `<div class="list-item small"><span class="grow"><b class="mono">${esc(q.no)}</b> · ${NS.date(q.date)}<br>${badge(Q.STATUS[st][0], Q.STATUS[st][1])}${q.viewedAt && st === 'gonderildi' ? ` <span class="faint">görüntülendi</span>` : ''}</span><b>${money(Q.calc(q).grand)}</b><button class="btn sm icon ghost" data-sq="${q.id}" aria-label="Gönder">${icon('send')}</button><button class="btn sm icon ghost" data-pq="${q.id}" aria-label="Yazdır">${icon('print')}</button></div>`; }).join('') || '<div class="faint small">Teklif yok</div>'}</div></div></div></div>`;
     on(el, 'click', '[data-mv]', (e, b) => moveStage(app, d, b.dataset.mv));
     $('#ed', el).onclick = () => dealForm(app, d);
     on(el, 'click', '[data-add]', async (e, b) => {
@@ -110,35 +125,140 @@
     on(el, 'change', '[data-done]', (e, b) => { db.update('activities', b.dataset.done, { done: b.checked }); });
     $('#qt', el).onclick = () => quoteModal(app, d);
     on(el, 'click', '[data-pq]', (e, b) => printQuote(db.get('quotes', b.dataset.pq)));
+    on(el, 'click', '[data-sq]', (e, b) => shareQuote(db.get('quotes', b.dataset.sq)));
   }
-  function quoteModal(app, d) {
-    const lines = [{ name: d.title, qty: 1, price: d.value }];
+  const Q = window.CRMQ;
+  const quoteUrl = (q) => location.href.replace(/index\.html.*$/, '').replace(/#.*$/, '') + 'teklif.html?t=' + q.token;
+  // Teklif: satırlar, iskonto, KDV; revize edilen teklifin yerine yeni sürüm açılır
+  function quoteModal(app, d, from) {
+    const lines = from ? from.lines.map((l) => ({ ...l })) : [{ name: d.title, qty: 1, price: d.value }];
     modal({
-      title: 'Teklif hazırla', size: 'wide',
-      body: `<div id="ql"></div><button class="btn sm mt" id="qa">${icon('plus')} Satır</button><div class="form-grid mt"><div class="field"><label>İskonto %</label><input class="input" type="number" id="qd" value="0"></div><div class="field"><label>Geçerlilik (gün)</label><input class="input" type="number" id="qv" value="15"></div><div class="field full"><label>Not</label><input class="input" id="qn" value="Fiyatlara KDV dahil değildir. Kurulum ve 1 yıl destek dahildir."></div></div><div class="right big mt" id="qt"></div>`,
+      title: from ? `Teklifi revize et — ${from.no}` : 'Teklif hazırla', size: 'wide',
+      body: `<div class="row nw small muted mb" style="gap:8px"><span class="grow">Açıklama</span><span style="width:80px">Miktar</span><span style="width:130px">Birim fiyat</span><span style="width:36px"></span></div><div id="ql"></div><button class="btn sm" id="qa">${icon('plus')} Satır</button>
+        <div class="form-grid mt"><div class="field"><label>İskonto %</label><input class="input" type="number" id="qd" value="${from ? from.disc || 0 : 0}" min="0" max="100"></div><div class="field"><label>KDV</label><select class="input" id="qk">${[20, 10, 1, 0].map((v) => `<option value="${v}" ${(from ? Q.calc(from).vat : 20) === v ? 'selected' : ''}>%${v}</option>`).join('')}</select></div><div class="field"><label>Geçerlilik (gün)</label><input class="input" type="number" id="qv" value="15"></div><div class="field"><label>Ödeme</label><input class="input" id="qp" value="${esc(from ? from.payment || '' : 'Sipariş onayında %50, teslimde %50')}"></div><div class="field full"><label>Not</label><input class="input" id="qn" value="${esc(from ? from.note || '' : 'Kurulum ve 1 yıl destek dahildir.')}"></div></div>
+        <div class="card pad mt" id="qt"></div>`,
       onOpen: (b) => {
-        const draw = () => { $('#ql', b).innerHTML = lines.map((l, i) => `<div class="row nw mb"><input class="input" data-i="${i}" data-f="name" value="${esc(l.name)}"><input class="input" type="number" data-i="${i}" data-f="qty" value="${l.qty}" style="width:80px"><input class="input" type="number" data-i="${i}" data-f="price" value="${l.price}" style="width:130px"><button class="btn icon ghost" data-x="${i}">${icon('x')}</button></div>`).join(''); tot(); };
-        const tot = () => { const g = sum(lines, (l) => l.qty * l.price); const disc = g * (Number($('#qd', b).value) || 0) / 100; $('#qt', b).textContent = `Toplam (KDV hariç): ${money(g - disc)}`; };
+        const draw = () => { $('#ql', b).innerHTML = lines.map((l, i) => `<div class="row nw mb" style="gap:8px"><input class="input grow" data-i="${i}" data-f="name" value="${esc(l.name)}" placeholder="Ürün / hizmet"><input class="input" type="number" data-i="${i}" data-f="qty" value="${l.qty}" style="width:80px" min="0"><input class="input" type="number" data-i="${i}" data-f="price" value="${l.price}" style="width:130px" min="0"><button class="btn icon ghost" data-x="${i}" aria-label="Satırı sil">${icon('x')}</button></div>`).join(''); tot(); };
+        const tot = () => { const c = Q.calc({ lines, disc: $('#qd', b).value, vat: $('#qk', b).value }); $('#qt', b).innerHTML = `<div class="row between small"><span>Ara toplam</span><span>${money(c.gross)}</span></div>${c.disc ? `<div class="row between small"><span>İskonto</span><span>−${money(c.disc)}</span></div>` : ''}<div class="row between small"><span>KDV %${c.vat}</span><span>${money(c.vatAmt)}</span></div><div class="row between mt"><b>Genel toplam</b><b style="font-size:20px">${money(c.grand)}</b></div>`; };
         on(b, 'input', '[data-i]', (e, x) => { const l = lines[x.dataset.i]; l[x.dataset.f] = x.dataset.f === 'name' ? x.value : Number(x.value) || 0; tot(); });
         on(b, 'click', '[data-x]', (e, x) => { lines.splice(x.dataset.x, 1); draw(); });
         $('#qa', b).onclick = () => { lines.push({ name: '', qty: 1, price: 0 }); draw(); };
-        $('#qd', b).oninput = tot;
+        $('#qd', b).oninput = tot; $('#qk', b).onchange = tot;
         draw();
       },
-      actions: [{ label: 'Vazgeç' }, { label: 'Kaydet ve yazdır', cls: 'primary', icon: 'print', onClick: (c, b) => {
-        const g = sum(lines, (l) => l.qty * l.price); const disc = Number($('#qd', b).value) || 0;
-        const q = db.insert('quotes', { deal: d.id, no: db.nextNo('quotes', 'TKL-'), date: today(), valid: iso(addDays(new Date(), Number($('#qv', b).value) || 15)), lines: lines.filter((l) => l.name), disc, note: $('#qn', b).value, total: g * (1 - disc / 100) });
-        if (['yeni', 'gorusme'].includes(d.stage)) { d.stage = 'teklif'; }
+      actions: [{ label: 'Vazgeç' }, { label: 'Kaydet ve gönder', cls: 'primary', icon: 'send', onClick: (c, b) => {
+        const ls = lines.filter((l) => l.name && l.qty > 0); if (!ls.length) return toast('En az bir satır girin', 'err');
+        const base = { lines: ls, disc: Number($('#qd', b).value) || 0, vat: Number($('#qk', b).value) };
+        const k = Q.calc(base);
+        const rev = from ? (from.rev || 1) + 1 : 1;
+        const q = db.insert('quotes', { deal: d.id, no: from ? `${from.no.split('/')[0]}/R${rev}` : db.nextNo('quotes', 'TKL-'), rev, date: today(), valid: iso(addDays(new Date(), Number($('#qv', b).value) || 15)), ...base, payment: $('#qp', b).value, note: $('#qn', b).value, total: k.net, grand: k.grand, status: 'gonderildi', token: Q.token(), owner: (NS.currentUser || {}).id }, true);
+        if (from) from.status = 'revize';
+        if (['yeni', 'gorusme'].includes(d.stage)) d.stage = 'teklif';
         d.lastActivity = new Date().toISOString();
-        db.insert('activities', { deal: d.id, type: 'eposta', date: new Date().toISOString(), text: `Teklif ${q.no} gönderildi (${money(q.total)})`, owner: (NS.currentUser || {}).id, done: true });
-        c(); printQuote(q); app.refresh();
+        db.insert('activities', { deal: d.id, type: 'eposta', date: new Date().toISOString(), text: `Teklif ${q.no} gönderildi (${money(k.grand)} KDV dahil)`, owner: (NS.currentUser || {}).id, done: true }, true);
+        db.save(); c(); shareQuote(q); app.refresh();
       } }],
     });
   }
+  function shareQuote(q) {
+    const d = db.get('deals', q.deal) || {}; const ct = ctc(d.contact); const u = quoteUrl(q); const k = Q.calc(q);
+    const msg = `Sayın ${ct.name || 'Yetkili'}, ${d.title || ''} için ${q.no} numaralı teklifimizi (${money(k.grand)} KDV dahil) aşağıdaki bağlantıdan inceleyip onaylayabilirsiniz:\n${u}\n\n${S().bizName}`;
+    modal({ title: `${q.no} — müşteriye gönder`, body: `<p class="small muted">Müşteri bağlantıyı açtığında teklifi görür, tek tıkla kabul veya red eder; yanıt fırsata işlenir.</p><div class="row nw"><input class="input mono grow" value="${esc(u)}" readonly id="qu"><button class="btn" id="cp">${icon('copy')} Kopyala</button></div>
+      <div class="row mt" style="gap:8px"><a class="btn" target="_blank" rel="noopener" href="https://wa.me/${String(ct.phone || '').replace(/\D/g, '').replace(/^0/, '90')}?text=${encodeURIComponent(msg)}">${icon('message')} WhatsApp</a><a class="btn" href="mailto:${esc(ct.email || '')}?subject=${encodeURIComponent(`${S().bizName} teklifi ${q.no}`)}&body=${encodeURIComponent(msg)}">${icon('mail')} E-posta</a><a class="btn" target="_blank" rel="noopener" href="${esc(u)}">${icon('eye')} Önizle</a><button class="btn" id="pp">${icon('print')} PDF / yazdır</button></div>`,
+      onOpen: (b) => { $('#cp', b).onclick = async () => { try { await navigator.clipboard.writeText(u); toast('Bağlantı kopyalandı', 'ok'); } catch (e) { $('#qu', b).select(); } }; $('#pp', b).onclick = () => printQuote(q); } });
+  }
   function printQuote(q) {
-    const d = db.get('deals', q.deal) || {}; const c = comp(d.company); const ct = ctc(d.contact);
+    const d = db.get('deals', q.deal) || {}; const c = comp(d.company); const ct = ctc(d.contact); const k = Q.calc(q);
     NS.printHtml(`<div class="doc"><table><tr><td><h2>${esc(S().bizName)}</h2></td><td style="text-align:right"><h2>TEKLİF</h2><div>${esc(q.no)} · ${NS.date(q.date)}</div><div>Geçerlilik: ${NS.date(q.valid)}</div></td></tr></table><hr><p><b>${esc(c.name)}</b><br>Sayın ${esc(ct.name)}${ct.title ? ', ' + esc(ct.title) : ''}</p><p>Konu: ${esc(d.title || '')}</p>
-      <table><tr><th>Açıklama</th><th>Miktar</th><th style="text-align:right">Birim</th><th style="text-align:right">Tutar</th></tr>${q.lines.map((l) => `<tr><td>${esc(l.name)}</td><td>${l.qty}</td><td style="text-align:right">${money(l.price)}</td><td style="text-align:right">${money(l.qty * l.price)}</td></tr>`).join('')}${q.disc ? `<tr><td colspan="3" style="text-align:right">İskonto %${q.disc}</td><td style="text-align:right">-${money(sum(q.lines, (l) => l.qty * l.price) * q.disc / 100)}</td></tr>` : ''}<tr><td colspan="3" style="text-align:right"><b>TOPLAM (KDV hariç)</b></td><td style="text-align:right"><b>${money(q.total)}</b></td></tr></table><p><i>${esc(q.note || '')}</i></p><p style="margin-top:40px">Saygılarımızla,<br>${esc(usr(d.owner).name)}</p></div>`, { title: q.no });
+      <table><tr><th>Açıklama</th><th>Miktar</th><th style="text-align:right">Birim</th><th style="text-align:right">Tutar</th></tr>${q.lines.map((l) => `<tr><td>${esc(l.name)}</td><td>${l.qty}</td><td style="text-align:right">${money(l.price)}</td><td style="text-align:right">${money(l.qty * l.price)}</td></tr>`).join('')}${k.disc ? `<tr><td colspan="3" style="text-align:right">İskonto %${q.disc}</td><td style="text-align:right">-${money(k.disc)}</td></tr>` : ''}<tr><td colspan="3" style="text-align:right">Ara toplam</td><td style="text-align:right">${money(k.net)}</td></tr><tr><td colspan="3" style="text-align:right">KDV %${k.vat}</td><td style="text-align:right">${money(k.vatAmt)}</td></tr><tr><td colspan="3" style="text-align:right"><b>GENEL TOPLAM</b></td><td style="text-align:right"><b>${money(k.grand)}</b></td></tr></table>${q.payment ? `<p>Ödeme: ${esc(q.payment)}</p>` : ''}<p><i>${esc(q.note || '')}</i></p>${q.status === 'kabul' && q.signer ? `<p>Müşteri onayı: <b>${esc(q.signer)}</b> · ${NS.dt(q.respondedAt)} (online)</p>` : ''}<p style="margin-top:40px">Saygılarımızla,<br>${esc(usr(d.owner).name)}</p></div>`, { title: q.no });
+  }
+  // Teklif yanıtı (müşteri sayfası veya temsilci): kabul fırsatı kazandırır
+  function respond(app, q, st, reason) {
+    const d = db.get('deals', q.deal);
+    q.status = st; q.respondedAt = new Date().toISOString(); if (reason) q.rejectReason = reason;
+    if (d) {
+      db.insert('activities', { deal: d.id, type: 'not', date: q.respondedAt, text: st === 'kabul' ? `Teklif ${q.no} kabul edildi` : `Teklif ${q.no} reddedildi${reason ? ': ' + reason : ''}`, owner: (NS.currentUser || {}).id, done: true }, true);
+      d.lastActivity = q.respondedAt;
+      if (st === 'kabul' && isOpen(d)) { d.stage = 'kazanildi'; d.closedAt = today(); d.value = q.total; }
+      if (st === 'red' && d.stage === 'teklif') d.stage = 'pazarlik';
+    }
+    db.save(); app.refresh();
+  }
+
+  function quotesPage(el, p, app) {
+    let flt = 'bekleyen', q = '';
+    const draw = () => {
+      db.load();
+      const all = db.all('quotes', (x) => !mine() || (db.get('deals', x.deal) || {}).owner === mine()).sort((a, b) => String(b.date + b.no).localeCompare(a.date + a.no));
+      const F = { bekleyen: (x) => Q.status(x) === 'gonderildi', kabul: (x) => Q.status(x) === 'kabul', red: (x) => Q.status(x) === 'red', suresi: (x) => Q.status(x) === 'suresi', all: () => true };
+      const rows = all.filter(F[flt]).filter((x) => { const d = db.get('deals', x.deal) || {}; return NS.match(q, x.no, d.title, comp(d.company).name); });
+      const pend = all.filter(F.bekleyen), acc = all.filter((x) => Q.status(x) === 'kabul' && (x.respondedAt || '').slice(0, 7) === today().slice(0, 7));
+      const decided = all.filter((x) => ['kabul', 'red'].includes(Q.status(x)));
+      $('#tb', el).innerHTML = `<div class="grid g4 mb">${kpi(`Yanıt bekleyen (${pend.length})`, money(sum(pend, (x) => Q.calc(x).grand)), 'clock', 'warn')}${kpi('Bu ay kabul edilen', money(sum(acc, (x) => Q.calc(x).grand)), 'check', 'ok')}${kpi('Kabul oranı', '%' + (decided.length ? Math.round((decided.filter((x) => x.status === 'kabul').length / decided.length) * 100) : 0), 'percent', 'info')}${kpi('Görüntülenip yanıtlanmayan', pend.filter((x) => x.viewedAt).length, 'eye')}</div>
+        <div class="card"><div class="card-h">${NS.searchBox('qq', 'Teklif no, fırsat, firma...', q)}<div class="seg">${[['bekleyen', 'Bekleyen'], ['kabul', 'Kabul'], ['red', 'Red'], ['suresi', 'Süresi dolan'], ['all', 'Tümü']].map(([k, l]) => `<button data-qf="${k}" class="${flt === k ? 'active' : ''}">${l}</button>`).join('')}</div></div>
+        ${table({ rows, empty: 'Teklif yok', emptyIcon: 'file', columns: [
+          { label: 'Teklif', render: (x) => `<b class="mono">${esc(x.no)}</b><div class="small faint">${NS.date(x.date)} · geçerli ${NS.date(x.valid)}</div>` },
+          { label: 'Fırsat / firma', render: (x) => { const d = db.get('deals', x.deal) || {}; return `<a href="#/firsat/${d.id}"><b>${esc(d.title || '-')}</b></a><div class="small faint">${esc(comp(d.company).name)}</div>`; } },
+          { label: 'Tutar', cls: 'right', render: (x) => `<b>${money(Q.calc(x).grand)}</b><div class="small faint">KDV hariç ${money(Q.calc(x).net)}</div>` },
+          { label: 'Durum', render: (x) => { const st = Q.status(x); return `${badge(Q.STATUS[st][0], Q.STATUS[st][1])}${x.viewedAt && st === 'gonderildi' ? `<div class="small faint">${icon('eye')} ${NS.ago(x.viewedAt)} görüntülendi</div>` : ''}${st === 'kabul' && x.signer ? `<div class="small faint">${esc(x.signer)} · ${NS.date(x.respondedAt)}</div>` : ''}${st === 'red' && x.rejectReason ? `<div class="small" style="color:var(--err)">${esc(x.rejectReason)}</div>` : ''}`; } },
+        ], actions: [{ icon: 'send', act: 'share', title: 'Bağlantı / gönder' }, { icon: 'print', act: 'print', title: 'Yazdır' }, { icon: 'edit', act: 'rev', title: 'Revize et' }, { icon: 'check', act: 'ok', title: 'Kabul edildi olarak işaretle' }, { icon: 'x', act: 'no', title: 'Reddedildi olarak işaretle' }] })}</div>`;
+      $('#qq', el).oninput = (e) => { q = e.target.value; const pos = e.target.selectionStart; draw(); const i = $('#qq', el); i.focus(); i.setSelectionRange(pos, pos); };
+    };
+    el.innerHTML = pageHead('Teklifler', 'Tüm teklifler, müşteri yanıtları ve online onay durumu') + '<div id="tb"></div>';
+    on(el, 'click', '[data-qf]', (e, b) => { flt = b.dataset.qf; draw(); });
+    on(el, 'click', '[data-act]', async (e, b) => {
+      const x = db.get('quotes', b.dataset.id); const d = db.get('deals', x.deal);
+      if (b.dataset.act === 'share') shareQuote(x);
+      else if (b.dataset.act === 'print') printQuote(x);
+      else if (b.dataset.act === 'rev') { if (!d) return; quoteModal(app, d, x); }
+      else if (b.dataset.act === 'ok') { if (await confirm(`${x.no} kabul edildi olarak işaretlensin mi? Fırsat kazanıldı olarak kapanır.`, { ok: 'Kabul edildi', danger: false })) { x.signer = (NS.currentUser || {}).name + ' (temsilci girişi)'; respond(app, x, 'kabul'); toast('Teklif kabul edildi, fırsat kazanıldı', 'ok'); } }
+      else if (b.dataset.act === 'no') { const r = await NS.prompt('Red nedeni', 'Fiyat yüksek', { title: `${x.no} reddedildi` }); if (r !== null) respond(app, x, 'red', r); }
+    });
+    draw();
+  }
+
+  // Görevler: gecikmiş, bugün, bu hafta, sonra
+  function tasksPage(el, p, app) {
+    let own = mine() || (NS.currentUser || {}).id || '';
+    const draw = () => {
+      db.load();
+      const t0 = today(), wk = iso(addDays(new Date(), 7));
+      const all = db.all('activities', (a) => a.type === 'gorev' && (!own || a.owner === own));
+      const open = all.filter((a) => !a.done).sort((a, b) => String(a.due).localeCompare(String(b.due)));
+      const G = [['Gecikmiş', open.filter((a) => a.due && a.due < t0), 'err'], ['Bugün', open.filter((a) => a.due === t0), 'warn'], ['Bu hafta', open.filter((a) => a.due > t0 && a.due <= wk), 'info'], ['Daha sonra / tarihsiz', open.filter((a) => !a.due || a.due > wk), '']];
+      const doneRecent = all.filter((a) => a.done).sort((a, b) => String(b.doneAt || b.date).localeCompare(String(a.doneAt || a.date))).slice(0, 8);
+      const feed = db.all('activities', (a) => a.type !== 'gorev' && (!own || a.owner === own)).sort((a, b) => b.date.localeCompare(a.date)).slice(0, 12);
+      const item = (a) => { const d = db.get('deals', a.deal) || {}; return `<div class="list-item"><input type="checkbox" data-tdone="${a.id}" aria-label="Tamamlandı"><div class="grow"><b>${esc(a.text)}</b><div class="small muted"><a href="#/firsat/${d.id}">${esc(d.title || '-')}</a> · ${esc(comp(d.company).name)}${own ? '' : ' · ' + esc(usr(a.owner).name)}</div></div><span class="small ${a.due && a.due < t0 ? '' : 'muted'}" style="${a.due && a.due < t0 ? 'color:var(--err);font-weight:600' : ''}">${a.due ? NS.date(a.due) : '—'}</span></div>`; };
+      el.innerHTML = pageHead('Görevler', `${open.length} açık görev${G[0][1].length ? ` · ${G[0][1].length} gecikmiş` : ''}`, `${mine() ? '' : `<select class="input" id="ow" style="width:auto"><option value="">Tüm ekip</option>${db.all('users').map((u) => `<option value="${u.id}" ${own === u.id ? 'selected' : ''}>${esc(u.name)}</option>`).join('')}</select>`}<button class="btn primary" id="nt">${icon('plus')} Görev</button>`) + `
+        <div class="grid g-21"><div>${G.map(([t, list, c]) => `<div class="card mb"><div class="card-h"><h3>${t}</h3>${list.length ? badge(String(list.length), c) : ''}</div><div class="card-b">${list.map(item).join('') || '<div class="faint small">Yok</div>'}</div></div>`).join('')}</div>
+        <div><div class="card mb"><div class="card-h"><h3>Son aktiviteler</h3></div><div class="card-b">${feed.map((a) => { const d = db.get('deals', a.deal) || {}; return `<div class="act"><div class="ai">${icon(ACT[a.type][1])}</div><div class="grow small"><b>${esc(ACT[a.type][0])}</b> · <a href="#/firsat/${d.id}">${esc(d.title || '-')}</a><div>${esc(a.text)}</div><div class="faint">${NS.ago(a.date)} · ${esc(usr(a.owner).name)}</div></div></div>`; }).join('') || '<div class="faint small">Aktivite yok</div>'}</div></div>
+          <div class="card"><div class="card-h"><h3>Son tamamlananlar</h3></div><div class="card-b">${doneRecent.map((a) => `<div class="list-item small"><span style="color:var(--ok)">${icon('check')}</span><span class="grow" style="text-decoration:line-through;color:var(--text-3)">${esc(a.text)}</span></div>`).join('') || '<div class="faint small">Yok</div>'}</div></div></div></div>`;
+      if ($('#ow', el)) $('#ow', el).onchange = (e) => { own = e.target.value; draw(); };
+      $('#nt', el).onclick = async () => {
+        const v = await formModal({ title: 'Yeni görev', fields: [{ name: 'deal', label: 'Fırsat', type: 'select', options: myDeals().filter(isOpen).map((d) => ({ value: d.id, label: `${d.title} — ${comp(d.company).name}` })) }, { name: 'text', label: 'Görev', required: true, full: true }, { name: 'due', label: 'Son tarih', type: 'date', value: iso(addDays(new Date(), 1)) }, { name: 'owner', label: 'Sorumlu', type: 'select', options: db.all('users').map((u) => ({ value: u.id, label: u.name })) }], values: { owner: own || (NS.currentUser || {}).id } });
+        if (!v) return; db.insert('activities', { ...v, type: 'gorev', date: new Date().toISOString(), done: false }); toast('Görev eklendi', 'ok'); draw();
+      };
+    };
+    on(el, 'change', '[data-tdone]', (e, b) => { db.update('activities', b.dataset.tdone, { done: true, doneAt: new Date().toISOString() }); toast('Görev tamamlandı', 'ok'); draw(); });
+    draw();
+  }
+
+  // Firma 360°: kişiler, fırsatlar, teklifler ve tüm temas geçmişi
+  function companyPage(el, id, app) {
+    const c = db.get('companies', id); if (!c) return app.go('firmalar');
+    const deals = db.all('deals', (d) => d.company === id).sort((a, b) => String(b.created || '').localeCompare(String(a.created || '')));
+    const ids = deals.map((d) => d.id);
+    const acts = db.all('activities', (a) => ids.includes(a.deal)).sort((a, b) => b.date.localeCompare(a.date));
+    const quotes = db.all('quotes', (q) => ids.includes(q.deal));
+    const won = deals.filter((d) => d.stage === 'kazanildi'), open = deals.filter(isOpen);
+    const last = acts[0];
+    el.innerHTML = `<div class="row mb"><a class="btn" href="#/firmalar">${icon('back')} Firmalar</a><div class="avatar lg">${esc(NS.initials(c.name))}</div><div class="grow"><h1 style="margin:0">${esc(c.name)}</h1><div class="small muted">${esc([c.sector, c.city, c.size ? c.size + ' çalışan' : ''].filter(Boolean).join(' · '))}</div></div>${c.phone ? `<a class="btn" href="tel:${esc(String(c.phone).replace(/\s/g, ''))}">${icon('phone')} Ara</a>` : ''}${c.web ? `<a class="btn" target="_blank" rel="noopener" href="https://${esc(String(c.web).replace(/^https?:\/\//, ''))}">${icon('globe')} Web</a>` : ''}<button class="btn primary" id="nd">${icon('plus')} Fırsat</button></div>
+      <div class="grid g4 mb">${kpi('Kazanılan ciro', money(sum(won, (d) => d.value)), 'award', 'ok')}${kpi(`Açık fırsat (${open.length})`, money(sum(open, (d) => d.value)), 'kanban', 'info')}${kpi('Kazanma oranı', '%' + (won.length + deals.filter((d) => d.stage === 'kaybedildi').length ? Math.round((won.length / (won.length + deals.filter((d) => d.stage === 'kaybedildi').length)) * 100) : 0), 'percent')}${kpi('Son temas', last ? NS.ago(last.date) : '—', 'clock', last && daysBetween(last.date, new Date()) > 30 ? 'warn' : '')}</div>
+      <div class="grid g-21"><div class="col" style="gap:16px"><div class="card"><div class="card-h"><h3>Fırsatlar</h3></div>${table({ rows: deals, empty: 'Fırsat yok', columns: [{ label: 'Fırsat', render: (d) => `<a href="#/firsat/${d.id}"><b>${esc(d.title)}</b></a><div class="small faint">${esc(usr(d.owner).name)} · ${esc(d.source || '')}</div>` }, { label: 'Aşama', render: (d) => `<span class="badge" style="background:${stage(d.stage).color};color:#fff;border:0">${esc(stage(d.stage).name)}</span>` }, { label: 'Tutar', cls: 'right', render: (d) => money(d.value) }, { label: 'Kapanış', render: (d) => NS.date(d.closedAt || d.expected) }] })}</div>
+        <div class="card"><div class="card-h"><h3>Temas geçmişi</h3></div><div class="card-b">${acts.slice(0, 25).map((a) => `<div class="act"><div class="ai">${icon(ACT[a.type][1])}</div><div class="grow small"><b>${esc(ACT[a.type][0])}</b> · ${esc((db.get('deals', a.deal) || {}).title || '')}<div>${esc(a.text)}</div><div class="faint">${NS.dt(a.date)} · ${esc(usr(a.owner).name)}</div></div></div>`).join('') || '<div class="faint small">Kayıt yok</div>'}</div></div></div>
+      <div class="col" style="gap:16px"><div class="card"><div class="card-h"><h3>Kişiler</h3><a class="btn sm" href="#/kisiler">${icon('plus')}</a></div><div class="card-b">${db.all('contacts', (k) => k.company === id).map((k) => `<div class="list-item"><div class="avatar">${esc(NS.initials(k.name))}</div><div class="grow"><b>${esc(k.name)}</b><div class="small muted">${esc(k.title || '')}</div><div class="small">${k.phone ? `<a href="tel:${esc(String(k.phone).replace(/\s/g, ''))}">${esc(k.phone)}</a>` : ''}${k.email ? ` · <a href="mailto:${esc(k.email)}">${esc(k.email)}</a>` : ''}</div></div></div>`).join('') || '<div class="faint small">Kişi yok</div>'}</div></div>
+        <div class="card"><div class="card-h"><h3>Teklifler</h3></div><div class="card-b">${quotes.map((q) => { const st = Q.status(q); return `<div class="list-item small"><span class="grow mono">${esc(q.no)}</span>${badge(Q.STATUS[st][0], Q.STATUS[st][1])}<b>${money(Q.calc(q).grand)}</b></div>`; }).join('') || '<div class="faint small">Teklif yok</div>'}</div></div></div></div>`;
+    $('#nd', el).onclick = () => dealForm(app, { company: id });
   }
 
   function dashboard(el, p, app) {
@@ -161,7 +281,7 @@
   }
   function companiesPage(el, p, app) {
     NS.crud(el, app, {
-      col: 'companies', title: 'Firmalar', single: 'Firma', addLabel: 'Yeni firma', emptyIcon: 'building', sort: (a, b) => a.name.localeCompare(b.name, 'tr'),
+      col: 'companies', title: 'Firmalar', single: 'Firma', extraActions: [{ icon: 'eye', act: 'view', title: 'Firma kartı' }], onAction: (a, c) => app.go('firma', c.id), addLabel: 'Yeni firma', emptyIcon: 'building', sort: (a, b) => a.name.localeCompare(b.name, 'tr'),
       fields: [{ name: 'name', label: 'Firma adı', required: true, full: true }, { name: 'sector', label: 'Sektör' }, { name: 'city', label: 'Şehir' }, { name: 'phone', label: 'Telefon' }, { name: 'web', label: 'Web sitesi' }, { name: 'size', label: 'Çalışan sayısı', type: 'select', options: ['1-10', '10-50', '50-250', '250-1000', '1000+'] }],
       columns: [{ key: 'name', label: 'Firma', render: (c) => `<b>${esc(c.name)}</b><div class="small faint">${esc(c.web || '')}</div>` }, { key: 'sector', label: 'Sektör' }, { key: 'city', label: 'Şehir' }, { label: 'Kişi', cls: 'right', render: (c) => db.all('contacts', (x) => x.company === c.id).length }, { label: 'Açık fırsat', cls: 'right', render: (c) => money(sum(db.all('deals', (d) => d.company === c.id && isOpen(d)), (d) => d.value)) }, { label: 'Kazanılan', cls: 'right', render: (c) => money(sum(db.all('deals', (d) => d.company === c.id && d.stage === 'kazanildi'), (d) => d.value)) }],
     });
@@ -187,8 +307,8 @@
 
   const ROLES = { admin: 'Satış müdürü', temsilci: 'Satış temsilcisi' };
   NS.shell({
-    id: 'crm', integrations: ['email', 'sms', 'whatsapp', 'printer', 'efatura', 'webhook', 'backup'], name: 'CRM', tagline: 'Satış Hunisi & Müşteri İlişkileri', icon: 'kanban', accent: '#db2777', db, home: 'ozet', auth: { roles: ROLES }, titles: { firsat: 'Fırsat' },
-    nav: [{ sec: 'Satış' }, { id: 'ozet', label: 'Satış Panosu', icon: 'home' }, { id: 'huni', label: 'Satış Hunisi', icon: 'kanban' }, { id: 'firmalar', label: 'Firmalar', icon: 'building' }, { id: 'kisiler', label: 'Kişiler', icon: 'users' }, { sec: 'Yönetim' }, { id: 'raporlar', label: 'Raporlar', icon: 'chart', roles: ['admin'] }, { id: 'ayarlar', label: 'Ayarlar', icon: 'settings', roles: ['admin'] }],
-    routes: { ozet: dashboard, huni: pipelinePage, firsat: dealPage, firmalar: companiesPage, kisiler: contactsPage, raporlar: reportsPage, ayarlar: (el, p, a) => NS.settingsPage(el, a, { roles: ROLES, fields: [{ type: 'section', label: 'Hedef' }, { name: 'target', label: 'Aylık satış hedefi (₺)', type: 'number' }] }) },
+    id: 'crm', integrations: ['email', 'sms', 'whatsapp', 'printer', 'efatura', 'webhook', 'backup'], name: 'CRM', tagline: 'Satış Hunisi & Müşteri İlişkileri', icon: 'kanban', accent: '#db2777', db, home: 'ozet', auth: { roles: ROLES }, titles: { firsat: 'Fırsat', firma: 'Firma' },
+    nav: [{ sec: 'Satış' }, { id: 'ozet', label: 'Satış Panosu', icon: 'home' }, { id: 'huni', label: 'Satış Hunisi', icon: 'kanban' }, { id: 'gorevler', label: 'Görevler', icon: 'check' }, { id: 'teklifler', label: 'Teklifler', icon: 'file' }, { id: 'firmalar', label: 'Firmalar', icon: 'building' }, { id: 'kisiler', label: 'Kişiler', icon: 'users' }, { sec: 'Yönetim' }, { id: 'raporlar', label: 'Raporlar', icon: 'chart', roles: ['admin'] }, { id: 'ayarlar', label: 'Ayarlar', icon: 'settings', roles: ['admin'] }],
+    routes: { ozet: dashboard, huni: pipelinePage, firsat: dealPage, gorevler: tasksPage, teklifler: quotesPage, firma: companyPage, firmalar: companiesPage, kisiler: contactsPage, raporlar: reportsPage, ayarlar: (el, p, a) => NS.settingsPage(el, a, { roles: ROLES, fields: [{ type: 'section', label: 'Hedef' }, { name: 'target', label: 'Aylık satış hedefi (₺)', type: 'number' }] }) },
   });
 })();
