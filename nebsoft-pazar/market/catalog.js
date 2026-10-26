@@ -77,8 +77,8 @@ window.CATALOG = {
       id: 'muhasebe', ready: true, cat: 'yonetim', name: 'Ön Muhasebe', tagline: 'Fatura, cari, gelir-gider ve kasa/banka', icon: 'file', accent: '#0d9488',
       prices: [249, 499, 999], rating: 4.8, reviews: 603, users: 5200, sectors: ['Tüm KOBİ\'ler', 'Serbest meslek', 'Toptancı', 'Ajans', 'E-ticaret'],
       desc: 'Satış/alış faturası, teklif, cari hesap ekstreleri, tahsilat ve ödemeler, kasa ve banka hesapları, çek/senet ve vade takibi. Gelir-gider ve KDV raporları.',
-      features: ['Satış ve alış faturası, teklif → faturaya çevirme', 'Cari hesaplar ve ekstre', 'Tahsilat, ödeme ve vade hatırlatma', 'Kasa ve banka hesapları, virman', 'Gelir-gider kategorileri', 'Çek/senet portföyü', 'KDV ve kâr-zarar raporu', 'e-Fatura entegrasyonuna hazır'],
-      modules: ['Faturalar', 'Teklifler', 'Cariler', 'Kasa & Banka', 'Gelir-Gider', 'Çek/Senet', 'Raporlar'],
+      features: ['KDV beyan taslağı: oran bazında hesaplanan/indirilecek, zincirleme devreden KDV', 'Form Ba / Bs: sınırı aşan cariler, GİB sütunlarıyla Excel', 'Cari mutabakat mektubu (e-posta / yazdır) ve mutabakat takibi; beyan takvimi', 'Satış ve alış faturası, teklif → faturaya çevirme', 'Cari hesaplar ve ekstre', 'Tahsilat, ödeme ve vade hatırlatma', 'Kasa ve banka hesapları, virman', 'Gelir-gider kategorileri', 'Çek/senet portföyü', 'KDV ve kâr-zarar raporu', 'e-Fatura entegrasyonuna hazır'],
+      modules: ['Faturalar', 'Teklifler', 'Cariler', 'Kasa & Banka', 'Gelir-Gider', 'Çek/Senet', 'Raporlar', 'Beyanname & Mutabakat'],
     },
     {
       id: 'klinik', ready: true, cat: 'saglik', name: 'Klinik & Muayenehane', tagline: 'Hasta kaydı, muayene ve tedavi planı', icon: 'tooth', accent: '#2563eb',

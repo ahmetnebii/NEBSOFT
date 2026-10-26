@@ -65,6 +65,7 @@
   }
   const db = new NS.DB('muhasebe', seed);
   const S = () => db.settings({});
+  window.MUHBEYAN.init({ db, invTotals, cari: (id) => db.get('caris', id) || { name: '-' }, cariBalance: (id) => cariBalance(id), S });
   const cari = (id) => db.get('caris', id) || { name: '-' };
   const acc = (id) => db.get('accounts', id) || { name: '-' };
   const paidOf = (inv) => sum(db.all('txns', (t) => t.invoice === inv.id), (t) => t.amount);
@@ -548,11 +549,12 @@
   const ROLES = { admin: 'Muhasebe / Yönetici', satis: 'Satış' };
   NS.shell({
     id: 'muhasebe', integrations: ['efatura','email','sms','whatsapp','printer','webhook','backup'], name: 'Ön Muhasebe', tagline: 'Fatura · Cari · Kasa', icon: 'file', accent: '#0d9488', db, home: 'ozet', auth: { roles: ROLES },
-    nav: [{ sec: 'Muhasebe' }, { id: 'ozet', label: 'Finansal Özet', icon: 'home', roles: ['admin'] }, { id: 'faturalar', label: 'Faturalar', icon: 'file' }, { id: 'teklifler', label: 'Teklifler', icon: 'send' }, { id: 'siparisler', label: 'Siparişler', icon: 'bag' }, { id: 'irsaliyeler', label: 'İrsaliyeler', icon: 'truck' }, { id: 'cariler', label: 'Cari Hesaplar', icon: 'building' }, { sec: 'Stok' }, { id: 'urunler', label: 'Stok & Hizmet Kartları', icon: 'box' }, { id: 'stok', label: 'Stok & Depo', icon: 'layers' }, { sec: 'Finans' }, { id: 'kasa', label: 'Kasa & Banka', icon: 'wallet', roles: ['admin'] }, { id: 'cek', label: 'Çek & Senet', icon: 'ticket', roles: ['admin'] }, { id: 'kurlar', label: 'Döviz Kurları', icon: 'refresh', roles: ['admin'] }, { id: 'raporlar', label: 'Raporlar', icon: 'chart', roles: ['admin'] }, { id: 'ayarlar', label: 'Ayarlar', icon: 'settings', roles: ['admin'] }],
+    nav: [{ sec: 'Muhasebe' }, { id: 'ozet', label: 'Finansal Özet', icon: 'home', roles: ['admin'] }, { id: 'faturalar', label: 'Faturalar', icon: 'file' }, { id: 'teklifler', label: 'Teklifler', icon: 'send' }, { id: 'siparisler', label: 'Siparişler', icon: 'bag' }, { id: 'irsaliyeler', label: 'İrsaliyeler', icon: 'truck' }, { id: 'cariler', label: 'Cari Hesaplar', icon: 'building' }, window.MUHBEYAN.nav, { sec: 'Stok' }, { id: 'urunler', label: 'Stok & Hizmet Kartları', icon: 'box' }, { id: 'stok', label: 'Stok & Depo', icon: 'layers' }, { sec: 'Finans' }, { id: 'kasa', label: 'Kasa & Banka', icon: 'wallet', roles: ['admin'] }, { id: 'cek', label: 'Çek & Senet', icon: 'ticket', roles: ['admin'] }, { id: 'kurlar', label: 'Döviz Kurları', icon: 'refresh', roles: ['admin'] }, { id: 'raporlar', label: 'Raporlar', icon: 'chart', roles: ['admin'] }, { id: 'ayarlar', label: 'Ayarlar', icon: 'settings', roles: ['admin'] }],
     routes: {
+      ...window.MUHBEYAN.routes,
       ozet: dashboard, faturalar: invoicesPage, teklifler: quotesPage, siparisler: ordersPage, irsaliyeler: dispatchesPage, cariler: carisPage, kasa: accountsPage, cek: chequesPage, raporlar: reportsPage,
       urunler: itemsPage, stok: stockPage, kurlar: ratesPage,
-      ayarlar: (el, p, a) => NS.settingsPage(el, a, { roles: ROLES, fields: [{ type: 'section', label: 'Fatura ve stok ayarları' }, { name: 'iban', label: 'IBAN (faturada görünür)', full: true }, { name: 'invoiceNote', label: 'Varsayılan fatura notu', full: true }, { name: 'allowNegative', label: 'Eksi stokla satış/sevke izin ver', type: 'checkbox', full: true }, { name: 'autoEBelge', label: 'Satış faturası kaydedilince otomatik e-Fatura / e-Arşiv kes', type: 'checkbox', full: true }] }),
+      ayarlar: (el, p, a) => NS.settingsPage(el, a, { roles: ROLES, fields: [{ type: 'section', label: 'Beyanname' }, { name: 'babsLimit', label: 'Ba/Bs bildirim sınırı (₺, KDV hariç)', type: 'number', placeholder: '5000' }, { type: 'section', label: 'Fatura ve stok ayarları' }, { name: 'iban', label: 'IBAN (faturada görünür)', full: true }, { name: 'invoiceNote', label: 'Varsayılan fatura notu', full: true }, { name: 'allowNegative', label: 'Eksi stokla satış/sevke izin ver', type: 'checkbox', full: true }, { name: 'autoEBelge', label: 'Satış faturası kaydedilince otomatik e-Fatura / e-Arşiv kes', type: 'checkbox', full: true }] }),
     },
   });
 })();
