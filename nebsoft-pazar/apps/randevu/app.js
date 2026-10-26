@@ -157,7 +157,7 @@
     const openMin = R.toMin(s.open), closeMin = R.toMin(s.close);
     const H = (closeMin - openMin) * PPM;
     const staffs = visibleStaff();
-    weekStaff = weekStaff && staffs.some((x) => x.id === weekStaff) ? weekStaff : staffs[0].id;
+    weekStaff = weekStaff && staffs.some((x) => x.id === weekStaff) ? weekStaff : (staffs[0] || {}).id;
     const weekStart = addDays(calDate, -((new Date(calDate + 'T12:00').getDay() + 6) % 7));
     const columns = calView === 'day' ? staffs.map((st) => ({ key: st.id, staff: st, date: calDate, label: st.name, sub: st.title, color: st.color }))
       : Array.from({ length: 7 }, (_, i) => { const d = iso(addDays(weekStart, i)); return { key: d, staff: staff(weekStaff), date: d, label: NS.DAYS[new Date(d + 'T12:00').getDay()], sub: NS.date(d), color: d === today() ? 'var(--accent)' : '' }; });

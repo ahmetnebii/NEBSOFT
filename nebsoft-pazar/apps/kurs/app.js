@@ -95,7 +95,7 @@
 
   // ---------- Ders programı ----------
   function schedulePage(el, p, app) {
-    let c = db.all('classes')[0].id;
+    let c = (db.all('classes')[0] || {}).id;
     const draw = () => {
       el.innerHTML = pageHead('Ders Programı', 'Haftalık program; boş hücreye tıklayarak ders ekleyin', `<select class="input" id="c" style="max-width:220px">${db.all('classes').map((x) => `<option value="${x.id}" ${x.id === c ? 'selected' : ''}>${esc(x.name)}</option>`).join('')}</select><button class="btn" id="pr">${icon('print')}</button>`) +
         `<div class="card pad"><div class="tt"><div></div>${DAYSW.map((d) => `<div class="h">${NS.DAYS[d]}</div>`).join('')}${SLOTS.map((t) => `<div class="tm">${t}</div>${DAYSW.map((d) => { const l = db.find('lessons', (x) => x.cls === c && x.day === d && x.time === t); return l ? `<div class="ls" style="background:${tch(l.teacher).color}" data-l="${l.id}"><b>${esc(l.subject)}</b><div>${esc(tch(l.teacher).name)}</div></div>` : `<div class="em" data-e="${d}|${t}"></div>`; }).join('')}`).join('')}</div></div>`;

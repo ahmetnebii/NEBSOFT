@@ -347,3 +347,10 @@ tr.ns-row-sel td { background: var(--accent-soft) !important; }
 .ns-band.warn { background: var(--warn-soft); color: var(--warn); } .ns-band.err { background: var(--err-soft); color: var(--err); } .ns-band.ok { background: var(--ok-soft); color: var(--ok); }
 .ns-lock { max-width: 520px; margin: 60px auto; padding: 40px !important; }
 .ns-lock .ico-lg { width: 48px; height: 48px; color: var(--err); }
+
+/* Bulut senkron göstergesi */
+.ns-sync { position: fixed; left: 14px; bottom: 14px; z-index: 90; font-size: 12px; font-weight: 600; padding: 6px 12px; border-radius: 99px; background: var(--surface); color: var(--text-2); border: 1px solid var(--border); box-shadow: 0 6px 18px rgba(15, 23, 42, .12); transition: opacity .3s; pointer-events: none; }
+.ns-sync[data-k="ok"] { color: var(--ok); }
+.ns-sync[data-k="err"] { color: #fff; background: var(--err); border-color: var(--err); }
+.ns-sync[data-k="hide"] { opacity: 0; }
+@media print { .ns-sync { display: none; } }

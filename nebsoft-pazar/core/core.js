@@ -172,16 +172,84 @@
 
   const icon = (name, cls = '') => `<svg class="ico ${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">${ICONS[name] || ICONS.info}</svg>`;
 
-  // ---------- Veri katmanı (localStorage) ----------
+  // ---------- Bulut bağlamı ----------
+  // Sunucuda MySQL yapılandırılmışsa (canlı mod) ve sayfa bir uygulama ise veriler işletmenin bulut hesabından gelir.
+  // ?demo=1 ile açılan sayfalar her zaman tarayıcıdaki demo verisiyle çalışır.
+  const APP_ID = (location.pathname.match(/\/apps\/([a-z0-9]+)\//) || [])[1] || null;
+  const IS_APP_PAGE = !!APP_ID && /\/apps\/[a-z0-9]+\/(index\.html)?$/.test(location.pathname);
+  const CLOUD = (() => {
+    if (!APP_ID || !/^https?:$/.test(location.protocol) || /[?&]demo=1/.test(location.search) || window.NS_NO_CLOUD) return null;
+    try {
+      const x = new XMLHttpRequest(); x.open('GET', '/api/auth/me', false); x.setRequestHeader('x-ns-csrf', '1'); x.send();
+      if (x.status !== 200) return null; const me = JSON.parse(x.responseText);
+      return me.mode === 'cloud' ? me : null;
+    } catch (e) { return null; }
+  })();
+  const stopPage = (msg, to) => { try { sessionStorage.setItem('nebsoft:notice', msg); } catch (e) { /* yok */ } if (to) location.replace(to); throw new Error(msg); };
+  if (CLOUD && IS_APP_PAGE && !CLOUD.user) stopPage('Uygulamayı kullanmak için giriş yapın', '/#/giris');
+  const pendKey = (k) => `nebsoft:pending:${CLOUD && CLOUD.tenant ? CLOUD.tenant.id : '-'}:${k}`;
+  const syncJ = (method, url, body) => { const x = new XMLHttpRequest(); x.open(method, url, false); x.setRequestHeader('x-ns-csrf', '1'); if (body) x.setRequestHeader('Content-Type', 'application/json'); x.send(body ? JSON.stringify(body) : null); let j = {}; try { j = JSON.parse(x.responseText); } catch (e) { /* yok */ } return { status: x.status, j }; };
+  const isObj = (v) => v && typeof v === 'object' && !Array.isArray(v);
+  const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+  // 3 yönlü birleştirme: base = son eşitlenen, local = bu cihaz, remote = sunucudaki. Kayıt (id) düzeyinde; çakışmada bu cihaz kazanır.
+  function merge3(base, local, remote) {
+    if (same(local, base)) return remote;
+    if (same(remote, base)) return local;
+    if (Array.isArray(local) && Array.isArray(remote) && [...local, ...remote].every((x) => isObj(x) && x.id != null)) {
+      const B = new Map((Array.isArray(base) ? base : []).map((x) => [x.id, x])); const Lm = new Map(local.map((x) => [x.id, x])); const Rm = new Map(remote.map((x) => [x.id, x]));
+      const out = []; const seen = new Set();
+      const pick = (id) => { if (seen.has(id)) return; seen.add(id); const b = B.get(id), l = Lm.get(id), r = Rm.get(id);
+        if (l && r) out.push(same(l, b) ? r : same(r, b) ? l : merge3(b, l, r));
+        else if (l && !r) { if (!b || !same(l, b)) out.push(l); } // sunucuda silinmişse ve burada değişmediyse sil
+        else if (!l && r) { if (!b || !same(r, b)) out.push(r); } };
+      remote.forEach((x) => pick(x.id)); local.forEach((x) => pick(x.id));
+      return out;
+    }
+    if (isObj(local) && isObj(remote)) {
+      const out = {}; const b = isObj(base) ? base : {};
+      new Set([...Object.keys(local), ...Object.keys(remote)]).forEach((k) => {
+        if (/^_seq_/.test(k) && typeof local[k] === 'number' && typeof remote[k] === 'number') { out[k] = Math.max(local[k], remote[k]); return; }
+        const v = merge3(b[k], local[k], remote[k]); if (v !== undefined) out[k] = v;
+      });
+      return out;
+    }
+    return local;
+  }
+  // Senkron durumu göstergesi
+  let syncEl = null;
+  function syncState(t, kind) {
+    if (!document.body) return;
+    if (!syncEl) { syncEl = document.createElement('div'); syncEl.className = 'ns-sync'; syncEl.setAttribute('role', 'status'); document.body.appendChild(syncEl); }
+    syncEl.textContent = t; syncEl.dataset.k = kind || ''; clearTimeout(syncEl._t);
+    if (kind === 'ok') syncEl._t = setTimeout(() => { syncEl.dataset.k = 'hide'; }, 1500);
+  }
+  // Bulutta yeni açılan uygulama: örnek verilerle başlar, işletme bilgileri ve tek yönetici kullanıcı yazılır
+  function cloudInit(db, info) {
+    const s = db.data._settings || (db.data._settings = {});
+    if (info.tenant) { s.bizName = info.tenant.name; if (info.tenant.phone) s.bizPhone = info.tenant.phone; if (info.tenant.address) s.bizAddress = info.tenant.address; }
+    if (Array.isArray(db.data.users)) {
+      const pin = String(Math.floor(100000 + Math.random() * 899999)).slice(0, 4);
+      db.data.users = [{ id: 'u1', name: (info.owner && info.owner.name) || 'Yönetici', role: 'admin', pin, active: true }];
+      db.data._meta.ownerPin = pin;
+    }
+    db.data._meta.sample = true;
+  }
+
+  // ---------- Veri katmanı (localStorage / bulut) ----------
   class DB {
     constructor(key, seed) {
+      this.name = key;
       this.key = 'nebsoft:' + key;
       this.seed = seed;
       this.listeners = [];
       this.undoStack = [];
+      this.cloud = !!(CLOUD && CLOUD.user && (CLOUD.apps || []).includes(key));
+      if (CLOUD && CLOUD.user && key === APP_ID && !this.cloud) stopPage('Bu uygulama için geçerli lisans veya deneme yok', `/#/urun/${key}`);
       this.load();
+      if (this.cloud) this._watch();
     }
     load() {
+      if (this.cloud) return this._cloudLoad();
       let raw = null;
       try { raw = JSON.parse(localStorage.getItem(this.key)); } catch (e) { raw = null; }
       if (!raw) {
@@ -189,6 +257,23 @@
         if (this.seed) this.seed(this);
         this._snap = undefined; this.save();
       } else { this.data = raw; this._snap = JSON.stringify(raw); }
+    }
+    _cloudLoad() {
+      const r = syncJ('GET', '/api/data/' + this.name);
+      if (r.status === 401) stopPage('Oturumunuz kapandı, tekrar giriş yapın', '/#/giris');
+      if (r.status === 402) stopPage(r.j.error || 'Lisans gerekli', `/#/urun/${this.name}`);
+      if (r.status !== 200) { syncState('Sunucuya ulaşılamadı', 'err'); throw new Error('Veri yüklenemedi: ' + (r.j.error || r.status)); }
+      this._v = r.j.version; let data = r.j.data;
+      // Çevrimdışıyken bekleyen değişiklik varsa birleştir
+      let pend = null; try { pend = JSON.parse(localStorage.getItem(pendKey(this.name))); } catch (e) { pend = null; }
+      if (pend && pend.data) { data = data ? merge3(pend.base ? JSON.parse(pend.base) : null, pend.data, data) : pend.data; this._dirty = true; }
+      if (!data) {
+        this.data = { _meta: { created: new Date().toISOString() } };
+        this._noPush = true; if (this.seed) this.seed(this); this._noPush = false;
+        cloudInit(this, r.j); this._base = 'null'; this._dirty = true;
+      } else { this.data = data; this._base = JSON.stringify(r.j.data); }
+      this._snap = JSON.stringify(this.data);
+      if (this._dirty) this._queue(10);
     }
     // Her kayıtta önceki durum geri al geçmişine eklenir (oturum boyunca, en fazla 30 adım)
     save() {
@@ -198,8 +283,63 @@
         if (this.undoStack.length > 30) this.undoStack.shift();
       }
       this._label = null; this._snap = cur;
-      try { localStorage.setItem(this.key, cur); } catch (e) { console.warn('Kayıt yapılamadı', e); }
+      if (this.cloud) { if (!this._noPush) { this._dirty = true; this._queue(); } }
+      else { try { localStorage.setItem(this.key, cur); } catch (e) { console.warn('Kayıt yapılamadı', e); } }
       this.listeners.forEach((f) => f());
+    }
+    _queue(ms = 350) { clearTimeout(this._qt); this._qt = setTimeout(() => this._push(), ms); }
+    _backup() { try { localStorage.setItem(pendKey(this.name), JSON.stringify({ base: this._base, data: this.data, at: Date.now() })); } catch (e) { /* kota */ } }
+    async _push() {
+      if (this._flight) { this._again = true; return; }
+      clearTimeout(this._rt); this._rt = null;
+      if (!this._dirty) return;
+      this._flight = true; this._dirty = false; const sent = JSON.stringify(this.data);
+      syncState('Kaydediliyor…', 'run');
+      try {
+        const res = await fetch('/api/data/' + this.name, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: `{"base":${this._v},"data":${sent}}` });
+        const j = await res.json().catch(() => ({}));
+        if (res.ok) { this._v = j.version; this._base = sent; this._fails = 0; try { localStorage.removeItem(pendKey(this.name)); } catch (e) { /* yok */ } syncState('Kaydedildi', 'ok'); }
+        else if (res.status === 409 && j.code === 'conflict') {
+          // Başka cihaz kaydetmiş: birleştir ve yeniden gönder
+          const merged = merge3(JSON.parse(this._base), JSON.parse(sent), j.data);
+          const cur = JSON.stringify(this.data); const localNow = cur === sent ? merged : merge3(JSON.parse(sent), JSON.parse(cur), merged);
+          this.data = localNow; this._v = j.version; this._base = JSON.stringify(j.data); this._snap = JSON.stringify(this.data); this._dirty = true;
+          this.listeners.forEach((f) => f()); this._refreshUi();
+        } else if (res.status === 402) { this._dirty = false; syncState('Lisans süresi doldu — değişiklikler kaydedilemiyor', 'err'); this._backup(); }
+        else if (res.status === 401) { this._backup(); syncState('Oturum kapandı — tekrar giriş yapın', 'err'); }
+        else throw new Error(j.error || res.status);
+      } catch (e) {
+        this._dirty = true; this._fails = (this._fails || 0) + 1; this._backup();
+        syncState('Çevrimdışı — değişiklikler bu cihazda bekliyor', 'err');
+        clearTimeout(this._rt); this._rt = setTimeout(() => this._push(), Math.min(30000, 2000 * this._fails));
+      } finally {
+        this._flight = false;
+        if ((this._again || this._dirty) && !this._rt) { this._again = false; this._queue(50); } else this._again = false;
+        if (this._rt && !this._dirty) { clearTimeout(this._rt); this._rt = null; }
+      }
+    }
+    // Diğer cihazların değişikliklerini izle (15 sn)
+    _watch() {
+      window.addEventListener('beforeunload', (e) => { if (this._dirty || this._flight) { this._backup(); e.preventDefault(); e.returnValue = ''; } });
+      window.addEventListener('online', () => { if (this._dirty) this._push(); });
+      setInterval(async () => {
+        if (document.hidden || this._dirty || this._flight) return;
+        try {
+          const v = (await (await fetch(`/api/data/${this.name}/v`)).json()).version;
+          if (v > this._v) {
+            const j = await (await fetch('/api/data/' + this.name)).json();
+            if (!j.ok || this._dirty || this._flight) return;
+            this.data = j.data; this._v = j.version; this._base = JSON.stringify(j.data); this._snap = this._base;
+            this.listeners.forEach((f) => f()); this._refreshUi();
+          }
+        } catch (e) { /* çevrimdışı */ }
+      }, 15000);
+    }
+    _refreshUi() {
+      const app = NS.app; if (!app || !app.refresh) return;
+      const busy = () => document.querySelector('.ns-overlay') || (document.activeElement && /INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName));
+      const tryIt = () => { if (busy()) { setTimeout(tryIt, 1500); return; } app.refresh(); };
+      tryIt();
     }
     undo() {
       const u = this.undoStack.pop(); if (!u) return null;
@@ -207,7 +347,10 @@
       return u;
     }
     onChange(f) { this.listeners.push(f); }
-    reset() { try { localStorage.removeItem(this.key); } catch (e) { /* yok */ } this.load(); }
+    reset() {
+      if (this.cloud) { Object.keys(this.data).forEach((k) => { if (Array.isArray(this.data[k]) && k !== 'users' && !k.startsWith('_')) this.data[k] = []; }); this.data._meta.sample = false; this.save(); return; }
+      try { localStorage.removeItem(this.key); } catch (e) { /* yok */ } this.load();
+    }
     col(name) { return (this.data[name] = this.data[name] || []); }
     all(name, filter) { const c = this.col(name); return filter ? c.filter(filter) : c.slice(); }
     get(name, id) { return this.col(name).find((x) => x.id === id); }
@@ -545,7 +688,7 @@
       let id = null;
       try { id = sessionStorage.getItem(SESSION); } catch (e) { /* yok */ }
       // Pazar yerindeki "canlı demo" linkleri ?demo=1 ile yönetici olarak açılır
-      if (!id && /[?&]demo=1/.test(location.search)) {
+      if (!id && (/[?&]demo=1/.test(location.search) || (CLOUD && app.db.cloud))) {
         const admin = app.db.find('users', (u) => u.role === 'admin' && u.active !== false);
         if (admin) { id = admin.id; try { sessionStorage.setItem(SESSION, id); } catch (e) { /* yok */ } }
       }
@@ -592,7 +735,7 @@
         ? `<div class="sec">${esc(n.sec)}</div>`
         : `<a href="#/${n.id}" data-nav="${n.id}">${icon(n.icon)}<span>${esc(n.label)}</span>${n.badge ? `<span class="badge acc" style="margin-left:auto" data-badge="${n.id}"></span>` : ''}</a>`).join('');
       document.body.innerHTML = `
-        ${opts.demo !== false ? `<div class="ns-demo-bar">${icon('sparkles')} <span>Canlı demo: veriler yalnızca bu tarayıcıda saklanır.</span> <a href="#" data-reset>Demoyu sıfırla</a> · <a href="${opts.backUrl || '../../index.html'}#/urun/${opts.id}" target="_top">Satın al</a></div>` : ''}
+        ${app.db && app.db.cloud ? (app.db.data._meta.sample ? `<div class="ns-demo-bar">${icon('info')} <span>Örnek verilerle başladınız — ürünü tanıyınca örnekleri temizleyip kendi verilerinizi girin.${app.db.data._meta.ownerPin ? ` Yönetici PIN'iniz: <b>${esc(app.db.data._meta.ownerPin)}</b>` : ''}</span> <a href="#" data-clear>Örnek verileri temizle</a> · <a href="/#/hesabim" target="_top">Hesabım</a></div>` : '') : opts.demo !== false ? `<div class="ns-demo-bar">${icon('sparkles')} <span>Canlı demo: veriler yalnızca bu tarayıcıda saklanır.</span> <a href="#" data-reset>Demoyu sıfırla</a> · <a href="${opts.backUrl || '../../index.html'}#/urun/${opts.id}" target="_top">Satın al</a></div>` : ''}
         <div class="ns-app">
           <aside class="ns-side" id="side">
             <div class="ns-brand">${logoMark(opts.accent, 40)}<div><b>${esc(opts.name)}</b><span><span class="wm" style="font-size:9px"><b>NEB</b><i style="color:var(--accent)">SOFT</i></span> · ${esc(opts.tagline || '')}</span></div></div>
@@ -619,6 +762,10 @@
       on(document.body, 'click', '[data-theme]', toggleTheme);
       on(document.body, 'click', '[data-burger]', () => $('#side').classList.toggle('open'));
       on(document.body, 'click', '.ns-nav a', () => $('#side').classList.remove('open'));
+      on(document.body, 'click', '[data-clear]', async (e) => {
+        e.preventDefault();
+        if (await confirm('Örnek kayıtlar (satışlar, müşteriler, ürünler vb.) silinecek; ayarlarınız ve kullanıcılarınız kalacak. Bu işlem geri alınamaz. Devam edilsin mi?')) { app.db.reset(); toast('Örnek veriler temizlendi — kendi kayıtlarınızı girebilirsiniz', 'ok'); layout(); render(); }
+      });
       on(document.body, 'click', '[data-reset]', async (e) => {
         e.preventDefault();
         if (await confirm('Tüm demo verileri silinip başlangıç verileri yeniden yüklenecek. Devam edilsin mi?')) { app.db.reset(); toast('Demo sıfırlandı', 'ok'); app.go(opts.home || opts.nav.find((n) => n.id).id); render(); }
@@ -804,7 +951,7 @@
     api, esc, $, $$, on, uid, rand, pick, sum, groupBy, clamp, money, num, iso, today, addDays, daysBetween, date, dateLong, time, dt, ago, pad,
     MONTHS, DAYS, NAMES, phone, sampleGender, initials, logoMark, shade, setFavicon, slug, trLower, match, icon, ICONS, DB, toast, modal, confirm, prompt, formModal, fieldsHtml, readForm, validate,
     table, chart, compact, dailySeries, PALETTE, csv, readFile, parseCsv, printHtml, beep, barcodeSvg, qrSvg, shell, pageHead, kpi, badge, searchBox, crud,
-    settingsPage, smsLog, toggleTheme, getTheme, currentUser: null,
+    settingsPage, smsLog, toggleTheme, getTheme, currentUser: null, cloud: CLOUD, merge3,
   };
 })();
 

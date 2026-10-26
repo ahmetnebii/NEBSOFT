@@ -123,7 +123,7 @@
   function orderPage(el, id, app) {
     const c = db.get('checks', id);
     if (!c || c.status === 'closed') { el.innerHTML = `<div class="empty">${icon('receipt')}<div>Adisyon bulunamadı veya kapatıldı.</div><a class="btn mt" href="#/masalar">Masalara dön</a></div>`; return; }
-    mcat = mcat || db.all('mcats')[0].id;
+    mcat = mcat || (db.all('mcats')[0] || {}).id;
     el.innerHTML = `<div class="order"><div class="menu-side">
         <div class="row mb"><a class="btn" href="#/${c.type === 'paket' ? 'paket' : 'masalar'}">${icon('back')}</a><div class="grow"><h2>${esc(tName(c))}</h2><div class="small muted">${esc(c.no)} · ${c.guests || 1} kişi · ${esc(userName(c.waiter))} · ${mins(c.opened)} dk</div></div>${NS.searchBox('ms', 'Menüde ara...')}</div>
         <div class="mcats" id="mc"></div><div class="mgrid" id="mg"></div></div>
@@ -500,7 +500,7 @@
           columns: [{ label: 'Ürün', render: (m) => `<b>${esc(m.name)}</b><div class="small faint">${esc((db.get('mcats', m.cat) || {}).name || '')} · ${m.station === 'bar' ? 'Bar' : 'Mutfak'}</div>` }, { label: 'Fiyat', cls: 'right', render: (m) => `<b>${money(m.price)}</b>` }, { label: 'Reçete maliyeti', cls: 'right', render: (m) => (m.recipe && m.recipe.length ? money(cost(m)) : '<span class="faint">-</span>') }, { label: 'Maliyet %', cls: 'right', render: (m) => { if (!m.recipe || !m.recipe.length) return '-'; const p = (cost(m) / m.price) * 100; return badge('%' + p.toFixed(0), p > 35 ? 'err' : p > 25 ? 'warn' : 'ok'); } }, { label: 'Durum', render: (m) => (m.active ? badge('Satışta', 'ok') : badge('Tükendi', 'err')) }],
           actions: [{ icon: 'layers', act: 'recipe', title: 'Reçete' }, { icon: 'zap', act: 'toggle', title: 'Tükendi / satışta' }, { icon: 'edit', act: 'edit' }, { icon: 'trash', act: 'del' }],
         })}</div>`;
-      $('#add', el).onclick = async () => { const v = await formModal({ title: 'Yeni ürün', fields: fields(), values: { active: true, station: 'mutfak', cat: cf || db.all('mcats')[0].id, prepMin: 10 }, size: 'wide' }); if (v) { db.insert('menu', { ...v, recipe: [] }); draw(); } };
+      $('#add', el).onclick = async () => { const v = await formModal({ title: 'Yeni ürün', fields: fields(), values: { active: true, station: 'mutfak', cat: cf || (db.all('mcats')[0] || {}).id, prepMin: 10 }, size: 'wide' }); if (v) { db.insert('menu', { ...v, recipe: [] }); draw(); } };
       $('#cats', el).onclick = () => catModal(draw);
       $('#bulk', el).onclick = async () => { const v = await formModal({ title: 'Toplu fiyat', fields: [{ name: 'cat', label: 'Kategori', type: 'select', empty: 'Tüm menü', options: db.all('mcats').map((k) => ({ value: k.id, label: k.name })) }, { name: 'pct', label: 'Değişim %', type: 'number', required: true }, { name: 'round', label: '5 ₺ katlarına yuvarla', type: 'checkbox', value: true }] }); if (v) { db.all('menu', (m) => !v.cat || m.cat === v.cat).forEach((m) => { let p = m.price * (1 + v.pct / 100); if (v.round) p = Math.round(p / 5) * 5; m.price = p; }); db.save(); toast('Fiyatlar güncellendi', 'ok'); draw(); } };
     };
@@ -526,7 +526,7 @@
         };
         on(b, 'change', '[data-rk]', (e, t) => { rec[t.dataset.rk][t.dataset.f] = t.dataset.f === 'qty' ? Number(t.value) : t.value; draw(); });
         on(b, 'click', '[data-rx]', (e, t) => { rec.splice(t.dataset.rx, 1); draw(); });
-        $('#ra', b).onclick = () => { rec.push({ iid: db.all('ingredients')[0].id, qty: 0.1 }); draw(); };
+        $('#ra', b).onclick = () => { if (!db.all('ingredients').length) return toast('Önce Malzeme Stoku ekranından malzeme ekleyin', 'err'); rec.push({ iid: db.all('ingredients')[0].id, qty: 0.1 }); draw(); };
         draw();
       },
       actions: [{ label: 'Vazgeç' }, { label: 'Kaydet', cls: 'primary', onClick: (c) => { m.recipe = rec; db.save(); c(); done(); toast('Reçete kaydedildi', 'ok'); } }],
@@ -562,7 +562,7 @@
   // ---------- QR menü ----------
   function qrPage(el, param, app) {
     const base = location.href.replace(/index\.html.*$/, '').replace(/#.*$/, '');
-    el.innerHTML = pageHead('QR Menü', 'Müşteriler masadaki QR kodu okutarak menüyü görür, sipariş verir, garson çağırır', `<a class="btn primary" href="qr.html?masa=${db.all('tables')[0].id}" target="_blank">${icon('eye')} QR menüyü önizle</a><button class="btn" id="pa">${icon('print')} Tüm QR kodları yazdır</button>`) + `
+    el.innerHTML = pageHead('QR Menü', 'Müşteriler masadaki QR kodu okutarak menüyü görür, sipariş verir, garson çağırır', `<a class="btn primary" href="qr.html?masa=${(db.all('tables')[0] || {}).id || ''}" target="_blank">${icon('eye')} QR menüyü önizle</a><button class="btn" id="pa">${icon('print')} Tüm QR kodları yazdır</button>`) + `
       <div class="grid g-21 mb"><div class="card pad"><h3 class="mb">Nasıl çalışır?</h3><div class="col small muted"><div>1. Her masaya o masaya özel QR kodu yapıştırın.</div><div>2. Müşteri telefon kamerasıyla okutur, menü açılır (uygulama gerekmez).</div><div>3. Sipariş verirse adisyona <b>QR</b> etiketiyle düşer; garson onaylayıp mutfağa gönderir.</div><div>4. "Garson çağır" ve "Hesap iste" bildirimleri masalar ekranında görünür.</div></div>
         <label class="check mt"><input type="checkbox" id="qo" ${S().qrOrder ? 'checked' : ''}> QR menüden sipariş verilebilsin</label></div>
         <div class="card pad"><h3 class="mb">Bekleyen çağrılar</h3>${db.all('calls', (c) => !c.done).map((c) => `<div class="list-item">${icon('bell')}<span class="grow"><b>${esc((T(c.table) || {}).name)}</b> · ${c.type === 'hesap' ? 'Hesap istiyor' : 'Garson çağırıyor'}</span><span class="small faint">${NS.ago(c.at)}</span></div>`).join('') || '<div class="faint small">Çağrı yok</div>'}</div></div>
