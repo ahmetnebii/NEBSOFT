@@ -50,12 +50,13 @@
   const finder = (v) => `<div class="tk-find"><input class="input" id="k" placeholder="Plaka (ör. 34 ABC 123)" value="${esc(v || '')}" aria-label="Plaka" autocomplete="off"><button class="btn primary lg" id="go">${icon('search')} Sorgula</button></div><div class="tk-recent"></div>`;
 
   function render(plate) {
-    clearInterval(timer); db.load();
+    clearInterval(timer);
     const pl = norm(plate);
+    if (!pl || db.lookup({ plate: pl }) === null) db.load();
     if (!pl) {
       let ex = ''; const j = db.all('jobs', (x) => ['bekliyor', 'yikaniyor', 'hazir'].includes(x.status))[0]; if (j) ex = j.plate;
-      $('#root').innerHTML = `<div class="tk-view"><div class="tk-intro"><h1>Aracın hazır mı?</h1><p>Plakanı yaz; yıkamadaki sıranı ve tahmini hazır olma saatini gör, otopark ücretini çıkmadan öde, sırada beklemeden geç.</p></div>${finder('')}${ex ? `<p class="small muted">Demo için örnek: <a href="#" data-ex="${esc(ex)}">${esc(ex)}</a></p>` : ''}
-        <div class="tk-how"><div>${icon('drop')}<b>Yıkama sırası</b>Önünde kaç araç olduğunu ve tahmini süreyi gör.</div><div>${icon('card')}<b>Otoparkı önceden öde</b>Ödedikten sonra 15 dakika içinde bariyerden ücretsiz çık.</div><div>${icon('award')}<b>Abonelik</b>Kalan yıkama hakkın ve bitiş tarihin.</div></div></div>`;
+      $('#root').innerHTML = `<div class="tk-view"><div class="tk-intro"><h1>Aracın hazır mı?</h1><p>Plakanı yaz; yıkamadaki sıranı ve tahmini hazır olma saatini gör, ${NS.pub ? 'otopark ücretini anlık gör.' : 'otopark ücretini çıkmadan öde, sırada beklemeden geç.'}</p></div>${finder('')}${ex && !NS.pub ? `<p class="small muted">Demo için örnek: <a href="#" data-ex="${esc(ex)}">${esc(ex)}</a></p>` : ''}
+        <div class="tk-how"><div>${icon('drop')}<b>Yıkama sırası</b>Önünde kaç araç olduğunu ve tahmini süreyi gör.</div><div>${icon('card')}<b>${NS.pub ? 'Otopark ücreti' : 'Otoparkı önceden öde'}</b>${NS.pub ? 'Şu an çıkarsan ödeyeceğin tutarı anlık gör.' : 'Ödedikten sonra 15 dakika içinde bariyerden ücretsiz çık.'}</div><div>${icon('award')}<b>Abonelik</b>Kalan yıkama hakkın ve bitiş tarihin.</div></div></div>`;
       return bind();
     }
     try { localStorage.setItem(RK, pl); } catch (e) { /* yok */ }
@@ -81,7 +82,7 @@
     }
     const parkHtml = park ? `<section class="tk-panel"><h3>${icon('car')} Otopark</h3><div class="b"><div class="row between"><span class="small muted">Giriş ${NS.time(park.in)} · <span id="du">${durTxt(Date.now() - new Date(park.in))}</span></span>${sub && sub.plan === 'otopark' ? NS.badge('Abone · ücretsiz', 'ok') : ''}</div>
         <div class="big mt" id="fe">${money(fee(park))}</div><div class="small muted">${park.paidAt ? (Date.now() - new Date(park.paidAt) <= 15 * 60000 ? `Ödendi · ${NS.time(new Date(new Date(park.paidAt).getTime() + 15 * 60000).toISOString())}'e kadar ücretsiz çıkış` : 'Ödeme sonrası süre aşıldı, fark çıkışta alınır') : 'Şu an çıkarsan ödenecek tutar'}</div>
-        ${fee(park) > 0 ? `<button class="btn primary lg block mt" id="pp">${icon('card')} Şimdi öde, beklemeden çık</button>` : ''}
+        ${fee(park) > 0 ? (NS.pub ? '<p class="small mt" style="margin-bottom:0">Ücreti çıkışta gişede ödeyebilirsin.</p>' : `<button class="btn primary lg block mt" id="pp">${icon('card')} Şimdi öde, beklemeden çık</button>`) : ''}
         <p class="small muted" style="margin:10px 0 0">Tarife: ilk saat ${money(S().firstHour)}, sonraki her saat ${money(S().nextHour)}, günlük en fazla ${money(S().dailyMax)}. İlk ${S().graceMin} dk ücretsiz.</p></div></section>` : '';
     const subHtml = sub ? `<section class="tk-panel"><h3>${icon('award')} Aboneliğin</h3><div class="b"><div class="row between"><b>${sub.plan === 'otopark' ? 'Aylık otopark' : 'Aylık 4 yıkama'}</b><span class="small muted">bitiş ${NS.date(sub.end)}</span></div>${sub.washesLeft !== null && sub.washesLeft !== undefined ? `<div class="small mt">Kalan yıkama hakkı: <b>${sub.washesLeft}</b></div>` : ''}</div></section>` : '';
     $('#root').innerHTML = `<div class="tk-view">${finder(pl)}<p style="margin:0 0 16px"><span class="plate"><span>${esc(pl)}</span></span></p>${wash}${parkHtml}${subHtml}<p class="tk-help">${icon('phone')} ${esc(S().bizPhone || '')} · ${esc(S().bizAddress || '')}</p></div>`;

@@ -51,16 +51,16 @@
     $('#out').innerHTML = '';
     $('#root').innerHTML = `<div class="tk-view"><div class="tk-intro"><h1>Dostunuzun sağlık karnesi</h1><p>Kliniğimizde kayıtlı telefon numaranızla girin; aşı takvimini, son muayeneleri ve kilo geçmişini görün, randevu isteyin.</p></div>
       <div class="tk-find"><input class="input" id="ph" type="tel" inputmode="tel" placeholder="05xx xxx xx xx" aria-label="Telefon numarası" autocomplete="tel" style="text-transform:none;letter-spacing:.02em"><button class="btn primary lg" id="go">Giriş</button></div>
-      <p class="small muted">Demo için <a href="#" id="hint">örnek bir numara kullanın</a>.</p>
+      ${NS.pub ? '' : '<p class="small muted">Demo için <a href="#" id="hint">örnek bir numara kullanın</a>.</p>'}
       <div class="tk-how"><div>${icon('shield')}<b>Aşı takvimi</b>Hangi aşının ne zaman yapıldığı ve sıradaki aşı tarihi.</div><div>${icon('calendar')}<b>Randevu isteği</b>Uygun gün ve saati seçin, klinik onaylayınca SMS alın.</div><div>${icon('print')}<b>Yazdırılabilir karne</b>Seyahat ve pet otel için karneyi PDF olarak kaydedin.</div></div></div>`;
     const go = () => {
-      db.load(); const d = digits($('#ph').value);
+      const d = digits($('#ph').value); if (d.length !== 10 || db.lookup({ phone: d }) === null) db.load();
       const o = d.length === 10 && db.find('owners', (x) => digits(x.phone) === d);
       if (!o) return toast('Bu numarayla kayıtlı hayvan sahibi bulunamadı', 'err');
       sset(o.id); render();
     };
     $('#go').onclick = go; $('#ph').onkeydown = (e) => { if (e.key === 'Enter') go(); };
-    $('#hint').onclick = (e) => { e.preventDefault(); const o = db.all('owners').find((x) => db.all('pets', (p) => p.owner === x.id).length) || db.all('owners')[0]; if (o) { $('#ph').value = o.phone; } };
+    if ($('#hint')) $('#hint').onclick = (e) => { e.preventDefault(); const o = db.all('owners').find((x) => db.all('pets', (p) => p.owner === x.id).length) || db.all('owners')[0]; if (o) { $('#ph').value = o.phone; } };
   }
 
   // Her aşı türünün son uygulaması ve sıradaki tarihi
@@ -87,7 +87,7 @@
     const pets = db.all('pets', (p) => p.owner === o.id);
     if (!pets.find((p) => p.id === cur)) cur = (pets[0] || {}).id;
     $('#out').innerHTML = `<button class="btn ghost" id="lo">${icon('logout')}<span class="hide-sm">Çıkış</span></button>`;
-    $('#lo').onclick = () => { sset(null); cur = null; login(); };
+    $('#lo').onclick = () => { sset(null); cur = null; db.pubLogout(); login(); };
     if (!pets.length) { $('#root').innerHTML = `<div class="tk-panel"><div class="b empty">${icon('paw')}<div>Kayıtlı hayvanınız bulunmuyor.</div></div></div>`; return; }
     const p = db.get('pets', cur);
     const vx = vaxRows(p.id);

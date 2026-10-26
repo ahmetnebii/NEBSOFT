@@ -3,7 +3,8 @@ window.ANK = {
   MEALS: { kahvalti: 'Kahvaltı', ogle: 'Öğle yemeği', ikindi: 'İkindi' },
   EAT: { hepsi: ['Hepsini yedi', 'ok'], yarisi: ['Yarısını yedi', 'warn'], az: ['Az yedi', 'warn'], yemedi: ['Yemedi', 'err'] },
   MOOD: { mutlu: ['😊', 'Mutlu'], sakin: ['🙂', 'Sakin'], yorgun: ['😴', 'Yorgun'], huzursuz: ['😟', 'Huzursuz'] },
-  code: (s) => String(s.parents[0].phone || '').replace(/\D/g, '').slice(-4) + s.id.replace(/\W/g, '').slice(-2).toUpperCase(),
+  // Portal giriş kodu: işletme 'portal bilgisini gönder' dediğinde rastgele kod üretilir (NS.portalCode); yoksa eski formül
+  code: (s) => s.portalCode || String(s.parents[0].phone || '').replace(/\D/g, '').slice(-4) + s.id.replace(/\W/g, '').slice(-2).toUpperCase(),
   age: (b) => { const d = new Date(b); const n = new Date(); let y = n.getFullYear() - d.getFullYear(); let m = n.getMonth() - d.getMonth(); if (m < 0) { y--; m += 12; } return `${y} yaş ${m} ay`; },
   seed(db) {
     const { rand, pick, addDays } = NS;

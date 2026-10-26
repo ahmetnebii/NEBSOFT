@@ -7,7 +7,8 @@ window.TPT = {
   // Fiyat listesi farkı: A taban fiyat, B %4, C %8 üstü
   price: (p, list) => Math.round(p.price * (1 + (TPT.LISTS[list || 'C'][1]) / 100) * 100) / 100,
   orderTotal: (o) => { const net = o.lines.reduce((s, l) => s + l.qty * l.price * (1 - (l.disc || 0) / 100), 0); const vat = o.lines.reduce((s, l) => s + l.qty * l.price * (1 - (l.disc || 0) / 100) * (l.vat ?? 10) / 100, 0); return { net: Math.round(net * 100) / 100, vat: Math.round(vat * 100) / 100, total: Math.round((net + vat) * 100) / 100 }; },
-  code: (c) => String(c.phone || '').replace(/\D/g, '').slice(-4) + c.id.replace(/\W/g, '').slice(-2).toUpperCase(),
+  // Portal giriş kodu: işletme 'portal bilgisini gönder' dediğinde rastgele kod üretilir (NS.portalCode); yoksa eski formül
+  code: (c) => c.portalCode || String(c.phone || '').replace(/\D/g, '').slice(-4) + c.id.replace(/\W/g, '').slice(-2).toUpperCase(),
   seed(db) {
     const { rand, pick, addDays } = NS;
     db.data._settings = { bizName: 'Anadolu Gıda Toptan', bizPhone: '0332 350 40 40', bizAddress: 'Konya Organize Sanayi, 7. Cad. No:14, Selçuklu/Konya', minOrder: 1500, defaultTerm: 30, iban: 'TR56 0006 2000 3900 0006 2988 21' };

@@ -53,6 +53,7 @@
   const db = new NS.DB('adisyon', window.ADISYON_SEED);
   const PH = window.ADISYON_PHOTO;
   const tableId = new URLSearchParams(location.search).get('masa');
+  if (NS.pub && tableId) db.pubQuery({ masa: tableId }); // bulutta yalnızca bu masanın hesabı gelir
   const t = db.get('tables', tableId);
   const s = db.settings({});
   const CK = 'nebsoft:adisyon:qrcart:' + tableId;

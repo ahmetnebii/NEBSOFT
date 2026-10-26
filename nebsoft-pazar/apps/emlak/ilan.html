@@ -289,7 +289,7 @@
   function detail(el, id) {
     const p = db.get('props', id);
     if (!p) { el.innerHTML = `<div class="w"><div class="empty2" style="margin:60px 0"><h2 class="disp">İlan bulunamadı</h2><p class="muted" style="margin:10px 0 20px">İlan yayından kaldırılmış olabilir.</p><a class="b" href="#/ilanlar">Güncel ilanlar</a></div></div>`; return; }
-    p.views = (p.views || 0) + 1; db.save();
+    p.views = (p.views || 0) + 1; try { db.save(); } catch (e) { /* sayaç kaydedilemezse sayfa yine açılır */ }
     const rec = ls(RK, []).filter((x) => x !== id); rec.unshift(id); lsSet(RK, rec.slice(0, 12));
     document.title = `${p.title} · ${tl(p.price)} · ${s().bizName}`;
     const ag = agent(p.agent); const ph = E.photos(p); const st = s();
@@ -328,7 +328,7 @@
     $$('.dh [data-fav]', el).forEach((b) => b.classList.toggle('on', favs.includes(p.id))); $$('.dh [data-cmp]', el).forEach((b) => b.classList.toggle('on', cmp.includes(p.id)));
     on(el, 'click', '[data-lb]', (e, b) => lightbox(p, Number(b.dataset.lb)));
     on(el, 'click', '[data-jump]', (e, b) => { e.preventDefault(); $('#' + b.dataset.jump, el).scrollIntoView({ behavior: 'smooth' }); });
-    on(el, 'click', '[data-track]', (e, b) => { db.load(); const x = db.get('props', p.id); if (x) { x.contacts = (x.contacts || 0) + 1; db.save(); } });
+    on(el, 'click', '[data-track]', (e, b) => { db.load(); const x = db.get('props', p.id); if (x) { x.contacts = (x.contacts || 0) + 1; try { db.save(); } catch (er) { /* sayaç */ } } });
     mapInto($('#dmap', el), [p], true);
     $('#prt', el).onclick = () => print();
     $('#shr', el).onclick = async () => { const u = url(p); if (navigator.share) { try { await navigator.share({ title: p.title, url: u }); return; } catch (e) { /* iptal */ } } try { await navigator.clipboard.writeText(u); toast('İlan bağlantısı kopyalandı', 'ok'); } catch (e) { NS.prompt('İlan bağlantısı', u); } };

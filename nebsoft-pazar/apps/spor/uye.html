@@ -71,11 +71,11 @@
     $('#out').innerHTML = '';
     $('#root').innerHTML = `<div class="tk-view"><div class="tk-intro"><h1>Antrenmanın cebinde</h1><p>Telefon numaranla giriş yap; dijital üye kartın, ders rezervasyonların, ölçümlerin ve ödemelerin tek ekranda.</p></div>
       <div class="tk-find"><input class="input" id="ph" type="tel" inputmode="tel" placeholder="05xx xxx xx xx" aria-label="Telefon" autocomplete="tel" style="text-transform:none;letter-spacing:.02em"><button class="btn primary lg" id="go">Giriş</button></div>
-      <p class="small muted">Demo için <a href="#" id="hint">örnek üye numarası kullan</a>.</p>
+      ${NS.pub ? '' : '<p class="small muted">Demo için <a href="#" id="hint">örnek üye numarası kullan</a>.</p>'}
       <div class="tk-how"><div>${icon('qr')}<b>Turnikede QR</b>Kartını unutsan da telefonunla gir.</div><div>${icon('calendar')}<b>Ders rezervasyonu</b>Kontenjanı gör, yerini ayırt, 2 saat öncesine kadar iptal et.</div><div>${icon('trend')}<b>İlerlemen</b>Kilo, yağ ve kas ölçümlerinin grafiği.</div></div></div>`;
-    const go = () => { db.load(); const d = digits($('#ph').value); const m = d.length === 10 && db.find('members', (x) => digits(x.phone) === d); if (!m) return toast('Bu numarayla kayıtlı üye bulunamadı', 'err'); sset(m.id); render(); };
+    const go = () => { const d = digits($('#ph').value); if (d.length !== 10 || db.lookup({ phone: d }) === null) db.load(); const m = d.length === 10 && db.find('members', (x) => digits(x.phone) === d); if (!m) return toast('Bu numarayla kayıtlı üye bulunamadı', 'err'); sset(m.id); render(); };
     $('#go').onclick = go; $('#ph').onkeydown = (e) => { if (e.key === 'Enter') go(); };
-    $('#hint').onclick = (e) => { e.preventDefault(); const m = db.all('members').find((x) => x.end >= today() && !(x.freezeUntil >= today())); if (m) $('#ph').value = m.phone; };
+    if ($('#hint')) $('#hint').onclick = (e) => { e.preventDefault(); const m = db.all('members').find((x) => x.end >= today() && !(x.freezeUntil >= today())); if (m) $('#ph').value = m.phone; };
   }
 
   const myBookings = (m) => db.all('bookings', (b) => b.member === m.id);
@@ -114,13 +114,13 @@
     const ins = (m.installments || []).slice().sort((a, b) => a.due.localeCompare(b.due));
     const pays = db.all('payments', (p) => p.member === m.id).sort((a, b) => b.at.localeCompare(a.at));
     const debt = sum(ins.filter((i) => !i.paid && i.due <= today()), (i) => i.amount);
-    return `${debt ? `<div class="tk-call" style="--c:var(--err)"><h3>${icon('alert')} Vadesi geçen ödeme: ${money(debt)}</h3><button class="btn primary mt" data-pay="due">${icon('card')} Şimdi öde</button></div>` : ''}
+    return `${debt ? `<div class="tk-call" style="--c:var(--err)"><h3>${icon('alert')} Vadesi geçen ödeme: ${money(debt)}</h3><button class="btn primary mt" data-pay="due">${icon('card')} ${NS.pub ? 'Nasıl öderim?' : 'Şimdi öde'}</button></div>` : ''}
       <section class="tk-panel"><h3>${icon('calendar')} Taksitler</h3><div class="b">${ins.map((i, k) => `<div class="cls" style="grid-template-columns:1fr auto auto"><div><b>${k + 1}. taksit</b><div class="small muted">${NS.date(i.due)}</div></div><b>${money(i.amount)}</b>${i.paid ? '<span class="badge ok">Ödendi</span>' : i.due <= today() ? '<span class="badge err">Gecikti</span>' : '<span class="badge">Bekliyor</span>'}</div>`).join('') || '<div class="small muted">Taksit yok</div>'}</div></section>
       <section class="tk-panel"><h3>${icon('receipt')} Ödeme geçmişi</h3><div class="b">${pays.map((p) => `<div class="row between small" style="padding:6px 0"><span>${NS.date(p.at)} · ${esc(p.desc || '')} · ${esc(p.type)}</span><b>${money(p.amount)}</b></div>`).join('') || '<div class="small muted">Kayıt yok</div>'}</div></section>`;
   }
   function membership(m) {
     const left = Math.max(0, S().maxFreeze - (m.frozen || 0));
-    return `<section class="tk-panel"><h3>${icon('refresh')} Üyeliğimi yenile</h3><div class="b"><p class="small muted" style="margin-top:0">Yeni paket mevcut bitiş tarihinin (${NS.date(m.end)}) üzerine eklenir.</p><div class="plans">${db.all('plans').map((p, i) => `<label><input type="radio" name="pl" value="${p.id}" ${p.id === m.plan || (!i && !db.get('plans', m.plan)) ? 'checked' : ''}> ${esc(p.name)}<b>${money(p.price)}</b></label>`).join('')}</div><button class="btn primary block mt" data-pay="renew">${icon('card')} Kartla öde ve yenile</button></div></section>
+    return `<section class="tk-panel"><h3>${icon('refresh')} Üyeliğimi yenile</h3><div class="b"><p class="small muted" style="margin-top:0">Yeni paket mevcut bitiş tarihinin (${NS.date(m.end)}) üzerine eklenir.</p><div class="plans">${db.all('plans').map((p, i) => `<label><input type="radio" name="pl" value="${p.id}" ${p.id === m.plan || (!i && !db.get('plans', m.plan)) ? 'checked' : ''}> ${esc(p.name)}<b>${money(p.price)}</b></label>`).join('')}</div><button class="btn primary block mt" data-pay="renew">${icon('card')} ${NS.pub ? 'Yenileme ve ödeme bilgisi' : 'Kartla öde ve yenile'}</button></div></section>
       <section class="tk-panel"><h3>${icon('clock')} Üyeliğimi dondur</h3><div class="b">${m.freezeUntil >= today() ? `<p class="small" style="margin:0">Üyeliğin ${NS.date(m.freezeUntil)} tarihine kadar dondurulmuş.</p>` : left ? `<p class="small muted" style="margin-top:0">Yılda en fazla ${S().maxFreeze} gün; kalan hakkın <b>${left} gün</b>. Dondurulan süre bitiş tarihine eklenir.</p><div class="row nw"><select class="input" id="fz">${[7, 14, 21, 30].filter((d) => d <= left).map((d) => `<option value="${d}">${d} gün</option>`).join('') || `<option value="${left}">${left} gün</option>`}</select><button class="btn" id="fzb">Dondur</button></div>` : '<p class="small muted" style="margin:0">Dondurma hakkın kalmadı.</p>'}</div></section>`;
   }
 
@@ -128,7 +128,7 @@
     db.load();
     const m = db.get('members', sget()); if (!m) return login();
     $('#out').innerHTML = `<button class="btn ghost" id="lo">${icon('logout')}<span class="hide-sm">Çıkış</span></button>`;
-    $('#lo').onclick = () => { sset(null); login(); };
+    $('#lo').onclick = () => { sset(null); db.pubLogout(); login(); };
     const st = status(m); const p = plan(m.plan);
     const total = Math.max(1, daysBetween(m.start, m.end)); const used = Math.min(total, Math.max(0, daysBetween(m.start, new Date())));
     const monthIn = db.all('entries', (e) => e.member === m.id && e.at.slice(0, 7) === today().slice(0, 7)).length;
@@ -168,9 +168,11 @@
       const m = me();
       if (b.dataset.pay === 'due') {
         const due = (m.installments || []).filter((i) => !i.paid && i.due <= today()); const amt = sum(due, (i) => i.amount);
+        if (NS.pub) return NS.payInfo({ amount: amt, title: 'Geciken taksit ödemesi', s: S() });
         cardPay(amt, 'Geciken taksit ödemesi', () => { db.load(); const x = db.get('members', m.id); x.installments.forEach((i) => { if (!i.paid && i.due <= today()) i.paid = true; }); db.insert('payments', { member: x.id, amount: amt, at: new Date().toISOString(), type: 'online kart', desc: 'Taksit' }, true); db.save(); toast('Ödemen alındı, teşekkürler', 'ok'); render(); });
       } else {
         const p = plan(($('input[name=pl]:checked') || {}).value);
+        if (NS.pub) return NS.payInfo({ amount: p.price, title: `${p.name} — yenileme`, s: S(), note: 'Üyeliğinizi yenilemek için ödemenizi salonumuza elden veya havale ile yapabilirsiniz. Ödeme alındığında yeni paketiniz tanımlanır.' });
         cardPay(p.price, `${p.name} — yenileme`, () => {
           db.load(); const x = db.get('members', m.id); const base = x.end > today() ? x.end : today();
           x.plan = p.id; x.start = x.end > today() ? x.start : today(); x.end = iso(addDays(base, p.months * 30)); if (p.sessions) x.sessionsLeft = (x.sessionsLeft || 0) + p.sessions;

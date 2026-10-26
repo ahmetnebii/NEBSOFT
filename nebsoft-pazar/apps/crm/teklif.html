@@ -46,7 +46,7 @@
   const token = new URLSearchParams(location.search).get('t');
 
   function render() {
-    db.load();
+    if (!token || db.lookup({ t: token }) === null) db.load();
     const q = token && db.find('quotes', (x) => x.token === token);
     if (!q) { $('#root').innerHTML = `<div class="tk-panel"><div class="b empty">${icon('file')}<div>Teklif bulunamadı veya bağlantı geçersiz.</div><div class="small muted mt">Bağlantının tamamını kopyaladığınızdan emin olun ya da satış temsilcinizle iletişime geçin.</div></div></div>`; return; }
     // İlk açılış satış ekibine "görüntülendi" olarak düşer

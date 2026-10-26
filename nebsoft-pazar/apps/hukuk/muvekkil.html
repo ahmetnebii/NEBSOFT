@@ -32,15 +32,15 @@
   $('#bar').innerHTML = `<div class="tk-mark">${icon('shield')}</div><div class="grow"><b>${esc(S().bizName)}</b><span>Müvekkil portalı</span></div><span id="out"></span>`;
   function login() {
     $('#out').innerHTML = '';
-    $('#root').innerHTML = `<div class="tk-intro"><h1>Dosyalarınızın durumu, duruşma tarihleri ve masraflarınız</h1><p>TCKN / VKN ve avukatınızın gönderdiği giriş kodu ile girin.</p></div><div class="tk-find" style="flex-wrap:wrap"><input class="input" id="id" inputmode="numeric" placeholder="TCKN / VKN" aria-label="TCKN veya VKN"><input class="input" id="cd" placeholder="Giriş kodu" aria-label="Giriş kodu" style="max-width:160px;text-transform:uppercase"><button class="btn primary lg" id="go">Giriş</button></div><p class="small muted">Demo için <a href="#" id="hint">örnek müvekkil bilgisini doldurun</a>.</p>
+    $('#root').innerHTML = `<div class="tk-intro"><h1>Dosyalarınızın durumu, duruşma tarihleri ve masraflarınız</h1><p>TCKN / VKN ve avukatınızın gönderdiği giriş kodu ile girin.</p></div><div class="tk-find" style="flex-wrap:wrap"><input class="input" id="id" inputmode="numeric" placeholder="TCKN / VKN" aria-label="TCKN veya VKN"><input class="input" id="cd" placeholder="Giriş kodu" aria-label="Giriş kodu" style="max-width:160px;text-transform:uppercase"><button class="btn primary lg" id="go">Giriş</button></div><p class="small muted" ${NS.pub ? 'hidden' : ''}>Demo için <a href="#" id="hint">örnek müvekkil bilgisini doldurun</a>.</p>
       <div class="tk-how"><div>${icon('calendar')}<b>Duruşmalar</b>Tarih, saat ve mahkeme bilgisi; sonuçlar.</div><div>${icon('wallet')}<b>Masraf ve avans</b>Yatırdığınız avans ve harcamaların dökümü.</div><div>${icon('message')}<b>Avukatınıza yazın</b>Sorularınız dosyanıza kaydedilir.</div></div>`;
-    const go = () => { db.load(); const c = db.find('clients', (x) => x.idNo === $('#id').value.trim() && H.code(x) === $('#cd').value.trim().toUpperCase()); if (!c) return toast('Bilgiler hatalı', 'err'); sset(c.id); render(); };
+    const go = () => { if (db.lookup({ idNo: $('#id').value.trim(), code: $('#cd').value.trim().toUpperCase() }) === null) db.load(); const c = db.find('clients', (x) => x.idNo === $('#id').value.trim() && H.code(x) === $('#cd').value.trim().toUpperCase()); if (!c) return toast('Bilgiler hatalı', 'err'); sset(c.id); render(); };
     $('#go').onclick = go; $('#cd').onkeydown = (e) => { if (e.key === 'Enter') go(); };
     $('#hint').onclick = (e) => { e.preventDefault(); const c = db.all('clients')[1]; $('#id').value = c.idNo; $('#cd').value = H.code(c); };
   }
   function render() {
     db.load(); const c = db.get('clients', sget()); if (!c) return login();
-    $('#out').innerHTML = `<button class="btn ghost" id="lo">${icon('logout')} Çıkış</button>`; $('#lo').onclick = () => { sset(null); login(); };
+    $('#out').innerHTML = `<button class="btn ghost" id="lo">${icon('logout')} Çıkış</button>`; $('#lo').onclick = () => { sset(null); db.pubLogout(); login(); };
     const F = db.all('files', (f) => f.client === c.id); const ids = new Set(F.map((f) => f.id));
     const next = db.all('hearings', (h) => ids.has(h.file) && h.date >= today()).sort((a, b) => a.date.localeCompare(b.date));
     const past = db.all('hearings', (h) => ids.has(h.file) && h.result).sort((a, b) => b.date.localeCompare(a.date));

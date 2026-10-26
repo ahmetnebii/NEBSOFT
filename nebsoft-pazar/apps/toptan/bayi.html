@@ -43,10 +43,10 @@
     $('#out').innerHTML = '';
     $('#root').innerHTML = `<div class="tk-intro"><h1>Plasiyeri beklemeden, 7/24 sipariş verin</h1><p>Size özel fiyat listenizle sipariş verin; bakiyenizi ve geçmiş siparişlerinizi görün.</p></div>
       <div class="tk-find" style="flex-wrap:wrap"><input class="input" id="ph" type="tel" placeholder="05xx xxx xx xx" aria-label="Telefon"><input class="input" id="cd" placeholder="Bayi kodu" aria-label="Bayi kodu" style="max-width:160px;text-transform:uppercase"><button class="btn primary lg" id="go">Giriş</button></div>
-      <p class="small muted">Demo için <a href="#" id="hint">örnek bayi bilgisini doldurun</a>.</p>`;
-    const go = () => { db.load(); const c = db.find('customers', (x) => digits(x.phone) === digits($('#ph').value) && T.code(x) === $('#cd').value.trim().toUpperCase()); if (!c) return toast('Telefon veya kod hatalı', 'err'); sset(c.id); render(); };
+      ${NS.pub ? '' : '<p class="small muted">Demo için <a href="#" id="hint">örnek bayi bilgisini doldurun</a>.</p>'}`;
+    const go = () => { if (db.lookup({ phone: $('#ph').value, code: $('#cd').value.trim().toUpperCase() }) === null) db.load(); const c = db.find('customers', (x) => digits(x.phone) === digits($('#ph').value) && T.code(x) === $('#cd').value.trim().toUpperCase()); if (!c) return toast('Telefon veya kod hatalı', 'err'); sset(c.id); render(); };
     $('#go').onclick = go; $('#cd').onkeydown = (e) => { if (e.key === 'Enter') go(); };
-    $('#hint').onclick = (e) => { e.preventDefault(); const c = db.all('customers')[2]; $('#ph').value = c.phone; $('#cd').value = T.code(c); };
+    if ($('#hint')) $('#hint').onclick = (e) => { e.preventDefault(); const c = db.all('customers')[2]; $('#ph').value = c.phone; $('#cd').value = T.code(c); };
   }
   const lines = (c) => Object.entries(cart).filter(([, v]) => v > 0).map(([pid, qty]) => { const p = db.get('products', pid); return { pid, name: p.name, qty, price: T.price(p, c.list), vat: p.vat, disc: 0 }; });
   function katalog(c) {
@@ -68,7 +68,7 @@
   }
   function render() {
     db.load(); const c = db.get('customers', sget()); if (!c) return login();
-    $('#out').innerHTML = `<button class="btn ghost" id="lo">${icon('logout')} Çıkış</button>`; $('#lo').onclick = () => { sset(null); login(); };
+    $('#out').innerHTML = `<button class="btn ghost" id="lo">${icon('logout')} Çıkış</button>`; $('#lo').onclick = () => { sset(null); db.pubLogout(); login(); };
     const TB = { katalog: ['Sipariş ver', katalog], siparis: ['Siparişlerim', siparis], hesap: ['Hesabım', hesap] };
     $('#root').innerHTML = `<div class="tk-head"><div class="top"><span class="tk-pill">${esc(T.LISTS[c.list][0].split(' — ')[0])} fiyat listesi</span></div><h2>${esc(c.name)}</h2><p class="muted">${esc(c.district)} · Plasiyeriniz ${esc((db.get('reps', c.rep) || {}).name || '')} · ziyaret günü ${T.DAYS[c.day]}</p></div><div class="tabs2" role="tablist">${Object.entries(TB).map(([k, [l]]) => `<button role="tab" data-tab="${k}" aria-selected="${k === tab}">${l}</button>`).join('')}</div><div id="pane">${TB[tab][1](c)}</div>`;
     $$('[data-tab]').forEach((b) => { b.onclick = () => { tab = b.dataset.tab; render(); }; });

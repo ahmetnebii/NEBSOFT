@@ -63,11 +63,11 @@
     $('#out').innerHTML = '';
     $('#root').innerHTML = `<div class="tk-view"><div class="tk-intro"><h1>Çocuğunuzun eğitimi, her gün yanınızda</h1><p>Kayıtta verdiğiniz veli telefon numarasıyla girin; devam durumu, deneme sonuçları, ders programı ve ödemeler tek yerde.</p></div>
       <div class="tk-find"><input class="input" id="ph" type="tel" inputmode="tel" placeholder="05xx xxx xx xx" aria-label="Veli telefonu" autocomplete="tel" style="text-transform:none;letter-spacing:.02em"><button class="btn primary lg" id="go">Giriş</button></div>
-      <p class="small muted">Demo için <a href="#" id="hint">örnek veli numarası kullanın</a>.</p>
+      ${NS.pub ? '' : '<p class="small muted">Demo için <a href="#" id="hint">örnek veli numarası kullanın</a>.</p>'}
       <div class="tk-how"><div>${icon('check')}<b>Günlük yoklama</b>Her dersin yoklaması işlendiği anda burada.</div><div>${icon('chart')}<b>Deneme analizi</b>Ders bazında sınıf ortalamasıyla karşılaştırma ve gelişim grafiği.</div><div>${icon('message')}<b>Öğretmene mesaj</b>Mazeret bildirin, soru sorun; yanıt SMS ile gelir.</div></div></div>`;
-    const go = () => { db.load(); const d = digits($('#ph').value); if (d.length !== 10 || !db.all('students').some((s) => digits(s.parentPhone) === d)) return toast('Bu numarayla kayıtlı öğrenci bulunamadı', 'err'); sset(d); kid = null; render(); };
+    const go = () => { const d = digits($('#ph').value); if (d.length !== 10 || db.lookup({ phone: d }) === null) db.load(); if (d.length !== 10 || !db.all('students').some((s) => digits(s.parentPhone) === d)) return toast('Bu numarayla kayıtlı öğrenci bulunamadı', 'err'); sset(d); kid = null; render(); };
     $('#go').onclick = go; $('#ph').onkeydown = (e) => { if (e.key === 'Enter') go(); };
-    $('#hint').onclick = (e) => { e.preventDefault(); const s = db.all('students')[0]; if (s) $('#ph').value = s.parentPhone; };
+    if ($('#hint')) $('#hint').onclick = (e) => { e.preventDefault(); const s = db.all('students')[0]; if (s) $('#ph').value = s.parentPhone; };
   }
 
   function genel(s) {
@@ -106,7 +106,7 @@
     const debt = sum(ins.filter((i) => !i.paid && i.due <= today()), (i) => i.amount);
     const paid = sum(ins.filter((i) => i.paid), (i) => i.amount);
     return `<div class="stat3"><div><b>${money(s.fee)}</b><span>Dönem ücreti</span></div><div><b>${money(paid)}</b><span>Ödenen</span></div><div><b style="color:${debt ? 'var(--err)' : 'inherit'}">${money(debt)}</b><span>Vadesi geçen</span></div></div>
-      ${debt ? `<button class="btn primary lg block mb" data-pay>${icon('card')} Geciken ${money(debt)} tutarı kartla öde</button>` : ''}
+      ${debt ? `<button class="btn primary lg block mb" data-pay>${icon('card')} ${NS.pub ? `Geciken ${money(debt)} — ödeme bilgisi` : `Geciken ${money(debt)} tutarı kartla öde`}</button>` : ''}
       <section class="tk-panel"><h3>${icon('calendar')} Taksit planı</h3><div class="b">${ins.map((i, k) => `<div class="ln" style="grid-template-columns:1fr auto auto"><span><b>${k + 1}. taksit</b><div class="small muted">${NS.date(i.due)}</div></span><b>${money(i.amount)}</b>${i.paid ? NS.badge('Ödendi', 'ok') : i.due <= today() ? NS.badge('Gecikti', 'err') : NS.badge('Bekliyor')}</div>`).join('')}</div></section>
       <p class="small muted">Havale/EFT için açıklamaya öğrenci no <b>${esc(s.no)}</b> yazınız.</p>`;
   }
@@ -124,7 +124,7 @@
     if (!kids.find((k) => k.id === kid)) kid = kids[0].id;
     const s = db.get('students', kid);
     $('#out').innerHTML = `<button class="btn ghost" id="lo">${icon('logout')}<span class="hide-sm">Çıkış</span></button>`;
-    $('#lo').onclick = () => { sset(null); login(); };
+    $('#lo').onclick = () => { sset(null); db.pubLogout(); login(); };
     $('#root').innerHTML = `<div class="tk-view"><p class="small muted" style="margin:0 0 10px">Merhaba ${esc(String(s.parent || '').split(' ')[0])}</p>
       <div class="kids" role="group" aria-label="Öğrenciler">${kids.map((k) => `<button data-kid="${k.id}" aria-pressed="${k.id === s.id}"><span class="av">${esc(ini(k.name))}</span>${esc(k.name)}<span class="small muted">${esc(cls(k.cls).name)}</span></button>`).join('')}</div>
       <div class="tabs2" role="tablist">${[['genel', 'Genel'], ['program', 'Ders programı'], ['deneme', 'Denemeler'], ['odeme', 'Ödemeler'], ['mesaj', 'Mesaj & mazeret']].map(([k, l]) => `<button role="tab" data-tab="${k}" aria-selected="${tab === k}">${l}</button>`).join('')}</div>
@@ -144,6 +144,7 @@
   });
   on(root, 'click', '[data-pay]', () => {
     db.load(); const s = db.get('students', kid); const due = s.installments.filter((i) => !i.paid && i.due <= today()); const amt = sum(due, (i) => i.amount);
+    if (NS.pub) return NS.payInfo({ amount: amt, title: 'Taksit ödemesi', s: S() });
     const md = NS.modal({ title: `Taksit ödemesi · ${money(amt)}`, body: `<div class="form-grid"><div class="field full"><label>Kart numarası</label><input class="input mono" id="cc" inputmode="numeric" placeholder="0000 0000 0000 0000" autocomplete="cc-number"></div><div class="field"><label>Son kullanma</label><input class="input mono" id="ce" placeholder="AA/YY" autocomplete="cc-exp"></div><div class="field"><label>CVC</label><input class="input mono" id="cv" maxlength="4" placeholder="•••" autocomplete="cc-csc"></div></div><p class="small faint mt">Demo: gerçek ödeme alınmaz.</p>`,
       actions: [{ label: 'Vazgeç' }, { label: 'Öde', cls: 'primary', icon: 'lock', onClick: (close, b) => {
         if ($('#cc', b).value.replace(/\D/g, '').length !== 16 || $('#cv', b).value.length < 3) return toast('Kart bilgilerini kontrol edin', 'err');

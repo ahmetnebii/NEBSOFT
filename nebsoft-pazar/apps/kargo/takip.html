@@ -80,6 +80,7 @@
   function verify(sh) {
     return NS.prompt('Güvenlik için alıcının telefon numarasının son 4 hanesini yazın', '', { title: 'Alıcı doğrulama' }).then((v) => {
       if (v === null) return false;
+      if (NS.pub) { if (db.pubIdent && db.pubIdent.k === 'v') return true; const r = db.lookup({ no: sh.no, last4: String(v).replace(/\D/g, '') }); if (!r) toast('Numara eşleşmedi', 'err'); return r; }
       if (String(v).replace(/\D/g, '') !== String(sh.receiver.phone).replace(/\D/g, '').slice(-4)) { toast('Numara eşleşmedi', 'err'); return false; }
       return true;
     });
@@ -87,13 +88,14 @@
   const workdays = () => { const out = []; let d = new Date(); while (out.length < 5) { d = addDays(d, 1); if (d.getDay() !== 0) out.push(iso(d)); } return out; };
 
   function render(no) {
-    db.load();
     const k = (no || '').toUpperCase().trim();
+    const cur = db.pub && db.pubIdent && db.get('ships', db.pubIdent.i); // doğrulanmış gönderi tekrar sorgulanırsa doğrulama korunur
+    if (!k || (cur && cur.no === k) || db.lookup({ no: k }) === null) db.load();
     const sh = k && db.find('ships', (x) => x.no === k);
     if (!k) {
       const ex = (db.all('ships').filter((x) => x.status === 'dagitimda').slice(-1)[0] || db.all('ships').slice(-1)[0] || {}).no;
       $('#root').innerHTML = `<div class="tk-view"><div class="tk-intro"><h1>Gönderiniz nerede?</h1><p>Takip numaranızı yazın; paketinizin hangi aşamada olduğunu, tahmini teslimat saatini ve kuryenizi görün. Evde olmayacaksanız teslimat tercihinizi buradan değiştirin.</p></div>${finder('')}
-        ${ex ? `<p class="small muted">Demo için örnek: <a href="#" data-r="${esc(ex)}" class="mono">${esc(ex)}</a></p>` : ''}
+        ${ex && !NS.pub ? `<p class="small muted">Demo için örnek: <a href="#" data-r="${esc(ex)}" class="mono">${esc(ex)}</a></p>` : ''}
         <div class="tk-how"><div>${icon('clock')}<b>Saat aralığı</b>Dağıtıma çıkan paketler için tahmini saat aralığı gösterilir.</div><div>${icon('home')}<b>Evde yok musunuz?</b>Komşuya, görevliye bırakılmasını veya başka güne ertelenmesini isteyin.</div><div>${icon('cash')}<b>Kapıda ödeme</b>Kapıda ödemeli gönderilerde nakit veya kartla ödeyebilirsiniz.</div></div></div>`;
       return bind();
     }

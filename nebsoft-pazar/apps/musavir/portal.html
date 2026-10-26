@@ -43,11 +43,11 @@
     $('#out').innerHTML = '';
     $('#root').innerHTML = `<div class="tk-intro"><h1>Vergileriniz, evraklarınız ve müşavirinizle yazışmalarınız tek yerde</h1><p>VKN / TCKN ve müşavirinizin SMS ile gönderdiği giriş kodunu yazın.</p></div>
       <div class="tk-find" style="flex-wrap:wrap"><input class="input" id="vk" inputmode="numeric" placeholder="VKN / TCKN" aria-label="VKN"><input class="input" id="cd" placeholder="Giriş kodu" aria-label="Giriş kodu" style="max-width:180px;text-transform:uppercase"><button class="btn primary lg" id="go">Giriş</button></div>
-      <p class="small muted">Demo için <a href="#" id="hint">örnek mükellef bilgisini doldurun</a>.</p>
-      <div class="tk-how"><div>${icon('calendar')}<b>Ödenecek vergiler</b>Verilen beyannamelerin tutarı ve son ödeme günü.</div><div>${icon('upload')}<b>Evrak gönderin</b>Fatura, ekstre ve Z raporlarını telefondan yükleyin.</div><div>${icon('message')}<b>Müşavirinize yazın</b>Sorularınız kayıt altında, cevabı burada.</div></div>`;
-    const go = () => { db.load(); const c = db.find('clients', (x) => x.vkn === $('#vk').value.trim() && M.code(x) === $('#cd').value.trim().toUpperCase()); if (!c) return toast('VKN veya giriş kodu hatalı', 'err'); sset(c.id); render(); };
+      ${NS.pub ? '' : '<p class="small muted">Demo için <a href="#" id="hint">örnek mükellef bilgisini doldurun</a>.</p>'}
+      <div class="tk-how"><div>${icon('calendar')}<b>Ödenecek vergiler</b>Verilen beyannamelerin tutarı ve son ödeme günü.</div><div>${icon('upload')}<b>Evrak gönderin</b>${NS.pub ? 'Fatura, ekstre ve Z raporlarının durumunu takip edin.' : 'Fatura, ekstre ve Z raporlarını telefondan yükleyin.'}</div><div>${icon('message')}<b>Müşavirinize yazın</b>Sorularınız kayıt altında, cevabı burada.</div></div>`;
+    const go = () => { if (db.lookup({ vkn: $('#vk').value.trim(), code: $('#cd').value.trim().toUpperCase() }) === null) db.load(); const c = db.find('clients', (x) => x.vkn === $('#vk').value.trim() && M.code(x) === $('#cd').value.trim().toUpperCase()); if (!c) return toast('VKN veya giriş kodu hatalı', 'err'); sset(c.id); render(); };
     $('#go').onclick = go; $('#cd').onkeydown = (e) => { if (e.key === 'Enter') go(); };
-    $('#hint').onclick = (e) => { e.preventDefault(); const c = db.all('clients')[1]; $('#vk').value = c.vkn; $('#cd').value = M.code(c); };
+    if ($('#hint')) $('#hint').onclick = (e) => { e.preventDefault(); const c = db.all('clients')[1]; $('#vk').value = c.vkn; $('#cd').value = M.code(c); };
   }
   function vergi(c) {
     const F = db.all('filings', (f) => f.client === c.id).sort((a, b) => b.due.localeCompare(a.due));
@@ -61,7 +61,7 @@
     const d = new Date(); d.setDate(1); d.setMonth(d.getMonth() - 1); const m = NS.iso(d).slice(0, 7);
     const docs = db.data.docs[`${c.id}|${m}`] || {};
     return `<section class="tk-panel"><h3>${icon('file')} ${perTxt(m)} dönemi evrakları</h3><div class="b">${M.DOCS.map((k) => `<div class="ln"><span>${esc(k)}</span>${docs[k] === 'geldi' ? NS.badge('Teslim alındı', 'ok') : NS.badge(docs[k] === 'eksik' ? 'Eksik' : 'Bekleniyor', docs[k] === 'eksik' ? 'warn' : 'err')}</div>`).join('')}</div></section>
-      <section class="tk-panel"><h3>${icon('upload')} Evrak yükle</h3><div class="b"><div class="field mb"><label for="dt">Belge türü</label><select class="input" id="dt">${M.DOCS.map((k) => `<option>${esc(k)}</option>`).join('')}</select></div><label class="up"><input type="file" id="fl" multiple hidden accept="image/*,application/pdf,.xls,.xlsx,.xml,.zip">${icon('upload')}<div><b>Dosya seçin veya fotoğraf çekin</b></div><div class="small muted">PDF, Excel, XML, fotoğraf</div></label></div></section>`;
+      <section class="tk-panel"><h3>${icon('upload')} ${NS.pub ? 'Evrak bildir' : 'Evrak yükle'}</h3><div class="b"><div class="field mb"><label for="dt">Belge türü</label><select class="input" id="dt">${M.DOCS.map((k) => `<option>${esc(k)}</option>`).join('')}</select></div>${NS.pub ? `<p class="small muted" style="margin-top:0">Belgeleri müşavirinize e-posta veya WhatsApp ile ilettikten sonra buradan bildirin; dönem listeniz güncellenir.</p><button class="btn primary block" id="dn">${icon('check')} İlettim olarak bildir</button>` : ''}<label class="up" ${NS.pub ? 'hidden' : ''}><input type="file" id="fl" multiple hidden accept="image/*,application/pdf,.xls,.xlsx,.xml,.zip">${icon('upload')}<div><b>Dosya seçin veya fotoğraf çekin</b></div><div class="small muted">PDF, Excel, XML, fotoğraf</div></label></div></section>`;
   }
   function ucret(c) {
     const fees = db.all('fees', (f) => f.client === c.id).sort((a, b) => b.period.localeCompare(a.period)); const pays = db.all('payments', (p) => p.client === c.id);
@@ -77,12 +77,13 @@
   }
   function render() {
     db.load(); const c = db.get('clients', sget()); if (!c) return login();
-    $('#out').innerHTML = `<button class="btn ghost" id="lo">${icon('logout')} Çıkış</button>`; $('#lo').onclick = () => { sset(null); login(); };
+    $('#out').innerHTML = `<button class="btn ghost" id="lo">${icon('logout')} Çıkış</button>`; $('#lo').onclick = () => { sset(null); db.pubLogout(); login(); };
     const T = { vergi: ['Vergilerim', vergi], evrak: ['Evrak', evrak], ucret: ['Ücret', ucret], mesaj: ['Mesajlar', mesaj] };
     $('#root').innerHTML = `<div class="tk-head"><div class="top"><span class="tk-pill">${esc(M.TYPES[c.type])}</span></div><h2>${esc(c.name)}</h2><p class="muted">VKN ${esc(c.vkn)} · ${esc(c.taxOffice || '')} V.D.</p></div>
       <div class="tabs2" role="tablist">${Object.entries(T).map(([k, [l]]) => `<button role="tab" data-tab="${k}" aria-selected="${k === tab}">${l}</button>`).join('')}</div><div id="pane">${T[tab][1](c)}</div>`;
     $$('[data-tab]').forEach((b) => { b.onclick = () => { tab = b.dataset.tab; render(); }; });
     if ($('#fl')) $('#fl').onchange = (e) => { const files = [...e.target.files]; if (!files.length) return; const k = $('#dt').value; const d = new Date(); d.setDate(1); d.setMonth(d.getMonth() - 1); const m = NS.iso(d).slice(0, 7); db.data.docs[`${c.id}|${m}`] = { ...(db.data.docs[`${c.id}|${m}`] || {}), [k]: 'geldi' }; db.insert('messages', { client: c.id, at: new Date().toISOString(), from: 'mukellef', text: `${k} yüklendi (${files.length} dosya)`, file: files.map((f) => f.name).join(', ') }); toast('Evrakınız müşavirinize iletildi', 'ok'); render(); };
+    if ($('#dn')) $('#dn').onclick = () => { const k = $('#dt').value; const d = new Date(); d.setDate(1); d.setMonth(d.getMonth() - 1); const m = NS.iso(d).slice(0, 7); db.data.docs[`${c.id}|${m}`] = { ...(db.data.docs[`${c.id}|${m}`] || {}), [k]: 'geldi' }; db.insert('messages', { client: c.id, at: new Date().toISOString(), from: 'mukellef', text: `${k} iletildi (portal bildirimi)` }); toast('Bildiriminiz müşavirinize iletildi', 'ok'); render(); };
     if ($('#ms')) $('#ms').onclick = () => { const t = $('#mx').value.trim(); if (!t) return; db.insert('messages', { client: c.id, at: new Date().toISOString(), from: 'mukellef', text: t }); toast('Mesajınız iletildi', 'ok'); render(); };
   }
   render();

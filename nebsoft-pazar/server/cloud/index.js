@@ -53,4 +53,9 @@ async function init() {
   let hasAdmin = false; if (db.ready()) hasAdmin = !!(await db.one("SELECT id FROM users WHERE role='superadmin' LIMIT 1"));
   if (!hasAdmin) { const t = cfg.setupToken(true); console.log(`\n  Kurulum gerekli → /admin/  ·  Kurulum anahtarı: ${t}\n  (anahtar ayrıca ${cfg.DATA}/setup-token.txt dosyasında)\n`); }
 }
-module.exports = { handle, init, send };
+// Oturumdaki işletme sahibinin işletme adresi (uygulama sayfası yönlendirmesi için)
+async function tenantSlug(req) {
+  const u = await auth.current(req); if (!u || !u.tenant_id) return null;
+  const t = await db.one('SELECT slug FROM tenants WHERE id=?', [u.tenant_id]); return t ? t.slug : null;
+}
+module.exports = { handle, init, send, tenantSlug, db };

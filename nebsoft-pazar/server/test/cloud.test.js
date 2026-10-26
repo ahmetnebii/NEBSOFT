@@ -81,7 +81,35 @@ function client() {
     r = await C('GET', '/api/auth/me'); const l2 = r.j.licenses.find((l) => l.product === 'pos'); assert.equal(l2.status, 'aktif'); assert.ok((new Date(l2.end) - Date.now()) / 864e5 > 360); ok('lisans 12 ay aktif oldu');
     r = await A('POST', `/api/admin/orders/${oid}/approve`, {}); assert.equal(r.status, 400); ok('aynı sipariş ikinci kez onaylanamaz');
 
-    // 6) Hesap kilitleme
+    // 6) Müşteriye açık sayfa (online randevu): yalnızca izinli veri, sunucu tarafı doğrulama
+    r = await C('GET', '/api/auth/me'); const slug = r.j.tenant.slug;
+    await C('POST', '/api/trial', { product: 'randevu' });
+    const doc = { _meta: {}, _settings: { bizName: 'Veli Kuaför', smsApiKey: 'GIZLI-ANAHTAR', autoConfirm: false, cancelHours: 2 },
+      services: [{ id: 's1', name: 'Saç kesimi', duration: 30, price: 500, online: true, staff: ['u1'], cost: 120 }],
+      staff: [{ id: 'u1', name: 'Ayşe', active: true, hours: Object.fromEntries([0, 1, 2, 3, 4, 5, 6].map((d) => [d, { start: '09:00', end: '20:00' }])) }],
+      customers: [{ id: 'c1', name: 'Eski Müşteri', phone: '0532 111 22 33' }], appointments: [], blocks: [] };
+    r = await C('PUT', '/api/data/randevu', { data: doc, base: 0 }); assert.equal(r.j.ok, true, JSON.stringify(r.j));
+    const P = client(); const api = `/api/public/${slug}/randevu`;
+    r = await P('POST', api + '/view', {}); const pv = JSON.stringify(r.j);
+    assert.equal(r.j.ok, true); assert.ok(!pv.includes('GIZLI-ANAHTAR') && !pv.includes('Eski Müşteri') && !pv.includes('"cost"')); ok('müşteri sayfası: gizli ayar, müşteri listesi ve maliyet gönderilmiyor');
+    const day = new Date(Date.now() + 2 * 864e5 + 3 * 3600e3).toISOString().slice(0, 10);
+    r = await P('POST', api + '/ops', { ops: [{ c: 'customers', op: 'ins', rec: { id: 'newc1', name: 'Yeni Müşteri', phone: '0555 000 11 22' } }, { c: 'appointments', op: 'ins', rec: { id: 'apt001', date: day, start: '10:00', staff: 'u1', service: 's1', customer: 'newc1', price: 1, status: 'onay' } }] });
+    assert.equal(r.j.ok, true, JSON.stringify(r.j));
+    let saved = (await C('GET', '/api/data/randevu')).j.data.appointments.find((a) => a.id === 'apt001');
+    assert.equal(saved.price, 500); assert.equal(saved.status, 'bekliyor'); ok('online randevu: fiyat ve durum sunucuda belirlendi (istemci değeri yok sayıldı)');
+    r = await P('POST', api + '/ops', { ops: [{ c: 'appointments', op: 'ins', rec: { id: 'apt002', date: day, start: '10:15', staff: 'u1', service: 's1', customer: 'newc1' } }] }); assert.equal(r.status, 409); ok('aynı saate ikinci randevu reddedildi');
+    r = await P('POST', api + '/ops', { ops: [{ c: 'appointments', op: 'upd', id: 'apt001', set: { status: 'iptal' } }] }); assert.equal(r.status, 403); ok('kimliksiz ziyaretçi randevu iptal edemez');
+    r = await P('POST', api + '/ops', { ops: [{ c: 'staff', op: 'del', id: 'u1' }] }); assert.equal(r.status, 403); ok('izin verilmeyen koleksiyon değiştirilemez');
+    r = await P('POST', api + '/view', { q: { phone: '0555 000 11 22' } }); assert.ok(r.j.token); const tok = r.j.token;
+    r = await P('POST', api + '/ops', { token: tok.slice(0, -2) + 'xx', ops: [{ c: 'appointments', op: 'upd', id: 'apt001', set: { status: 'iptal' } }] }); assert.equal(r.status, 403); ok('değiştirilmiş belirteç reddedildi');
+    r = await P('POST', api + '/ops', { token: tok, ops: [{ c: 'appointments', op: 'upd', id: 'apt001', set: { status: 'iptal', price: 0 } }] }); assert.equal(r.status, 403);
+    r = await P('POST', api + '/ops', { token: tok, ops: [{ c: 'appointments', op: 'upd', id: 'apt001', set: { status: 'iptal' } }] }); assert.equal(r.j.ok, true, JSON.stringify(r.j)); ok('telefonla giriş yapan müşteri yalnızca izinli alanla kendi randevusunu iptal etti');
+    const Bf = client(); for (let i = 0; i < 20; i++) await Bf('POST', api + '/view', { q: { phone: '0599' + String(1000000 + i) } });
+    r = await Bf('POST', api + '/view', { q: { phone: '0555 000 11 22' } }); assert.equal(r.status, 429); ok('müşteri girişinde kaba kuvvet denemesi engellendi');
+    r = await P('POST', `/api/public/${slug}/otel/view`, {}); assert.equal(r.status, 402); ok('lisansı olmayan hizmetin müşteri sayfası kapalı');
+    r = await P('POST', `/api/public/olmayan-isletme/randevu/view`, {}); assert.equal(r.status, 404); ok('bilinmeyen işletme 404');
+
+    // 7) Hesap kilitleme
     const L = client();
     for (let i = 0; i < 5; i++) await L('POST', '/api/auth/login', { email: 'musteri@firma.test', pass: 'Yanlis9999' });
     r = await L('POST', '/api/auth/login', { email: 'musteri@firma.test', pass: 'Sifre1234' }); assert.equal(r.status, 401); assert.ok(/kilit/i.test(r.j.error)); ok('5 hatalı denemede hesap kilitlendi');

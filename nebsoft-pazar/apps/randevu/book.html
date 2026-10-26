@@ -171,7 +171,7 @@
     e.preventDefault();
     const p = await NS.prompt('Randevu aldığınız telefon numarası', '', { title: 'Randevumu sorgula', type: 'tel' });
     if (!p) return;
-    db.load();
+    if (db.lookup({ phone: p }) === null) db.load();
     const c = db.find('customers', (x) => String(x.phone).replace(/\D/g, '').slice(-10) === p.replace(/\D/g, '').slice(-10));
     const list = c ? db.all('appointments', (a) => a.customer === c.id && a.date >= today() && !['iptal', 'tamam'].includes(a.status)).sort((a, b) => (a.date + a.start).localeCompare(b.date + b.start)) : [];
     NS.modal({

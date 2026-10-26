@@ -217,7 +217,7 @@
         <span class="lbl" id="lf">Daire</span><div class="fgrid" id="fg" role="group" aria-labelledby="lf"></div>
         <label class="lbl" for="p0">Telefonunuzun son 4 hanesi</label><div class="pin">${[0, 1, 2, 3].map((i) => `<input id="p${i}" inputmode="numeric" maxlength="1" autocomplete="off" aria-label="${i + 1}. hane">`).join('')}</div>
         <button class="btn primary lg block" style="margin-top:20px;height:50px" id="go">Giriş yap</button>
-        <p class="small faint mt center">Demo için <a href="#" id="hint">bu dairenin kodunu göster</a></p></div></section></div>`;
+        ${NS.pub ? '' : '<p class="small faint mt center">Demo için <a href="#" id="hint">bu dairenin kodunu göster</a></p>'}</div></section></div>`;
     const light = () => $$('.tower i').forEach((w) => w.classList.toggle('lit', w.dataset.w === sel));
     const drawFlats = () => {
       $$('[data-bl]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.bl === bl)));
@@ -234,13 +234,14 @@
     });
     const submit = () => {
       if (!sel) return toast('Önce dairenizi seçin', 'err');
-      const f = db.get('flats', sel); const p = pins.map((x) => x.value).join('');
-      const ok = p.length === 4 && [f.ownerPhone, f.tenantPhone].filter(Boolean).some((x) => x.replace(/\D/g, '').endsWith(p));
+      const p = pins.map((x) => x.value).join('');
+      const pr = p.length === 4 ? db.lookup({ flat: sel, pin: p }) : false; const f = db.get('flats', sel);
+      const ok = pr !== null ? pr : p.length === 4 && [f.ownerPhone, f.tenantPhone].filter(Boolean).some((x) => x.replace(/\D/g, '').endsWith(p));
       if (!ok) { toast('Telefon numarası bu daireyle eşleşmedi', 'err'); pins.forEach((x) => { x.value = ''; }); pins[0].focus(); return; }
       store.set(KEY, f.id); if (!location.hash) location.hash = '#/ozet'; render();
     };
     $('#go').onclick = submit;
-    $('#hint').onclick = (e) => { e.preventDefault(); if (!sel) return toast('Önce bir daire seçin'); const f = db.get('flats', sel); toast(`${f.block} Blok ${f.no}: ${f.ownerPhone.replace(/\D/g, '').slice(-4)}`); };
+    if ($('#hint')) $('#hint').onclick = (e) => { e.preventDefault(); if (!sel) return toast('Önce bir daire seçin'); const f = db.get('flats', sel); toast(`${f.block} Blok ${f.no}: ${f.ownerPhone.replace(/\D/g, '').slice(-4)}`); };
     drawFlats();
   }
 
@@ -271,7 +272,7 @@
           <a class="btn ghost icon" href="#/duyuru" aria-label="Duyurular" style="position:relative">${icon('bell')}${badges.duyuru ? `<span class="dot" style="position:absolute;top:-2px;right:-4px;margin:0">${badges.duyuru}</span>` : ''}</a><button class="btn ghost icon" data-th data-theme-ico aria-label="Tema">${icon(NS.getTheme() === 'dark' ? 'sun' : 'moon')}</button><button class="btn ghost icon" data-out aria-label="Çıkış">${icon('logout')}</button></header>
         <main class="content"><div class="view" id="v"></div></main></div>
       <nav class="bnav">${NAV.slice(0, 5).map((n) => `<a href="#/${n.id}" ${cur(n.id)}>${icon(n.icon)}${esc(n.short)}${dot(n.id)}</a>`).join('')}</nav></div>`;
-    on($('.shell'), 'click', '[data-out]', () => { store.set(KEY, null); location.hash = ''; gate(); });
+    on($('.shell'), 'click', '[data-out]', () => { store.set(KEY, null); db.pubLogout(); location.hash = ''; gate(); });
     on($('.shell'), 'click', '[data-th]', NS.toggleTheme);
     document.title = `${NAV.find((n) => n.id === page).label} · ${s().bizName}`;
     PAGES[page]($('#v'), f);
@@ -293,7 +294,7 @@
     const next = (() => { const n = new Date(); const due = new Date(n.getFullYear(), n.getMonth(), s().dueDay); if (n > due) due.setMonth(due.getMonth() + 1); return due; })();
     return `<div class="bal"><div class="l"><div class="small muted">Güncel borcunuz</div><div class="amt ${d > 0 ? 'due' : 'clear'}">${money(d)}</div>
         <div class="small muted">${d > 0 ? `${fee > 0 ? `Gecikme faizi: <b>${money(fee)}</b> (aylık %${s().lateFee}) · ` : ''}` : 'Borcunuz bulunmuyor, teşekkür ederiz. · '}Sıradaki son ödeme: <b>${NS.dateLong(iso(next))}</b></div>${strip(f)}</div>
-      <div class="r">${d > 0 ? `<button class="btn primary lg block" data-pay>${icon('card')} Kartla öde · ${money(d + fee)}</button>` : ''}
+      <div class="r">${d > 0 ? `<button class="btn primary lg block" data-pay>${icon('card')} ${NS.pub ? 'Ödeme bilgisi' : 'Kartla öde'} · ${money(d + fee)}</button>` : ''}
         <div class="small muted">veya havale / EFT: ${esc(s().bank)}</div><div class="iban"><span>${esc(s().iban)}</span><button class="btn ghost icon sm" data-copy="${esc(s().iban.replace(/\s/g, ''))}" aria-label="IBAN kopyala">${icon('copy')}</button></div>
         <div class="small muted">Açıklamaya <b>${esc(f.id)}</b> yazın; ödemeniz otomatik eşleşir.</div></div></div>`;
   }
@@ -304,6 +305,7 @@
     const open = db.all('dues', (d) => d.flat === f.id && d.amount > (d.paid || 0)).sort((a, b) => a.period.localeCompare(b.period));
     const fee = SITE.lateFee(db, f.id);
     if (!open.length) return toast('Ödenecek borcunuz yok');
+    if (NS.pub) return NS.payInfo({ amount: sum(open, (d) => d.amount - (d.paid || 0)) + (fee > 0 ? fee : 0), title: 'Aidat ödemesi', s: s(), note: `Aidatınızı yönetimin banka hesabına havale ile veya yönetim ofisine elden ödeyebilirsiniz. Havale açıklamasına "${f.block} Blok ${f.no}" yazın. Ödemeniz işlendiğinde bu sayfada görünür.` });
     const m = NS.modal({
       title: 'Kartla aidat ödemesi', body: `<div class="mb">${open.map((d) => `<label class="row2" style="cursor:pointer"><input type="checkbox" checked data-d="${d.id}"><span class="g"><span class="t">${esc(d.desc)}</span><span class="m" style="display:block">${perName(d.period)}</span></span><b class="num">${money(d.amount - (d.paid || 0))}</b></label>`).join('')}
         ${fee > 0 ? `<div class="row2"><span class="g"><span class="t">Gecikme faizi</span><span class="m" style="display:block">Seçili borçlar tamamen ödenirse alınır</span></span><b class="num" id="fe">${money(fee)}</b></div>` : ''}</div>

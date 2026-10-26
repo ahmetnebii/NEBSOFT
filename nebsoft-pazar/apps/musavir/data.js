@@ -35,7 +35,8 @@ window.MSV = {
     });
     return out.map((x) => ({ ...x, due: x.period.length === 4 || x.type === 'kdv3' ? `${y}-${String(m).padStart(2, '0')}-${String(MSV.T[x.type].day).padStart(2, '0')}` : MSV.due(x.type, x.period) }));
   },
-  code: (c) => String(c.vkn).slice(-4) + c.id.replace(/\W/g, '').slice(-2).toUpperCase(),
+  // Portal giriş kodu: işletme 'portal bilgisini gönder' dediğinde rastgele kod üretilir (NS.portalCode); yoksa eski formül
+  code: (c) => c.portalCode || String(c.vkn).slice(-4) + c.id.replace(/\W/g, '').slice(-2).toUpperCase(),
   seed(db) {
     const { rand, pick, addDays } = NS;
     db.data._settings = { bizName: 'Akın Mali Müşavirlik', bizPhone: '0312 444 20 26', bizAddress: 'Kızılay, Atatürk Bulvarı No:112 K:4, Çankaya/Ankara', smmNo: '06.123456', docDay: 10, iban: 'TR33 0001 2009 4520 0058 0001 26' };

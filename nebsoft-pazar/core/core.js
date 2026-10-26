@@ -186,9 +186,23 @@
     } catch (e) { return null; }
   })();
   const stopPage = (msg, to) => { try { sessionStorage.setItem('nebsoft:notice', msg); } catch (e) { /* yok */ } if (to) location.replace(to); throw new Error(msg); };
+  // İşletme adresi: /t/<işletme>/apps/... — müşteriye verilen linkler ve QR kodlar hangi işletmeye ait olduğunu taşır
+  const TENANT = (location.pathname.match(/^\/t\/([a-z0-9-]+)\//) || [])[1] || null;
   if (CLOUD && IS_APP_PAGE && !CLOUD.user) stopPage('Uygulamayı kullanmak için giriş yapın', '/#/giris');
+  if (CLOUD && IS_APP_PAGE && CLOUD.tenant && TENANT !== CLOUD.tenant.slug) {
+    location.replace(`/t/${CLOUD.tenant.slug}${location.pathname.replace(/^\/t\/[a-z0-9-]+/, '')}${location.search}${location.hash}`);
+    throw new Error('yönlendiriliyor');
+  }
+  // Müşteri sayfası (randevu, takip, portal...): işletmenin verisi herkese açık API'den, yalnızca izin verilen kısmıyla gelir
+  const PUB = CLOUD && TENANT && APP_ID && !IS_APP_PAGE ? { slug: TENANT, api: `/api/public/${TENANT}/${APP_ID}`, tk: `nebsoft:pub:${TENANT}:${APP_ID}` } : null;
+  const pubToken = (v) => { try { if (v === undefined) return sessionStorage.getItem(PUB.tk) || ''; if (v) sessionStorage.setItem(PUB.tk, v); else sessionStorage.removeItem(PUB.tk); } catch (e) { /* yok */ } return v; };
+  function pubStop(msg) {
+    const show = () => { document.body.innerHTML = `<div style="max-width:440px;margin:18vh auto;padding:28px;text-align:center;font-family:system-ui,sans-serif"><h2 style="margin:0 0 10px">Sayfa açılamadı</h2><p style="color:#64748b;line-height:1.6">${String(msg).replace(/[<>&]/g, '')}</p></div>`; };
+    if (document.body) show(); else document.addEventListener('DOMContentLoaded', show);
+    throw new Error(msg);
+  }
   const pendKey = (k) => `nebsoft:pending:${CLOUD && CLOUD.tenant ? CLOUD.tenant.id : '-'}:${k}`;
-  const syncJ = (method, url, body) => { const x = new XMLHttpRequest(); x.open(method, url, false); x.setRequestHeader('x-ns-csrf', '1'); if (body) x.setRequestHeader('Content-Type', 'application/json'); x.send(body ? JSON.stringify(body) : null); let j = {}; try { j = JSON.parse(x.responseText); } catch (e) { /* yok */ } return { status: x.status, j }; };
+  const syncJ = (method, url, body) => { const x = new XMLHttpRequest(); x.open(method, url, false); x.setRequestHeader('x-ns-csrf', '1'); if (body) x.setRequestHeader('Content-Type', 'application/json'); try { x.send(body ? JSON.stringify(body) : null); } catch (e) { return { status: 0, j: {} }; } let j = {}; try { j = JSON.parse(x.responseText); } catch (e) { /* yok */ } return { status: x.status, j }; };
   const isObj = (v) => v && typeof v === 'object' && !Array.isArray(v);
   const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
   // 3 yönlü birleştirme: base = son eşitlenen, local = bu cihaz, remote = sunucudaki. Kayıt (id) düzeyinde; çakışmada bu cihaz kazanır.
@@ -243,12 +257,14 @@
       this.seed = seed;
       this.listeners = [];
       this.undoStack = [];
-      this.cloud = !!(CLOUD && CLOUD.user && (CLOUD.apps || []).includes(key));
-      if (CLOUD && CLOUD.user && key === APP_ID && !this.cloud) stopPage('Bu uygulama için geçerli lisans veya deneme yok', `/#/urun/${key}`);
+      this.pub = !!(PUB && key === APP_ID);
+      this.cloud = !this.pub && !!(CLOUD && CLOUD.user && (CLOUD.apps || []).includes(key));
+      if (CLOUD && CLOUD.user && key === APP_ID && !this.cloud && !this.pub) stopPage('Bu uygulama için geçerli lisans veya deneme yok', `/#/urun/${key}`);
       this.load();
       if (this.cloud) this._watch();
     }
     load() {
+      if (this.pub) return this._pubLoad();
       if (this.cloud) return this._cloudLoad();
       let raw = null;
       try { raw = JSON.parse(localStorage.getItem(this.key)); } catch (e) { raw = null; }
@@ -275,6 +291,72 @@
       this._snap = JSON.stringify(this.data);
       if (this._dirty) this._queue(10);
     }
+    // ----- Müşteri sayfası modu -----
+    // Sunucudan gelen görünümü uygular; sayfanın elindeki kayıt nesneleri (id ile) korunur, böylece bekleyen değişkenler güncel kalır
+    _pubApply(j) {
+      const old = this.data || {}; const data = j.data || {};
+      Object.keys(data).forEach((k) => {
+        if (!Array.isArray(data[k]) || !Array.isArray(old[k])) return;
+        const m = new Map(old[k].filter((x) => x && x.id != null).map((x) => [x.id, x]));
+        data[k] = data[k].map((x) => { const o = x && m.get(x.id); return o ? Object.assign(o, x) : x; });
+      });
+      data._meta = data._meta || {}; data._settings = data._settings || {};
+      this.data = data; this._v = j.version; this._base = JSON.stringify(data); this._snap = this._base;
+      if (j.tenant) this.pubTenant = j.tenant;
+      this.pubIdent = j.ident || null;
+    }
+    _pubLoad(q) {
+      const r = syncJ('POST', PUB.api + '/view', { q: q || null, token: pubToken(), x: this._pubX || null });
+      if (q && r.status === 401) return false;
+      if (r.status === 429) { toast(r.j.error, 'err'); return false; }
+      if (r.status !== 200) { if (q) { toast(r.j.error || 'Sunucuya ulaşılamadı', 'err'); return false; } pubStop(r.j.error || 'Sunucuya ulaşılamadı. Lütfen biraz sonra tekrar deneyin.'); }
+      if (r.j.token) pubToken(r.j.token);
+      else if (!r.j.ident && pubToken()) pubToken(null);
+      this._pubApply(r.j);
+      return true;
+    }
+    // Sorgulama / müşteri girişi (takip kodu, telefon + şifre...). Müşteri sayfası değilse null döner, sayfa kendi kontrolünü yapar.
+    lookup(q) { if (!this.pub) return null; return this._pubLoad(q); }
+    // Kimlik gerektirmeyen ek sorgu (ör. indirim kodu); sonraki tüm yüklemelerde de gönderilir
+    pubQuery(x) { if (!this.pub) return; this._pubX = x; this._pubLoad(); }
+    pubLogout() { if (!this.pub) return; pubToken(null); this._pubLoad(); }
+    // Değişiklikleri kayıt düzeyinde işlemlere çevir: ekle / alan güncelle / sil
+    _pubDiff() {
+      const base = JSON.parse(this._base || '{}'); const cur = this.data; const ops = [];
+      new Set([...Object.keys(base), ...Object.keys(cur)]).forEach((k) => {
+        if (k.startsWith('_')) return;
+        const a = base[k], b = cur[k];
+        if (same(a, b)) return;
+        if (isObj(b) && (a === undefined || isObj(a))) { // nesne biçimli koleksiyon: anahtar bazında
+          const A0 = a || {}; new Set([...Object.keys(A0), ...Object.keys(b)]).forEach((key) => { if (!same(A0[key], b[key])) ops.push({ c: k, op: 'key', key, val: b[key] === undefined ? null : b[key] }); });
+          return;
+        }
+        if (!Array.isArray(b)) { ops.push({ c: k, op: 'bad' }); return; }
+        const A = new Map((Array.isArray(a) ? a : []).map((x) => [x && x.id, x])); const Bm = new Map(b.map((x) => [x && x.id, x]));
+        b.forEach((x) => {
+          const o = A.get(x && x.id);
+          if (!o) { ops.push({ c: k, op: 'ins', rec: x }); return; }
+          if (same(o, x)) return;
+          const set = {}; const unset = [];
+          Object.keys(x).forEach((f) => { if (!same(o[f], x[f])) set[f] = x[f]; });
+          Object.keys(o).forEach((f) => { if (!(f in x)) unset.push(f); });
+          ops.push({ c: k, op: 'upd', id: x.id, set, unset });
+        });
+        A.forEach((x, id) => { if (!Bm.has(id)) ops.push({ c: k, op: 'del', id }); });
+      });
+      return ops;
+    }
+    _pubPush() {
+      const ops = this._pubDiff();
+      if (!ops.length) return;
+      const r = syncJ('POST', PUB.api + '/ops', { ops, token: pubToken(), x: this._pubX || null });
+      if (r.status === 200) { if (r.j.token) pubToken(r.j.token); this._pubApply(r.j); return; }
+      const msg = r.j.error || 'İşlem kaydedilemedi. Bağlantınızı kontrol edip tekrar deneyin.';
+      try { this._pubLoad(); } catch (e) { /* yok */ }
+      this.listeners.forEach((f) => f());
+      toast(msg, 'err');
+      throw new Error(msg); // sayfadaki "başarılı" adımları durdur
+    }
     // Her kayıtta önceki durum geri al geçmişine eklenir (oturum boyunca, en fazla 30 adım)
     save() {
       const cur = JSON.stringify(this.data);
@@ -282,7 +364,9 @@
         this.undoStack.push({ json: this._snap, label: this._label || 'Son değişiklik', at: new Date().toISOString() });
         if (this.undoStack.length > 30) this.undoStack.shift();
       }
-      this._label = null; this._snap = cur;
+      this._label = null;
+      if (this.pub) { this._pubPush(); this.listeners.forEach((f) => f()); return; }
+      this._snap = cur;
       if (this.cloud) { if (!this._noPush) { this._dirty = true; this._queue(); } }
       else { try { localStorage.setItem(this.key, cur); } catch (e) { console.warn('Kayıt yapılamadı', e); } }
       this.listeners.forEach((f) => f());
@@ -415,6 +499,20 @@
     setTimeout(() => { t.style.transition = '.3s'; t.style.opacity = '0'; setTimeout(() => t.remove(), 300); }, 2600);
   }
 
+  // Müşteri portalı giriş kodu: tahmin edilemeyen 6 karakter, kayda bir kez yazılır
+  function portalCode(db, rec) {
+    if (!rec.portalCode) { const A = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; const b = new Uint8Array(6); crypto.getRandomValues(b); rec.portalCode = [...b].map((x) => A[x % A.length]).join(''); db.save(); }
+    return rec.portalCode;
+  }
+  // Bulutta müşteri sayfaları kart çekmez: ödeme işletmeye yapılır (elden / havale). Ayarlarda IBAN varsa gösterilir.
+  function payInfo({ amount, title, s = {}, note } = {}) {
+    const tel = String(s.bizPhone || '').replace(/[^\d+]/g, '');
+    const iban = s.iban || s.IBAN || s.bankIban;
+    return modal({ title: title || 'Ödeme bilgisi', body: `${amount ? `<div class="center mb"><div style="font-size:30px;font-weight:800">${money(amount)}</div></div>` : ''}
+      <p class="small" style="line-height:1.6;margin-top:0">${esc(note || 'Ödemenizi işletmemize elden veya banka havalesiyle yapabilirsiniz. Ödemeniz işlendiğinde bu sayfada görünür.')}</p>
+      ${iban ? `<div class="card pad small" style="line-height:1.7"><div><span class="muted">Alıcı</span> <b>${esc(s.bankHolder || s.accountName || s.bizName || '')}</b></div>${s.bankName || s.bank ? `<div><span class="muted">Banka</span> ${esc(s.bankName || s.bank)}</div>` : ''}<div><span class="muted">IBAN</span> <b class="mono">${esc(iban)}</b></div><div class="muted">Açıklamaya adınızı yazın.</div></div>` : ''}`,
+      actions: [{ label: 'Kapat' }, ...(tel ? [{ label: 'İşletmeyi ara', cls: 'primary', icon: 'phone', onClick: () => { location.href = 'tel:' + tel; } }] : [])] });
+  }
   function modal({ title = '', body = '', size = '', actions = [], onOpen, onClose, closable = true } = {}) {
     const ov = document.createElement('div');
     ov.className = 'ns-overlay';
@@ -951,7 +1049,7 @@
     api, esc, $, $$, on, uid, rand, pick, sum, groupBy, clamp, money, num, iso, today, addDays, daysBetween, date, dateLong, time, dt, ago, pad,
     MONTHS, DAYS, NAMES, phone, sampleGender, initials, logoMark, shade, setFavicon, slug, trLower, match, icon, ICONS, DB, toast, modal, confirm, prompt, formModal, fieldsHtml, readForm, validate,
     table, chart, compact, dailySeries, PALETTE, csv, readFile, parseCsv, printHtml, beep, barcodeSvg, qrSvg, shell, pageHead, kpi, badge, searchBox, crud,
-    settingsPage, smsLog, toggleTheme, getTheme, currentUser: null, cloud: CLOUD, merge3,
+    settingsPage, smsLog, toggleTheme, getTheme, currentUser: null, cloud: CLOUD, merge3, pub: PUB, tenant: TENANT, payInfo, portalCode,
   };
 })();
 

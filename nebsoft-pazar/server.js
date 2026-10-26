@@ -103,6 +103,22 @@ const server = http.createServer((req, res) => {
   }
   if (!['GET', 'HEAD'].includes(req.method)) { res.writeHead(405, { Allow: 'GET, HEAD' }); return res.end(); }
   if (DENY.test(p)) { res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' }); return res.end('Bulunamadı'); }
+  // Bulutta işletme sahibi uygulamayı /t/<işletme>/apps/... adresinde kullanır (paylaşılan linkler ve QR kodlar işletmeyi taşır)
+  const am = /^\/apps\/([a-z0-9]+)\/(index\.html)?$/.exec(p);
+  if (am && cloud.db.ready() && !/[?&]demo=1/.test(req.url)) {
+    return cloud.tenantSlug(req).then((slug) => {
+      if (slug) { res.writeHead(302, { Location: `/t/${slug}${p}${req.url.includes('?') ? req.url.slice(req.url.indexOf('?')) : ''}` }); return res.end(); }
+      serve(req, res, p);
+    }).catch(() => serve(req, res, p));
+  }
+  // İşletme adresi: /t/<işletme>/apps/... aynı dosyaları sunar; işletme bilgisi sayfadaki betik tarafından okunur
+  const tm = /^\/t\/([a-z0-9-]{1,80})(\/.*)?$/.exec(p);
+  if (tm) { if (!tm[2] || tm[2] === '/') { res.writeHead(302, { Location: '/' }); return res.end(); } p = tm[2]; if (DENY.test(p)) { res.writeHead(404); return res.end(); } }
+  serve(req, res, p);
+});
+
+// Statik dosyalar ve tanıtım siteleri
+function serve(req, res, p) {
   // Tanıtım siteleri: /randevusistemi → site/randevusistemi/index.html (görseller /randevusistemi/img/…)
   const seg = p.split('/')[1] || '';
   if (/^[a-z0-9-]+$/.test(seg) && SITES.has(seg)) {
@@ -122,7 +138,7 @@ const server = http.createServer((req, res) => {
     if (req.method === 'HEAD') return res.end();
     fs.createReadStream(file).pipe(res);
   });
-});
+}
 server.requestTimeout = 60000; server.headersTimeout = 20000;
 cloud.init().catch((e) => console.error('Bulut başlatılamadı:', e.message));
 server.listen(PORT, process.env.HOST || '0.0.0.0', () => console.log(`NEBSOFT çalışıyor: http://localhost:${PORT}`));

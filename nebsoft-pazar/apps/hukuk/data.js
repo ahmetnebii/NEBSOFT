@@ -18,7 +18,8 @@ window.HKK = {
     while (off(d)) d.setDate(d.getDate() + 1);
     return { date: NS.iso(d), note: '' };
   },
-  code: (c) => String(c.idNo || '').slice(-4) + c.id.replace(/\W/g, '').slice(-2).toUpperCase(),
+  // Portal giriş kodu: işletme 'portal bilgisini gönder' dediğinde rastgele kod üretilir (NS.portalCode); yoksa eski formül
+  code: (c) => c.portalCode || String(c.idNo || '').slice(-4) + c.id.replace(/\W/g, '').slice(-2).toUpperCase(),
   seed(db) {
     const { rand, pick, addDays } = NS;
     db.data._settings = { bizName: 'Av. Selin Erdem Hukuk Bürosu', bizPhone: '0216 330 70 70', bizAddress: 'Kozyatağı, Bayar Cad. No:88 K:6, Kadıköy/İstanbul', baroNo: 'İstanbul Barosu 61234', hourly: 4500, iban: 'TR20 0006 7010 0000 0012 3456 78' };

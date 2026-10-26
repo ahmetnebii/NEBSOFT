@@ -49,9 +49,9 @@
   function login() {
     $('#out').innerHTML = '';
     $('#root').innerHTML = `<div class="tk-view"><div class="tk-intro"><h1>Bayi ve müşteri portalı</h1><p>Size özel fiyat listesiyle 7/24 sipariş verin; siparişinizin üretim ve sevk durumunu, irsaliye ve lot bilgilerini anlık izleyin.</p></div>
-      <div class="panel" style="border:1px solid var(--border);border-radius:16px;background:var(--surface);padding:20px">${NS.fieldsHtml([{ name: 'vkn', label: 'Vergi no veya e-posta', required: true }, { name: 'pin', label: 'Kayıtlı telefonunuzun son 4 hanesi', required: true }])}<button class="btn primary lg block mt" id="go">Giriş yap</button><p class="small muted" style="margin:10px 0 0">Demo için <a href="#" id="hint">örnek bayi bilgisi kullanın</a>.</p></div>
+      <div class="panel" style="border:1px solid var(--border);border-radius:16px;background:var(--surface);padding:20px">${NS.fieldsHtml([{ name: 'vkn', label: 'Vergi no veya e-posta', required: true }, { name: 'pin', label: 'Kayıtlı telefonunuzun son 4 hanesi', required: true }])}<button class="btn primary lg block mt" id="go">Giriş yap</button><p class="small muted" style="margin:10px 0 0;${NS.pub ? 'display:none' : ''}">Demo için <a href="#" id="hint">örnek bayi bilgisi kullanın</a>.</p></div>
       <div class="tk-how"><div>${icon('tag')}<b>Size özel fiyat</b>Sözleşmenizdeki iskonto fiyatlara otomatik uygulanır.</div><div>${icon('truck')}<b>Sevkiyat ve lot</b>İrsaliye, plaka ve sevk edilen lot numaraları.</div><div>${icon('refresh')}<b>Tekrar sipariş</b>Önceki siparişinizi tek tıkla yeniden oluşturun.</div></div></div>`;
-    const go = () => { db.load(); const v = $('[name=vkn]').value.trim().toLocaleLowerCase('tr'); const p = $('[name=pin]').value.replace(/\D/g, ''); const c = db.find('customers', (x) => (x.taxNo && x.taxNo === v) || (x.email && x.email.toLocaleLowerCase('tr') === v)); if (!c || p.length !== 4 || !String(c.phone || '').replace(/\D/g, '').endsWith(p)) return toast('Bilgiler eşleşmedi', 'err'); sset(c.id); cart = {}; render(); };
+    const go = () => { const v = $('[name=vkn]').value.trim().toLocaleLowerCase('tr'); const p = $('[name=pin]').value.replace(/\D/g, ''); if (db.lookup({ vkn: v, pin: p }) === null) db.load(); const c = db.find('customers', (x) => (x.taxNo && x.taxNo === v) || (x.email && x.email.toLocaleLowerCase('tr') === v)); if (!c || p.length !== 4 || !String(c.phone || '').replace(/\D/g, '').endsWith(p)) return toast('Bilgiler eşleşmedi', 'err'); sset(c.id); cart = {}; render(); };
     $('#go').onclick = go;
     $('#hint').onclick = (e) => { e.preventDefault(); const c = db.all('customers')[0]; if (c) { $('[name=vkn]').value = c.taxNo || c.email; $('[name=pin]').value = String(c.phone || '').replace(/\D/g, '').slice(-4); } };
   }
@@ -79,7 +79,7 @@
     db.load();
     const c = db.get('customers', sget()); if (!c) return login();
     $('#out').innerHTML = `<button class="btn ghost" id="lo">${icon('logout')}<span class="hide-sm">Çıkış</span></button>`;
-    $('#lo').onclick = () => { sset(null); login(); };
+    $('#lo').onclick = () => { sset(null); db.pubLogout(); login(); };
     const open = db.all('so', (s) => s.cust === c.id && ['acik', 'kismi', 'bekliyor'].includes(s.status));
     const ym = today().slice(0, 7);
     $('#root').innerHTML = `<div class="tk-view"><p class="small muted" style="margin:0 0 8px">${esc(c.name)} · ${esc(c.city || '')}</p><div class="stat3"><div><b>${open.length}</b><span>Açık sipariş</span></div><div><b>${money(sum(open, soTotal))}</b><span>Açık sipariş tutarı</span></div><div><b>${money(sum(db.all('so', (s) => s.cust === c.id && s.date.startsWith(ym)), soTotal))}</b><span>Bu ay sipariş</span></div></div>

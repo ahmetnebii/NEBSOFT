@@ -38,4 +38,6 @@ function setupToken(create) {
   const t = crypto.randomBytes(12).toString('base64url'); fs.writeFileSync(TOKENFILE, t, { mode: 0o600 }); return t;
 }
 function clearSetupToken() { try { fs.unlinkSync(TOKENFILE); } catch (e) { /* yok */ } }
-module.exports = { load, save, setupToken, clearSetupToken, DATA, encrypt, decrypt };
+// İmza (müşteri sayfası belirteçleri için): ana anahtardan türetilen ayrı HMAC anahtarı
+const mac = (text) => crypto.createHmac('sha256', crypto.createHash('sha256').update(Buffer.concat([key(), Buffer.from('public-token')])).digest()).update(text).digest('base64url');
+module.exports = { mac, load, save, setupToken, clearSetupToken, DATA, encrypt, decrypt };

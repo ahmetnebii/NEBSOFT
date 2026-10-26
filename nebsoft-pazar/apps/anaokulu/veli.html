@@ -41,11 +41,11 @@
   $('#bar').innerHTML = `<div class="tk-mark">${icon('heart')}</div><div class="grow"><b>${esc(S().bizName)}</b><span>Veli portalı</span></div><span id="out"></span>`;
   function login() {
     $('#out').innerHTML = '';
-    $('#root').innerHTML = `<div class="tk-intro"><h1>Çocuğunuzun günü, cebinizde</h1><p>Ne yedi, ne kadar uyudu, kim teslim aldı — okulun gönderdiği kodla girin.</p></div><div class="tk-find" style="flex-wrap:wrap"><input class="input" id="ph" type="tel" placeholder="05xx xxx xx xx" aria-label="Telefon"><input class="input" id="cd" placeholder="Kod" aria-label="Kod" style="max-width:140px;text-transform:uppercase"><button class="btn primary lg" id="go">Giriş</button></div><p class="small muted">Demo için <a href="#" id="hint">örnek veli bilgisini doldurun</a>.</p>
+    $('#root').innerHTML = `<div class="tk-intro"><h1>Çocuğunuzun günü, cebinizde</h1><p>Ne yedi, ne kadar uyudu, kim teslim aldı — okulun gönderdiği kodla girin.</p></div><div class="tk-find" style="flex-wrap:wrap"><input class="input" id="ph" type="tel" placeholder="05xx xxx xx xx" aria-label="Telefon"><input class="input" id="cd" placeholder="Kod" aria-label="Kod" style="max-width:140px;text-transform:uppercase"><button class="btn primary lg" id="go">Giriş</button></div>${NS.pub ? '' : '<p class="small muted">Demo için <a href="#" id="hint">örnek veli bilgisini doldurun</a>.</p>'}
       <div class="tk-how"><div>${icon('coffee')}<b>Yemek ve uyku</b>Öğretmenin işaretlediği gün raporu.</div><div>${icon('check')}<b>Giriş-çıkış</b>Geliş saati ve teslim alan kişi.</div><div>${icon('message')}<b>İzin bildirin</b>Gelmeyecekse veya erken alacaksanız tek dokunuşla.</div></div>`;
-    const go = () => { db.load(); const L = db.all('students', (s) => s.parents.some((p) => digits(p.phone) === digits($('#ph').value)) && A.code(s) === $('#cd').value.trim().toUpperCase()); if (!L.length) return toast('Telefon veya kod hatalı', 'err'); sset(digits($('#ph').value)); kid = L[0].id; render(); };
+    const go = () => { if (db.lookup({ phone: $('#ph').value, code: $('#cd').value.trim().toUpperCase() }) === null) db.load(); const L = db.all('students', (s) => s.parents.some((p) => digits(p.phone) === digits($('#ph').value)) && A.code(s) === $('#cd').value.trim().toUpperCase()); if (!L.length) return toast('Telefon veya kod hatalı', 'err'); sset(digits($('#ph').value)); kid = L[0].id; render(); };
     $('#go').onclick = go; $('#cd').onkeydown = (e) => { if (e.key === 'Enter') go(); };
-    $('#hint').onclick = (e) => { e.preventDefault(); const s = db.all('students').find((x) => db.data.reports[`${x.id}|${today()}`]) || db.all('students')[0]; $('#ph').value = s.parents[0].phone; $('#cd').value = A.code(s); };
+    if ($('#hint')) $('#hint').onclick = (e) => { e.preventDefault(); const s = db.all('students').find((x) => db.data.reports[`${x.id}|${today()}`]) || db.all('students')[0]; $('#ph').value = s.parents[0].phone; $('#cd').value = A.code(s); };
   }
   function bugun(s) {
     const a = db.data.att[`${s.id}|${today()}`]; const r = db.data.reports[`${s.id}|${today()}`] || {}; const c = db.get('classes', s.cls);
@@ -62,7 +62,7 @@
     db.load(); const ph = sget(); if (!ph) return login();
     const kids = db.all('students', (s) => s.parents.some((p) => digits(p.phone) === ph)); if (!kids.length) return login();
     const s = kids.find((k) => k.id === kid) || kids[0]; kid = s.id; const c = db.get('classes', s.cls);
-    $('#out').innerHTML = `<button class="btn ghost" id="lo">${icon('logout')} Çıkış</button>`; $('#lo').onclick = () => { sset(null); login(); };
+    $('#out').innerHTML = `<button class="btn ghost" id="lo">${icon('logout')} Çıkış</button>`; $('#lo').onclick = () => { sset(null); db.pubLogout(); login(); };
     const T = { bugun: ['Bugün', bugun], menu: ['Menü', menu], duyuru: ['Duyurular', duyuru], odeme: ['Ödemeler', odeme], mesaj: ['Mesaj / izin', mesaj] };
     $('#root').innerHTML = `<div class="tk-head"><div class="kid"><span class="av" style="background:${c.color}">${esc(s.name.split(' ').map((w) => w[0]).join('').slice(0, 2))}</span><div><h2 style="margin:0">${esc(s.name)}</h2><p class="muted" style="margin:2px 0 0">${esc(c.name)} sınıfı · ${A.age(s.birth)} · öğretmen ${esc(c.teacher)}</p></div></div>${kids.length > 1 ? `<div class="row mt" style="gap:6px">${kids.map((k) => `<button class="btn sm ${k.id === kid ? 'primary' : ''}" data-k="${k.id}">${esc(k.name.split(' ')[0])}</button>`).join('')}</div>` : ''}</div>
       <div class="tabs2" role="tablist">${Object.entries(T).map(([k, [l]]) => `<button role="tab" data-tab="${k}" aria-selected="${k === tab}">${l}</button>`).join('')}</div><div>${T[tab][1](s)}</div>`;

@@ -52,11 +52,12 @@
   }
   function takip() {
     const list = phone ? db.all('rxOrders', (o) => digits(o.phone) === digits(phone)).sort((a, b) => b.at.localeCompare(a.at)) : [];
-    return `<div class="tk-find"><input class="input" id="tp" type="tel" placeholder="Cep telefonunuz" value="${esc(phone)}" style="text-transform:none;letter-spacing:.02em" aria-label="Telefon"><button class="btn primary lg" id="tg">Göster</button></div><div class="tk-recent"></div>
+    const needCode = NS.pub && !list.length;
+    return `<div class="tk-find"><input class="input" id="tp" type="tel" placeholder="Cep telefonunuz" value="${esc(phone)}" style="text-transform:none;letter-spacing:.02em" aria-label="Telefon">${NS.pub ? '<input class="input" id="tc" placeholder="Takip kodu (ör. R7K2QA)" aria-label="Takip kodu" style="max-width:190px">' : ''}<button class="btn primary lg" id="tg">Göster</button></div><div class="tk-recent">${needCode ? '<span class="small muted">Reçetenizi gönderdiğinizde verilen takip koduyla sorgulayın.</span>' : ''}</div>
       ${list.map((o) => { const cur = FLOW.indexOf(o.status === 'eksik' ? 'hazirlaniyor' : o.status); return `<section class="tk-head"><div class="top"><div><div class="small muted mono">${esc(o.code)} · e-reçete ${esc(o.rxNo)}</div><h2>${esc(ST[o.status][0])}</h2></div><div class="tk-eta"><b>${esc(o.pickup)}</b><span>${NS.dt(o.at)}</span></div></div>
         ${o.status === 'eksik' ? `<div class="tk-call mt" style="--c:var(--err)"><h3>${icon('alert')} Eksik ilaç</h3><p class="small" style="margin:0">${esc(o.missing || 'Bir ilacınız depodan istendi.')} ${o.eta ? 'Tahmini geliş: ' + esc(o.eta) : ''}</p></div>` : ''}
         <div class="tk-steps" style="--n:4">${FLOW.map((f, i) => `<div class="tk-step ${o.status === 'teslim' || i < cur ? 'done' : i === cur ? 'cur' : 'todo'}"><div class="d">${icon(o.status === 'teslim' || i < cur ? 'check' : ['file', 'pill', 'bag', 'user'][i])}</div><b>${['Alındı', 'Hazırlanıyor', 'Hazır', 'Teslim'][i]}</b><span></span></div>`).join('')}</div>
-        ${o.total ? `<div class="row between mt"><span class="small muted">Ödenecek katkı payı / fark</span><b>${money(o.total)}</b></div>` : ''}</section>`; }).join('') || (phone ? '<div class="tk-panel"><div class="b empty">Bu numarayla gönderilmiş reçete yok.</div></div>' : '')}`;
+        ${o.total ? `<div class="row between mt"><span class="small muted">Ödenecek katkı payı / fark</span><b>${money(o.total)}</b></div>` : ''}</section>`; }).join('') || (phone && !needCode ? '<div class="tk-panel"><div class="b empty">Bu numarayla gönderilmiş reçete yok.</div></div>' : '')}`;
   }
   function stok() {
     return `<section class="tk-panel"><h3>${icon('search')} İlaç stokta mı?</h3><div class="b"><input class="input lg" id="sq" placeholder="İlaç adı veya etken madde (ör. parasetamol)" aria-label="İlaç ara" autocomplete="off"><div id="sr" class="mt"></div><p class="small faint" style="margin:10px 0 0">Bilgi amaçlıdır; ilaç kullanımı için hekiminize ve eczacınıza danışın. Reçeteli ilaçların fiyatı eczanede bildirilir.</p></div></section>`;
@@ -76,7 +77,7 @@
   const root = $('#root');
   on(root, 'click', '[data-tab]', (e, b) => { tab = b.dataset.tab; render(); });
   on(root, 'input', '#sq', (e, i) => { $('#sr').innerHTML = results(i.value); });
-  on(root, 'click', '#tg', () => { phone = $('#tp').value.trim(); try { localStorage.setItem('nebsoft:ecz:tel', phone); } catch (e) { /* yok */ } render(); });
+  on(root, 'click', '#tg', () => { phone = $('#tp').value.trim(); if (NS.pub && $('#tc').value.trim() && !db.lookup({ phone, code: $('#tc').value.trim() })) return toast('Telefon ve takip kodu eşleşmedi', 'err'); try { localStorage.setItem('nebsoft:ecz:tel', phone); } catch (e) { /* yok */ } render(); });
   on(root, 'submit', '#rf', (e) => {
     e.preventDefault(); const f = $('#rf'); if (!NS.validate(f)) return; if (!$('#kv').checked) return toast('KVKK onayını işaretleyin', 'err');
     const v = NS.readForm(f); if (!/^[A-Za-z0-9]{6,10}$/.test(v.rxNo.replace(/\s/g, ''))) return toast('E-reçete numarası 6-10 harf/rakam olmalı', 'err');
@@ -84,7 +85,7 @@
     db.load(); const code = 'R' + Math.random().toString(36).slice(2, 7).toUpperCase();
     db.insert('rxOrders', { ...v, rxNo: v.rxNo.replace(/\s/g, '').toUpperCase(), code, status: 'yeni', at: new Date().toISOString() });
     phone = v.phone; try { localStorage.setItem('nebsoft:ecz:tel', phone); } catch (x) { /* yok */ }
-    toast('Reçeteniz alındı. Hazır olunca SMS göndereceğiz.', 'ok'); tab = 'takip'; render();
+    toast(`Reçeteniz alındı. Takip kodunuz: ${(db.find('rxOrders', (o) => o.rxNo === v.rxNo.replace(/\s/g, '').toUpperCase() && digits(o.phone) === digits(v.phone)) || {}).code || code}`, 'ok'); tab = 'takip'; render();
   });
   render();
 })();
