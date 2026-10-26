@@ -4,6 +4,7 @@
   const { esc, $, $$, on, icon, money, num, toast, modal, confirm, formModal, table, chart, badge, kpi, pageHead, sum, addDays, iso, today } = NS;
   const E = window.EMLAK;
   const db = new NS.DB('emlak', E.seed);
+  const PH = window.PORTALHUB; PH.ensure(db);
   const S = () => db.settings({ commission: 2 });
   const prop = (id) => db.get('props', id) || { title: '-', price: 0 };
   const agent = (id) => db.get('agents', id) || { name: '-', color: '#64748b' };
@@ -150,9 +151,9 @@
   const ROLES = { admin: 'Broker / Yönetici', danisman: 'Danışman' };
   NS.shell({
     id: 'emlak', integrations: ['sms', 'whatsapp', 'email', 'efatura', 'printer', 'webhook', 'backup'], name: 'Emlak Ofisi', tagline: 'Gayrimenkul CRM', icon: 'building', accent: '#ca8a04', db, home: 'ozet', badges: () => ({ web: db.all('leads', (l) => l.status === 'yeni').length || '' }), auth: { roles: ROLES }, titles: { ilan: 'İlan detayı' },
-    nav: [{ sec: 'Ofis' }, { id: 'ozet', label: 'Özet', icon: 'home' }, { id: 'portfoy', label: 'Portföy', icon: 'grid' }, { id: 'talepler', label: 'Müşteri Talepleri', icon: 'users' }, { id: 'web', label: 'Web Başvuruları', icon: 'globe', badge: true }, { id: 'gosterimler', label: 'Gösterimler', icon: 'calendar' }, { id: 'kiralar', label: 'Kira Takibi', icon: 'key' }, { sec: 'Yönetim' }, { id: 'islemler', label: 'Satış & Komisyon', icon: 'wallet', roles: ['admin'] }, { id: 'danismanlar', label: 'Danışmanlar', icon: 'user', roles: ['admin'] }, { id: 'ayarlar', label: 'Ayarlar', icon: 'settings', roles: ['admin'] }],
+    nav: [{ sec: 'Ofis' }, { id: 'ozet', label: 'Özet', icon: 'home' }, { id: 'portfoy', label: 'Portföy', icon: 'grid' }, PH.nav, { id: 'talepler', label: 'Müşteri Talepleri', icon: 'users' }, { id: 'web', label: 'Web Başvuruları', icon: 'globe', badge: true }, { id: 'gosterimler', label: 'Gösterimler', icon: 'calendar' }, { id: 'kiralar', label: 'Kira Takibi', icon: 'key' }, { sec: 'Yönetim' }, { id: 'islemler', label: 'Satış & Komisyon', icon: 'wallet', roles: ['admin'] }, { id: 'danismanlar', label: 'Danışmanlar', icon: 'user', roles: ['admin'] }, { id: 'ayarlar', label: 'Ayarlar', icon: 'settings', roles: ['admin'] }],
     routes: {
-      ozet: dashboard, portfoy: portfolioPage, ilan: propPage, talepler: requestsPage, web: leadsPage, gosterimler: showingsPage, kiralar: leasesPage, islemler: dealsPage,
+      ...PH.routes, ozet: dashboard, portfoy: portfolioPage, ilan: propPage, talepler: requestsPage, web: leadsPage, gosterimler: showingsPage, kiralar: leasesPage, islemler: dealsPage,
       danismanlar: (el, p, a) => NS.crud(el, a, { col: 'agents', title: 'Danışmanlar', single: 'Danışman', addLabel: 'Yeni danışman', fields: [{ name: 'name', label: 'Ad', required: true }, { name: 'phone', label: 'Telefon' }, { name: 'color', label: 'Renk', type: 'color' }], columns: [{ key: 'name', label: 'Danışman', render: (x) => `<b style="color:${x.color}">${esc(x.name)}</b>` }, { key: 'phone', label: 'Telefon' }, { label: 'Aktif ilan', cls: 'right', render: (x) => db.all('props', (pp) => pp.agent === x.id && pp.status === 'aktif').length }, { label: 'İşlem', cls: 'right', render: (x) => db.all('deals', (d) => d.agent === x.id).length }, { label: 'Komisyon', cls: 'right', render: (x) => money(sum(db.all('deals', (d) => d.agent === x.id), commission)) }] }),
       ayarlar: (el, p, a) => NS.settingsPage(el, a, { roles: ROLES, fields: [{ type: 'section', label: 'Komisyon ve iletişim' }, { name: 'commission', label: 'Satış komisyonu % (taraf başı)', type: 'number' }, { name: 'rentCommission', label: 'Kira komisyonu (kiranın %si)', type: 'number' }, { name: 'whatsapp', label: 'İlan sayfası WhatsApp numarası' }] }),
     },

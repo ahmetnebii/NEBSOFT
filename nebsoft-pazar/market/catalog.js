@@ -91,8 +91,8 @@ window.CATALOG = {
       id: 'emlak', ready: true, extraDemos: [{ label: 'Herkese açık ilan sayfasını aç', url: 'apps/emlak/ilan.html' }], cat: 'yonetim', name: 'Emlak Ofisi', tagline: 'Portföy, müşteri eşleştirme ve kira takibi', icon: 'building', accent: '#ca8a04',
       prices: [299, 599, 1199], rating: 4.6, reviews: 98, users: 450, sectors: ['Emlak ofisi', 'Gayrimenkul danışmanı', 'İnşaat satış ofisi'],
       desc: 'Satılık/kiralık portföy, müşteri talepleri ile otomatik eşleştirme, yer gösterme randevuları, kira sözleşmeleri ve aylık kira tahsilat takibi.',
-      features: ['Portföy kartı: oda, m², kat, aidat, fotoğraf', 'Müşteri talepleri ve otomatik eşleşme', 'Yer gösterme takvimi', 'Kira sözleşmesi ve aylık tahsilat', 'Komisyon hesabı', 'Portföy paylaşım sayfası', 'Danışman performansı'],
-      modules: ['Portföy', 'Talepler', 'Eşleştirme', 'Gösterimler', 'Kiralar', 'Raporlar'],
+      features: ['İlan Portalları Merkezi: sahibinden.com, Hepsiemlak, Emlakjet tek tabloda', 'Yetki belgesi kontrolü, paket kotası, doping kredisi ve süresi dolan ilanı yenileme', 'Portal bazında görüntülenme, favori, mesaj ve talep başı maliyet; satılan ilanı tüm portallardan kaldırma', 'Portföy kartı: oda, m², kat, aidat, fotoğraf', 'Müşteri talepleri ve otomatik eşleşme', 'Yer gösterme takvimi', 'Kira sözleşmesi ve aylık tahsilat', 'Komisyon hesabı', 'Portföy paylaşım sayfası', 'Danışman performansı'],
+      modules: ['Portföy', 'Talepler', 'Eşleştirme', 'Gösterimler', 'Kiralar', 'Raporlar', 'İlan Portalları'],
     },
     {
       id: 'kurs', ready: true, extraDemos: [{ label: 'Veli portalını aç', url: 'apps/kurs/veli.html' }], cat: 'egitim', name: 'Kurs & Etüt', tagline: 'Öğrenci, sınıf, yoklama ve taksit takibi', icon: 'school', accent: '#7c3aed',
