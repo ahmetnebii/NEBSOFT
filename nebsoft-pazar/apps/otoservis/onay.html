@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Araç Durumu ve Onay</title>
+<link rel="stylesheet" href="../../core/core.css">
+<link rel="stylesheet" href="../../core/track.css">
+<style>
+  :root { --app-accent: #0369a1; --app-accent-soft: #e0f2fe; --app-accent-soft-dark: #0c2a3e; }
+  .plate { display: inline-flex; align-items: center; border: 2px solid var(--text); border-radius: 6px; font: 800 22px/1 var(--font); letter-spacing: .08em; padding: 6px 12px 6px 0; background: #fff; color: #111; }
+  .plate i { background: #1d4ed8; color: #fff; font: 700 10px var(--font); font-style: normal; padding: 8px 5px; margin-right: 10px; border-radius: 3px 0 0 3px; align-self: stretch; display: grid; place-items: center; }
+  .it { display: grid; grid-template-columns: auto 1fr auto; gap: 12px; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--border); }
+  .it:last-child { border-bottom: 0; }
+  .it input { width: 22px; height: 22px; accent-color: var(--accent); }
+  .it .n { font-weight: 600; }
+  .sum { display: flex; justify-content: space-between; padding: 6px 0; }
+  .sum.t { font-size: 20px; font-weight: 800; border-top: 1px solid var(--border); margin-top: 6px; padding-top: 12px; }
+</style>
+</head>
+<body>
+<header class="tk-bar"><div class="in" id="bar"></div></header>
+<main class="tk-wrap" id="root" style="max-width:760px"></main>
+<script src="../../core/core.js"></script>
+<script src="data.js"></script>
+<script>
+(function () {
+  const { esc, $, icon, money, toast } = NS;
+  const O = window.OTS;
+  const db = new NS.DB('otoservis', O.seed);
+  const S = () => db.settings({});
+  $('#bar').innerHTML = `<div class="tk-mark">${icon('wrench')}</div><div class="grow"><b>${esc(S().bizName)}</b><span>Araç durumu</span></div><a class="btn ghost" href="tel:${esc(String(S().bizPhone || '').replace(/\s/g, ''))}">${icon('phone')} Ara</a>`;
+  const key = (new URLSearchParams(location.search).get('k') || '').toUpperCase();
+  const job = () => db.find('jobs', (j) => O.token(j) === key);
+
+  function render() {
+    db.load(); const j = job();
+    if (!j) { $('#root').innerHTML = `<div class="tk-intro"><h1>Kayıt bulunamadı</h1><p>Linkin tamamını açtığınızdan emin olun veya servisi arayın.</p></div>`; return; }
+    const v = db.get('vehicles', j.vehicle) || {}; const t = O.totals(j); const ix = O.FLOW.indexOf(j.status);
+    const pending = j.status === 'onay';
+    $('#root').innerHTML = `<div class="tk-head"><div class="top"><span class="plate"><i>TR</i>${esc(v.plate)}</span><span class="tk-pill">${esc(O.ST[j.status][0])}</span></div><h2>${esc(v.brand || '')} ${esc(v.model || '')}</h2><p class="muted">${esc(j.no)} · ${NS.dt(j.at)} · ${NS.num(j.km)} km</p></div>
+      <div class="tk-steps" style="--n:${O.FLOW.length}">${O.FLOW.map((s, i) => `<div class="tk-step ${i < ix ? 'done' : i === ix ? 'cur' : 'todo'}"><div class="d">${icon(O.ST[s][2])}</div><b>${esc(O.ST[s][0])}</b></div>`).join('')}</div>
+      ${pending ? `<div class="tk-call"><h3>${icon('alert')} Onayınız bekleniyor</h3><p>Ustamızın tespit ettiği işlemler aşağıda. Yaptırmak istemediklerinizin işaretini kaldırıp onaylayın.</p></div>` : ''}
+      ${j.finding ? `<section class="tk-panel"><h3>${icon('search')} Tespit</h3><div class="b">${esc(j.finding)}</div></section>` : ''}
+      ${j.items.length ? `<section class="tk-panel"><h3>${icon('list')} Yapılacak işlemler</h3><div class="b" id="its">${j.items.map((i) => `<label class="it">${pending ? `<input type="checkbox" data-i="${i.id}" ${i.approved !== false ? 'checked' : ''}>` : `<span style="color:var(--${i.approved === false ? 'err' : 'ok'})">${icon(i.approved === false ? 'x' : 'check')}</span>`}<span><span class="n">${esc(i.name)}</span><div class="small muted">${i.type === 'iscilik' ? i.qty + ' saat işçilik' : i.qty + ' adet parça'}</div></span><b>${money(i.qty * i.price)}</b></label>`).join('')}</div>
+        <div class="b" id="sm"></div></section>` : `<section class="tk-panel"><div class="b muted">Aracınız inceleniyor; teklif hazırlanınca SMS ile bilgilendirileceksiniz.</div></section>`}
+      ${pending ? `<div class="tk-acts"><button class="btn primary lg" id="ok">${icon('check')} Seçilenleri onayla</button><button class="btn lg" id="no">Hiçbirini yaptırmayacağım</button></div>` : ''}
+      ${j.status === 'hazir' && j.paid < t.total - 0.01 ? `<div class="tk-call" style="--c:var(--ok)"><h3>${icon('check')} Aracınız teslime hazır</h3><p>İsterseniz şimdi kartla ödeyin, gelince beklemeden teslim alın.</p><button class="btn primary lg" id="pay">${icon('card')} ${money(t.total - j.paid)} öde</button></div>` : ''}
+      <p class="small muted center">Parça ve işçilik ${S().warrantyDays || 180} gün garantilidir · ${esc(S().bizAddress || '')}</p>`;
+    const sumDraw = () => { const sel = pending ? new Set([...document.querySelectorAll('[data-i]')].filter((x) => x.checked).map((x) => x.dataset.i)) : null; const tt = O.totals({ ...j, items: j.items.map((i) => ({ ...i, approved: sel ? sel.has(i.id) : i.approved !== false })) }); const el = $('#sm'); if (el) el.innerHTML = `<div class="sum"><span class="muted">Parça</span>${money(tt.parca)}</div><div class="sum"><span class="muted">İşçilik</span>${money(tt.iscilik)}</div><div class="sum"><span class="muted">KDV</span>${money(tt.kdv)}</div><div class="sum t"><span>Toplam</span>${money(tt.total)}</div>`; };
+    sumDraw();
+    document.querySelectorAll('[data-i]').forEach((x) => { x.onchange = sumDraw; });
+    const decide = (all) => { db.load(); const jj = job(); const sel = new Set([...document.querySelectorAll('[data-i]')].filter((x) => x.checked).map((x) => x.dataset.i)); jj.items.forEach((i) => { i.approved = all === false ? false : sel.has(i.id); }); const n = jj.items.filter((i) => i.approved).length; jj.status = n ? 'islemde' : 'hazir'; jj.history.push({ at: new Date().toISOString(), st: jj.status, note: n ? `Müşteri ${n} kalemi online onayladı` : 'Müşteri işlemleri reddetti — araç teslime hazır' }); db.save(); toast(n ? 'Onayınız alındı, ustamız işe başlıyor' : 'Kaydedildi, aracınızı teslim alabilirsiniz', 'ok'); render(); };
+    if ($('#ok')) $('#ok').onclick = () => decide(true);
+    if ($('#no')) $('#no').onclick = () => decide(false);
+    if ($('#pay')) $('#pay').onclick = () => { db.load(); const jj = job(); jj.paid = O.totals(jj).total; jj.history.push({ at: new Date().toISOString(), st: jj.status, note: 'Müşteri online ödedi' }); db.save(); toast('Ödemeniz alındı, teşekkürler', 'ok'); render(); };
+  }
+  render();
+})();
+</script>
+</body>
+</html>
