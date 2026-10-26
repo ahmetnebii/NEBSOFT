@@ -213,3 +213,13 @@ Bu sürüm, tam çalışan bir **ön yüz ve demo** sürümüdür. Gerçek müş
 4. **Resmi entegrasyonlar:** Entegrasyon merkezindeki her bağlayıcı için seçilen entegratörün
    (e-Belge, MEDULA/İTS, KBS vb.) sözleşmesi yapılıp servis adresi ve kimlik bilgileri girilmeli.
 5. **Yasal metinler:** KVKK, mesafeli satış ve iade metinleri örnek şablondur; hukukçuya onaylatın.
+
+## Ürün tanıtım siteleri (domain.com/<program>)
+
+Her program için ayrı bir SEO tanıtım sayfası vardır: `/randevusistemi`, `/adisyonprogrami`, `/marketprogrami` … (21 adres, liste: `site/src/products.js`).
+
+- İçerik: `site/src/products.js` (başlık, açıklama, sorunlar, ekranlar) + `market/catalog.js` (özellikler, modüller, fiyat, SSS)
+- Alan adı, telefon, e-posta: `site/src/site.config.js`
+- Ekran görüntüleri (PC 1440×900 ve mobil): önce `node server.js`, sonra `node site/tools/screens.js` (tek ürün için: `node site/tools/screens.js randevu`). İnterneti olan bir bilgisayarda çalıştırın, yoksa fotoğraflı sayfalarda gri kutular çıkar.
+- Sayfaları üretmek: `node site/tools/build-sites.js` → `site/<slug>/index.html`, `site/sitemap.xml`, `robots.txt`
+- `server.js` `/<slug>` adresini `site/<slug>/index.html` dosyasına bağlar. Nginx'te karşılığı: `location ~ ^/([a-z0-9-]+)$ { try_files /site/$1/index.html =404; }` ve `location ~ ^/([a-z0-9-]+)/img/ { root …/site; }`
