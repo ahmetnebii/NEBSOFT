@@ -122,7 +122,7 @@ ${(c.faq || []).length ? `<section class="s alt" id="sss"><div class="w">
 <footer class="ft"><div class="w">
   <div class="cols">
     <div><img src="/assets/nebsoft-logo.webp" alt="${CFG.brand}" width="120" height="26"><p>Türkiye'deki işletmeler için bulut tabanlı yazılımlar ve pazaryeri entegrasyonları.</p><p><a href="tel:+90${tel.replace(/^0/, '')}">${esc(CFG.phone)}</a><a href="mailto:${CFG.email}">${esc(CFG.email)}</a></p></div>
-    ${[0, 1, 2].map((k) => `<div><h4>${['Programlar', '&nbsp;', '&nbsp;'][k]}</h4>${PRODUCTS.filter((_, i) => i % 3 === k).map((x) => `<a href="/${x.slug}">${esc(x.kw[0].toLocaleUpperCase('tr') + x.kw.slice(1))}</a>`).join('')}</div>`).join('')}
+    ${[0, 1, 2].map((k) => `<div><h4>${['<a href="/programlar" style="color:inherit">Programlar</a>', '&nbsp;', '&nbsp;'][k]}</h4>${PRODUCTS.filter((_, i) => i % 3 === k).map((x) => `<a href="/${x.slug}">${esc(x.kw[0].toLocaleUpperCase('tr') + x.kw.slice(1))}</a>`).join('')}</div>`).join('')}
   </div>
   <div class="copy">© ${new Date().getFullYear()} ${CFG.brand}. Tüm hakları saklıdır. · <a href="/#/yasal" style="display:inline">KVKK ve yasal metinler</a></div>
 </div></footer>
@@ -150,9 +150,69 @@ for (const p of PRODUCTS) {
   if (missing.length) console.warn('! görsel eksik', p.slug, missing.join(', '), '→ node site/tools/screens.js', p.id);
   fs.writeFileSync(path.join(dir, 'index.html'), page(p));
 }
+// Program merkez sayfası (/programlar): tüm tanıtım sitelerine sektörlere göre iç bağlantı + kuruluş şeması
+function hub() {
+  const url = `${D}/programlar`; const title = `İşletme Programları — ${CFG.brand} | ${PRODUCTS.length} Bulut Yazılım, ${CFG.trialDays} Gün Ücretsiz`;
+  const desc = `Market, restoran, kuaför, otel, servis, eczane, emlak ve daha fazlası için ${PRODUCTS.length} bulut işletme programı. Kurulum yok, ${CFG.trialDays} gün ücretsiz deneme, havale ile ödeme.`;
+  const groups = CAT.categories.map((k) => ({ k, list: PRODUCTS.map((x) => ({ x, c: CAT.products.find((y) => y.id === x.id) })).filter(({ c }) => c && c.cat === k.id) })).filter((g) => g.list.length);
+  const schema = [
+    { '@context': 'https://schema.org', '@type': 'Organization', name: CFG.brand, url: D + '/', logo: D + '/assets/nebsoft-logo.webp', contactPoint: { '@type': 'ContactPoint', telephone: '+90' + tel.replace(/^0/, ''), contactType: 'sales', areaServed: 'TR', availableLanguage: 'Turkish' }, email: CFG.email },
+    { '@context': 'https://schema.org', '@type': 'ItemList', name: 'İşletme programları', itemListElement: PRODUCTS.map((x, i) => ({ '@type': 'ListItem', position: i + 1, url: `${D}/${x.slug}`, name: (CAT.products.find((y) => y.id === x.id) || {}).name })) },
+  ];
+  return `<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>${esc(title)}</title>
+<meta name="description" content="${esc(desc)}">
+<link rel="canonical" href="${url}">
+<meta property="og:type" content="website"><meta property="og:locale" content="tr_TR"><meta property="og:site_name" content="${CFG.brand}"><meta property="og:title" content="${esc(title)}"><meta property="og:description" content="${esc(desc)}"><meta property="og:url" content="${url}">
+<link rel="icon" href="/assets/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/site/assets/site.css">
+<style>:root{--c:#1d7bf5}.hub h2{margin:56px 0 18px}</style>
+${schema.map(ld).join('\n')}
+</head>
+<body>
+<header class="hd"><div class="w">
+  <a class="logo" href="/" aria-label="${CFG.brand} ana sayfa"><img src="/assets/favicon.svg" alt="" width="28" height="28"><b>${CFG.brand}</b><span>Programlar</span></a>
+  <span></span><a class="btn p" href="/#/urunler">Ücretsiz dene</a>
+</div></header>
+<main id="ana" class="hub">
+<section class="s"><div class="w">
+  <nav class="crumb" aria-label="Konum"><a href="/">${CFG.brand}</a> / Programlar</nav>
+  <h1>İşletmeniz için bulut programlar</h1>
+  <p class="lead">${esc(desc)}</p>
+  ${groups.map((g) => `<h2>${esc(g.k.name)}</h2><div class="rel">${g.list.map(({ x, c }) => `<a href="/${x.slug}"><b>${esc(x.kw[0].toLocaleUpperCase('tr') + x.kw.slice(1))}</b><span>${esc(c.tagline)}</span></a>`).join('')}</div>`).join('\n  ')}
+  <div class="final" style="margin-top:72px"><div><h2>Hangisi size uygun, emin değil misiniz?</h2><p>Bizi arayın; işletmenize uygun programı birlikte seçelim, kurulumu ve veri aktarımını ücretsiz yapalım.</p></div>
+  <div class="cta" style="margin:0"><a class="btn p" href="/#/urunler">Tüm ürünler ${I.arrow}</a><a class="btn" href="tel:+90${tel.replace(/^0/, '')}">${I.phone} ${esc(CFG.phone)}</a></div></div>
+</div></section>
+</main>
+<footer class="ft"><div class="w"><div class="copy">© ${new Date().getFullYear()} ${CFG.brand}. Tüm hakları saklıdır.</div></div></footer>
+</body>
+</html>
+`;
+}
+// Pazar ana sayfası: arama motorları için sabit başlık, şema ve program bağlantıları (sayfa betiği açılınca kendi arayüzünü çizer)
+{
+  const f = path.join(ROOT, 'index.html'); let h = fs.readFileSync(f, 'utf8');
+  const title = `${CFG.brand} — İşletme Yazılımları | ${CFG.trialDays} Gün Ücretsiz Deneyin`;
+  const desc = `Market POS, restoran adisyon, randevu, otel, teknik servis, eczane, emlak ve ${PRODUCTS.length} bulut işletme programı. Kurulum yok, ${CFG.trialDays} gün ücretsiz deneme.`;
+  const head = `<meta property="og:type" content="website"><meta property="og:locale" content="tr_TR"><meta property="og:site_name" content="${CFG.brand}"><meta property="og:title" content="${esc(title)}"><meta property="og:description" content="${esc(desc)}"><meta property="og:url" content="${D}/">
+${ld({ '@context': 'https://schema.org', '@type': 'Organization', name: CFG.brand, url: D + '/', logo: D + '/assets/nebsoft-logo.webp', email: CFG.email, contactPoint: { '@type': 'ContactPoint', telephone: '+90' + tel.replace(/^0/, ''), contactType: 'sales', areaServed: 'TR', availableLanguage: 'Turkish' } })}
+${ld({ '@context': 'https://schema.org', '@type': 'WebSite', name: CFG.brand, url: D + '/' })}`;
+  const body = `<main class="seo-static" style="max-width:900px;margin:0 auto;padding:24px;font-family:system-ui,sans-serif"><h1>${esc(title)}</h1><p>${esc(desc)}</p><ul>${PRODUCTS.map((x) => `<li><a href="/${x.slug}">${esc(x.kw[0].toLocaleUpperCase('tr') + x.kw.slice(1))}</a></li>`).join('')}</ul><p><a href="/programlar">Tüm programlar</a></p></main>`;
+  h = h.replace(/<title>[^<]*<\/title>/, `<title>${esc(title)}</title>`).replace(/<meta name="description" content="[^"]*">/, `<meta name="description" content="${esc(desc)}">`)
+    .replace(/<!-- seo:head -->[\s\S]*?<!-- \/seo:head -->/, `<!-- seo:head -->\n${head}\n<!-- /seo:head -->`).replace(/<!-- seo:body -->[\s\S]*?<!-- \/seo:body -->/, `<!-- seo:body -->${body}<!-- /seo:body -->`);
+  fs.writeFileSync(f, h);
+}
+fs.mkdirSync(path.join(SITE, 'programlar'), { recursive: true });
+fs.writeFileSync(path.join(SITE, 'programlar', 'index.html'), hub());
+
 fs.writeFileSync(path.join(SITE, 'sitemap.xml'), `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url><loc>${D}/</loc><lastmod>${today}</lastmod></url>
+  <url><loc>${D}/programlar</loc><lastmod>${today}</lastmod></url>
 ${PRODUCTS.map((p) => `  <url><loc>${D}/${p.slug}</loc><lastmod>${today}</lastmod></url>`).join('\n')}
 </urlset>
 `);

@@ -196,6 +196,19 @@
   // Müşteri sayfası (randevu, takip, portal...): işletmenin verisi herkese açık API'den, yalnızca izin verilen kısmıyla gelir
   const PUB = CLOUD && TENANT && APP_ID && !IS_APP_PAGE ? { slug: TENANT, api: `/api/public/${TENANT}/${APP_ID}`, tk: `nebsoft:pub:${TENANT}:${APP_ID}` } : null;
   const pubToken = (v) => { try { if (v === undefined) return sessionStorage.getItem(PUB.tk) || ''; if (v) sessionStorage.setItem(PUB.tk, v); else sessionStorage.removeItem(PUB.tk); } catch (e) { /* yok */ } return v; };
+  // Müşteri sayfalarının altında küçük "NEBSOFT ile hazırlandı" bağlantısı: işletmenin tavsiye koduyla ürün sayfasına gider
+  let badged = false;
+  function pubBadge(t, app) {
+    if (badged || !t || !t.ref) return; badged = true;
+    const add = () => {
+      const a = document.createElement('a'); a.className = 'ns-made'; a.target = '_blank'; a.rel = 'noopener';
+      a.href = `/?ref=${encodeURIComponent(t.ref)}#/urun/${app}`;
+      a.innerHTML = `<b>${esc((CLOUD.site && CLOUD.site.name) || 'NEBSOFT')}</b> ile hazırlandı · İşletmeniz için ${Number(CLOUD.trialDays) || 7} gün ücretsiz deneyin`;
+      const home = document.createElement('a'); home.className = 'ns-made'; home.href = `/t/${t.slug}/`; home.textContent = `${t.name} · tüm online hizmetler`;
+      const w = document.createElement('div'); w.className = 'ns-made-w noprint'; w.append(home, a); document.body.appendChild(w);
+    };
+    if (document.body) add(); else document.addEventListener('DOMContentLoaded', add);
+  }
   function pubStop(msg) {
     const show = () => { document.body.innerHTML = `<div style="max-width:440px;margin:18vh auto;padding:28px;text-align:center;font-family:system-ui,sans-serif"><h2 style="margin:0 0 10px">Sayfa açılamadı</h2><p style="color:#64748b;line-height:1.6">${String(msg).replace(/[<>&]/g, '')}</p></div>`; };
     if (document.body) show(); else document.addEventListener('DOMContentLoaded', show);
@@ -302,7 +315,7 @@
       });
       data._meta = data._meta || {}; data._settings = data._settings || {};
       this.data = data; this._v = j.version; this._base = JSON.stringify(data); this._snap = this._base;
-      if (j.tenant) this.pubTenant = j.tenant;
+      if (j.tenant) { this.pubTenant = j.tenant; pubBadge(j.tenant, this.name); }
       this.pubIdent = j.ident || null;
     }
     _pubLoad(q) {

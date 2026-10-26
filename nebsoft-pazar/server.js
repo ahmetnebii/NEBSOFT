@@ -113,9 +113,26 @@ const server = http.createServer((req, res) => {
   }
   // İşletme adresi: /t/<işletme>/apps/... aynı dosyaları sunar; işletme bilgisi sayfadaki betik tarafından okunur
   const tm = /^\/t\/([a-z0-9-]{1,80})(\/.*)?$/.exec(p);
-  if (tm) { if (!tm[2] || tm[2] === '/') { res.writeHead(302, { Location: '/' }); return res.end(); } p = tm[2]; if (DENY.test(p)) { res.writeHead(404); return res.end(); } }
+  if (tm) {
+    if (!tm[2] || tm[2] === '/') { // işletmenin herkese açık sayfası
+      if (!tm[2]) { res.writeHead(301, { Location: `/t/${tm[1]}/` }); return res.end(); }
+      return cloud.seo.tenantPage(req, tm[1]).then((html) => { if (!html) { res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' }); return res.end('Bulunamadı'); } sendText(req, res, html, 'text/html; charset=utf-8', 'no-cache'); }).catch(() => { res.writeHead(500); res.end(); });
+    }
+    p = tm[2]; if (DENY.test(p)) { res.writeHead(404); return res.end(); }
+  }
+  // Dinamik SEO dosyaları (alan adı panel ayarından)
+  if (p === '/sitemap.xml') return cloud.seo.sitemap(req).then((x) => sendText(req, res, x, 'application/xml; charset=utf-8', 'public, max-age=3600')).catch(() => { res.writeHead(500); res.end(); });
+  if (p === '/robots.txt') return cloud.seo.robots(req).then((x) => sendText(req, res, x, 'text/plain; charset=utf-8', 'public, max-age=3600')).catch(() => { res.writeHead(500); res.end(); });
+  if (/^\/[0-9a-f]{32}\.txt$/.test(p) && cloud.db.ready()) return cloud.seo.indexnowKey().then((k) => { if (p !== `/${k}.txt`) { res.writeHead(404); return res.end(); } sendText(req, res, k, 'text/plain; charset=utf-8', 'public, max-age=86400'); });
   serve(req, res, p);
 });
+
+function sendText(req, res, text, type, cache) {
+  const etag = `W/"${crypto.createHash('sha1').update(text).digest('base64url').slice(0, 20)}"`;
+  const h = { 'Content-Type': type, ETag: etag, 'Cache-Control': cache };
+  if (req.headers['if-none-match'] === etag) { res.writeHead(304, h); return res.end(); }
+  res.writeHead(200, { ...h, 'Content-Length': Buffer.byteLength(text) }); res.end(req.method === 'HEAD' ? undefined : text);
+}
 
 // Statik dosyalar ve tanıtım siteleri
 function serve(req, res, p) {
@@ -124,7 +141,7 @@ function serve(req, res, p) {
   if (/^[a-z0-9-]+$/.test(seg) && SITES.has(seg)) {
     if (p === '/' + seg + '/') { res.writeHead(301, { Location: '/' + seg }); return res.end(); }
     p = '/site' + (p === '/' + seg ? p + '/index.html' : p);
-  } else if (p === '/sitemap.xml') p = '/site/sitemap.xml';
+  }
   if (p.endsWith('/')) p += 'index.html';
   const file = path.normalize(path.join(ROOT, p));
   if (!file.startsWith(ROOT + path.sep)) { res.writeHead(403); return res.end('Yasak'); }
@@ -133,6 +150,8 @@ function serve(req, res, p) {
     const ext = path.extname(file).toLowerCase();
     const etag = `W/"${st.size.toString(16)}-${Math.floor(st.mtimeMs).toString(16)}"`;
     const h = { 'Content-Type': TYPES[ext] || 'application/octet-stream', ETag: etag, 'Cache-Control': ext === '.html' ? 'no-cache' : LONG.test(ext) ? 'public, max-age=604800' : 'public, max-age=300, must-revalidate' };
+    // Tanıtım sitelerinde alan adı yer tutucusu panel ayarındaki adresle değiştirilir
+    if (ext === '.html' && (p.startsWith('/site/') || p === '/index.html')) return fs.readFile(file, 'utf8', (er, txt) => { if (er) { res.writeHead(500); return res.end(); } cloud.seo.rewrite(txt, req).then((t) => sendText(req, res, t, h['Content-Type'], h['Cache-Control'])); });
     if (req.headers['if-none-match'] === etag) { res.writeHead(304, h); return res.end(); }
     res.writeHead(200, { ...h, 'Content-Length': st.size });
     if (req.method === 'HEAD') return res.end();

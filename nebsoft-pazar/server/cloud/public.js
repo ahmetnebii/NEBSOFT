@@ -27,7 +27,7 @@ async function context(c) {
   const { slug, app } = c.params;
   if (!/^[a-z0-9-]{1,80}$/.test(slug) || !sec.V.app(app)) throw err(404, 'Sayfa bulunamadı');
   const rule = RULES[app]; if (!rule) throw err(404, 'Bu uygulamanın müşteri sayfası yok');
-  const t = await db.one('SELECT id, name, slug, phone, address, status FROM tenants WHERE slug=?', [slug]);
+  const t = await db.one('SELECT id, name, slug, phone, address, status, ref_code FROM tenants WHERE slug=?', [slug]);
   if (!t || t.status !== 'active') throw err(404, 'İşletme bulunamadı');
   const lic = await db.one('SELECT status, end FROM licenses WHERE tenant_id=? AND product=?', [t.id, app]);
   if (!valid(lic)) throw err(402, 'Bu hizmet şu anda kullanılamıyor. Lütfen işletmeyle iletişime geçin.');
@@ -97,7 +97,7 @@ route('POST', '/api/public/:slug/:app/view', { auth: 'none', limit: ['pubv', 240
   const view = buildView(rule, doc, helpers(doc, ident, q));
   // Ek sorgu (ör. indirim kodu): kimlik değiştirmez, her yüklemede istemci tekrar gönderir
   if (c.body.x && typeof c.body.x === 'object' && rule.query) { const ex = rule.query(helpers(doc, ident, c.body.x), c.body.x); if (ex) Object.assign(view, ex); }
-  return { ok: true, version, data: view, token, ident: ident ? { k: ident.k, i: ident.i } : null, tenant: { name: t.name, slug: t.slug, phone: t.phone } };
+  return { ok: true, version, data: view, token, ident: ident ? { k: ident.k, i: ident.i } : null, tenant: { name: t.name, slug: t.slug, phone: t.phone, ref: t.ref_code } };
 });
 
 // İşlemler: [{ c: 'koleksiyon', op: 'ins'|'upd'|'del', rec | id+set+unset }]

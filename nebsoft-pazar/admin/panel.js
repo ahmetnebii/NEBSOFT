@@ -178,6 +178,16 @@
     const r = await api('GET', '/api/admin/settings');
     el.innerHTML = pageHead('Site Ayarları', 'Deneme süresi, tavsiye ödülü ve iletişim bilgileri') + `<div class="card pad" style="max-width:760px" id="f"><div class="form-grid">${NS.fieldsHtml([{ name: 'siteName', label: 'Marka adı', required: true }, { name: 'siteUrl', label: 'Site adresi', placeholder: 'https://www.nebsoft.com.tr' }, { name: 'phone', label: 'Telefon' }, { name: 'email', label: 'E-posta', type: 'email' }, { name: 'address', label: 'Adres', full: true }, { type: 'section', label: 'Satış kuralları' }, { name: 'trialDays', label: 'Ücretsiz deneme (gün)', type: 'number' }, { name: 'referralDays', label: 'Tavsiye ödülü (gün, iki tarafa)', type: 'number' }], r.site)}</div><button class="btn primary mt" id="sv">${icon('check')} Kaydet</button></div>`;
     $('#sv', el).onclick = async () => { try { await api('PUT', '/api/admin/settings', NS.readForm($('#f', el))); toast('Kaydedildi', 'ok'); } catch (e) { toast(e.message, 'err'); } };
+    // Arama motorları: site haritası, işletme sayfaları ve IndexNow bildirimi
+    const seo = await api('GET', '/api/admin/seo').catch(() => null);
+    if (seo) {
+      const box = document.createElement('div'); box.className = 'card pad mt'; box.style.maxWidth = '760px';
+      box.innerHTML = `<h3 class="mb">Arama motorları (SEO)</h3><div class="kv"><b>Site adresi</b><span>${esc(seo.base)}</span><b>Site haritası</b><span><a href="/sitemap.xml" target="_blank">${esc(seo.base)}/sitemap.xml</a></span><b>İşletme sayfaları</b><span>${seo.tenants} işletmenin herkese açık sayfası site haritasında</span><b>IndexNow anahtarı</b><span class="mono">${esc(seo.key || '-')}</span></div>
+        <p class="small muted mt">Site adresini kaydettikten sonra Google Search Console'a <b>${esc(seo.base)}/sitemap.xml</b> adresini bir kez ekleyin. Bing, Yandex ve diğerlerine aşağıdaki düğmeyle anında bildirim gönderilir; yeni işletmeler eklendikçe tekrar basabilirsiniz.</p>
+        <button class="btn primary mt" id="ping">${icon('send')} Arama motorlarına bildir</button>`;
+      el.appendChild(box);
+      $('#ping', box).onclick = async () => { try { const r = await api('POST', '/api/admin/seo/ping'); if (r.ok) toast(`${r.count} adres bildirildi`, 'ok'); else toast(r.error || `IndexNow yanıtı: ${r.status}`, 'err'); } catch (e) { toast(e.message, 'err'); } };
+    }
   };
   ROUTES.yoneticiler = async (el) => {
     on(el, 'click', '#add', async () => { const v = await formModal({ title: 'Yönetici ekle', fields: [{ name: 'name', label: 'Ad soyad', required: true }, { name: 'email', label: 'E-posta', type: 'email', required: true }, { name: 'pass', label: 'Şifre (en az 12)', type: 'password', required: true }, { name: 'role', label: 'Rol', type: 'select', options: [{ value: 'admin', label: 'Yönetici' }, { value: 'superadmin', label: 'Süper yönetici' }] }] }); if (!v) return; try { await api('POST', '/api/admin/users', v); draw(); } catch (e) { toast(e.message, 'err'); } });

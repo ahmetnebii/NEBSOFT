@@ -264,7 +264,7 @@ window.CATALOG = {
   ],
   faq: [
     ['Kurulum gerekiyor mu?', 'Hayır. Tüm ürünler web tabanlıdır; bilgisayar, tablet ve telefondan tarayıcıyla çalışır. Satın aldıktan hemen sonra kullanmaya başlarsınız.'],
-    ['Ücretsiz deneme var mı?', 'Her ürün için 14 gün ücretsiz deneme ve kayıt gerektirmeyen canlı demo sunuyoruz.'],
+    ['Ücretsiz deneme var mı?', 'Her ürün için 7 gün ücretsiz deneme ve kayıt gerektirmeyen canlı demo sunuyoruz.'],
     ['Verilerim güvende mi?', 'Veriler Türkiye\'deki sunucularda şifreli saklanır, günlük yedeklenir ve KVKK\'ya uygundur.'],
     ['Birden fazla ürünü birlikte kullanabilir miyim?', 'Evet. "Hepsi Bir Arada" paketiyle tüm ürünlere %40 indirimli erişirsiniz.'],
     ['İptal edebilir miyim?', 'Aylık planlarda dilediğiniz zaman iptal edebilirsiniz; taahhüt yoktur.'],

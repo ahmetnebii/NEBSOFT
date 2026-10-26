@@ -354,3 +354,9 @@ tr.ns-row-sel td { background: var(--accent-soft) !important; }
 .ns-sync[data-k="err"] { color: #fff; background: var(--err); border-color: var(--err); }
 .ns-sync[data-k="hide"] { opacity: 0; }
 @media print { .ns-sync { display: none; } }
+
+/* Müşteri sayfası alt bilgi bağlantısı (bulut) */
+.ns-made-w { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px 14px; padding: 18px 16px 26px; font-size: 12px; }
+.ns-made { color: var(--text-3, #64748b); text-decoration: none; }
+.ns-made:hover { color: var(--accent, #1d7bf5); text-decoration: underline; }
+@media print { .ns-made-w { display: none; } }

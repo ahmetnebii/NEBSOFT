@@ -4,5 +4,5 @@ module.exports = {
   brand: 'NEBSOFT',
   phone: '0850 555 00 34',
   email: 'destek@nebsoft.com.tr',
-  trialDays: 14,
+  trialDays: 7,
 };

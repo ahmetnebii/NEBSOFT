@@ -5,7 +5,7 @@
   const { esc, $, $$, on, icon, money, num, toast, modal, confirm, formModal, table, chart, badge, kpi, pageHead, sum, rand, pick, addDays, iso, today, daysBetween } = NS;
   const Y = window.YON; const C = window.CATALOG;
   const db = new NS.DB('yonetim', Y.seed);
-  const S = () => db.settings({ trialDays: 14, graceDays: 7, warnDays: 30 });
+  const S = () => db.settings({ trialDays: 7, graceDays: 7, warnDays: 30 });
   const me = () => (NS.currentUser || {}).name || 'Sistem';
   const ten = (id) => db.get('tenants', id) || { name: '-', code: '' };
   const prod = Y.prod;
