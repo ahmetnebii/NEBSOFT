@@ -152,11 +152,11 @@ window.CATALOG = {
       faq: [['Alan adımı kullanabilir miyim?', 'Evet, magazaniz.com gibi kendi alan adınızı bağlayabilirsiniz.'], ['Trendyol/Hepsiburada ile birlikte çalışır mı?', 'Kurumsal pakette pazar yeri entegrasyonu ile stoklar ortak yönetilir.'], ['Komisyon alıyor musunuz?', 'Hayır, yalnızca sabit aylık ücret ödersiniz.']],
     },
     {
-      id: 'eczane', ready: true, cat: 'saglik', name: 'Eczane', tagline: 'Reçeteli satış, SKT takibi ve muadil ilaç', icon: 'pill', accent: '#0d9488',
+      id: 'eczane', ready: true, extraDemos: [{ label: 'Reçetemi hazırla sayfasını aç', url: 'apps/eczane/recete.html' }], cat: 'saglik', name: 'Eczane', tagline: 'Reçeteli satış, SKT takibi ve muadil ilaç', icon: 'pill', accent: '#0d9488',
       prices: [499, 999, 1899], rating: 4.8, reviews: 211, users: 1450, sectors: ['Eczane', 'Hastane eczanesi', 'Dermokozmetik mağazası'],
       desc: 'Karekodlu hızlı satış, reçete türüne göre hasta katkı payı, SKT (son kullanma tarihi) ve parti bazlı stok, etken maddeye göre muadil arama ve depo sipariş listesi.',
-      features: ['Karekod/barkod ile hızlı satış', 'Reçeteli ve elden satış ayrımı', 'SGK katkı payı ve fark ücreti hesabı', 'Renkli reçete türleri (kırmızı, yeşil, mor, turuncu)', 'Parti ve SKT bazlı stok (önce bitecek önce satılır)', 'SKT yaklaşan ve geçen ilaç uyarısı', 'Etken maddeye göre muadil ilaç bulma', 'Hasta kartı ve kronik ilaç hatırlatması', 'Depo sipariş önerisi', 'Nöbet takvimi', 'Günlük kasa ve reçete raporları'],
-      modules: ['Satış', 'İlaç Kartları', 'Stok & SKT', 'Hastalar', 'Depo Siparişi', 'Nöbet', 'Raporlar'],
+      features: ['Online e-reçete: hasta reçete numarasını gönderir, hazır olunca SMS alır', 'Stok sorgulama ve nöbet bilgisi müşteri sayfasında', 'Karekod/barkod ile hızlı satış', 'Reçeteli ve elden satış ayrımı', 'SGK katkı payı ve fark ücreti hesabı', 'Renkli reçete türleri (kırmızı, yeşil, mor, turuncu)', 'Parti ve SKT bazlı stok (önce bitecek önce satılır)', 'SKT yaklaşan ve geçen ilaç uyarısı', 'Etken maddeye göre muadil ilaç bulma', 'Hasta kartı ve kronik ilaç hatırlatması', 'Depo sipariş önerisi', 'Nöbet takvimi', 'Günlük kasa ve reçete raporları'],
+      modules: ['Satış', 'İlaç Kartları', 'Stok & SKT', 'Hastalar', 'Depo Siparişi', 'Nöbet', 'Raporlar', 'Online Reçeteler'],
       faq: [['MEDULA entegrasyonu var mı?', 'Kurumsal pakette SGK MEDULA ve İTS entegrasyonu sunulur; demo sürümde hesaplamalar simüle edilir.'], ['Karekod okuyabilir mi?', 'Evet, 2D karekod okuyucularla barkod gibi çalışır.']],
     },
     {

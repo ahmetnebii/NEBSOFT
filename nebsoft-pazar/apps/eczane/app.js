@@ -187,6 +187,28 @@
       onAction: (a, x) => window.open(`https://wa.me/90${String(x.phone).replace(/\D/g, '').replace(/^0/, '')}?text=${encodeURIComponent(`Merhaba ${x.name}, ${(x.chronic || []).map((id) => drug(id).name).join(', ')} ilacınızın bitmek üzere olduğunu hatırlatırız. Reçetenizi bekliyoruz. ${S().bizName}`)}`, '_blank', 'noopener'),
     });
   }
+  // Hastanın recete.html'den gönderdiği e-reçeteler
+  function rxOrdersPage(el, p, app) {
+    const ST = { yeni: ['Yeni', 'info'], hazirlaniyor: ['Hazırlanıyor', 'warn'], hazir: ['Hazır', 'ok'], eksik: ['Eksik ilaç', 'err'], teslim: ['Teslim edildi', ''] };
+    const sms = (o, text) => NS.smsLog(db, { to: o.phone, name: o.name, text: `${S().bizName}: ${text}`, kind: 'recete' }, true);
+    NS.crud(el, app, {
+      col: 'rxOrders', title: 'Online Reçeteler', sub: 'Hastaların web sayfasından gönderdiği e-reçeteler — hazırlayın, SMS ile haber verin', single: 'Reçete', canAdd: false, emptyIcon: 'file',
+      fields: [{ name: 'rxNo', label: 'E-reçete no' }, { name: 'name', label: 'Hasta' }, { name: 'phone', label: 'Telefon' }, { name: 'total', label: 'Katkı payı / fark (₺)', type: 'number' }, { name: 'note', label: 'Not', full: true }],
+      filters: [{ value: 'open', label: 'Açık', test: (o) => o.status !== 'teslim' }, { value: 'all', label: 'Tümü' }],
+      sort: (a, b) => FLOWI(a) - FLOWI(b) || b.at.localeCompare(a.at), searchFields: (o) => [o.rxNo, o.name, o.phone, o.code],
+      columns: [{ key: 'rxNo', label: 'E-reçete', render: (o) => `<b class="mono">${esc(o.rxNo)}</b><div class="small faint">${esc(o.code)} · ${NS.ago(o.at)}</div>` }, { key: 'name', label: 'Hasta', render: (o) => `<b>${esc(o.name)}</b><div class="small faint">${esc(o.phone)}</div>` }, { key: 'pickup', label: 'Alış' }, { key: 'note', label: 'Not', render: (o) => `<span class="small">${esc(o.note || '')}</span>${o.missing ? `<div class="small" style="color:var(--err)">${esc(o.missing)}</div>` : ''}` }, { key: 'status', label: 'Durum', render: (o) => badge(ST[o.status][0], ST[o.status][1]) }],
+      extraActions: [{ icon: 'pill', act: 'prep', title: 'Hazırlanıyor' }, { icon: 'check', act: 'ready', title: 'Hazır — SMS gönder' }, { icon: 'alert', act: 'miss', title: 'Eksik ilaç bildir' }, { icon: 'user', act: 'done', title: 'Teslim edildi' }],
+      onAction: async (a, o, redraw) => {
+        if (a === 'prep') { o.status = 'hazirlaniyor'; }
+        else if (a === 'ready') { const v = await formModal({ title: 'Reçete hazır', fields: [{ name: 'total', label: 'Ödenecek katkı payı / fark (₺)', type: 'number', value: o.total || 0 }] }); if (!v) return; o.total = v.total; o.status = 'hazir'; sms(o, `${o.rxNo} numaralı reçeteniz hazır.${o.total ? ' Ödenecek: ' + money(o.total) + '.' : ''} Kimliğinizle gelebilirsiniz.`); }
+        else if (a === 'miss') { const v = await formModal({ title: 'Eksik ilaç', fields: [{ name: 'missing', label: 'Eksik ilaç / açıklama', required: true, full: true, value: o.missing || '' }, { name: 'eta', label: 'Tahmini geliş', value: 'Yarın 14:00' }] }); if (!v) return; o.missing = v.missing; o.eta = v.eta; o.status = 'eksik'; sms(o, `${o.rxNo} numaralı reçetenizde eksik ilaç var (${v.missing}). Tahmini geliş: ${v.eta}.`); }
+        else if (a === 'done') { o.status = 'teslim'; o.doneAt = new Date().toISOString(); }
+        db.save(); toast('Güncellendi', 'ok'); redraw();
+      },
+    });
+  }
+  const FLOWI = (o) => ['yeni', 'eksik', 'hazirlaniyor', 'hazir', 'teslim'].indexOf(o.status);
+
   function dutyPage(el, p, app) {
     NS.crud(el, app, { col: 'duty', title: 'Nöbet Takvimi', sub: 'Eczacılar odası nöbet listesi', single: 'Nöbet', addLabel: 'Nöbet ekle', emptyIcon: 'calendar', fields: [{ name: 'date', label: 'Tarih', type: 'date', required: true }, { name: 'note', label: 'Açıklama', value: 'Gece nöbeti 19:00 – 08:30' }], sort: (a, b) => a.date.localeCompare(b.date), filters: [{ value: 'up', label: 'Yaklaşan', test: (d) => d.date >= today() }, { value: 'all', label: 'Tümü' }], columns: [{ key: 'date', label: 'Tarih', render: (d) => `<b>${NS.dateLong(d.date)}</b> ${d.date === today() ? badge('BUGÜN NÖBETÇİ', 'err') : ''}` }, { key: 'note', label: 'Not' }, { label: 'Kalan', render: (d) => (d.date >= today() ? daysBetween(new Date(), d.date) + ' gün' : 'Geçti') }] });
   }
@@ -236,7 +258,7 @@
   const ROLES = { admin: 'Eczacı', kalfa: 'Kalfa / teknisyen' };
   NS.shell({
     id: 'eczane', integrations: ['printer','label','pos','barcode','efatura','sms','whatsapp','webhook','backup'], name: 'Eczane', tagline: 'Eczane Otomasyonu', icon: 'pill', accent: '#0d9488', db, home: 'satis', auth: { roles: ROLES },
-    nav: [{ sec: 'Eczane' }, { id: 'satis', label: 'Satış Ekranı', icon: 'barcode' }, { id: 'ozet', label: 'Özet', icon: 'home' }, { id: 'satislar', label: 'Satışlar & Kasa', icon: 'receipt' }, { id: 'hastalar', label: 'Hastalar', icon: 'users' }, { id: 'kurum', label: 'Kurum Mutabakatı', icon: 'building', roles: ['admin'] }, { sec: 'Stok' }, { id: 'ilaclar', label: 'İlaç Kartları', icon: 'pill' }, { id: 'skt', label: 'Stok & SKT', icon: 'clock' }, { id: 'siparis', label: 'Depo Siparişi', icon: 'truck' }, { sec: 'Yönetim' }, { id: 'nobet', label: 'Nöbet Takvimi', icon: 'calendar' }, { id: 'ayarlar', label: 'Ayarlar', icon: 'settings', roles: ['admin'] }],
-    routes: { kurum: claimsPage, satis: salePage, ozet: dashboard, satislar: salesPage, hastalar: patientsPage, ilaclar: drugsPage, skt: sktPage, siparis: ordersPage, nobet: dutyPage, ayarlar: (el, p, a) => NS.settingsPage(el, a, { roles: ROLES, fields: [{ type: 'section', label: 'Reçete hesabı' }, { name: 'pharmacist', label: 'Mesul eczacı' }, { name: 'gln', label: 'GLN no' }, { name: 'patientPct', label: 'Hasta katılım payı %', type: 'number' }, { name: 'retiredPct', label: 'Emekli katılım payı %', type: 'number' }, { name: 'rxFee', label: 'Reçete katılım payı (₺)', type: 'number' }, { name: 'sktWarnDays', label: 'SKT uyarı süresi (gün)', type: 'number' }] }) },
+    nav: [{ sec: 'Eczane' }, { id: 'satis', label: 'Satış Ekranı', icon: 'barcode' }, { id: 'ozet', label: 'Özet', icon: 'home' }, { id: 'satislar', label: 'Satışlar & Kasa', icon: 'receipt' }, { id: 'hastalar', label: 'Hastalar', icon: 'users' }, { id: 'recete', label: 'Online Reçeteler', icon: 'file' }, { id: 'kurum', label: 'Kurum Mutabakatı', icon: 'building', roles: ['admin'] }, { sec: 'Stok' }, { id: 'ilaclar', label: 'İlaç Kartları', icon: 'pill' }, { id: 'skt', label: 'Stok & SKT', icon: 'clock' }, { id: 'siparis', label: 'Depo Siparişi', icon: 'truck' }, { sec: 'Yönetim' }, { id: 'nobet', label: 'Nöbet Takvimi', icon: 'calendar' }, { id: 'ayarlar', label: 'Ayarlar', icon: 'settings', roles: ['admin'] }],
+    routes: { recete: rxOrdersPage, kurum: claimsPage, satis: salePage, ozet: dashboard, satislar: salesPage, hastalar: patientsPage, ilaclar: drugsPage, skt: sktPage, siparis: ordersPage, nobet: dutyPage, ayarlar: (el, p, a) => NS.settingsPage(el, a, { roles: ROLES, fields: [{ type: 'section', label: 'Reçete hesabı' }, { name: 'pharmacist', label: 'Mesul eczacı' }, { name: 'gln', label: 'GLN no' }, { name: 'patientPct', label: 'Hasta katılım payı %', type: 'number' }, { name: 'retiredPct', label: 'Emekli katılım payı %', type: 'number' }, { name: 'rxFee', label: 'Reçete katılım payı (₺)', type: 'number' }, { name: 'sktWarnDays', label: 'SKT uyarı süresi (gün)', type: 'number' }] }) },
   });
 })();
