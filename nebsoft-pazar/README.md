@@ -222,4 +222,4 @@ Her program için ayrı bir SEO tanıtım sayfası vardır: `/randevusistemi`, `
 - Alan adı, telefon, e-posta: `site/src/site.config.js`
 - Ekran görüntüleri (PC 1440×900 ve mobil): önce `node server.js`, sonra `node site/tools/screens.js` (tek ürün için: `node site/tools/screens.js randevu`). İnterneti olan bir bilgisayarda çalıştırın, yoksa fotoğraflı sayfalarda gri kutular çıkar.
 - Sayfaları üretmek: `node site/tools/build-sites.js` → `site/<slug>/index.html`, `site/sitemap.xml`, `robots.txt`
-- `server.js` `/<slug>` adresini `site/<slug>/index.html` dosyasına bağlar. Nginx'te karşılığı: `location ~ ^/([a-z0-9-]+)$ { try_files /site/$1/index.html =404; }` ve `location ~ ^/([a-z0-9-]+)/img/ { root …/site; }`
+- `server.js` `/<slug>` adresini `site/<slug>/index.html` dosyasına bağlar. Nginx'te karşılığı: `location ~ ^/([a-z0-9-]+)$ { try_files /site/$1/index.html =404; }` ve `location ~ ^/([a-z0-9-]+)/img/(.+)$ { alias /SITE_KOKU/site/$1/img/$2; }`
