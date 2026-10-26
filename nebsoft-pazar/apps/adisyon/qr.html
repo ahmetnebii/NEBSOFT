@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Menü</title>
+<link rel="preconnect" href="https://images.unsplash.com">
+<link rel="stylesheet" href="../../core/core.css">
+<style>
+  :root { --app-accent: #e11d48; --app-accent-soft: #fde8ec; }
+  body { background: var(--bg); padding-bottom: 100px; }
+  .cover { position: relative; height: 230px; background: #222 center/cover; color: #fff; display: flex; align-items: flex-end; }
+  .cover::before { content: ''; position: absolute; inset: 0; background: linear-gradient(transparent 20%, rgba(0,0,0,.8)); }
+  .cover .in { position: relative; width: 100%; max-width: 760px; margin: 0 auto; padding: 18px 16px; }
+  .cover h1 { font-size: 28px; color: #fff; }
+  .chips2 { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; } .chips2 span, .chips2 button { background: rgba(255,255,255,.18); backdrop-filter: blur(6px); border: 0; color: #fff; border-radius: 99px; padding: 5px 10px; font: 600 12px var(--font); display: inline-flex; gap: 5px; align-items: center; cursor: pointer; } .chips2 svg { width: 14px; height: 14px; }
+  .wrap { max-width: 760px; margin: 0 auto; padding: 0 16px; }
+  .srch { margin: 14px 0 0; position: relative; } .srch input { padding-left: 38px; } .srch svg { position: absolute; left: 12px; top: 12px; width: 18px; height: 18px; color: var(--text-3); }
+  .cats { position: sticky; top: 0; z-index: 5; background: var(--bg); display: flex; gap: 8px; overflow-x: auto; padding: 12px 16px; border-bottom: 1px solid var(--border); scrollbar-width: none; } .cats::-webkit-scrollbar { display: none; }
+  .cats a { white-space: nowrap; padding: 8px 14px; border-radius: 99px; background: var(--surface); border: 1px solid var(--border); color: var(--text-2); font-weight: 600; font-size: 13px; text-decoration: none; }
+  .cats a.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .sec { padding-top: 22px; scroll-margin-top: 64px; } .sec h2 { margin-bottom: 12px; font-size: 20px; }
+  .pop { display: grid; grid-auto-flow: column; grid-auto-columns: 150px; gap: 12px; overflow-x: auto; padding-bottom: 6px; scrollbar-width: none; }
+  .pop .pi { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; overflow: hidden; cursor: pointer; } .pop img { width: 100%; aspect-ratio: 1; object-fit: cover; display: block; } .pop .pi div { padding: 8px 10px; font-size: 13px; } .pop b { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .item { display: flex; gap: 14px; padding: 12px; background: var(--surface); border: 1px solid var(--border); border-radius: 16px; margin-bottom: 10px; cursor: pointer; transition: .15s; } .item:hover { border-color: var(--accent); }
+  .item .info { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+  .item .d { font-size: 12.5px; color: var(--text-2); margin-top: 3px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .item .p { font-weight: 800; margin-top: auto; padding-top: 6px; font-size: 15px; }
+  .ph { position: relative; width: 104px; height: 104px; flex: none; } .ph img { width: 100%; height: 100%; object-fit: cover; border-radius: 12px; display: block; background: var(--surface-2); }
+  .ph .add { position: absolute; right: -6px; bottom: -6px; width: 36px; height: 36px; border-radius: 50%; border: 3px solid var(--surface); background: var(--accent); color: #fff; display: grid; place-items: center; cursor: pointer; } .ph .add svg { width: 18px; height: 18px; } .ph .q { position: absolute; left: 6px; top: 6px; background: var(--accent); color: #fff; font-size: 11px; font-weight: 800; border-radius: 99px; min-width: 22px; height: 22px; display: grid; place-items: center; padding: 0 5px; }
+  .tag { font-size: 10.5px; font-weight: 700; padding: 2px 7px; border-radius: 6px; background: var(--app-accent-soft); color: var(--accent); margin-right: 4px; }
+  .soldout { opacity: .5; } .soldout .ph img { filter: grayscale(1); }
+  .bar { position: fixed; left: 0; right: 0; bottom: 0; padding: 10px 12px calc(10px + env(safe-area-inset-bottom)); background: var(--surface); border-top: 1px solid var(--border); display: flex; gap: 8px; z-index: 10; box-shadow: 0 -10px 30px rgba(0,0,0,.06); }
+  .bar .btn { flex: 1; height: 52px; flex-direction: column; gap: 2px; font-size: 12px; } .bar .btn.primary { flex: 2; flex-direction: row; font-size: 14px; }
+  .sheet { position: fixed; inset: 0; z-index: 50; background: rgba(0,0,0,.5); display: flex; align-items: flex-end; justify-content: center; }
+  .sheet .bx { background: var(--surface); width: 100%; max-width: 560px; border-radius: 22px 22px 0 0; max-height: 92vh; overflow: auto; padding-bottom: env(safe-area-inset-bottom); animation: up .25s ease-out; } @keyframes up { from { transform: translateY(40px); opacity: 0; } }
+  .sheet .big { width: 100%; aspect-ratio: 16/11; object-fit: cover; display: block; border-radius: 22px 22px 0 0; }
+  .sheet .bd { padding: 18px; } .sheet .x { position: absolute; }
+  .qty { display: inline-flex; align-items: center; border: 1px solid var(--border); border-radius: 12px; height: 48px; } .qty button { width: 44px; height: 46px; border: 0; background: none; cursor: pointer; color: var(--text); font-size: 20px; } .qty b { min-width: 28px; text-align: center; }
+  .st { font-size: 11.5px; font-weight: 700; padding: 3px 8px; border-radius: 99px; } .st.new { background: #fef3c7; color: #92400e; } .st.sent, .st.prep { background: #dbeafe; color: #1e40af; } .st.ready { background: #dcfce7; color: #166534; } .st.served { background: var(--surface-2); color: var(--text-2); }
+  .stars { display: flex; gap: 6px; justify-content: center; font-size: 34px; } .stars button { border: 0; background: none; cursor: pointer; color: #d1d5db; } .stars button.on { color: #f59e0b; }
+  @media (min-width: 700px) { .cover { height: 300px; } }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script src="../../core/core.js"></script>
+<script src="data.js"></script>
+<script>
+/* QR menü — masadan sipariş, garson/hesap çağırma, sipariş takibi ve değerlendirme. Adisyon paneliyle aynı veriyi kullanır. */
+(function () {
+  const { esc, $, $$, on, icon, money, toast, sum, uid } = NS;
+  const db = new NS.DB('adisyon', window.ADISYON_SEED);
+  const PH = window.ADISYON_PHOTO;
+  const tableId = new URLSearchParams(location.search).get('masa');
+  const t = db.get('tables', tableId);
+  const s = db.settings({});
+  const CK = 'nebsoft:adisyon:qrcart:' + tableId;
+  let cart = []; try { cart = JSON.parse(sessionStorage.getItem(CK)) || []; } catch (e) { /* yok */ }
+  const saveCart = () => { try { sessionStorage.setItem(CK, JSON.stringify(cart)); } catch (e) { /* yok */ } };
+  let q = '';
+  if (!t) { document.body.innerHTML = `<div class="empty" style="padding-top:80px">${icon('qr')}<p class="mt">Geçersiz masa kodu. Lütfen masadaki QR kodu tekrar okutun.</p></div>`; return; }
+  document.title = s.bizName + ' · Menü';
+  const catName = (id) => (db.get('mcats', id) || {}).name || '';
+  const img = (m, w) => `<img src="${PH(m, catName(m.cat), w)}" alt="${esc(m.name)}" loading="lazy" onerror="this.style.visibility='hidden'">`;
+  const openCheck = () => db.find('checks', (x) => x.table === t.id && x.status !== 'closed');
+  const ST = { new: 'Onay bekliyor', sent: 'Mutfağa iletildi', prep: 'Hazırlanıyor', ready: 'Hazır', served: 'Servis edildi' };
+  // En çok satanlar: kapalı/açık adisyonlardaki adetlerden
+  const popular = () => { const c = {}; db.all('checks').forEach((k) => (k.items || []).forEach((i) => { c[i.pid] = (c[i.pid] || 0) + i.qty; })); return Object.entries(c).sort((a, b) => b[1] - a[1]).map(([id]) => db.get('menu', id)).filter((m) => m && m.active).slice(0, 8); };
+  const popIds = new Set(popular().slice(0, 5).map((m) => m.id));
+  const inCart = (id) => sum(cart.filter((c) => c.pid === id), (c) => c.qty);
+
+  const render = () => {
+    db.load();
+    const cats = db.all('mcats'); const pop = popular();
+    const items = (k) => db.all('menu', (m) => m.cat === k.id && (!q || NS.match(q, m.name, m.desc)));
+    const ck = openCheck(); const mine = ck ? ck.items.filter((i) => i.qr) : [];
+    const y = window.scrollY;
+    $('#root').innerHTML = `
+      <div class="cover" style="background-image:url('${PH.cover()}')"><div class="in"><h1>${esc(s.bizName)}</h1><div class="chips2"><span>${icon('table')} Masa ${esc(t.name)}</span>${s.wifi ? `<button data-wifi>${icon('globe')} Wi-Fi: ${esc(s.wifi)}</button>` : ''}${s.bizPhone ? `<span>${icon('phone')} ${esc(s.bizPhone)}</span>` : ''}</div></div></div>
+      <div class="wrap"><div class="srch">${icon('search')}<input class="input" id="q" placeholder="Menüde ara (ör. pizza, latte)" value="${esc(q)}"></div></div>
+      <div class="cats">${!q && pop.length ? '<a href="#c-pop" data-c="pop">⭐ Popüler</a>' : ''}${cats.filter((k) => items(k).length).map((k) => `<a href="#c-${k.id}" data-c="${k.id}">${esc(k.name)}</a>`).join('')}</div>
+      <div class="wrap">
+        ${mine.length ? `<div class="card pad mt" style="border-color:var(--accent)"><div class="row"><b class="grow">${icon('clock')} Siparişleriniz</b><button class="btn sm" id="bill">${icon('receipt')} Hesap</button></div>${mine.map((i) => `<div class="list-item small"><span class="grow">${i.qty} × ${esc(i.name)}</span><span class="st ${i.status}">${ST[i.status] || i.status}</span></div>`).join('')}</div>` : ''}
+        ${!q && pop.length ? `<div class="sec" id="c-pop"><h2>⭐ En çok tercih edilenler</h2><div class="pop">${pop.map((m) => `<div class="pi" data-open="${m.id}">${img(m, 300)}<div><b>${esc(m.name)}</b>${money(m.price)}</div></div>`).join('')}</div></div>` : ''}
+        ${cats.map((k) => { const l = items(k); return l.length ? `<div class="sec" id="c-${k.id}"><h2>${esc(k.name)}</h2>${l.map((m) => `
+          <div class="item ${m.active ? '' : 'soldout'}" data-open="${m.id}"><div class="info"><b>${esc(m.name)}</b><div>${popIds.has(m.id) ? '<span class="tag">Popüler</span>' : ''}${m.prepMin && m.prepMin <= 5 ? '<span class="tag" style="background:var(--surface-2);color:var(--text-2)">Hızlı</span>' : ''}</div>${m.desc ? `<div class="d">${esc(m.desc)}</div>` : ''}<div class="p">${money(m.price)}</div></div>
+          <div class="ph">${img(m, 240)}${inCart(m.id) ? `<span class="q">${inCart(m.id)}</span>` : ''}${m.active ? (s.qrOrder ? `<button class="add" data-add="${m.id}" aria-label="Sepete ekle">${icon('plus')}</button>` : '') : '<span class="badge err" style="position:absolute;left:6px;bottom:6px">Tükendi</span>'}</div></div>`).join('')}</div>` : ''; }).join('') || '<div class="empty mt">Aradığınız ürün bulunamadı</div>'}
+        <p class="center small faint" style="padding:28px 0">Fiyatlara KDV dahildir · Alerjen bilgisi için garsonunuza danışın<br>NEBSOFT QR Menü</p></div>
+      <div class="bar">
+        <button class="btn" data-call="garson">${icon('bell')}<span>Garson</span></button>
+        <button class="btn" id="bill2">${icon('receipt')}<span>Hesap</span></button>
+        ${s.qrOrder ? `<button class="btn primary" id="cartb">${icon('cart')} ${cart.length ? `Sepet (${sum(cart, (c) => c.qty)}) · ${money(sum(cart, (c) => c.qty * c.price))}` : 'Sepetiniz boş'}</button>` : ''}
+      </div>`;
+    window.scrollTo(0, y);
+    spy();
+    const qi = $('#q'); qi.oninput = () => { q = qi.value.trim(); clearTimeout(qi._t); qi._t = setTimeout(() => { render(); const n = $('#q'); n.focus(); n.setSelectionRange(n.value.length, n.value.length); }, 250); };
+  };
+  // Kaydırırken aktif kategori sekmesi
+  let io;
+  function spy() {
+    if (io) io.disconnect(); if (!('IntersectionObserver' in window)) return;
+    io = new IntersectionObserver((es) => es.forEach((e) => { if (!e.isIntersecting) return; const id = e.target.id.replace('c-', ''); $$('[data-c]').forEach((a) => a.classList.toggle('active', a.dataset.c === id)); const a = $(`[data-c="${id}"]`); if (a) a.scrollIntoView({ block: 'nearest', inline: 'center' }); }), { rootMargin: '-70px 0px -70% 0px' });
+    $$('.sec').forEach((x) => io.observe(x));
+  }
+  function sheet(html, onOpen) {
+    const w = document.createElement('div'); w.className = 'sheet'; w.innerHTML = `<div class="bx">${html}</div>`;
+    const close = () => w.remove(); w.onclick = (e) => { if (e.target === w || e.target.closest('[data-x]')) close(); };
+    document.body.appendChild(w); if (onOpen) onOpen(w.querySelector('.bx'), close); return close;
+  }
+  function addItem(m, qty = 1, note = '') {
+    const ex = cart.find((c) => c.pid === m.id && (c.note || '') === note);
+    if (ex) ex.qty += qty; else cart.push({ pid: m.id, name: m.name, price: m.price, qty, note });
+    saveCart(); toast(`${m.name} sepete eklendi`, 'ok'); render();
+  }
+  function detail(m) {
+    let qty = 1;
+    sheet(`<div style="position:relative"><img class="big" src="${PH(m, catName(m.cat), 900)}" alt=""><button class="btn icon" data-x style="position:absolute;top:12px;right:12px;border-radius:50%">${icon('x')}</button></div><div class="bd"><div class="small faint">${esc(catName(m.cat))}</div><h2 style="margin:4px 0 6px">${esc(m.name)}</h2><p class="muted">${esc(m.desc || 'Taze malzemelerle, siparişe özel hazırlanır.')}</p><div class="small faint mt">${icon('clock')} Hazırlanma süresi ~${m.prepMin || 10} dk</div>
+      ${m.active && s.qrOrder ? `<div class="field mt"><label>Not (isteğe bağlı)</label><input class="input" id="nt" placeholder="ör. soğansız, az pişmiş, buzsuz"></div><div class="row mt nw" style="gap:10px"><div class="qty"><button data-d="-1">−</button><b id="qv">1</b><button data-d="1">+</button></div><button class="btn primary lg grow" id="ad">Sepete ekle · <span id="tp">${money(m.price)}</span></button></div>` : `<div class="mt">${m.active ? NS.badge('Sipariş için garsonu çağırın', 'info') : NS.badge('Bugün tükendi', 'err')}</div>`}</div>`, (b, close) => {
+      on(b, 'click', '[data-d]', (e, x) => { qty = Math.max(1, Math.min(20, qty + Number(x.dataset.d))); $('#qv', b).textContent = qty; $('#tp', b).textContent = money(qty * m.price); });
+      if ($('#ad', b)) $('#ad', b).onclick = () => { addItem(m, qty, $('#nt', b).value.trim()); close(); };
+    });
+  }
+  function cartSheet() {
+    if (!cart.length) return toast('Sepetiniz boş');
+    sheet(`<div class="bd"><div class="row mb"><h2 class="grow">Sepetiniz</h2><button class="btn icon ghost" data-x>${icon('x')}</button></div><div id="cl"></div><div class="field mt"><label>Genel not</label><input class="input" id="gn" placeholder="Alerjiniz veya isteğiniz varsa yazın"></div><button class="btn primary lg block mt" id="send">${icon('send')} Siparişi gönder</button><p class="small faint center mt">Siparişiniz garson onayıyla mutfağa iletilir. Ödeme masada alınır.</p></div>`, (b, close) => {
+      const draw = () => { $('#cl', b).innerHTML = cart.map((c, i) => { const m = db.get('menu', c.pid) || { name: c.name, cat: '' }; return `<div class="list-item"><div class="ph" style="width:52px;height:52px">${img(m, 120)}</div><span class="grow"><b>${esc(c.name)}</b><div class="small faint">${money(c.price)}${c.note ? ' · ' + esc(c.note) : ''}</div></span><button class="btn sm icon" data-q="${i}|-1">${icon('minus')}</button><b>${c.qty}</b><button class="btn sm icon" data-q="${i}|1">${icon('plus')}</button></div>`; }).join('') + `<div class="row between mt"><span class="muted">Toplam</span><b style="font-size:22px">${money(sum(cart, (c) => c.qty * c.price))}</b></div>`; };
+      on(b, 'click', '[data-q]', (e, x) => { const [i, d] = x.dataset.q.split('|').map(Number); cart[i].qty += d; if (cart[i].qty <= 0) cart.splice(i, 1); saveCart(); render(); if (!cart.length) return close(); draw(); });
+      $('#send', b).onclick = () => {
+        db.load();
+        const gn = $('#gn', b).value.trim();
+        let c = openCheck();
+        if (!c) c = db.insert('checks', { no: db.nextNo('checks', 'A'), type: 'masa', table: t.id, guests: 1, opened: new Date().toISOString(), items: [], payments: [], status: 'open', waiter: null, discount: null }, true);
+        cart.forEach((x) => { const m = db.get('menu', x.pid); if (!m || !m.active) return; c.items.push({ id: uid(), pid: x.pid, name: x.name, price: x.price, qty: x.qty, note: [x.note, gn].filter(Boolean).join(' · '), status: 'new', station: m.station, qr: true }); });
+        db.insert('calls', { table: t.id, type: 'garson', at: new Date().toISOString(), done: false, order: true }, true);
+        db.save(); cart = []; saveCart(); close(); render();
+        sheet(`<div class="bd center" style="padding:30px 20px"><div style="width:72px;height:72px;border-radius:50%;background:#dcfce7;color:#15803d;display:grid;place-items:center;margin:0 auto 14px">${icon('check')}</div><h2>Siparişiniz alındı</h2><p class="muted mt">Garsonumuz siparişinizi onaylayıp mutfağa iletecek. Durumunu bu sayfadan takip edebilirsiniz. Afiyet olsun!</p><button class="btn primary lg block mt" data-x>Tamam</button></div>`);
+      };
+      draw();
+    });
+  }
+  function billSheet() {
+    db.load(); const c = openCheck();
+    const items = c ? c.items : []; const total = sum(items, (i) => i.qty * i.price); const disc = c && c.discount ? (c.discount.type === 'pct' ? total * c.discount.value / 100 : c.discount.value || 0) : 0; const paid = c ? sum(c.payments || [], (p) => p.amount) : 0;
+    sheet(`<div class="bd"><div class="row mb"><h2 class="grow">Hesap · Masa ${esc(t.name)}</h2><button class="btn icon ghost" data-x>${icon('x')}</button></div>
+      ${items.length ? items.map((i) => `<div class="list-item small"><span class="grow">${i.qty} × ${esc(i.name)}</span><b>${money(i.qty * i.price)}</b></div>`).join('') + `${disc ? `<div class="row between small mt" style="color:var(--ok)"><span>İndirim</span><span>-${money(disc)}</span></div>` : ''}${paid ? `<div class="row between small"><span>Ödenen</span><span>-${money(paid)}</span></div>` : ''}<div class="row between mt"><b>Kalan</b><b style="font-size:24px">${money(Math.max(0, total - disc - paid))}</b></div>
+        <div class="field mt"><label>Nasıl ödemek istersiniz?</label><div class="seg" style="width:100%"><button data-pay="kart" class="active" style="flex:1">${icon('card')} Kart</button><button data-pay="nakit" style="flex:1">${icon('cash')} Nakit</button></div></div><label class="check small mt"><input type="checkbox" id="split"> Hesabı bölmek istiyoruz</label><button class="btn primary lg block mt" id="ask">${icon('receipt')} Hesabı iste</button>` : '<div class="empty">Henüz bu masaya ait sipariş yok.</div>'}</div>`, (b, close) => {
+      let pay = 'kart'; on(b, 'click', '[data-pay]', (e, x) => { pay = x.dataset.pay; $$('[data-pay]', b).forEach((y) => y.classList.toggle('active', y === x)); });
+      if ($('#ask', b)) $('#ask', b).onclick = () => { db.load(); db.insert('calls', { table: t.id, type: 'hesap', at: new Date().toISOString(), done: false, pay, split: $('#split', b).checked }); close(); rate(); };
+    });
+  }
+  function rate() {
+    let r = 0;
+    sheet(`<div class="bd center" style="padding:26px 20px"><h2>Hesabınız geliyor</h2><p class="muted mt">Garsonunuz ${'birazdan'} masanıza gelecek. Bu arada deneyiminizi puanlar mısınız?</p><div class="stars mt">${[1, 2, 3, 4, 5].map((i) => `<button data-r="${i}" aria-label="${i} yıldız">★</button>`).join('')}</div><textarea class="input mt" id="fc" placeholder="Görüşünüz (isteğe bağlı)" style="height:80px"></textarea><button class="btn primary lg block mt" id="fs">Gönder</button><button class="btn ghost block mt" data-x>Şimdi değil</button></div>`, (b, close) => {
+      on(b, 'click', '[data-r]', (e, x) => { r = Number(x.dataset.r); $$('[data-r]', b).forEach((y) => y.classList.toggle('on', Number(y.dataset.r) <= r)); });
+      $('#fs', b).onclick = () => { if (!r) return toast('Lütfen puan seçin', 'err'); db.load(); db.insert('feedback', { table: t.id, rating: r, comment: $('#fc', b).value.trim(), at: new Date().toISOString(), source: 'qr' }); close(); toast(r >= 4 ? 'Teşekkürler! Yine bekleriz 💛' : 'Geri bildiriminiz yönetime iletildi, teşekkürler', 'ok'); };
+    });
+  }
+  render();
+  on(document.body, 'click', '[data-add]', (e, b) => { e.stopPropagation(); addItem(db.get('menu', b.dataset.add)); });
+  on(document.body, 'click', '[data-open]', (e, b) => detail(db.get('menu', b.dataset.open)));
+  on(document.body, 'click', '[data-wifi]', async () => { try { await navigator.clipboard.writeText(s.wifi); toast('Wi-Fi şifresi kopyalandı', 'ok'); } catch (e) { toast('Wi-Fi: ' + s.wifi); } });
+  on(document.body, 'click', '[data-call]', () => { db.load(); db.insert('calls', { table: t.id, type: 'garson', at: new Date().toISOString(), done: false }); toast('Garsonunuz geliyor', 'ok'); });
+  on(document.body, 'click', '#cartb', cartSheet);
+  on(document.body, 'click', '#bill, #bill2', billSheet);
+  // Mutfak durumu panelde değişince sipariş listesi kendiliğinden güncellenir
+  window.addEventListener('storage', (e) => { if (e.key === db.key && !document.querySelector('.sheet') && document.activeElement.id !== 'q') render(); });
+})();
+</script>
+</body>
+</html>

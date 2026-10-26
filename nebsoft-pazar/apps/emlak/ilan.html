@@ -1,0 +1,434 @@
+<!doctype html>
+<html lang="tr" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>İlanlar</title>
+<meta name="description" content="Satılık ve kiralık daire, villa, arsa ve işyeri ilanları. Ücretsiz değerleme, yer gösterme randevusu ve kredi hesaplama.">
+<link rel="preconnect" href="https://images.unsplash.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700;800&display=swap">
+<link rel="stylesheet" href="../../core/core.css">
+<style>
+  :root, :root[data-theme] { --navy: #0f2a44; --navy-2: #173a5c; --gold: #c8a24a; --gold-soft: #f8f1e1; --bg: #fff; --surface: #fff; --surface-2: #f5f6f8; --border: #e6e8ec; --text: #14202e; --text-2: #4b5563; --text-3: #8a94a3; --accent: #0f2a44; --app-accent: #0f2a44; --ok: #15803d; --red: #c2410c; --disp: 'Fraunces', Georgia, serif; }
+  body { background: #fff; color: var(--text); font-family: Inter, system-ui, sans-serif; }
+  a { color: inherit; text-decoration: none; }
+  .w { max-width: 1280px; margin: 0 auto; padding: 0 24px; }
+  .disp { font-family: var(--disp); font-weight: 600; letter-spacing: -.015em; }
+  .eyb { font-size: 12px; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; color: var(--gold); margin-bottom: 8px; }
+  /* başlık */
+  .tb0 { background: var(--navy); color: #cbd5e1; font-size: 12.5px; } .tb0 .w { display: flex; gap: 22px; height: 34px; align-items: center; } .tb0 a:hover { color: #fff; } .tb0 svg { width: 14px; height: 14px; vertical-align: -2px; }
+  header.hd { position: sticky; top: 0; z-index: 40; background: rgba(255,255,255,.97); backdrop-filter: blur(8px); border-bottom: 1px solid var(--border); }
+  .hd .w { display: flex; align-items: center; gap: 28px; height: 72px; }
+  .brand { display: flex; align-items: center; gap: 10px; } .brand i { width: 40px; height: 40px; border-radius: 10px; background: var(--navy); color: var(--gold); display: grid; place-items: center; } .brand i svg { width: 22px; height: 22px; } .brand b { font-family: var(--disp); font-size: 21px; display: block; line-height: 1.1; } .brand small { font-size: 11px; color: var(--text-3); letter-spacing: .1em; text-transform: uppercase; }
+  nav.nv { display: flex; gap: 4px; flex: 1; } nav.nv a { padding: 10px 14px; border-radius: 8px; font-weight: 600; font-size: 14px; color: var(--text-2); } nav.nv a:hover, nav.nv a.on { color: var(--navy); background: var(--surface-2); }
+  .hb { display: flex; gap: 8px; align-items: center; }
+  .ib { position: relative; width: 42px; height: 42px; border-radius: 10px; border: 1px solid var(--border); background: #fff; display: grid; place-items: center; cursor: pointer; color: var(--text); flex: none; } .ib svg { width: 19px; height: 19px; } .ib .n { position: absolute; top: -6px; right: -6px; background: var(--gold); color: var(--navy); font-size: 10px; font-weight: 800; min-width: 18px; height: 18px; border-radius: 99px; display: grid; place-items: center; }
+  .ib.on { color: #e11d48; border-color: #fecdd3; } .ib.on svg { fill: currentColor; } .ib[data-cmp].on { color: #fff; background: var(--navy); border-color: var(--navy); } .ib[data-cmp].on svg { fill: none; }
+  .b { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 46px; padding: 0 22px; border-radius: 10px; border: 1px solid var(--navy); background: var(--navy); color: #fff; font: 600 14px Inter; cursor: pointer; white-space: nowrap; transition: .15s; } .b:hover { background: var(--navy-2); } .b svg { width: 18px; height: 18px; }
+  .b.gd { background: var(--gold); border-color: var(--gold); color: var(--navy); } .b.gd:hover { filter: brightness(1.05); }
+  .b.ol { background: #fff; color: var(--navy); border-color: var(--border); } .b.ol:hover { border-color: var(--navy); }
+  .b.wa { background: #1f9d55; border-color: #1f9d55; color: #fff; } .b.sm { height: 36px; padding: 0 14px; font-size: 13px; } .b.full { width: 100%; }
+  /* hero */
+  .hero { position: relative; min-height: 600px; display: flex; align-items: center; color: #fff; overflow: hidden; padding: 60px 0; }
+  .hero > img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+  .hero::before { content: ''; position: absolute; inset: 0; background: linear-gradient(90deg, rgba(10,25,41,.85), rgba(10,25,41,.4) 70%, rgba(10,25,41,.2)); z-index: 1; }
+  .hero .w { position: relative; z-index: 2; width: 100%; }
+  .hero h1 { font-size: clamp(36px, 5.2vw, 68px); line-height: 1.02; max-width: 720px; color: #fff; }
+  .hero p { font-size: 17px; opacity: .88; max-width: 520px; margin: 16px 0 30px; }
+  .sbox { background: #fff; color: var(--text); border-radius: 16px; padding: 8px; max-width: 980px; box-shadow: 0 30px 70px rgba(0,0,0,.25); }
+  .stabs { display: flex; gap: 4px; padding: 6px 6px 10px; } .stabs button { border: 0; background: none; padding: 8px 16px; border-radius: 8px; font: 700 14px Inter; color: var(--text-3); cursor: pointer; } .stabs button.on { background: var(--gold-soft); color: var(--navy); }
+  .sf { display: grid; grid-template-columns: 1.2fr 1fr 1fr 1fr auto; gap: 8px; } .sf label { display: block; border: 1px solid var(--border); border-radius: 10px; padding: 8px 12px; font-size: 11px; font-weight: 700; color: var(--text-3); letter-spacing: .06em; text-transform: uppercase; } .sf select { display: block; width: 100%; border: 0; outline: 0; background: none; font: 600 14.5px Inter; color: var(--text); padding: 2px 0 0; text-transform: none; letter-spacing: 0; }
+  .sf .b { height: auto; min-height: 58px; padding: 0 30px; }
+  .stats { display: grid; grid-template-columns: repeat(4, 1fr); margin-top: 46px; max-width: 760px; } .stats div { border-left: 1px solid rgba(255,255,255,.25); padding: 4px 22px; } .stats b { font-family: var(--disp); font-size: 34px; display: block; color: var(--gold); } .stats span { font-size: 13px; opacity: .8; }
+  .sec { padding: 76px 0 0; } .sh { display: flex; align-items: end; gap: 20px; margin-bottom: 28px; } .sh h2 { font-size: clamp(28px, 3.2vw, 42px); line-height: 1.05; } .sh .grow { flex: 1; } .sh a.lk { font-weight: 700; font-size: 14px; color: var(--navy); white-space: nowrap; }
+  /* ilan kartı */
+  .lg { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 24px; }
+  .lc { position: relative; border: 1px solid var(--border); border-radius: 14px; overflow: hidden; background: #fff; transition: box-shadow .2s, transform .2s; display: flex; flex-direction: column; }
+  .lc:hover { box-shadow: 0 18px 40px rgba(15,42,68,.12); transform: translateY(-2px); }
+  .lc .ph { position: relative; aspect-ratio: 16/11; overflow: hidden; background: #dfe3e8; display: block; }
+  .lc .ph img { width: 100%; height: 100%; object-fit: cover; transition: transform .6s; } .lc:hover .ph img { transform: scale(1.05); }
+  .lc .tg { position: absolute; top: 12px; left: 12px; display: flex; gap: 6px; flex-wrap: wrap; } .tg span { background: #fff; color: var(--navy); font-size: 11px; font-weight: 800; padding: 5px 9px; border-radius: 6px; letter-spacing: .03em; } .tg .k { background: var(--navy); color: #fff; } .tg .g { background: var(--gold); color: var(--navy); } .tg .o { background: #f59e0b; color: #fff; }
+  .lc .cnt { position: absolute; bottom: 12px; left: 12px; background: rgba(0,0,0,.6); color: #fff; font-size: 11.5px; font-weight: 600; padding: 4px 8px; border-radius: 6px; display: flex; gap: 5px; align-items: center; } .lc .cnt svg { width: 13px; height: 13px; }
+  .lc .acts { position: absolute; top: 10px; right: 10px; display: flex; gap: 6px; z-index: 2; } .lc .acts button { width: 36px; height: 36px; border-radius: 50%; border: 0; background: rgba(255,255,255,.95); display: grid; place-items: center; cursor: pointer; color: var(--navy); } .lc .acts svg { width: 17px; height: 17px; } .acts .on { color: #e11d48; } .acts .on svg { fill: #e11d48; } .acts .cm.on { background: var(--navy); color: #fff; } .acts .cm.on svg { fill: none; }
+  .lc .bd { padding: 16px 18px 18px; flex: 1; display: flex; flex-direction: column; }
+  .lc .pr { font-size: 22px; font-weight: 800; color: var(--navy); } .lc .pr small { font-size: 13px; color: var(--text-3); font-weight: 600; }
+  .lc h3 { font-size: 15px; font-weight: 600; margin: 4px 0; line-height: 1.35; }
+  .loc { font-size: 13px; color: var(--text-3); display: flex; gap: 5px; align-items: center; flex-wrap: wrap; } .loc svg { width: 14px; height: 14px; }
+  .spec { display: flex; padding-top: 14px; border-top: 1px solid var(--border); margin-top: auto; } .lc .bd .loc { margin-bottom: 14px; } .spec span { flex: 1; font-size: 12.5px; color: var(--text-2); display: flex; gap: 6px; align-items: center; } .spec svg { width: 15px; height: 15px; color: var(--text-3); }
+  .lc.row2 { flex-direction: row; } .lc.row2 .ph { width: 340px; flex: none; aspect-ratio: auto; min-height: 220px; } .lc.row2 .acts { right: auto; left: 290px; }
+  /* bölgeler, ekip */
+  .dg { display: grid; grid-template-columns: 2fr 1fr 1fr; grid-template-rows: 220px 220px; gap: 16px; }
+  .dt { position: relative; border-radius: 14px; overflow: hidden; color: #fff; display: flex; align-items: flex-end; padding: 20px; } .dt:first-child { grid-row: span 2; } .dt img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; transition: transform .6s; } .dt:hover img { transform: scale(1.05); } .dt::before { content: ''; position: absolute; inset: 0; background: linear-gradient(transparent 40%, rgba(10,25,41,.8)); z-index: 1; } .dt div { position: relative; z-index: 2; } .dt b { font-family: var(--disp); font-size: 26px; display: block; }
+  .why { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; } .why div { padding: 26px; border: 1px solid var(--border); border-radius: 14px; } .why i { width: 48px; height: 48px; border-radius: 12px; background: var(--gold-soft); color: var(--navy); display: grid; place-items: center; margin-bottom: 16px; } .why i svg { width: 22px; height: 22px; } .why b { display: block; font-size: 16px; margin-bottom: 6px; } .why p { font-size: 14px; color: var(--text-2); line-height: 1.6; }
+  .team { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; } .tm { border: 1px solid var(--border); border-radius: 14px; padding: 24px; display: flex; gap: 16px; align-items: center; } .av { width: 64px; height: 64px; border-radius: 50%; display: grid; place-items: center; color: #fff; font-weight: 800; font-size: 20px; flex: none; }
+  .cta { background: var(--navy); color: #fff; border-radius: 20px; padding: 56px; display: grid; grid-template-columns: 1.3fr 1fr; gap: 40px; align-items: center; position: relative; overflow: hidden; } .cta h2 { color: #fff; font-size: 40px; line-height: 1.05; } .cta::after { content: ''; position: absolute; right: -80px; top: -80px; width: 320px; height: 320px; border-radius: 50%; border: 50px solid rgba(200,162,74,.12); }
+  /* liste sayfası */
+  .crumb { font-size: 13px; color: var(--text-3); padding: 22px 0 8px; } .crumb a:hover { color: var(--navy); }
+  .lay { display: grid; grid-template-columns: 280px minmax(0, 1fr); gap: 30px; padding-bottom: 70px; }
+  .flt { border: 1px solid var(--border); border-radius: 14px; padding: 6px 18px 18px; align-self: start; position: sticky; top: 90px; max-height: calc(100vh - 110px); overflow: auto; background: #fff; }
+  .flt h4 { font-size: 12px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--text-3); margin: 18px 0 10px; }
+  .seg2 { display: grid; grid-template-columns: repeat(3, 1fr); background: var(--surface-2); border-radius: 10px; padding: 4px; gap: 4px; } .seg2 button { border: 0; background: none; padding: 8px; border-radius: 7px; font: 600 13px Inter; cursor: pointer; color: var(--text-2); } .seg2 button.on { background: #fff; color: var(--navy); box-shadow: 0 1px 3px rgba(0,0,0,.08); }
+  .chk { display: flex; flex-wrap: wrap; gap: 6px; } .chk button { border: 1px solid var(--border); background: #fff; border-radius: 8px; padding: 7px 11px; font: 600 12.5px Inter; cursor: pointer; color: var(--text-2); } .chk button.on { border-color: var(--navy); background: var(--navy); color: #fff; }
+  .two { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; } .fi { width: 100%; height: 40px; border: 1px solid var(--border); border-radius: 9px; padding: 0 12px; font: 500 13.5px Inter; background: #fff; color: var(--text); outline: 0; } .fi:focus { border-color: var(--navy); }
+  .tbar { display: flex; align-items: center; gap: 12px; margin-bottom: 18px; flex-wrap: wrap; } .tbar h1 { font-size: 30px; flex: 1; min-width: 200px; }
+  .vt { display: flex; border: 1px solid var(--border); border-radius: 10px; overflow: hidden; } .vt button { border: 0; background: #fff; width: 42px; height: 40px; cursor: pointer; display: grid; place-items: center; color: var(--text-3); } .vt button.on { background: var(--navy); color: #fff; } .vt svg { width: 18px; height: 18px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; } .chips button { border: 0; background: var(--gold-soft); color: var(--navy); border-radius: 99px; padding: 6px 12px; font: 600 12.5px Inter; cursor: pointer; } .chips button::after { content: ' ✕'; opacity: .6; }
+  #map, .mapb { height: 620px; border-radius: 14px; border: 1px solid var(--border); background: var(--surface-2); z-index: 0; } .mapb { height: 340px; }
+  .pm { background: var(--navy); color: #fff; font: 700 12px Inter; padding: 5px 9px; border-radius: 8px; white-space: nowrap; box-shadow: 0 4px 10px rgba(0,0,0,.25); border: 2px solid #fff; transform: translate(-50%, -100%); display: inline-block; } .pm.k { background: var(--gold); color: var(--navy); }
+  .leaflet-div-icon { background: none !important; border: 0 !important; }
+  /* detay */
+  .gal { display: grid; grid-template-columns: 2fr 1fr 1fr; grid-template-rows: 230px 230px; gap: 8px; border-radius: 16px; overflow: hidden; position: relative; }
+  .gal > button:not(.all) { border: 0; padding: 0; cursor: zoom-in; overflow: hidden; background: #dfe3e8; } .gal > button:first-child { grid-row: span 2; } .gal img { width: 100%; height: 100%; object-fit: cover; transition: .4s; } .gal > button:hover img { transform: scale(1.03); filter: brightness(.92); }
+  .gal .all { position: absolute; right: 16px; bottom: 16px; }
+  .dl { display: grid; grid-template-columns: minmax(0, 1fr) 380px; gap: 40px; padding: 30px 0 60px; }
+  .dh h1 { font-size: clamp(26px, 3vw, 38px); line-height: 1.1; } .dh .pr { font-size: 34px; font-weight: 800; color: var(--navy); }
+  .facts { display: grid; grid-template-columns: repeat(4, 1fr); border: 1px solid var(--border); border-radius: 14px; margin: 24px 0; overflow: hidden; } .facts div { padding: 16px 18px; border-right: 1px solid var(--border); border-bottom: 1px solid var(--border); margin: 0 -1px -1px 0; } .facts small { display: block; font-size: 12px; color: var(--text-3); margin-bottom: 4px; } .facts b { font-size: 15px; }
+  .blk { padding: 28px 0; border-top: 1px solid var(--border); } .blk h2 { font-size: 24px; margin-bottom: 16px; }
+  .ft2 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px 20px; } .ft2 span { display: flex; gap: 8px; align-items: center; font-size: 14px; } .ft2 svg { width: 17px; height: 17px; } .ft2 .y svg { color: var(--ok); } .ft2 .n { color: var(--text-3); text-decoration: line-through; } .ft2 .n svg { color: #cbd5e1; }
+  .near { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 14px; } .near div { background: var(--surface-2); border-radius: 10px; padding: 12px 14px; font-size: 13px; display: flex; justify-content: space-between; } .near b { color: var(--navy); }
+  .side { position: sticky; top: 90px; align-self: start; display: flex; flex-direction: column; gap: 16px; }
+  .bx { border: 1px solid var(--border); border-radius: 16px; padding: 22px; background: #fff; } .bx h3 { font-size: 16px; margin-bottom: 14px; }
+  .calc { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; } .calc label { font-size: 12px; font-weight: 600; color: var(--text-3); display: block; } .calc input[type=range] { width: 100%; accent-color: var(--navy); } .calc output { font-weight: 700; font-size: 14px; color: var(--text); display: block; }
+  .res { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 18px; } .res div { background: var(--gold-soft); border-radius: 12px; padding: 14px 16px; } .res small { font-size: 12px; color: var(--text-2); display: block; } .res b { font-size: 20px; color: var(--navy); }
+  .ln { display: flex; justify-content: space-between; gap: 10px; padding: 9px 0; font-size: 14px; border-bottom: 1px dashed var(--border); } .ln:last-child { border: 0; font-weight: 700; }
+  .lb { position: fixed; inset: 0; background: rgba(5,12,20,.95); z-index: 200; display: flex; align-items: center; justify-content: center; } .lb img { max-width: 92vw; max-height: 84vh; border-radius: 6px; } .lb button { position: absolute; border: 0; background: rgba(255,255,255,.12); color: #fff; width: 52px; height: 52px; border-radius: 50%; cursor: pointer; display: grid; place-items: center; } .lb button svg { width: 22px; height: 22px; } .lb .p { left: 24px; } .lb .n { right: 24px; } .lb .x { top: 20px; right: 20px; } .lb .c { position: absolute; bottom: 22px; color: #cbd5e1; font-size: 14px; }
+  .cmpbar { position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%); background: var(--navy); color: #fff; border-radius: 14px; padding: 10px 10px 10px 18px; display: flex; gap: 14px; align-items: center; z-index: 50; box-shadow: 0 20px 40px rgba(0,0,0,.3); font-size: 14px; } .cmpbar svg { width: 18px; height: 18px; }
+  .cmpt { width: 100%; border-collapse: collapse; } .cmpt th, .cmpt td { border-bottom: 1px solid var(--border); padding: 12px; text-align: left; font-size: 14px; vertical-align: top; } .cmpt th { width: 170px; color: var(--text-3); font-weight: 600; } .cmpt img { width: 100%; aspect-ratio: 16/10; object-fit: cover; border-radius: 10px; }
+  .val { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; padding: 10px 0 70px; }
+  .fgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; } .fgrid .full { grid-column: 1 / -1; } .fgrid > div > label { font-size: 12.5px; font-weight: 600; color: var(--text-2); display: block; margin-bottom: 5px; } textarea.fi { height: 90px; padding: 10px 12px; resize: vertical; }
+  .mobbar { display: none; }
+  footer.ft { background: #0b1f33; color: #9fb0c3; padding: 64px 0 26px; margin-top: 80px; font-size: 14px; } .ft .fcols { display: grid; grid-template-columns: 1.5fr 1fr 1fr 1.2fr; gap: 34px; } .ft h5 { color: #fff; font-size: 13px; letter-spacing: .1em; text-transform: uppercase; margin-bottom: 14px; } .ft a { display: flex; gap: 8px; align-items: center; padding: 4px 0; } .ft a svg { width: 15px; height: 15px; flex: none; } .ft a:hover { color: #fff; } .ft .lg2 { border-top: 1px solid #1d3550; margin-top: 40px; padding-top: 20px; display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; font-size: 12.5px; }
+  .empty2 { grid-column: 1 / -1; text-align: center; padding: 70px 20px; border: 1px dashed var(--border); border-radius: 14px; }
+  .mob { display: none !important; }
+  @media (max-width: 1100px) { .lg { grid-template-columns: repeat(2, minmax(0, 1fr)); } .why { grid-template-columns: 1fr 1fr; } .dl { grid-template-columns: 1fr; } .side { position: static; } .sf { grid-template-columns: 1fr 1fr; } .sf .b { grid-column: span 2; } }
+  @media (max-width: 860px) {
+    .w { padding: 0 16px; } .tb0, nav.nv, .hb .b, .hb a.ib { display: none; } .mob { display: grid !important; } .hd .w { height: 64px; justify-content: space-between; } .brand b { font-size: 18px; } .hero { min-height: 0; padding: 50px 0 40px; }
+    .stats { grid-template-columns: 1fr 1fr; gap: 18px 0; } .lg { grid-template-columns: 1fr; } .lc.row2 { flex-direction: column; } .lc.row2 .ph { width: auto; aspect-ratio: 16/11; min-height: 0; } .lc.row2 .acts { left: auto; right: 10px; }
+    .dg { grid-template-columns: 1fr 1fr; grid-template-rows: 180px 180px 180px; } .dt:first-child { grid-column: span 2; grid-row: auto; } .team, .why { grid-template-columns: 1fr; } .cta { grid-template-columns: 1fr; padding: 32px 24px; } .cta h2 { font-size: 30px; }
+    .lay { grid-template-columns: 1fr; } .flt { display: none; position: fixed; inset: 0; z-index: 90; border-radius: 0; max-height: none; top: 0; } .flt.open { display: block; }
+    .gal { grid-template-columns: 1fr 1fr; grid-template-rows: 240px 110px; } .gal > button:first-child { grid-column: span 2; grid-row: auto; } .gal > button:nth-child(n+4):not(.all) { display: none; }
+    .facts { grid-template-columns: 1fr 1fr; } .ft2, .near { grid-template-columns: 1fr 1fr; } .calc, .res { grid-template-columns: 1fr; } .val { grid-template-columns: 1fr; } .fgrid { grid-template-columns: 1fr; }
+    .mobbar { display: flex; position: fixed; left: 0; right: 0; bottom: 0; background: #fff; border-top: 1px solid var(--border); padding: 10px 12px; gap: 8px; z-index: 45; } .mobbar .b { flex: 1; height: 46px; padding: 0 10px; } body.has-mob { padding-bottom: 70px; }
+    .ft .fcols { grid-template-columns: 1fr 1fr; } #map { height: 70vh; } .cmpbar { left: 12px; right: 12px; transform: none; bottom: 12px; } body.has-mob .cmpbar { bottom: 80px; }
+  }
+  @media print { header.hd, .tb0, footer.ft, .side .bx:not(.ag), .mobbar, .cmpbar, .gal .all, #sim, .noprint { display: none !important; } .dl { grid-template-columns: 1fr; } .gal { grid-template-rows: 180px 180px; } }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script src="../../core/core.js"></script>
+<script src="data.js"></script>
+<script>
+/* Emlak ofisi web sitesi — NEBSOFT Emlak paneliyle aynı veriyi kullanır (ilan, danışman, talep, gösterim, web başvuruları) */
+(function () {
+  const { esc, $, $$, on, icon, money, num, toast } = NS;
+  document.documentElement.dataset.theme = 'light';
+  const E = window.EMLAK;
+  const db = new NS.DB('emlak', E.seed);
+  const s = () => db.settings({ commission: 2, rentCommission: 100 });
+  const agent = (id) => db.get('agents', id) || { name: s().bizName, phone: s().bizPhone, color: '#0f2a44' };
+  const live = () => db.all('props', (p) => ['aktif', 'opsiyon'].includes(p.status));
+  const ls = (k, d) => { try { return JSON.parse(localStorage.getItem(k)) || d; } catch (e) { return d; } };
+  const lsSet = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { /* yok */ } };
+  const FK = 'nebsoft:emlak:fav', CK = 'nebsoft:emlak:cmp', RK = 'nebsoft:emlak:recent';
+  let favs = ls(FK, []), cmp = ls(CK, []);
+  const tl = (n) => money(n).replace(',00', '');
+  const short = (n) => (n >= 1e6 ? (n / 1e6).toLocaleString('tr-TR', { maximumFractionDigits: 2 }) + ' M ₺' : n >= 1e3 ? Math.round(n / 1e3) + ' B ₺' : tl(n));
+  const tel = (ph) => String(ph || '').replace(/\s/g, '');
+  const wa = (text, ph) => `https://wa.me/90${String(ph || s().whatsapp || s().bizPhone).replace(/\D/g, '').replace(/^0/, '')}?text=${encodeURIComponent(text)}`;
+  const pic = (p, i = 0, w = 800, h = 0) => { const a = E.photos(p); return E.imgUrl(a[i % a.length], w, h); };
+  const FB = `data:image/svg+xml,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 11"><rect width="16" height="11" fill="#dfe3e8"/><path d="M5 8l2-3 2 2 1-1 2 2z" fill="#b8c0ca"/></svg>')}`;
+  const imgT = (p, i, w, h) => `<img src="${pic(p, i, w, h)}" alt="${esc(p.title)}" loading="lazy" onerror="this.onerror=null;this.src='${FB}'">`;
+  const isNew = (p) => (Date.now() - new Date(p.created)) / 864e5 < 10;
+  const url = (p) => location.href.split('#')[0].split('?')[0] + '#/ilan/' + p.id;
+  const districts = () => Object.keys(E.GEO);
+
+  function card(p, row) {
+    return `<article class="lc ${row ? 'row2' : ''}"><a class="ph" href="#/ilan/${p.id}">${imgT(p, 0, 640, 440)}<div class="tg"><span class="k">${E.TYPE[p.type]}</span>${isNew(p) ? '<span class="g">Yeni</span>' : ''}${p.status === 'opsiyon' ? '<span class="o">Opsiyonlu</span>' : ''}${p.views > 600 ? '<span>Popüler</span>' : ''}</div><div class="cnt">${icon('eye')} ${num(p.views)} · ${E.photos(p).length} foto</div></a>
+      <div class="acts"><button data-fav="${p.id}" class="${favs.includes(p.id) ? 'on' : ''}" title="Favorilere ekle" aria-label="Favori">${icon('heart')}</button><button data-cmp="${p.id}" class="cm ${cmp.includes(p.id) ? 'on' : ''}" title="Karşılaştır" aria-label="Karşılaştır">${icon('layers')}</button></div>
+      <div class="bd"><div class="pr">${tl(p.price)}${p.type === 'kiralik' ? ' <small>/ ay</small>' : ''}</div><a href="#/ilan/${p.id}"><h3>${esc(p.title)}</h3></a><div class="loc">${icon('map')} ${esc(p.nb)}, ${esc(p.district)} / ${esc(p.city || 'İzmir')}</div>
+      <div class="spec">${p.rooms !== '-' ? `<span>${icon('bed')} ${esc(p.rooms)}</span>` : `<span>${icon('building')} ${esc(p.cat)}</span>`}<span>${icon('grid')} ${num(p.m2)} m²</span>${p.cat === 'Arsa' ? `<span>${icon('tag')} ${tl(Math.round(p.price / p.m2))}/m²</span>` : `<span>${icon('calendar')} ${p.age ? p.age + ' yaş' : 'Sıfır'}</span>`}</div></div></article>`;
+  }
+
+  // ---------- çerçeve ----------
+  function frame() {
+    const st = s();
+    $('#root').innerHTML = `<div class="tb0"><div class="w"><span>${icon('phone')} ${esc(st.bizPhone)}</span><span>${icon('map')} ${esc(st.bizAddress)}</span><span class="grow"></span><a href="#/degerleme">Ücretsiz değerleme</a><a href="#/iletisim">İletişim</a></div></div>
+      <header class="hd"><div class="w"><a class="brand" href="#/"><i>${icon('building')}</i><span><b>${esc(st.bizName)}</b><small>Gayrimenkul danışmanlığı</small></span></a>
+        <nav class="nv"><a href="#/ilanlar?tip=satilik" data-n="satilik">Satılık</a><a href="#/ilanlar?tip=kiralik" data-n="kiralik">Kiralık</a><a href="#/ilanlar?gor=harita" data-n="harita">Harita</a><a href="#/degerleme" data-n="degerleme">Evim ne eder?</a><a href="#/iletisim" data-n="iletisim">İletişim</a></nav>
+        <div class="hb"><a class="ib" href="#/favoriler" title="Favoriler">${icon('heart')}<span class="n hide" id="fn"></span></a><a class="ib" href="#/karsilastir" title="Karşılaştır">${icon('layers')}<span class="n hide" id="cn"></span></a><a class="b gd" href="#/iletisim?k=portfoy">${icon('plus')} Mülkünü listele</a><button class="ib mob" id="mm" aria-label="Menü">${icon('menu')}</button></div></div></header>
+      <main id="pg"></main><div id="cmpw"></div>
+      <footer class="ft"><div class="w"><div class="fcols"><div><div class="brand" style="color:#fff"><i>${icon('building')}</i><span><b>${esc(st.bizName)}</b><small style="color:#7f93a8">Gayrimenkul danışmanlığı</small></span></div><p style="margin-top:16px;line-height:1.7;max-width:320px">Doğru fiyat, doğru alıcı, güvenli işlem. Yetki belgeli portföy, ekspertiz desteği ve tapuya kadar uçtan uca hizmet.</p></div>
+        <div><h5>İlanlar</h5><a href="#/ilanlar?tip=satilik">Satılık konutlar</a><a href="#/ilanlar?tip=kiralik">Kiralık konutlar</a><a href="#/ilanlar?kat=Villa">Villalar</a><a href="#/ilanlar?kat=İşyeri">İşyerleri</a><a href="#/ilanlar?kat=Arsa">Arsalar</a></div>
+        <div><h5>Hizmetler</h5><a href="#/degerleme">Ücretsiz değerleme</a><a href="#/iletisim?k=portfoy">Mülkünü listele</a><a href="#/ilanlar?gor=harita">Haritada ara</a><a href="#/karsilastir">İlan karşılaştır</a><a href="#/favoriler">Favorilerim</a></div>
+        <div><h5>İletişim</h5><a href="tel:${esc(tel(st.bizPhone))}">${icon('phone')} ${esc(st.bizPhone)}</a><a href="${wa('Merhaba, bilgi almak istiyorum.')}" target="_blank" rel="noopener">${icon('message')} WhatsApp hattı</a><a>${icon('map')} ${esc(st.bizAddress)}</a><a>${icon('clock')} Hafta içi 09:00–19:00 · Cmt 10:00–17:00</a></div></div>
+        <div class="lg2"><span>© ${new Date().getFullYear()} ${esc(st.bizName)} · Taşınmaz Ticareti Yetki Belgesi No: 3500${String(st.bizPhone).replace(/\D/g, '').slice(-4)}</span><span>NEBSOFT Emlak altyapısı ile</span></div></div></footer>`;
+    $('#mm').onclick = () => NS.modal({ title: 'Menü', body: [['#/ilanlar?tip=satilik', 'Satılık ilanlar'], ['#/ilanlar?tip=kiralik', 'Kiralık ilanlar'], ['#/ilanlar?gor=harita', 'Haritada ara'], ['#/degerleme', 'Evim ne eder?'], ['#/favoriler', `Favorilerim (${favs.length})`], ['#/karsilastir', `Karşılaştır (${cmp.length})`], ['#/iletisim?k=portfoy', 'Mülkünü listele'], ['#/iletisim', 'İletişim']].map(([h, l]) => `<a href="${h}" data-mclose style="display:block;padding:14px 4px;border-bottom:1px solid var(--border);font-weight:600">${l}</a>`).join('') });
+    drawCounts();
+  }
+  function drawCounts() {
+    const f = $('#fn'), c = $('#cn'); if (f) { f.textContent = favs.length; f.classList.toggle('hide', !favs.length); } if (c) { c.textContent = cmp.length; c.classList.toggle('hide', !cmp.length); }
+    const wv = $('#cmpw'); if (!wv) return;
+    wv.innerHTML = cmp.length && !location.hash.startsWith('#/karsilastir') ? `<div class="cmpbar">${icon('layers')} <span><b>${cmp.length}</b> ilan seçildi</span><a class="b gd sm" href="#/karsilastir">Karşılaştır</a><button class="b sm" style="background:none;border-color:#3b5470" data-cmpclr>Temizle</button></div>` : '';
+  }
+  function toggleFav(id) { const i = favs.indexOf(id); if (i >= 0) favs.splice(i, 1); else favs.push(id); lsSet(FK, favs); $$(`[data-fav="${id}"]`).forEach((b) => b.classList.toggle('on', i < 0)); drawCounts(); toast(i >= 0 ? 'Favorilerden çıkarıldı' : 'Favorilere eklendi', 'ok'); }
+  function toggleCmp(id) { const i = cmp.indexOf(id); if (i >= 0) cmp.splice(i, 1); else { if (cmp.length >= 3) return toast('En fazla 3 ilan karşılaştırabilirsiniz', 'err'); cmp.push(id); } lsSet(CK, cmp); $$(`[data-cmp="${id}"]`).forEach((b) => b.classList.toggle('on', cmp.includes(id))); drawCounts(); }
+
+  // Web başvurusu: paneldeki "Web başvuruları" sayfasına düşer
+  function lead(kind, data) { db.load(); const l = db.insert('leads', { kind, status: 'yeni', at: new Date().toISOString(), ...data }); return l; }
+  // Talep (alıcı/kiracı kriteri): paneldeki eşleştirme motoruna girer
+  function addRequest(d) { return db.insert('requests', { status: 'aktif', created: new Date().toISOString(), source: 'web', cat: 'Daire', ...d }); }
+
+  // ---------- ana sayfa ----------
+  function home(el) {
+    const L = live(); const ag = db.all('agents');
+    const sold = db.all('deals').length;
+    const featured = L.slice().sort((a, b) => b.views - a.views).slice(0, 6);
+    const fresh = L.slice().sort((a, b) => b.created.localeCompare(a.created)).slice(0, 6);
+    const dists = districts().map((d) => [d, L.filter((p) => p.district === d)]).sort((a, b) => b[1].length - a[1].length).slice(0, 5);
+    const dpic = [E.PH.villa[0], E.PH.apt[0], E.PH.house[2], E.PH.apt[1], E.PH.house[5]];
+    const avgSale = (ps) => { const x = ps.filter((p) => p.type === 'satilik'); return x.length ? Math.round(x.reduce((a, p) => a + p.price, 0) / x.length) : 0; };
+    let tip = 'satilik';
+    el.innerHTML = `<section class="hero"><img src="${E.imgUrl(E.PH.villa[1], 2000)}" alt=""><div class="w"><div class="eyb">${esc(s().bizAddress)}</div><h1 class="disp">Hayalinizdeki eve<br>bir adım daha yakın</h1><p>${L.length} güncel ilan, yetki belgeli portföy ve bölgeyi iyi tanıyan danışmanlar. Doğru evi birlikte bulalım.</p>
+      <div class="sbox"><div class="stabs"><button data-tip="satilik" class="on">Satılık</button><button data-tip="kiralik">Kiralık</button></div><form class="sf" id="sf"><label>Konum<select name="ilce" data-nosearch><option value="">Tüm ilçeler</option>${districts().map((d) => `<option>${d}</option>`).join('')}</select></label><label>Emlak tipi<select name="kat" data-nosearch><option value="">Tümü</option><option>Daire</option><option>Villa</option><option>İşyeri</option><option>Arsa</option></select></label><label>Oda sayısı<select name="oda" data-nosearch><option value="">Farketmez</option><option>1+1</option><option>2+1</option><option>3+1</option><option>4+1</option><option>5+1</option></select></label><label>En fazla fiyat<select name="max" data-nosearch><option value="">Limitsiz</option></select></label><button class="b gd">${icon('search')} İlan ara</button></form></div>
+      <div class="stats"><div><b>${L.length}</b><span>Aktif ilan</span></div><div><b>${sold}+</b><span>Tamamlanan işlem</span></div><div><b>${ag.length}</b><span>Uzman danışman</span></div><div><b>%98</b><span>Müşteri memnuniyeti</span></div></div></div></section>
+      <section class="sec"><div class="w"><div class="sh"><div class="grow"><div class="eyb">Öne çıkanlar</div><h2 class="disp">En çok ilgi gören ilanlar</h2></div><a class="lk" href="#/ilanlar?sira=pop">Tüm ilanlar →</a></div><div class="lg">${featured.map((p) => card(p)).join('')}</div></div></section>
+      <section class="sec"><div class="w"><div class="sh"><div class="grow"><div class="eyb">Bölgeler</div><h2 class="disp">Popüler semtler</h2></div></div><div class="dg">${dists.map(([d, ps], i) => `<a class="dt" href="#/ilanlar?ilce=${encodeURIComponent(d)}"><img src="${E.imgUrl(dpic[i], i ? 600 : 1000)}" alt="${d}" loading="lazy"><div><b>${d}</b>${ps.length} ilan${avgSale(ps) ? ' · ort. ' + short(avgSale(ps)) : ''}</div></a>`).join('')}</div></div></section>
+      <section class="sec"><div class="w"><div class="sh"><div class="grow"><div class="eyb">Yeni eklenenler</div><h2 class="disp">Portföye son girenler</h2></div><a class="lk" href="#/ilanlar?sira=yeni">Tümünü gör →</a></div><div class="lg">${fresh.map((p) => card(p)).join('')}</div></div></section>
+      <section class="sec"><div class="w"><div class="cta"><div><div class="eyb">Ücretsiz değerleme</div><h2 class="disp">Eviniz bugün kaç para eder?</h2><p style="opacity:.8;margin-top:14px;line-height:1.7;max-width:520px">Bölgedeki güncel ilan ve satış verilerinden anında tahmini değer aralığı alın; isterseniz uzmanımız yerinde ekspertiz yapsın.</p></div><div class="row" style="gap:10px;position:relative;z-index:1"><a class="b gd" href="#/degerleme">${icon('gauge')} Hemen hesapla</a><a class="b ol" href="#/iletisim?k=portfoy" style="background:transparent;color:#fff;border-color:#3b5470">Mülkümü listele</a></div></div></div></section>
+      <section class="sec"><div class="w"><div class="sh"><div class="grow"><div class="eyb">Neden biz?</div><h2 class="disp">Güvenli, şeffaf, hızlı</h2></div></div><div class="why">${[['shield', 'Yetki belgeli portföy', 'Tüm ilanlarımız mal sahibiyle imzalı yetki sözleşmesiyle yayında; sahte ilan yok.'], ['gauge', 'Doğru fiyatlama', 'Bölgesel satış verileriyle gerçekçi fiyat, daha kısa satış süresi.'], ['file', 'Uçtan uca süreç', 'Kredi, ekspertiz, tapu randevusu ve devir işlemlerinde yanınızdayız.'], ['message', 'Hızlı iletişim', 'WhatsApp, telefon veya online randevu; aynı gün dönüş.']].map(([ic, t, d]) => `<div><i>${icon(ic)}</i><b>${t}</b><p>${d}</p></div>`).join('')}</div></div></section>
+      <section class="sec"><div class="w"><div class="sh"><div class="grow"><div class="eyb">Ekibimiz</div><h2 class="disp">Danışmanlarımız</h2></div></div><div class="team">${ag.map((a) => `<div class="tm"><div class="av" style="background:${a.color || '#0f2a44'}">${esc(NS.initials(a.name))}</div><div class="grow"><b>${esc(a.name)}</b><div class="small muted">${L.filter((p) => p.agent === a.id).length} aktif ilan</div><div class="row" style="gap:6px;margin-top:10px"><a class="b sm ol" href="tel:${esc(tel(a.phone))}" aria-label="Ara">${icon('phone')}</a><a class="b sm wa" target="_blank" rel="noopener" href="${wa('Merhaba ' + a.name + ', bilgi almak istiyorum.', a.phone)}">${icon('message')} WhatsApp</a><a class="b sm ol" href="#/ilanlar?dan=${a.id}">İlanları</a></div></div></div>`).join('')}</div></div></section>
+      ${recent()}`;
+    const fillMax = () => { const opts = tip === 'satilik' ? [2e6, 3e6, 5e6, 7.5e6, 1e7, 1.5e7, 2.5e7] : [15000, 20000, 25000, 35000, 50000, 75000]; $('[name=max]', el).innerHTML = '<option value="">Limitsiz</option>' + opts.map((v) => `<option value="${v}">${short(v)}</option>`).join(''); };
+    fillMax();
+    on(el, 'click', '[data-tip]', (e, b) => { tip = b.dataset.tip; $$('[data-tip]', el).forEach((x) => x.classList.toggle('on', x === b)); fillMax(); });
+    $('#sf', el).onsubmit = (e) => { e.preventDefault(); const f = new FormData(e.target); const q = new URLSearchParams({ tip }); for (const [k, v] of f) if (v) q.set(k, v); location.hash = '#/ilanlar?' + q; };
+  }
+  function recent() { const r = ls(RK, []).map((id) => db.get('props', id)).filter(Boolean).slice(0, 3); return r.length ? `<section class="sec"><div class="w"><div class="sh"><div class="grow"><div class="eyb">Geçmişiniz</div><h2 class="disp">Son baktığınız ilanlar</h2></div></div><div class="lg">${r.map((p) => card(p)).join('')}</div></div></section>` : ''; }
+
+  // ---------- harita (Leaflet + OpenStreetMap, ihtiyaç olunca yüklenir) ----------
+  let leafletP = null;
+  const leaflet = () => leafletP || (leafletP = new Promise((res, rej) => {
+    const l = document.createElement('link'); l.rel = 'stylesheet'; l.href = 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css'; document.head.appendChild(l);
+    const sc = document.createElement('script'); sc.src = 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js'; sc.onload = () => res(window.L); sc.onerror = () => { leafletP = null; rej(new Error('harita')); }; document.head.appendChild(sc);
+  }));
+  function mapInto(box, props, single) {
+    leaflet().then((L) => {
+      if (!document.body.contains(box)) return;
+      const m = L.map(box, { scrollWheelZoom: !single }); L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© OpenStreetMap' }).addTo(m);
+      const pts = props.map((p) => { const g = E.geo(p); const mk = L.marker(g, { icon: L.divIcon({ html: `<span class="pm ${p.type === 'kiralik' ? 'k' : ''}">${esc(p.label || short(p.price))}</span>`, iconSize: [0, 0] }) }).addTo(m); if (!p.label) mk.bindPopup(`<a href="#/ilan/${p.id}" style="display:block;width:220px"><img src="${pic(p, 0, 440, 280)}" style="width:100%;border-radius:8px;aspect-ratio:16/10;object-fit:cover" alt=""><b style="display:block;margin-top:6px">${tl(p.price)}</b><span style="font-size:12px">${esc(p.title)}</span></a>`); return g; });
+      if (single && pts[0]) { m.setView(pts[0], 15); if (!props[0].label) L.circle(pts[0], { radius: 250, color: '#c8a24a', fillOpacity: 0.12 }).addTo(m); } else if (pts.length) m.fitBounds(pts, { padding: [40, 40] }); else m.setView([38.43, 27.14], 11);
+    }).catch(() => { box.innerHTML = `<div style="display:grid;place-items:center;height:100%;text-align:center;color:var(--text-3);padding:20px">Harita yüklenemedi (internet bağlantısı gerekli).<br>${props.length} konum listede görüntüleniyor.</div>`; });
+  }
+
+  // ---------- liste ----------
+  function listPage(el, q, fixed) {
+    const narrow = matchMedia('(max-width: 860px)').matches;
+    const F = { tip: q.get('tip') || '', kat: q.get('kat') || '', ilce: q.get('ilce') || '', oda: (q.get('oda') || '').split(',').filter(Boolean), min: q.get('min') || '', max: q.get('max') || '', m2min: q.get('m2min') || '', m2max: q.get('m2max') || '', yas: q.get('yas') || '', ozl: (q.get('ozl') || '').split(',').filter(Boolean), esya: q.get('esya') === '1', dan: q.get('dan') || '', ara: q.get('ara') || '' };
+    let sort = q.get('sira') || 'yeni', view = q.get('gor') || 'grid', shown = 12;
+    const feats = [...new Set(db.all('props').flatMap((p) => p.features || []))].sort((a, b) => a.localeCompare(b, 'tr'));
+    const base = fixed || live();
+    const title = fixed ? 'Favorilerim' : F.tip === 'satilik' ? 'Satılık ilanlar' : F.tip === 'kiralik' ? 'Kiralık ilanlar' : F.kat ? F.kat.split(',').join(', ') + ' ilanları' : view === 'harita' ? 'Haritada ilanlar' : 'Tüm ilanlar';
+    const sync = () => { const p = new URLSearchParams(); Object.entries(F).forEach(([k, v]) => { if (Array.isArray(v) ? v.length : v) p.set(k, Array.isArray(v) ? v.join(',') : v === true ? '1' : v); }); if (sort !== 'yeni') p.set('sira', sort); if (view !== 'grid') p.set('gor', view); history.replaceState(null, '', `#/${fixed ? 'favoriler' : 'ilanlar'}${p.toString() ? '?' + p : ''}`); };
+    el.innerHTML = `<div class="w"><div class="crumb"><a href="#/">Ana sayfa</a> / ${esc(title)}</div><div class="lay"><aside class="flt" id="flt">${narrow ? `<div class="row" style="padding-top:14px"><b class="grow" style="font-size:18px">Filtreler</b><button class="ib" data-fclose aria-label="Kapat">${icon('x')}</button></div>` : ''}
+        <h4>İlan türü</h4><div class="seg2">${[['', 'Tümü'], ['satilik', 'Satılık'], ['kiralik', 'Kiralık']].map(([v, l]) => `<button data-ft="${v}">${l}</button>`).join('')}</div>
+        <h4>Anahtar kelime</h4><input class="fi" id="fq" placeholder="Mahalle, ilan no, özellik…" value="${esc(F.ara)}">
+        <h4>Konum</h4><select class="fi" id="fil" data-nosearch><option value="">Tüm ilçeler</option>${districts().map((d) => `<option ${F.ilce === d ? 'selected' : ''}>${d}</option>`).join('')}</select>
+        <h4>Emlak tipi</h4><div class="chk">${['Daire', 'Villa', 'İşyeri', 'Arsa'].map((k) => `<button data-fk="${k}">${k}</button>`).join('')}</div>
+        <h4>Oda sayısı</h4><div class="chk">${['1+1', '2+1', '3+1', '4+1', '5+1'].map((k) => `<button data-fo="${k}">${k}</button>`).join('')}</div>
+        <h4>Fiyat (₺)</h4><div class="two"><input class="fi" id="fmin" data-plain inputmode="numeric" placeholder="En az" value="${esc(F.min)}"><input class="fi" id="fmax" data-plain inputmode="numeric" placeholder="En çok" value="${esc(F.max)}"></div>
+        <h4>Alan (m²)</h4><div class="two"><input class="fi" id="fm1" data-plain inputmode="numeric" placeholder="En az" value="${esc(F.m2min)}"><input class="fi" id="fm2" data-plain inputmode="numeric" placeholder="En çok" value="${esc(F.m2max)}"></div>
+        <h4>Bina yaşı</h4><select class="fi" id="fy" data-nosearch><option value="">Farketmez</option>${[[0, 'Sıfır bina'], [5, '5 yıl ve altı'], [10, '10 yıl ve altı'], [20, '20 yıl ve altı']].map(([v, l]) => `<option value="${v}" ${F.yas === String(v) ? 'selected' : ''}>${l}</option>`).join('')}</select>
+        <h4>Özellikler</h4><div class="chk">${feats.map((k) => `<button data-fz="${esc(k)}">${esc(k)}</button>`).join('')}</div>
+        <label style="display:flex;gap:8px;margin-top:14px;font-size:14px;cursor:pointer"><input type="checkbox" id="fe" ${F.esya ? 'checked' : ''} style="accent-color:#0f2a44"> Sadece eşyalı</label>
+        ${narrow ? '<button class="b full" style="margin-top:18px" data-fclose>Sonuçları göster</button>' : ''}${fixed ? '' : `<button class="b ol full" style="margin-top:12px" id="alarm">${icon('bell')} İlan alarmı kur</button>`}</aside>
+      <div><div class="tbar"><h1 class="disp">${esc(title)}</h1>${narrow ? `<button class="b ol sm" id="fo">${icon('filter')} Filtrele</button>` : ''}<select class="fi" id="so" style="width:auto" data-nosearch aria-label="Sırala"><option value="yeni">En yeni</option><option value="ucuz">Fiyat: artan</option><option value="pahali">Fiyat: azalan</option><option value="m2">m² fiyatı: artan</option><option value="buyuk">Alan: büyükten küçüğe</option><option value="pop">En çok görüntülenen</option></select><div class="vt">${[['grid', 'grid', 'Kart'], ['list', 'list', 'Liste'], ['harita', 'map', 'Harita']].map(([v, ic, t]) => `<button data-v="${v}" title="${t} görünümü" aria-label="${t} görünümü">${icon(ic)}</button>`).join('')}</div></div><div class="small muted" id="rc" style="margin:-8px 0 12px"></div><div class="chips" id="ch"></div><div id="res"></div></div></div></div>`;
+    const tog = (a, v) => { const i = a.indexOf(v); if (i >= 0) a.splice(i, 1); else a.push(v); };
+    const filtered = () => base.filter((p) => (!F.tip || p.type === F.tip) && (!F.kat || F.kat.split(',').includes(p.cat)) && (!F.ilce || p.district === F.ilce) && (!F.oda.length || F.oda.includes(p.rooms)) && (!F.min || p.price >= +F.min) && (!F.max || p.price <= +F.max) && (!F.m2min || p.m2 >= +F.m2min) && (!F.m2max || p.m2 <= +F.m2max) && (F.yas === '' || p.age <= +F.yas) && F.ozl.every((z) => (p.features || []).includes(z)) && (!F.esya || p.furnished) && (!F.dan || p.agent === F.dan) && (!F.ara || NS.match(F.ara, p.title, p.no, p.nb, p.district, p.desc, (p.features || []).join(' '))));
+    const draw = () => {
+      const kats = F.kat ? F.kat.split(',') : [];
+      $$('[data-ft]', el).forEach((b) => b.classList.toggle('on', b.dataset.ft === F.tip)); $$('[data-fk]', el).forEach((b) => b.classList.toggle('on', kats.includes(b.dataset.fk))); $$('[data-fo]', el).forEach((b) => b.classList.toggle('on', F.oda.includes(b.dataset.fo))); $$('[data-fz]', el).forEach((b) => b.classList.toggle('on', F.ozl.includes(b.dataset.fz))); $$('[data-v]', el).forEach((b) => b.classList.toggle('on', b.dataset.v === view)); $('#so', el).value = sort;
+      const srt = { yeni: (a, b) => b.created.localeCompare(a.created), ucuz: (a, b) => a.price - b.price, pahali: (a, b) => b.price - a.price, m2: (a, b) => a.price / a.m2 - b.price / b.m2, buyuk: (a, b) => b.m2 - a.m2, pop: (a, b) => b.views - a.views }[sort];
+      const l = filtered().sort(srt); const sales = l.filter((p) => p.type === 'satilik');
+      $('#rc', el).textContent = `${l.length} ilan bulundu${sales.length ? ' · satılıklarda ortalama ' + tl(Math.round(sales.reduce((a, p) => a + p.price / p.m2, 0) / sales.length)) + '/m²' : ''}`;
+      const chips = [...(F.tip ? [['tip', '', E.TYPE[F.tip]]] : []), ...kats.map((k) => ['kat', k, k]), ...(F.ilce ? [['ilce', '', F.ilce]] : []), ...F.oda.map((k) => ['oda', k, k]), ...(F.min ? [['min', '', 'En az ' + short(+F.min)]] : []), ...(F.max ? [['max', '', 'En çok ' + short(+F.max)]] : []), ...(F.m2min ? [['m2min', '', F.m2min + ' m² ve üzeri']] : []), ...(F.m2max ? [['m2max', '', F.m2max + ' m² ve altı']] : []), ...(F.yas !== '' ? [['yas', '', F.yas === '0' ? 'Sıfır bina' : F.yas + ' yaş ve altı']] : []), ...F.ozl.map((k) => ['ozl', k, k]), ...(F.esya ? [['esya', '', 'Eşyalı']] : []), ...(F.dan ? [['dan', '', agent(F.dan).name]] : []), ...(F.ara ? [['ara', '', '“' + F.ara + '”']] : [])];
+      $('#ch', el).innerHTML = chips.map(([k, v, t]) => `<button data-rm="${k}|${esc(v)}">${esc(t)}</button>`).join('') + (chips.length > 1 ? '<button data-rm="all|" style="background:none;text-decoration:underline">Tümünü temizle</button>' : '');
+      const res = $('#res', el);
+      if (view === 'harita') { res.innerHTML = '<div id="map"></div>'; mapInto($('#map', res), l); }
+      else res.innerHTML = l.length ? `<div class="lg" style="${view === 'list' ? 'grid-template-columns:1fr' : ''}">${l.slice(0, shown).map((p) => card(p, view === 'list')).join('')}</div>${l.length > shown ? `<div class="center" style="margin-top:30px"><p class="small muted mb">${l.length} ilandan ${shown} tanesi gösteriliyor</p><button class="b ol" id="more">Daha fazla ilan yükle</button></div>` : ''}` : `<div class="empty2"><h3 class="disp" style="font-size:26px">${fixed ? 'Henüz favori ilanınız yok' : 'Kriterlerinize uygun ilan bulunamadı'}</h3><p class="muted" style="margin:10px 0 20px">${fixed ? 'Beğendiğiniz ilanlardaki kalbe dokunarak listeyi oluşturun.' : 'Filtreleri genişletin ya da ilan alarmı kurun; uygun ilan portföye girdiğinde size haber verelim.'}</p>${fixed ? '<a class="b" href="#/ilanlar">İlanlara göz at</a>' : `<button class="b gd" data-alarm>${icon('bell')} İlan alarmı kur</button>`}</div>`;
+      sync();
+    };
+    const syncInputs = () => { const m = { fil: F.ilce, fmin: F.min, fmax: F.max, fm1: F.m2min, fm2: F.m2max, fy: F.yas, fq: F.ara }; Object.entries(m).forEach(([id, v]) => { const i = $('#' + id, el); if (i) i.value = v; }); $('#fe', el).checked = F.esya; };
+    on(el, 'click', '[data-ft]', (e, b) => { F.tip = b.dataset.ft; draw(); });
+    on(el, 'click', '[data-fk]', (e, b) => { const k = F.kat ? F.kat.split(',') : []; tog(k, b.dataset.fk); F.kat = k.join(','); draw(); });
+    on(el, 'click', '[data-fo]', (e, b) => { tog(F.oda, b.dataset.fo); draw(); });
+    on(el, 'click', '[data-fz]', (e, b) => { tog(F.ozl, b.dataset.fz); draw(); });
+    on(el, 'click', '[data-v]', (e, b) => { view = b.dataset.v; draw(); });
+    on(el, 'click', '#more', () => { shown += 12; draw(); });
+    on(el, 'click', '[data-rm]', (e, b) => { const [k, v] = b.dataset.rm.split('|'); if (k === 'all') Object.assign(F, { tip: '', kat: '', ilce: '', oda: [], min: '', max: '', m2min: '', m2max: '', yas: '', ozl: [], esya: false, dan: '', ara: '' }); else if (Array.isArray(F[k])) tog(F[k], v); else if (k === 'kat') F.kat = F.kat.split(',').filter((x) => x !== v).join(','); else F[k] = typeof F[k] === 'boolean' ? false : ''; syncInputs(); draw(); });
+    let t; const deb = (fn) => () => { clearTimeout(t); t = setTimeout(() => { fn(); draw(); }, 350); };
+    $('#fq', el).oninput = deb(() => { F.ara = $('#fq', el).value.trim(); });
+    $('#fil', el).onchange = (e) => { F.ilce = e.target.value; draw(); }; $('#fy', el).onchange = (e) => { F.yas = e.target.value; draw(); }; $('#fe', el).onchange = (e) => { F.esya = e.target.checked; draw(); }; $('#so', el).onchange = (e) => { sort = e.target.value; draw(); };
+    [['fmin', 'min'], ['fmax', 'max'], ['fm1', 'm2min'], ['fm2', 'm2max']].forEach(([id, k]) => { $('#' + id, el).oninput = deb(() => { F[k] = $('#' + id, el).value.replace(/\D/g, ''); }); });
+    if ($('#fo', el)) $('#fo', el).onclick = () => $('#flt', el).classList.add('open');
+    on(el, 'click', '[data-fclose]', () => $('#flt', el).classList.remove('open'));
+    const alarm = async () => {
+      const v = await NS.formModal({ title: 'İlan alarmı', fields: [{ name: 'name', label: 'Ad soyad', required: true }, { name: 'phone', label: 'Telefon', type: 'tel', required: true }, { name: 'email', label: 'E-posta', type: 'email' }, { name: 'note', label: 'Eklemek istedikleriniz', type: 'textarea', full: true }, { name: 'kvkk', label: 'KVKK aydınlatma metnini okudum, iletişim izni veriyorum', type: 'checkbox', full: true, required: true }], submitLabel: 'Alarmı kur' });
+      if (!v) return;
+      if (!v.kvkk) return toast('İletişim izni gerekli', 'err');
+      db.load(); const kats = F.kat ? F.kat.split(',') : [];
+      const r = addRequest({ name: v.name, phone: v.phone, type: F.tip || 'satilik', cat: kats[0] || 'Daire', district: F.ilce, rooms: F.oda[0] || '', budgetMax: +F.max || 0, m2Min: +F.m2min || 0, note: ['Web ilan alarmı', v.note].filter(Boolean).join(' — '), agent: (db.all('agents')[0] || {}).id });
+      lead('alarm', { name: v.name, phone: v.phone, email: v.email, msg: [$('#ch', el).innerText.replace(/✕/g, '').replace(/\s*\n\s*/g, ', ').replace(/,?\s*Tümünü temizle/, ''), v.note].filter(Boolean).join(' — '), request: r.id });
+      toast('İlan alarmınız kuruldu. Uygun ilan çıktığında danışmanımız size ulaşacak.', 'ok');
+    };
+    if ($('#alarm', el)) $('#alarm', el).onclick = alarm; on(el, 'click', '[data-alarm]', alarm);
+    draw();
+  }
+
+  // ---------- ilan detay ----------
+  function detail(el, id) {
+    const p = db.get('props', id);
+    if (!p) { el.innerHTML = `<div class="w"><div class="empty2" style="margin:60px 0"><h2 class="disp">İlan bulunamadı</h2><p class="muted" style="margin:10px 0 20px">İlan yayından kaldırılmış olabilir.</p><a class="b" href="#/ilanlar">Güncel ilanlar</a></div></div>`; return; }
+    p.views = (p.views || 0) + 1; db.save();
+    const rec = ls(RK, []).filter((x) => x !== id); rec.unshift(id); lsSet(RK, rec.slice(0, 12));
+    document.title = `${p.title} · ${tl(p.price)} · ${s().bizName}`;
+    const ag = agent(p.agent); const ph = E.photos(p); const st = s();
+    const closed = ['satildi', 'kiralandi', 'pasif'].includes(p.status);
+    const allF = [...new Set(db.all('props').flatMap((x) => x.features || []))].sort((a, b) => a.localeCompare(b, 'tr'));
+    const sim = live().filter((x) => x.id !== p.id && x.type === p.type && (x.district === p.district || x.cat === p.cat)).sort((a, b) => Math.abs(a.price - p.price) - Math.abs(b.price - p.price)).slice(0, 3);
+    const peers = db.all('props', (x) => x.type === p.type && x.district === p.district && x.cat === p.cat && x.m2);
+    const distAvg = peers.length > 1 ? peers.reduce((a, x) => a + x.price / x.m2, 0) / peers.length : 0;
+    const ppm = p.price / p.m2; const diff = distAvg ? Math.round((ppm / distAvg - 1) * 100) : 0;
+    const comm = p.type === 'satilik' ? (p.price * (st.commission || 2)) / 100 * 1.2 : (p.price * (st.rentCommission || 100)) / 100 * 1.2;
+    const dask = p.cat === 'Arsa' ? 0 : Math.round(p.m2 * 9);
+    el.innerHTML = `<div class="w"><div class="crumb"><a href="#/">Ana sayfa</a> / <a href="#/ilanlar?tip=${p.type}">${E.TYPE[p.type]}</a> / <a href="#/ilanlar?tip=${p.type}&ilce=${encodeURIComponent(p.district)}">${esc(p.district)}</a> / ${esc(p.no)}</div>
+      <div class="gal">${ph.slice(0, 5).map((x, i) => `<button data-lb="${i}" aria-label="Fotoğraf ${i + 1}">${imgT(p, i, i ? 600 : 1200, i ? 460 : 920)}</button>`).join('')}<button class="b ol sm all" data-lb="0">${icon('grid')} ${ph.length} fotoğrafın tümü</button></div>
+      <div class="dl"><div>
+        <div class="dh"><div class="row" style="gap:8px;margin-bottom:10px"><span class="badge" style="background:var(--navy);color:#fff;border:0">${E.TYPE[p.type]}</span><span class="badge">${esc(p.cat)}</span>${p.status === 'opsiyon' ? '<span class="badge warn">Opsiyonlu</span>' : ''}${closed ? `<span class="badge err">${E.ST[p.status][0]}</span>` : ''}${isNew(p) ? '<span class="badge" style="background:var(--gold-soft);color:var(--navy);border:0">Yeni ilan</span>' : ''}</div>
+          <h1 class="disp">${esc(p.title)}</h1><div class="loc" style="margin-top:8px;font-size:14px">${icon('map')} ${esc(p.nb)} Mah., ${esc(p.district)} / ${esc(p.city || 'İzmir')} · <a href="#konum" data-jump="konum" style="text-decoration:underline">Haritada gör</a></div>
+          <div class="row" style="margin-top:18px;align-items:end;gap:18px"><div class="pr">${tl(p.price)}${p.type === 'kiralik' ? '<span style="font-size:16px;color:var(--text-3)"> / ay</span>' : ''}</div><div class="small muted" style="padding-bottom:6px">${p.type === 'satilik' ? `${tl(Math.round(ppm))}/m²${diff ? ` · bölge ortalamasının <b style="color:${diff < 0 ? 'var(--ok)' : 'var(--red)'}">%${Math.abs(diff)} ${diff < 0 ? 'altında' : 'üstünde'}</b>` : ''}` : p.dues ? `+ ${tl(p.dues)} aidat` : ''}</div><span class="grow"></span><div class="row noprint" style="gap:6px"><button class="ib" data-fav="${p.id}" title="Favorilere ekle" aria-label="Favori">${icon('heart')}</button><button class="ib" data-cmp="${p.id}" title="Karşılaştır" aria-label="Karşılaştır">${icon('layers')}</button><button class="ib" id="shr" title="Paylaş" aria-label="Paylaş">${icon('send')}</button><button class="ib" id="prt" title="Yazdır / PDF" aria-label="Yazdır">${icon('print')}</button></div></div></div>
+        <div class="facts">${[['İlan no', p.no], ['İlan tarihi', NS.date(p.created)], ['Oda sayısı', p.rooms], ['Brüt alan', p.m2 + ' m²'], ['Net alan (yakl.)', Math.round(p.m2 * 0.85) + ' m²'], ['Bulunduğu kat', p.floor ? p.floor + '. kat' : p.cat === 'Villa' ? 'Müstakil' : '-'], ['Bina yaşı', p.age ? p.age : 'Sıfır'], ['Isıtma', p.heating], ['Aidat', p.dues ? tl(p.dues) : 'Yok'], ['Eşyalı', p.furnished ? 'Evet' : 'Hayır'], ['Krediye uygun', p.type === 'satilik' && p.cat !== 'Arsa' ? 'Evet' : '-'], ['Tapu durumu', p.cat === 'Arsa' ? 'Müstakil parsel' : 'Kat mülkiyeti']].map(([k, v]) => `<div><small>${k}</small><b>${esc(String(v))}</b></div>`).join('')}</div>
+        <div class="blk"><h2 class="disp">Açıklama</h2><p style="line-height:1.8;color:var(--text-2);white-space:pre-line">${esc(p.desc || '')}\n\n${esc(p.cat === 'Arsa' ? 'İmar durumu ve emsal bilgisi için danışmanımızla iletişime geçin.' : `${p.rooms !== '-' ? p.rooms + ' planlı, ' : ''}${p.m2} m², ${String(p.heating).toLocaleLowerCase('tr-TR')} ısıtmalı ${p.cat.toLocaleLowerCase('tr-TR')}. ${(p.features || []).length ? 'Öne çıkanlar: ' + p.features.join(', ').toLocaleLowerCase('tr-TR') + '.' : ''}`)}</p>${p.video ? `<a class="b ol" style="margin-top:16px" href="${esc(p.video)}" target="_blank" rel="noopener">${icon('play')} Video / sanal tur</a>` : ''}</div>
+        <div class="blk"><h2 class="disp">Özellikler</h2><div class="ft2">${allF.map((f) => ((p.features || []).includes(f) ? `<span class="y">${icon('check')} ${esc(f)}</span>` : `<span class="n">${icon('x')} ${esc(f)}</span>`)).join('')}</div></div>
+        <div class="blk" id="konum"><h2 class="disp">Konum</h2><div class="mapb" id="dmap"></div><div class="small muted" style="margin-top:8px">Gizlilik için konum yaklaşık gösterilmektedir.</div><div class="near">${E.near(p).map(([n, m]) => `<div><span>${n}</span><b>${m >= 1000 ? (m / 1000).toFixed(1).replace('.', ',') + ' km' : m + ' m'}</b></div>`).join('')}</div></div>
+        ${p.type === 'satilik' ? `${p.cat !== 'Arsa' ? `<div class="blk noprint" id="kredi"><h2 class="disp">Konut kredisi hesaplama</h2><div class="calc"><div><label for="kp">Peşinat oranı</label><input type="range" id="kp" min="20" max="80" step="5" value="30"><output id="kpo"></output></div><div><label for="kv">Vade</label><input type="range" id="kv" min="12" max="180" step="12" value="120"><output id="kvo"></output></div><div><label for="kf">Aylık faiz oranı %</label><input class="fi" id="kf" value="2,79" inputmode="decimal" data-plain style="height:38px;margin-top:4px"></div></div><div class="res" id="kres"></div><p class="small faint" style="margin-top:10px">Hesaplama bilgi amaçlıdır; BSMV/KKDF, dosya masrafı ve sigorta dahil değildir. Bankanızın güncel oranını girin.</p></div>` : ''}
+          <div class="blk"><h2 class="disp">Tahmini alım maliyeti</h2><div style="max-width:560px">${[['İlan bedeli', p.price], ['Tapu harcı (alıcı payı %2)', p.price * 0.02], ['Döner sermaye bedeli (yakl.)', 3250], [`Hizmet bedeli (%${st.commission || 2} + KDV)`, comm], ...(dask ? [['Zorunlu DASK (yıllık, yakl.)', dask]] : [])].map(([k, v]) => `<div class="ln"><span>${k}</span><span>${tl(Math.round(v))}</span></div>`).join('')}<div class="ln"><span>Toplam</span><span>${tl(Math.round(p.price * 1.02 + 3250 + comm + dask))}</span></div></div></div>`
+        : `<div class="blk"><h2 class="disp">Taşınma maliyeti</h2><div style="max-width:560px">${[['İlk ay kirası', p.price], ['Depozito (2 kira)', p.price * 2], ['Aylık aidat', p.dues || 0], [`Hizmet bedeli (kiranın %${st.rentCommission || 100}’ü + KDV)`, comm]].map(([k, v]) => `<div class="ln"><span>${k}</span><span>${tl(Math.round(v))}</span></div>`).join('')}<div class="ln"><span>Giriş için toplam</span><span>${tl(Math.round(p.price * 3 + (p.dues || 0) + comm))}</span></div></div></div>`}
+      </div>
+      <aside class="side"><div class="bx ag"><div class="row nw" style="gap:14px;margin-bottom:16px"><div class="av" style="background:${ag.color || '#0f2a44'};width:56px;height:56px;font-size:18px">${esc(NS.initials(ag.name))}</div><div><b style="font-size:16px">${esc(ag.name)}</b><div class="small muted">Gayrimenkul danışmanı · ${esc(st.bizName)}</div></div></div>
+          ${closed ? `<div class="small" style="background:#fef2f2;color:#991b1b;padding:12px;border-radius:10px;margin-bottom:12px">Bu ilan ${E.ST[p.status][0].toLocaleLowerCase('tr-TR')}. Benzer ilanlar için danışmanımıza ulaşın.</div>` : ''}
+          <a class="b wa full" target="_blank" rel="noopener" data-track="whatsapp" href="${wa(`Merhaba, ${p.no} numaralı "${p.title}" ilanınız hakkında bilgi almak istiyorum. ${url(p)}`, ag.phone)}">${icon('message')} WhatsApp ile yaz</a>
+          <a class="b ol full" style="margin-top:8px" data-track="telefon" href="tel:${esc(tel(ag.phone))}">${icon('phone')} ${esc(ag.phone)}</a>
+          ${closed ? '' : `<button class="b gd full" style="margin-top:8px" id="tour">${icon('calendar')} Yer gösterme randevusu al</button>`}</div>
+        <div class="bx noprint"><h3>Bilgi talep formu</h3><form id="info" style="display:grid;gap:8px"><input class="fi" name="name" required placeholder="Ad soyad" aria-label="Ad soyad"><input class="fi" name="phone" required type="tel" placeholder="Telefon" aria-label="Telefon"><input class="fi" name="email" type="email" placeholder="E-posta (isteğe bağlı)" aria-label="E-posta"><textarea class="fi" name="msg" aria-label="Mesaj">${esc(`${p.no} numaralı ilan hakkında bilgi almak istiyorum.`)}</textarea><label style="display:flex;gap:8px;font-size:12px;color:var(--text-3)"><input type="checkbox" required style="accent-color:#0f2a44"> KVKK aydınlatma metnini okudum, iletişim izni veriyorum.</label><button class="b full">Gönder</button></form></div>
+        <div class="bx noprint center"><div class="small muted mb">Telefonunuzla tarayın</div>${NS.qrSvg(url(p), 120)}<div class="small faint" style="margin-top:6px">${esc(p.no)}</div></div></aside></div>
+      ${sim.length ? `<section style="padding-bottom:10px" id="sim"><div class="sh"><div class="grow"><div class="eyb">Benzer ilanlar</div><h2 class="disp">Bunlar da ilginizi çekebilir</h2></div></div><div class="lg">${sim.map((x) => card(x)).join('')}</div></section>` : ''}</div>
+      <div class="mobbar"><a class="b ol" href="tel:${esc(tel(ag.phone))}">${icon('phone')} Ara</a><a class="b wa" target="_blank" rel="noopener" href="${wa(`Merhaba, ${p.no} numaralı ilan hakkında bilgi almak istiyorum.`, ag.phone)}">${icon('message')} WhatsApp</a></div>`;
+    document.body.classList.add('has-mob');
+    $$('.dh [data-fav]', el).forEach((b) => b.classList.toggle('on', favs.includes(p.id))); $$('.dh [data-cmp]', el).forEach((b) => b.classList.toggle('on', cmp.includes(p.id)));
+    on(el, 'click', '[data-lb]', (e, b) => lightbox(p, Number(b.dataset.lb)));
+    on(el, 'click', '[data-jump]', (e, b) => { e.preventDefault(); $('#' + b.dataset.jump, el).scrollIntoView({ behavior: 'smooth' }); });
+    on(el, 'click', '[data-track]', (e, b) => { db.load(); const x = db.get('props', p.id); if (x) { x.contacts = (x.contacts || 0) + 1; db.save(); } });
+    mapInto($('#dmap', el), [p], true);
+    $('#prt', el).onclick = () => print();
+    $('#shr', el).onclick = async () => { const u = url(p); if (navigator.share) { try { await navigator.share({ title: p.title, url: u }); return; } catch (e) { /* iptal */ } } try { await navigator.clipboard.writeText(u); toast('İlan bağlantısı kopyalandı', 'ok'); } catch (e) { NS.prompt('İlan bağlantısı', u); } };
+    $('#info', el).onsubmit = (e) => { e.preventDefault(); const f = Object.fromEntries(new FormData(e.target)); lead('bilgi', { name: f.name, phone: f.phone, email: f.email, msg: f.msg, prop: p.id, agent: p.agent }); e.target.innerHTML = `<div style="background:#f0fdf4;color:#15803d;padding:14px;border-radius:10px;font-weight:600">${icon('check')} Mesajınız iletildi. ${esc(ag.name)} en kısa sürede dönüş yapacak.</div>`; };
+    if ($('#tour', el)) $('#tour', el).onclick = async () => {
+      const days = Array.from({ length: 10 }, (_, i) => NS.addDays(new Date(), i + 1)).filter((d) => d.getDay() !== 0);
+      const v = await NS.formModal({ title: 'Yer gösterme randevusu', fields: [{ name: 'date', label: 'Gün', type: 'select', options: days.map((d) => ({ value: NS.iso(d), label: `${d.getDate()} ${NS.MONTHS[d.getMonth()]} ${['Pazar', 'Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi'][d.getDay()]}` })) }, { name: 'time', label: 'Saat', type: 'select', options: ['10:00', '11:30', '13:00', '14:30', '16:00', '17:30'] }, { name: 'name', label: 'Ad soyad', required: true }, { name: 'phone', label: 'Telefon', type: 'tel', required: true }, { name: 'mode', label: 'Görüşme şekli', type: 'select', options: ['Yerinde gösterim', 'Görüntülü (online) tur'] }, { name: 'note', label: 'Not', full: true }], submitLabel: 'Randevu talep et' });
+      if (!v) return;
+      db.load();
+      const r = addRequest({ name: v.name, phone: v.phone, type: p.type, cat: p.cat, district: p.district, rooms: p.rooms === '-' ? '' : p.rooms, budgetMax: Math.round(p.price * 1.1), m2Min: 0, note: `Web: ${p.no} için yer gösterme (${v.mode})`, agent: p.agent });
+      db.insert('showings', { prop: p.id, request: r.id, date: v.date, time: v.time, agent: p.agent, result: '', source: 'web', note: [v.mode, v.note].filter(Boolean).join(' — ') });
+      lead('gosterim', { name: v.name, phone: v.phone, prop: p.id, agent: p.agent, msg: `${NS.date(v.date)} ${v.time} · ${v.mode}${v.note ? ' — ' + v.note : ''}`, request: r.id });
+      NS.modal({ title: 'Randevu talebiniz alındı', body: `<div class="center"><div style="width:64px;height:64px;border-radius:50%;background:#f0fdf4;color:#15803d;display:grid;place-items:center;margin:0 auto 14px">${icon('check')}</div><p><b>${NS.date(v.date)} · ${v.time}</b><br>${esc(p.title)}</p><p class="muted small" style="margin-top:10px">${esc(ag.name)} randevuyu onaylamak için sizi arayacak.</p><a class="b wa" style="margin-top:16px" target="_blank" rel="noopener" href="${wa(`Merhaba, ${p.no} için ${NS.date(v.date)} ${v.time} yer gösterme randevusu talep ettim.`, ag.phone)}">${icon('message')} WhatsApp ile teyit et</a></div>` });
+    };
+    if ($('#kp', el)) {
+      const calc = () => { const dp = +$('#kp', el).value, n = +$('#kv', el).value, r = (parseFloat(String($('#kf', el).value).replace(',', '.')) || 0) / 100; const P = p.price * (1 - dp / 100); const m = r ? (P * r) / (1 - Math.pow(1 + r, -n)) : P / n; $('#kpo', el).textContent = `%${dp} · ${tl(Math.round((p.price * dp) / 100))}`; $('#kvo', el).textContent = `${n} ay (${n / 12} yıl)`; $('#kres', el).innerHTML = `<div><small>Aylık taksit</small><b>${tl(Math.round(m))}</b></div><div><small>Kredi tutarı</small><b>${short(Math.round(P))}</b></div><div><small>Toplam geri ödeme</small><b>${short(Math.round(m * n))}</b></div>`; };
+      ['kp', 'kv', 'kf'].forEach((k) => { $('#' + k, el).oninput = calc; }); calc();
+    }
+  }
+  function lightbox(p, i) {
+    const ph = E.photos(p); const w = document.createElement('div'); w.className = 'lb';
+    const draw = () => { w.innerHTML = `<img src="${pic(p, i, 1800)}" alt="${esc(p.title)}"><button class="p" aria-label="Önceki">${icon('left')}</button><button class="n" aria-label="Sonraki">${icon('right')}</button><button class="x" aria-label="Kapat">${icon('x')}</button><div class="c">${i + 1} / ${ph.length} · ${esc(p.title)}</div>`; };
+    const go = (d) => { i = (i + d + ph.length) % ph.length; draw(); };
+    const key = (e) => { if (e.key === 'Escape') close(); if (e.key === 'ArrowLeft') go(-1); if (e.key === 'ArrowRight') go(1); };
+    const close = () => { w.remove(); document.removeEventListener('keydown', key); };
+    w.onclick = (e) => { const b = e.target.closest('button'); if (!b) { if (e.target === w) close(); return; } if (b.classList.contains('p')) go(-1); else if (b.classList.contains('n')) go(1); else close(); };
+    let sx = 0; w.ontouchstart = (e) => { sx = e.touches[0].clientX; }; w.ontouchend = (e) => { const dx = e.changedTouches[0].clientX - sx; if (Math.abs(dx) > 40) go(dx < 0 ? 1 : -1); };
+    document.addEventListener('keydown', key); draw(); document.body.appendChild(w);
+  }
+
+  // ---------- karşılaştır ----------
+  function compare(el) {
+    const ps = cmp.map((id) => db.get('props', id)).filter(Boolean);
+    const rows = [['Fiyat', (p) => `<b style="font-size:18px;color:var(--navy)">${tl(p.price)}</b>${p.type === 'kiralik' ? ' / ay' : ''}`], ['Tür', (p) => `${E.TYPE[p.type]} ${esc(p.cat)}`], ['Konum', (p) => `${esc(p.nb)}, ${esc(p.district)}`], ['Oda', (p) => esc(p.rooms)], ['Alan', (p) => `${p.m2} m²`], ['m² fiyatı', (p) => tl(Math.round(p.price / p.m2))], ['Kat', (p) => p.floor || '-'], ['Bina yaşı', (p) => p.age || 'Sıfır'], ['Isıtma', (p) => esc(p.heating)], ['Aidat', (p) => (p.dues ? tl(p.dues) : '-')], ['Eşyalı', (p) => (p.furnished ? 'Evet' : 'Hayır')], ['Özellikler', (p) => (p.features || []).map(esc).join(', ') || '-'], ['Danışman', (p) => esc(agent(p.agent).name)]];
+    const best = (f, dir) => { const v = ps.map(f); const b = dir > 0 ? Math.max(...v) : Math.min(...v); return (p) => (ps.length > 1 && f(p) === b ? ' style="background:#f0fdf4"' : ''); };
+    const hl = { Fiyat: best((p) => p.price, -1), Alan: best((p) => p.m2, 1), 'm² fiyatı': best((p) => p.price / p.m2, -1), 'Bina yaşı': best((p) => p.age, -1) };
+    el.innerHTML = `<div class="w" style="padding-bottom:60px"><div class="crumb"><a href="#/">Ana sayfa</a> / Karşılaştır</div><div class="tbar"><h1 class="disp">İlan karşılaştırma</h1>${ps.length ? '<button class="b ol sm" data-cmpclr>Listeyi temizle</button>' : ''}</div>
+      ${ps.length ? `<div style="overflow-x:auto"><table class="cmpt"><tr><th></th>${ps.map((p) => `<td style="min-width:230px"><a href="#/ilan/${p.id}">${imgT(p, 0, 500, 320)}<b style="display:block;margin-top:8px">${esc(p.title)}</b></a><button class="small" data-cmp="${p.id}" style="border:0;background:none;color:var(--text-3);text-decoration:underline;cursor:pointer;padding:4px 0">Listeden çıkar</button></td>`).join('')}</tr>${rows.map(([k, f]) => `<tr><th>${k}</th>${ps.map((p) => `<td${hl[k] ? hl[k](p) : ''}>${f(p)}</td>`).join('')}</tr>`).join('')}</table></div><p class="small muted mt">Yeşil hücreler o satırdaki en avantajlı değeri gösterir.</p>` : `<div class="empty2"><h3 class="disp" style="font-size:26px">Karşılaştırma listeniz boş</h3><p class="muted" style="margin:10px 0 20px">İlan kartlarındaki katman simgesiyle en fazla 3 ilan ekleyin.</p><a class="b" href="#/ilanlar">İlanlara göz at</a></div>`}</div>`;
+  }
+
+  // ---------- değerleme ----------
+  function valuation(el) {
+    el.innerHTML = `<div class="w"><div class="crumb"><a href="#/">Ana sayfa</a> / Evim ne eder?</div><div class="val"><div><div class="eyb">Ücretsiz ön değerleme</div><h1 class="disp" style="font-size:clamp(32px,4vw,44px);line-height:1.05">Mülkünüzün güncel piyasa değerini öğrenin</h1><p class="muted" style="margin:16px 0 26px;line-height:1.7">Portföyümüzdeki ve son işlemlerdeki emsal ilanların m² fiyatları; bina yaşı, kat ve özelliklerle düzeltilerek tahmini bir değer aralığı hesaplanır.</p>
+        <form class="fgrid" id="vf"><div><label>İşlem</label><select class="fi" name="type" data-nosearch><option value="satilik">Satmak istiyorum</option><option value="kiralik">Kiraya vermek istiyorum</option></select></div><div><label>Emlak tipi</label><select class="fi" name="cat" data-nosearch><option>Daire</option><option>Villa</option><option>İşyeri</option><option>Arsa</option></select></div><div><label>İlçe</label><select class="fi" name="district" data-nosearch>${districts().map((d) => `<option>${d}</option>`).join('')}</select></div><div><label>Mahalle</label><input class="fi" name="nb" placeholder="ör. Bostanlı"></div><div><label>Brüt m² *</label><input class="fi" name="m2" required inputmode="numeric" data-plain placeholder="120"></div><div><label>Oda</label><select class="fi" name="rooms" data-nosearch><option>1+1</option><option>2+1</option><option selected>3+1</option><option>4+1</option><option>5+1</option><option value="-">—</option></select></div><div><label>Bina yaşı</label><input class="fi" name="age" inputmode="numeric" data-plain placeholder="10"></div><div><label>Kat</label><input class="fi" name="floor" inputmode="numeric" data-plain placeholder="3"></div>
+          <div class="full"><label>Özellikler</label><div class="chk">${['Asansör', 'Otopark', 'Site içi', 'Havuz', 'Deniz manzarası', 'Güvenlik'].map((f) => `<button type="button" data-vz="${f}">${f}</button>`).join('')}</div></div><div class="full"><button class="b gd">${icon('gauge')} Değeri hesapla</button></div></form></div>
+        <div id="vr"><div class="bx" style="background:var(--surface-2);border:0;height:100%;display:grid;place-items:center;text-align:center;min-height:360px"><div><div style="width:72px;height:72px;border-radius:50%;background:#fff;display:grid;place-items:center;margin:0 auto 16px;color:var(--gold)">${icon('gauge')}</div><b class="disp" style="font-size:22px">Sonuç burada görünecek</b><p class="small muted" style="margin-top:8px;max-width:300px">Formu doldurun; emsal ilanlara göre anında tahmini değer aralığı hesaplayalım.</p></div></div></div></div></div>`;
+    const ozl = [];
+    on(el, 'click', '[data-vz]', (e, b) => { const i = ozl.indexOf(b.dataset.vz); if (i >= 0) ozl.splice(i, 1); else ozl.push(b.dataset.vz); b.classList.toggle('on', i < 0); });
+    $('#vf', el).onsubmit = (e) => {
+      e.preventDefault(); const f = Object.fromEntries(new FormData(e.target)); const m2 = +String(f.m2).replace(/\D/g, ''); if (!m2) return toast('m² girin', 'err');
+      const all = db.all('props', (x) => x.type === f.type && x.m2);
+      let comps = all.filter((x) => x.cat === f.cat && x.district === f.district); let scope = `${f.district} ilçesindeki ${f.cat.toLocaleLowerCase('tr-TR')} ilanları`;
+      if (comps.length < 2) { comps = all.filter((x) => x.cat === f.cat); scope = `bölgedeki tüm ${f.cat.toLocaleLowerCase('tr-TR')} ilanları`; }
+      if (!comps.length) { comps = all; scope = 'tüm portföy'; }
+      if (!comps.length) return toast('Bu tür için yeterli emsal yok', 'err');
+      const avg = comps.reduce((a, x) => a + x.price / x.m2, 0) / comps.length;
+      let k = 1 - Math.min(0.3, (+f.age || 0) * 0.008); if (f.cat === 'Daire' && f.floor !== '' && +f.floor === 0) k -= 0.05; if (f.cat === 'Daire' && +f.floor >= 2 && +f.floor <= 8) k += 0.02; k += ozl.length * 0.015 + (ozl.includes('Deniz manzarası') ? 0.06 : 0) + (ozl.includes('Havuz') ? 0.03 : 0);
+      const est = avg * m2 * k; const step = f.type === 'satilik' ? 10000 : 500; const lo = Math.round((est * 0.92) / step) * step, hi = Math.round((est * 1.08) / step) * step;
+      const near = comps.slice().sort((a, b) => Math.abs(a.m2 - m2) - Math.abs(b.m2 - m2)).slice(0, 3);
+      $('#vr', el).innerHTML = `<div class="bx" style="border-color:var(--gold)"><div class="eyb">Tahmini ${f.type === 'satilik' ? 'satış' : 'aylık kira'} değeri</div><div class="disp" style="font-size:clamp(30px,4vw,40px);color:var(--navy);line-height:1.1">${short(lo)} – ${short(hi)}</div><div class="small muted" style="margin-top:6px">${tl(Math.round(avg * k))}/m² · ${comps.length} emsal (${esc(scope)})</div>
+        <div style="height:10px;border-radius:99px;background:linear-gradient(90deg,#fde68a,#c8a24a,#0f2a44);margin:20px 0 6px;position:relative"><i style="position:absolute;left:50%;top:-5px;width:4px;height:20px;background:#fff;border:2px solid var(--navy);border-radius:4px;transform:translateX(-50%)"></i></div><div class="row between small muted"><span>Hızlı satış</span><span>Piyasa değeri</span><span>Üst sınır</span></div>
+        <h3 style="margin-top:22px">Benzer emsaller</h3>${near.map((x) => `<a href="#/ilan/${x.id}" class="row nw" style="gap:12px;padding:10px 0;border-bottom:1px solid var(--border)"><img src="${pic(x, 0, 160, 110)}" style="width:80px;height:56px;object-fit:cover;border-radius:8px" alt=""><span class="grow small"><b>${esc(x.title)}</b><br><span class="muted">${x.m2} m² · ${E.ST[x.status][0]}</span></span><b class="small">${short(x.price)}</b></a>`).join('')}
+        <form id="vl" style="margin-top:20px;display:grid;gap:8px"><b>Uzmanımız yerinde ekspertiz yapsın</b><input class="fi" name="name" required placeholder="Ad soyad" aria-label="Ad soyad"><input class="fi" name="phone" required type="tel" placeholder="Telefon" aria-label="Telefon"><button class="b">${icon('calendar')} Ücretsiz ekspertiz randevusu iste</button></form></div>`;
+      $('#vl', el).onsubmit = (ev) => { ev.preventDefault(); const c = Object.fromEntries(new FormData(ev.target)); lead('degerleme', { name: c.name, phone: c.phone, msg: `${f.type === 'kiralik' ? 'Kiraya verecek' : 'Satacak'} · ${f.district}${f.nb ? '/' + f.nb : ''} · ${f.cat} ${f.rooms === '-' ? '' : f.rooms} · ${m2} m² · ${f.age || '?'} yaş · kat ${f.floor || '?'}${ozl.length ? ' · ' + ozl.join(', ') : ''} → tahmini ${short(lo)}–${short(hi)}`, value: Math.round(est), type: f.type }); ev.target.innerHTML = `<div style="background:#f0fdf4;color:#15803d;padding:14px;border-radius:10px;font-weight:600">${icon('check')} Talebiniz alındı. Danışmanımız 24 saat içinde sizi arayacak.</div>`; };
+    };
+  }
+
+  // ---------- iletişim / mülkünü listele ----------
+  function contact(el, q) {
+    const st = s(); const portfoy = q.get('k') === 'portfoy';
+    el.innerHTML = `<div class="w"><div class="crumb"><a href="#/">Ana sayfa</a> / ${portfoy ? 'Mülkünü listele' : 'İletişim'}</div><div class="val"><div><div class="eyb">${portfoy ? 'Mal sahipleri için' : 'Bize ulaşın'}</div><h1 class="disp" style="font-size:clamp(32px,4vw,44px);line-height:1.05">${portfoy ? 'Mülkünüzü doğru alıcıyla buluşturalım' : 'Size nasıl yardımcı olabiliriz?'}</h1>
+        <p class="muted" style="margin:16px 0 26px;line-height:1.7">${portfoy ? 'Profesyonel fotoğraf çekimi, ilan portallarında öne çıkarma, eşleşen müşteri havuzumuza anında bildirim ve tapuya kadar süreç yönetimi.' : 'Formu doldurun ya da doğrudan arayın; çalışma saatleri içinde aynı gün dönüş yapıyoruz.'}</p>
+        <form class="fgrid" id="cf"><div><label>Ad soyad *</label><input class="fi" name="name" required></div><div><label>Telefon *</label><input class="fi" name="phone" type="tel" required></div><div class="full"><label>E-posta</label><input class="fi" name="email" type="email"></div>
+          ${portfoy ? `<div><label>İşlem</label><select class="fi" name="type" data-nosearch><option value="satilik">Satılık</option><option value="kiralik">Kiralık</option></select></div><div><label>Emlak tipi</label><select class="fi" name="cat" data-nosearch><option>Daire</option><option>Villa</option><option>İşyeri</option><option>Arsa</option></select></div><div><label>İlçe</label><select class="fi" name="district" data-nosearch>${districts().map((d) => `<option>${d}</option>`).join('')}</select></div><div><label>Beklenen fiyat (₺)</label><input class="fi" name="price" inputmode="numeric" data-plain></div>` : `<div class="full"><label>Konu</label><select class="fi" name="topic" data-nosearch><option>Satın almak istiyorum</option><option>Kiralamak istiyorum</option><option>Kredi / ekspertiz</option><option>Kiracı / mal sahibi işlemleri</option><option>Diğer</option></select></div>`}
+          <div class="full"><label>Mesajınız</label><textarea class="fi" name="msg"></textarea></div><label class="full" style="display:flex;gap:8px;font-size:12.5px;color:var(--text-3)"><input type="checkbox" required style="accent-color:#0f2a44"> KVKK aydınlatma metnini okudum, iletişim izni veriyorum.</label><div class="full"><button class="b gd">${icon('send')} Gönder</button></div></form></div>
+        <div class="col" style="gap:16px"><div class="bx"><h3>Ofisimiz</h3>${[['map', st.bizAddress], ['phone', st.bizPhone], ['clock', 'Hafta içi 09:00–19:00 · Cumartesi 10:00–17:00']].map(([ic, t]) => `<div class="row nw" style="gap:10px;padding:8px 0">${icon(ic)}<span>${esc(t)}</span></div>`).join('')}<div class="row" style="gap:8px;margin-top:12px"><a class="b wa sm" target="_blank" rel="noopener" href="${wa('Merhaba, bilgi almak istiyorum.')}">${icon('message')} WhatsApp</a><a class="b ol sm" href="tel:${esc(tel(st.bizPhone))}">${icon('phone')} Ara</a></div></div><div class="mapb" id="omap" style="height:300px"></div></div></div></div>`;
+    const od = districts().find((d) => String(st.bizAddress).includes(d)) || 'Karşıyaka';
+    mapInto($('#omap', el), [{ id: 'ofis', district: od, lat: E.GEO[od][0], lng: E.GEO[od][1], label: st.bizName }], true);
+    $('#cf', el).onsubmit = (e) => { e.preventDefault(); const f = Object.fromEntries(new FormData(e.target)); lead(portfoy ? 'portfoy' : 'iletisim', { name: f.name, phone: f.phone, email: f.email, msg: [f.topic, f.cat && `${f.type === 'kiralik' ? 'Kiralık' : 'Satılık'} ${f.cat} · ${f.district}${f.price ? ' · ' + tl(+String(f.price).replace(/\D/g, '')) : ''}`, f.msg].filter(Boolean).join(' — '), type: f.type }); e.target.innerHTML = `<div class="full" style="background:#f0fdf4;color:#15803d;padding:18px;border-radius:12px;font-weight:600">${icon('check')} Teşekkürler ${esc(f.name)}! Mesajınız alındı, en kısa sürede dönüş yapacağız.</div>`; };
+  }
+
+  function route() {
+    const h = location.hash.replace(/^#\/?/, ''); const [path, qs = ''] = h.split('?'); const [r = '', a = ''] = path.split('/'); const q = new URLSearchParams(qs);
+    const old = $('#pg'); const el = old.cloneNode(false); old.replaceWith(el);
+    document.body.classList.remove('has-mob'); document.title = `${s().bizName} — Satılık ve kiralık ilanlar`;
+    $$('nav.nv [data-n]').forEach((x) => x.classList.toggle('on', x.dataset.n === (r === 'ilanlar' ? (q.get('gor') === 'harita' ? 'harita' : q.get('tip')) : r)));
+    ({ '': home, ilanlar: (e) => listPage(e, q), ilan: (e) => detail(e, decodeURIComponent(a)), favoriler: (e) => listPage(e, q, db.all('props').filter((p) => favs.includes(p.id))), karsilastir: compare, degerleme: valuation, iletisim: (e) => contact(e, q) }[r] || home)(el);
+    drawCounts(); window.scrollTo(0, 0);
+  }
+  // Eski bağlantılar (panel QR kodları): ilan.html?id=p3 → #/ilan/p3
+  const legacy = new URLSearchParams(location.search).get('id'); if (legacy && !location.hash) history.replaceState(null, '', location.pathname + '#/ilan/' + legacy);
+  frame();
+  on(document.body, 'click', '[data-fav]', (e, b) => { e.preventDefault(); toggleFav(b.dataset.fav); });
+  on(document.body, 'click', '[data-cmp]', (e, b) => { e.preventDefault(); toggleCmp(b.dataset.cmp); if (location.hash.startsWith('#/karsilastir')) route(); });
+  on(document.body, 'click', '[data-cmpclr]', () => { cmp = []; lsSet(CK, cmp); drawCounts(); $$('[data-cmp]').forEach((b) => b.classList.remove('on')); if (location.hash.startsWith('#/karsilastir')) route(); });
+  on(document.body, 'click', '[data-mclose]', () => { const o = document.querySelector('.ns-overlay'); if (o) o.remove(); });
+  window.addEventListener('hashchange', route);
+  window.addEventListener('storage', (e) => { if (e.key === db.key) db.load(); });
+  route();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NEBSOFT Emlak</title>
+<link rel="stylesheet" href="../../core/core.css">
+<style>
+  .pgrid2 { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 16px; }
+  .pc { overflow: hidden; cursor: pointer; transition: .15s; }
+  .pc:hover { transform: translateY(-3px); box-shadow: var(--shadow-lg); }
+  .pc .img { height: 170px; display: flex; align-items: flex-end; padding: 10px; color: #fff; position: relative; }
+  .pc .img::before { content: ''; position: absolute; inset: 0; background: linear-gradient(transparent 40%, rgba(0,0,0,.55)); }
+  .pc .img > * { position: relative; }
+  .pc .img .ic { display: none; }
+  .pc .img .ic svg { width: 64px; height: 64px; }
+  .pc .bd { padding: 12px 14px; }
+  .pc .pr { font-size: 19px; font-weight: 800; }
+  .spec { display: flex; gap: 12px; font-size: 12px; color: var(--text-2); margin-top: 6px; flex-wrap: wrap; }
+</style>
+</head>
+<body>
+<script src="../../core/core.js"></script>
+<script src="../../core/integrations.js"></script>
+<script src="data.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

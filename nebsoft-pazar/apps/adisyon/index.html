@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NEBSOFT Adisyon</title>
+<link rel="stylesheet" href="../../core/core.css">
+<style>
+  .floor { position: relative; height: 560px; background: var(--surface); border: 1px solid var(--border); border-radius: 16px; overflow: hidden;
+    background-image: radial-gradient(var(--border) 1px, transparent 1px); background-size: 22px 22px; }
+  .tbl-node { position: absolute; transform: translate(-50%, -50%); border-radius: 14px; display: flex; flex-direction: column; align-items: center; justify-content: center;
+    cursor: pointer; border: 2px solid var(--border); background: var(--surface-2); color: var(--text); user-select: none; transition: box-shadow .15s, transform .15s; padding: 6px; text-align: center; }
+  .tbl-node:hover { box-shadow: var(--shadow-lg); transform: translate(-50%, -50%) scale(1.04); }
+  .tbl-node.round { border-radius: 50%; }
+  .tbl-node b { font-size: 15px; }
+  .tbl-node .s { font-size: 11px; color: var(--text-2); }
+  .tbl-node.busy { background: color-mix(in srgb, var(--accent) 14%, var(--surface)); border-color: var(--accent); }
+  .tbl-node.bill { background: var(--warn-soft); border-color: var(--warn); }
+  .tbl-node.ready { animation: pulse 1.2s infinite; border-color: var(--ok); }
+  .tbl-node.resv { background: var(--info-soft); border-color: var(--info); border-style: dashed; }
+  .tbl-node .pill { position: absolute; top: -9px; right: -9px; }
+  .floor.edit .tbl-node { cursor: move; outline: 2px dashed var(--accent); }
+  @keyframes pulse { 50% { box-shadow: 0 0 0 8px color-mix(in srgb, var(--ok) 25%, transparent); } }
+  .legend-row { display: flex; gap: 14px; flex-wrap: wrap; font-size: 12px; color: var(--text-2); }
+  .legend-row i { width: 12px; height: 12px; border-radius: 4px; display: inline-block; margin-right: 5px; vertical-align: -2px; border: 2px solid; }
+
+  .order { display: grid; grid-template-columns: minmax(0, 1fr) 400px; gap: 16px; height: calc(100vh - 60px - 34px - 48px); min-height: 560px; }
+  .menu-side, .check-side { display: flex; flex-direction: column; min-height: 0; }
+  .mcats { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 10px; }
+  .mcats button { border: 1px solid var(--border); background: var(--surface); padding: 9px 14px; border-radius: 10px; font: 600 13px var(--font); color: var(--text-2); cursor: pointer; white-space: nowrap; }
+  .mcats button.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .mgrid { flex: 1; overflow-y: auto; display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; align-content: start; }
+  .mi { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 14px 12px; cursor: pointer; text-align: left; font-family: var(--font); color: var(--text); min-height: 92px; display: flex; flex-direction: column; gap: 6px; }
+  .mi:hover { border-color: var(--accent); box-shadow: var(--shadow); }
+  .mi .n { font-weight: 600; flex: 1; }
+  .mi .p { font-weight: 800; color: var(--accent); }
+  .mi.out { opacity: .45; }
+  .ci { padding: 9px 14px; border-bottom: 1px solid var(--border); display: grid; grid-template-columns: 34px 1fr auto; gap: 4px 10px; align-items: center; }
+  .ci .q { font-weight: 800; text-align: center; background: var(--surface-2); border-radius: 8px; padding: 4px 0; }
+  .ci .note { grid-column: 2 / -1; font-size: 12px; color: var(--warn); }
+  .ci.new { background: color-mix(in srgb, var(--warn) 8%, transparent); }
+  .ci.cancel { opacity: .5; text-decoration: line-through; }
+  .ci.paid { opacity: .55; }
+  .sec-h { padding: 6px 14px; font-size: 11px; font-weight: 700; color: var(--text-3); text-transform: uppercase; letter-spacing: .05em; background: var(--surface-2); }
+
+  .kds { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+  .kcol { background: var(--bg-2); border-radius: 16px; padding: 12px; min-height: 70vh; }
+  .kcol h3 { display: flex; align-items: center; gap: 8px; margin: 4px 4px 12px; }
+  .ticket { background: var(--surface); border-radius: 12px; border: 1px solid var(--border); margin-bottom: 12px; overflow: hidden; box-shadow: var(--shadow); }
+  .ticket .th { padding: 10px 12px; display: flex; align-items: center; gap: 8px; color: #fff; }
+  .ticket .ti { padding: 8px 12px; border-top: 1px solid var(--border); display: flex; gap: 8px; align-items: flex-start; cursor: pointer; }
+  .ticket .ti.done { text-decoration: line-through; opacity: .5; }
+  .ticket .tf { padding: 8px 12px; border-top: 1px solid var(--border); display: flex; gap: 6px; }
+  @media (max-width: 1100px) { .order { grid-template-columns: 1fr; height: auto; } .mgrid { max-height: 420px; } .kds { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<script src="../../core/core.js"></script>
+<script src="../../core/integrations.js"></script>
+<script src="data.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

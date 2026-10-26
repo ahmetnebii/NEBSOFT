@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sakin Portalı</title>
+<link rel="stylesheet" href="../../core/core.css">
+<style>
+  :root { --app-accent: #059669; --app-accent-soft: #e6f7f1; }
+  body { background: radial-gradient(800px 400px at 50% -10%, var(--accent-soft), transparent), var(--bg); }
+  .wrap { max-width: 680px; margin: 0 auto; padding: 28px 16px 60px; }
+  .debt { border-radius: 18px; padding: 24px; color: #fff; background: linear-gradient(135deg, #059669, #065f46); }
+  .debt.bad { background: linear-gradient(135deg, #dc2626, #7f1d1d); }
+</style>
+</head>
+<body>
+<div class="wrap" id="root"></div>
+<script src="../../core/core.js"></script>
+<script src="data.js"></script>
+<script>
+(function () {
+  const { esc, $, on, icon, money, toast, sum } = NS;
+  const SITE = window.SITE;
+  const db = new NS.DB('site', SITE.seed);
+  const s = db.settings({});
+  const KEY = 'nebsoft:site:sakin';
+  const get = () => { try { return sessionStorage.getItem(KEY); } catch (e) { return null; } };
+  const set = (v) => { try { v ? sessionStorage.setItem(KEY, v) : sessionStorage.removeItem(KEY); } catch (e) { /* yok */ } };
+  const perName = (p) => `${NS.MONTHS[Number(p.slice(5)) - 1]} ${p.slice(0, 4)}`;
+  const head = `<div class="center mb"><div class="ns-logo" style="margin:0 auto 10px;width:52px;height:52px">${icon('home', 'ico-lg')}</div><h1>${esc(s.bizName)}</h1><p class="muted">Sakin portalı</p></div>`;
+  function login() {
+    const flats = db.all('flats').sort((a, b) => a.block.localeCompare(b.block) || a.no - b.no);
+    $('#root').innerHTML = head + `<div class="card pad"><div class="field mb"><label>Daireniz</label><select class="input lg" id="fl">${flats.map((f) => `<option value="${f.id}">${f.block} Blok · Daire ${f.no}</option>`).join('')}</select></div>
+      <div class="field mb"><label>Kayıtlı telefonunuzun son 4 hanesi</label><input class="input lg" id="ph" inputmode="numeric" maxlength="4" placeholder="••••"></div><button class="btn primary lg block" id="go">Giriş</button>
+      <p class="small faint mt center">Demo: herhangi bir dairenin malik veya kiracı telefonunun son 4 hanesi. <a href="#" id="hint">Örnek göster</a></p></div>`;
+    $('#go').onclick = () => { const f = db.get('flats', $('#fl').value); const p = $('#ph').value.trim(); const ok = [f.ownerPhone, f.tenantPhone].filter(Boolean).some((x) => x.replace(/\D/g, '').endsWith(p)) && p.length === 4; if (!ok) return toast('Bilgiler eşleşmedi', 'err'); set(f.id); render(); };
+    $('#hint').onclick = (e) => { e.preventDefault(); const f = db.get('flats', $('#fl').value); toast(`${f.id}: ${f.ownerPhone.replace(/\D/g, '').slice(-4)}`); };
+  }
+  function render() {
+    db.load();
+    const f = db.get('flats', get());
+    if (!f) return login();
+    const d = SITE.debt(db, f.id);
+    const dues = db.all('dues', (x) => x.flat === f.id).sort((a, b) => b.period.localeCompare(a.period));
+    $('#root').innerHTML = head + `<div class="row mb"><b class="grow">${esc(f.block)} Blok · Daire ${f.no} — ${esc(f.tenant || f.owner)}</b><button class="btn sm" id="out">${icon('logout')} Çıkış</button></div>
+      <div class="debt ${d > 0 ? 'bad' : ''} mb"><div class="small" style="opacity:.85">Güncel borcunuz</div><div style="font-size:38px;font-weight:800;letter-spacing:-.02em">${money(d)}</div>${d > 0 ? `<div class="small mt">Ödeme: ${esc(s.bank)} · <span class="mono">${esc(s.iban)}</span><br>Açıklamaya "${esc(f.id)}" yazınız. Son ödeme: her ayın ${s.dueDay}. günü.</div>` : '<div class="small mt">Teşekkür ederiz, borcunuz bulunmamaktadır.</div>'}</div>
+      <div class="card mb"><div class="card-h"><h3>${icon('bell')} Duyurular</h3></div><div class="card-b">${db.all('announcements').sort((a, b) => (b.pinned - a.pinned) || b.date.localeCompare(a.date)).map((n) => `<div class="list-item"><div><b>${n.pinned ? '📌 ' : ''}${esc(n.title)}</b><div class="small muted">${NS.date(n.date)}</div><div class="small mt">${esc(n.text)}</div></div></div>`).join('')}</div></div>
+      <div class="card mb"><div class="card-h"><h3>${icon('wallet')} Hesap hareketleri</h3></div><div class="card-b">${dues.map((x) => `<div class="list-item small"><span class="grow">${esc(x.desc)}</span><b>${money(x.amount)}</b>${x.paid >= x.amount ? '<span class="badge ok">Ödendi</span>' : '<span class="badge err">Ödenmedi</span>'}</div>`).join('')}</div></div>
+      <div class="card"><div class="card-h"><h3>${icon('wrench')} Talep / arıza bildir</h3></div><div class="card-b"><div class="field mb"><label>Başlık</label><input class="input" id="rt" placeholder="Ör. koridor lambası yanmıyor"></div><div class="field mb"><label>Açıklama</label><textarea class="input" id="rd"></textarea></div><button class="btn primary" id="rs">${icon('send')} Gönder</button>
+        <h4 class="mt mb">Taleplerim</h4>${db.all('requests', (r) => r.flat === f.id).map((r) => `<div class="list-item small"><span class="grow">${esc(r.title)}</span><span class="badge">${{ acik: 'Açık', islemde: 'İşlemde', cozuldu: 'Çözüldü' }[r.status]}</span></div>`).join('') || '<div class="faint small">Talebiniz yok</div>'}</div></div>`;
+    $('#out').onclick = () => { set(null); login(); };
+    $('#rs').onclick = () => { const t = $('#rt').value.trim(); if (!t) return toast('Başlık yazın', 'err'); db.load(); db.insert('requests', { flat: f.id, title: t, desc: $('#rd').value.trim(), status: 'acik', at: new Date().toISOString(), cat: 'Genel' }); toast('Talebiniz yönetime iletildi', 'ok'); render(); };
+  }
+  render();
+})();
+</script>
+</body>
+</html>

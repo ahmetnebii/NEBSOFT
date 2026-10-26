@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cihaz Durumu Sorgula</title>
+<link rel="stylesheet" href="../../core/core.css">
+<style>
+  :root { --app-accent: #ea580c; --app-accent-soft: #fff1e6; }
+  body { background: radial-gradient(800px 400px at 50% -10%, var(--accent-soft), transparent), var(--bg); }
+  .wrap { max-width: 620px; margin: 0 auto; padding: 32px 16px; }
+  .step { display: flex; gap: 14px; padding-bottom: 18px; position: relative; }
+  .step::before { content: ''; position: absolute; left: 15px; top: 32px; bottom: 0; width: 2px; background: var(--border); }
+  .step:last-child::before { display: none; }
+  .step .d { width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center; flex: none; background: var(--bg-2); color: var(--text-3); }
+  .step.on .d { background: var(--c); color: #fff; }
+</style>
+</head>
+<body>
+<div class="wrap" id="root"></div>
+<script src="../../core/core.js"></script>
+<script src="data.js"></script>
+<script>
+(function () {
+  const { esc, $, icon, money, toast, sum } = NS;
+  const SV = window.SERVIS;
+  const db = new NS.DB('servis', SV.seed);
+  const s = db.settings({});
+  const ST = Object.fromEntries(SV.STATUS.map((x) => [x.id, x]));
+  const total = (t) => sum(t.parts, (p) => p.price * p.qty) + (t.labor || 0);
+  const render = (code) => {
+    db.load();
+    const t = code && db.find('tickets', (x) => x.code === code.toUpperCase().trim());
+    const head = `<div class="center mb"><div class="ns-logo" style="margin:0 auto 10px;width:52px;height:52px">${icon('wrench', 'ico-lg')}</div><h1>${esc(s.bizName)}</h1><p class="muted">Cihaz durumu sorgulama</p></div>
+      <div class="card pad mb"><div class="row nw"><input class="input lg mono" id="k" placeholder="Takip kodu (ör. 7KX2QA)" value="${esc(code || '')}" style="text-transform:uppercase"><button class="btn primary lg" id="go">${icon('search')} Sorgula</button></div></div>`;
+    if (!code) { $('#root').innerHTML = head + '<p class="center small muted">Takip kodunuz kabul fişinizde yazılıdır.</p>'; return bind(); }
+    if (!t) { $('#root').innerHTML = head + `<div class="card pad empty">${icon('search')}<div>Bu koda ait kayıt bulunamadı.</div></div>`; return bind(); }
+    const flow = ['kabul', 'inceleme', 'onay', 'tamirde', 'hazir', 'teslim'];
+    const cur = flow.indexOf(t.status === 'parca' ? 'tamirde' : t.status);
+    $('#root').innerHTML = head + `<div class="card pad mb"><div class="row between"><div><div class="small muted">${esc(t.no)}</div><h2>${esc(t.brand)} ${esc(t.model)}</h2></div><span class="badge" style="background:${ST[t.status].color};color:#fff;border:0;font-size:13px;padding:6px 12px">${esc(ST[t.status].name)}</span></div>
+        <div class="small muted mt">Kabul: ${NS.dt(t.received)} · Tahmini teslim: <b>${NS.date(t.promised)}</b></div></div>
+      ${t.status === 'onay' ? `<div class="card pad mb" style="border:2px solid var(--warn)"><h3>${icon('file')} Fiyat teklifi</h3><p class="mt">${esc(t.diagnosis || 'Arıza tespit edildi.')}</p><div style="font-size:32px;font-weight:800;margin:8px 0">${money(t.estimate)}</div><div class="row"><button class="btn ok lg grow" id="ok">${icon('check')} Onaylıyorum, tamir edilsin</button><button class="btn lg" id="no">Reddet</button></div></div>` : ''}
+      ${t.status === 'hazir' ? `<div class="card pad mb" style="background:var(--ok-soft);border:0"><h3 style="color:var(--ok)">${icon('check')} Cihazınız teslime hazır!</h3><p class="mt">Ödenecek tutar: <b>${money(total(t) - sum(t.payments, (p) => p.amount) - (t.deposit || 0))}</b> · ${esc(s.bizAddress)}</p></div>` : ''}
+      <div class="card pad">${t.status === 'iade' ? `<p>${icon('x')} ${esc((t.log[t.log.length - 1] || {}).note || 'Cihaz tamir edilemedi.')}</p>` : flow.map((f, i) => `<div class="step ${i <= cur ? 'on' : ''}" style="--c:${ST[f].color}"><div class="d">${icon(ST[f].icon)}</div><div><b>${esc(ST[f].name)}</b><div class="small muted">${(() => { const l = t.log.filter((x) => x.status === f).pop(); return l ? NS.dt(l.at) + ' · ' + esc(l.note || '') : ''; })()}</div></div></div>`).join('')}</div>
+      <p class="center small muted mt">${icon('phone')} ${esc(s.bizPhone)} · ${esc(s.bizAddress)}</p>`;
+    bind();
+    if ($('#ok')) $('#ok').onclick = () => { t.approved = true; t.status = 'tamirde'; t.log.push({ at: new Date().toISOString(), status: 'tamirde', note: 'Müşteri teklifi online onayladı' }); db.save(); toast('Onayınız alındı, onarıma başlıyoruz', 'ok'); render(code); };
+    if ($('#no')) $('#no').onclick = () => { t.status = 'iade'; t.log.push({ at: new Date().toISOString(), status: 'iade', note: 'Müşteri teklifi reddetti — cihaz iade edilecek' }); db.save(); render(code); };
+  };
+  const bind = () => { const go = () => { const k = $('#k').value.trim(); history.replaceState(null, '', '?kod=' + encodeURIComponent(k)); render(k); }; $('#go').onclick = go; $('#k').onkeydown = (e) => { if (e.key === 'Enter') go(); }; };
+  render(new URLSearchParams(location.search).get('kod'));
+})();
+</script>
+</body>
+</html>

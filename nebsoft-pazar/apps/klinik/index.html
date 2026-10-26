@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NEBSOFT Klinik</title>
+<link rel="stylesheet" href="../../core/core.css">
+<style>
+  .jaw { display: grid; grid-template-columns: repeat(16, minmax(34px, 1fr)); gap: 6px; }
+  .tooth { aspect-ratio: .8; border-radius: 10px 10px 14px 14px; border: 2px solid var(--border); background: var(--surface); display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; font-size: 11px; font-weight: 700; color: var(--text-2); position: relative; transition: .12s; }
+  .tooth.low { border-radius: 14px 14px 10px 10px; }
+  .tooth:hover { border-color: var(--accent); transform: scale(1.06); }
+  .tooth.planned { background: var(--warn-soft); border-color: var(--warn); color: var(--warn); }
+  .tooth.done { background: var(--ok-soft); border-color: var(--ok); color: var(--ok); }
+  .tooth.missing { opacity: .35; background: repeating-linear-gradient(135deg, var(--bg-2) 0 4px, transparent 4px 8px); }
+  .tooth .tt { font-size: 9px; font-weight: 600; margin-top: 2px; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding: 0 2px; }
+  .jaw-sep { height: 2px; background: var(--border); margin: 14px 0; position: relative; }
+  .jaw-sep::after { content: ''; position: absolute; left: 50%; top: -8px; bottom: -8px; width: 2px; background: var(--border); }
+  .slot { display: flex; gap: 10px; padding: 8px 10px; border-bottom: 1px dashed var(--border); align-items: center; min-height: 44px; }
+  .slot .tm { width: 52px; font-weight: 700; color: var(--text-3); font-size: 12px; }
+  .slot .ap { flex: 1; border-radius: 8px; padding: 6px 10px; color: #fff; font-size: 12.5px; cursor: pointer; }
+  .slot .free { flex: 1; color: var(--text-3); font-size: 12px; cursor: pointer; }
+  .slot .free:hover { color: var(--accent); }
+  @media (max-width: 760px) { .jaw { grid-template-columns: repeat(8, 1fr); } }
+</style>
+</head>
+<body>
+<script src="../../core/core.js"></script>
+<script src="../../core/integrations.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

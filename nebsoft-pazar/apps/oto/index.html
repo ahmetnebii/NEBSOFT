@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NEBSOFT Oto Yıkama & Otopark</title>
+<link rel="stylesheet" href="../../core/core.css">
+<style>
+  .plate { display: inline-flex; align-items: center; border: 2px solid #111; border-radius: 6px; background: #fff; color: #111; font: 800 15px ui-monospace, Consolas, monospace; letter-spacing: .06em; overflow: hidden; }
+  .plate::before { content: 'TR'; background: #1d4ed8; color: #fff; font-size: 9px; padding: 6px 4px; align-self: stretch; display: flex; align-items: flex-end; }
+  .plate span { padding: 3px 8px; }
+  .plate.lg { font-size: 26px; } .plate.lg::before { font-size: 12px; padding: 10px 6px; }
+  .gate-in { font: 800 30px ui-monospace, Consolas, monospace; text-transform: uppercase; letter-spacing: .08em; height: 70px; text-align: center; }
+  .lanes { display: grid; grid-template-columns: repeat(4, minmax(220px, 1fr)); gap: 14px; overflow-x: auto; }
+  .lane { background: var(--bg-2); border-radius: 14px; padding: 10px; min-height: 50vh; }
+  .lane h4 { margin: 4px 4px 10px; display: flex; gap: 8px; align-items: center; font-size: 13px; }
+  .job { background: var(--surface); border-radius: 12px; border: 1px solid var(--border); padding: 10px 12px; margin-bottom: 8px; box-shadow: var(--shadow); }
+  .park { height: 22px; border-radius: 99px; background: var(--bg-2); overflow: hidden; display: flex; }
+  .park i { background: linear-gradient(90deg, var(--accent), color-mix(in srgb, var(--accent) 60%, #000)); }
+  @media (max-width: 900px) { .lanes { grid-template-columns: 1fr 1fr; } }
+</style>
+</head>
+<body>
+<script src="../../core/core.js"></script>
+<script src="../../core/integrations.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

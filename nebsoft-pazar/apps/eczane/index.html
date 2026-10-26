@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NEBSOFT Eczane</title>
+<link rel="stylesheet" href="../../core/core.css">
+<style>
+  .sale { display: grid; grid-template-columns: minmax(0, 1fr) 400px; gap: 16px; align-items: start; }
+  .sale > * { min-width: 0; }
+  .rx { display: inline-block; width: 10px; height: 10px; border-radius: 3px; vertical-align: 0; }
+  .rx-normal { background: #e5e7eb; border: 1px solid #9ca3af; } .rx-kirmizi { background: #dc2626; } .rx-yesil { background: #16a34a; } .rx-mor { background: #7c3aed; } .rx-turuncu { background: #ea580c; } .rx-yok { background: transparent; border: 1px dashed #9ca3af; }
+  .line { display: grid; grid-template-columns: 1fr auto; gap: 2px 10px; padding: 10px 14px; border-bottom: 1px solid var(--border); }
+  .line .meta { grid-column: 1 / -1; font-size: 12px; color: var(--text-2); display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .mode { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; padding: 12px 14px; border-bottom: 1px solid var(--border); }
+  .mode button.on { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .pay-split { padding: 12px 14px; background: var(--surface-2); border-top: 1px solid var(--border); }
+  @media (max-width: 1000px) { .sale { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<script src="../../core/core.js"></script>
+<script src="../../core/integrations.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NEBSOFT Personel & Puantaj</title>
+<link rel="stylesheet" href="../../core/core.css">
+<style>
+  .pt-wrap { overflow: auto; max-height: calc(100vh - 260px); }
+  table.pt { border-collapse: separate; border-spacing: 0; font-size: 12px; }
+  .pt th, .pt td { border-bottom: 1px solid var(--border); border-right: 1px solid var(--border); text-align: center; padding: 0; }
+  .pt th { position: sticky; top: 0; background: var(--surface-2); z-index: 2; padding: 6px 2px; font-weight: 600; min-width: 30px; }
+  .pt th.we { color: var(--warn); }
+  .pt .nm { position: sticky; left: 0; background: var(--surface); z-index: 1; text-align: left; padding: 6px 10px; min-width: 170px; white-space: nowrap; }
+  .pt th.nm { z-index: 3; }
+  .pt td.d { cursor: pointer; width: 30px; height: 32px; font-weight: 700; user-select: none; }
+  .pt td.d:hover { outline: 2px solid var(--accent); outline-offset: -2px; }
+  .s-C { color: var(--ok); } .s-I { background: var(--info-soft); color: var(--info); } .s-R { background: var(--warn-soft); color: var(--warn); } .s-H { background: var(--bg-2); color: var(--text-3); } .s-U { background: color-mix(in srgb, #7c3aed 16%, transparent); color: #8b5cf6; } .s-D { background: var(--err-soft); color: var(--err); } .s-B { background: var(--accent-soft); color: var(--accent); }
+  .pt .tot { padding: 4px 8px; font-weight: 700; white-space: nowrap; }
+  .ot { font-size: 9px; display: block; color: var(--accent); }
+</style>
+</head>
+<body>
+<script src="../../core/core.js"></script>
+<script src="../../core/integrations.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

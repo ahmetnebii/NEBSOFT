@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Gönderi Takip</title>
+<link rel="stylesheet" href="../../core/core.css">
+<style>
+  :root { --app-accent: #ea580c; --app-accent-soft: #fff1e6; }
+  body { background: radial-gradient(800px 400px at 50% -10%, var(--accent-soft), transparent), var(--bg); }
+  .wrap { max-width: 640px; margin: 0 auto; padding: 32px 16px 60px; }
+  .step { display: flex; gap: 14px; padding-bottom: 18px; position: relative; }
+  .step::before { content: ''; position: absolute; left: 15px; top: 32px; bottom: 0; width: 2px; background: var(--border); }
+  .step:last-child::before { display: none; }
+  .step .d { width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center; flex: none; background: var(--bg-2); color: var(--text-3); }
+  .step.on .d { background: var(--accent); color: #fff; }
+</style>
+</head>
+<body>
+<div class="wrap" id="root"></div>
+<script src="../../core/core.js"></script>
+<script src="data.js"></script>
+<script>
+(function () {
+  const { esc, $, icon, money } = NS;
+  const K = window.KARGO;
+  const db = new NS.DB('kargo', K.seed);
+  const s = db.settings({});
+  // Alıcı adını gizler, parantez içindeki yakınlık bilgisini ("kendisi") açık bırakır
+  const mask = (n) => { const [name, rel] = String(n).split(' ('); return name.split(' ').filter(Boolean).map((w) => w[0] + '*'.repeat(Math.max(1, w.length - 1))).join(' ') + (rel ? ' (' + rel : ''); };
+  const render = (no) => {
+    db.load();
+    const sh = no && db.find('ships', (x) => x.no === no.toUpperCase().trim());
+    const head = `<div class="center mb"><div class="ns-logo" style="margin:0 auto 10px;width:52px;height:52px">${icon('truck', 'ico-lg')}</div><h1>${esc(s.bizName)}</h1><p class="muted">Gönderi takip</p></div>
+      <div class="card pad mb"><div class="row nw"><input class="input lg mono" id="k" placeholder="Takip numarası (HK...)" value="${esc(no || '')}"><button class="btn primary lg" id="go">${icon('search')} Sorgula</button></div></div>`;
+    if (!no) { $('#root').innerHTML = head + `<p class="center small muted">Örnek: ${esc((db.all('ships').slice(-1)[0] || {}).no || '')}</p>`; return bind(); }
+    if (!sh) { $('#root').innerHTML = head + `<div class="card pad empty">${icon('search')}<div>Gönderi bulunamadı</div></div>`; return bind(); }
+    const flow = ['kabul', 'depoda', 'dagitimda', 'teslim'];
+    const cur = flow.indexOf(sh.status);
+    $('#root').innerHTML = head + `<div class="card pad mb"><div class="row between"><div><div class="small muted mono">${esc(sh.no)}</div><h2>${esc(K.ST[sh.status][0])}</h2></div>${NS.badge(K.SERVICE[sh.service][0], 'acc')}</div>
+        <div class="small muted mt">Gönderici: ${esc(sh.sender.name)} · Alıcı: ${esc(mask(sh.receiver.name))} · ${esc(sh.receiver.district || sh.receiver.city)}</div>
+        ${sh.status === 'dagitimda' ? `<div class="card pad mt" style="background:var(--accent-soft);border:0">${icon('truck')} Paketiniz bugün kuryemizle yola çıktı. Gün içinde teslim edilecek.${sh.cod ? ` Kapıda ödenecek tutar: <b>${money(sh.cod)}</b>` : ''}</div>` : ''}
+        ${sh.status === 'edilemedi' ? `<div class="card pad mt" style="background:var(--err-soft);border:0">${icon('alert')} ${esc(sh.failReason || 'Teslim edilemedi')} — bir sonraki iş günü tekrar denenecek. Bilgi: ${esc(s.bizPhone)}</div>` : ''}
+        ${sh.status === 'teslim' ? `<div class="card pad mt" style="background:var(--ok-soft);border:0">${icon('check')} Teslim alan: ${esc(mask(sh.deliveredTo || ''))}</div>` : ''}</div>
+      <div class="card pad">${['iade', 'edilemedi'].includes(sh.status) ? '' : flow.map((f, i) => `<div class="step ${i <= cur ? 'on' : ''}"><div class="d">${icon(K.ST[f][2])}</div><div><b>${esc(K.ST[f][0])}</b><div class="small muted">${(() => { const h = sh.history.filter((x) => x.status === f).pop(); return h ? NS.dt(h.at) + ' · ' + esc(h.note || '') : ''; })()}</div></div></div>`).join('')}
+        ${['iade', 'edilemedi'].includes(sh.status) ? sh.history.slice().reverse().map((h) => `<div class="list-item small"><span class="grow"><b>${esc(K.ST[h.status][0])}</b> · ${esc(h.note || '')}</span><span class="faint">${NS.dt(h.at)}</span></div>`).join('') : ''}</div>
+      <p class="center small muted mt">${icon('phone')} ${esc(s.bizPhone)}</p>`;
+    bind();
+  };
+  const bind = () => { const go = () => { const k = $('#k').value.trim(); history.replaceState(null, '', '?no=' + encodeURIComponent(k)); render(k); }; $('#go').onclick = go; $('#k').onkeydown = (e) => { if (e.key === 'Enter') go(); }; };
+  render(new URLSearchParams(location.search).get('no'));
+})();
+</script>
+</body>
+</html>
