@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bayi Sipariş Portalı</title>
+<link rel="stylesheet" href="../../core/core.css">
+<link rel="stylesheet" href="../../core/track.css">
+<style>
+  :root { --app-accent: #0f766e; --app-accent-soft: #ccfbf1; --app-accent-soft-dark: #0b2f2b; }
+  .tabs2 { display: flex; gap: 6px; margin-bottom: 16px; overflow-x: auto; }
+  .tabs2 button { flex: none; border: 1px solid var(--border); background: var(--surface); color: var(--text-2); border-radius: 99px; padding: 8px 14px; font: 600 13px var(--font); cursor: pointer; }
+  .tabs2 button[aria-selected="true"] { background: var(--text); color: var(--surface); border-color: var(--text); }
+  .prod { display: grid; grid-template-columns: 1fr auto auto; gap: 14px; align-items: center; padding: 14px 0; border-bottom: 1px solid var(--border); }
+  .prod:last-child { border-bottom: 0; }
+  .qty { display: flex; align-items: center; border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+  .qty button { width: 34px; height: 36px; border: 0; background: var(--surface-2); color: var(--text); font-size: 18px; cursor: pointer; }
+  .qty input { width: 64px; height: 36px; border: 0; text-align: center; font: 700 15px var(--font); background: var(--surface); color: var(--text); }
+  .cartbar { position: sticky; bottom: 0; border: 1px solid var(--border); border-radius: 14px; background: var(--surface); padding: 14px 18px; box-shadow: var(--shadow-lg); display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+  .stat3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 16px; }
+  .stat3 div { border: 1px solid var(--border); border-radius: 12px; background: var(--surface); padding: 12px 14px; }
+  .stat3 b { display: block; font-size: 20px; font-variant-numeric: tabular-nums; }
+  .stat3 span { font-size: 12px; color: var(--text-3); }
+  @media (max-width: 760px) { .prod { grid-template-columns: 1fr; } .stat3 b { font-size: 16px; } }
+</style>
+</head>
+<body>
+<header class="tk-bar"><div class="in" id="bar"></div></header>
+<main class="tk-wrap" id="root" style="max-width:900px"></main>
+<script src="../../core/core.js"></script>
+<script>
+(function () {
+  const { esc, $, $$, on, icon, money, toast, iso, today, addDays, sum } = NS;
+  const db = new NS.DB('fabrika');
+  const S = () => db.settings({});
+  const KEY = 'nebsoft:fab:bayi';
+  const sget = () => { try { return sessionStorage.getItem(KEY); } catch (e) { return null; } };
+  const sset = (v) => { try { v ? sessionStorage.setItem(KEY, v) : sessionStorage.removeItem(KEY); } catch (e) { /* yok */ } };
+  const r2 = (n) => Math.round(n * 100) / 100;
+  const mat = (id) => db.get('materials', id) || { name: '-', unit: '' };
+  const onHand = (id) => sum(db.all('moves', (m) => m.mat === id && m.wh === 'w4'), (m) => m.qty);
+  const reserved = (id) => sum(db.all('so', (s) => ['acik', 'kismi'].includes(s.status)).flatMap((s) => s.lines.filter((l) => l.mat === id)), (l) => l.qty - (l.shipped || 0));
+  const SOST = { acik: ['Onaylandı, üretim/sevk sırasında', 'info'], kismi: ['Kısmi sevk edildi', 'warn'], tamam: ['Tamamlandı', 'ok'], iptal: ['İptal', 'err'], bekliyor: ['Onay bekliyor', 'warn'] };
+  let tab = 'katalog', cart = {};
+
+  $('#bar').innerHTML = `<div class="tk-mark">${icon('factory')}</div><div class="grow"><b>${esc(S().bizName || 'Fabrika')}</b><span>Bayi sipariş portalı</span></div><span id="out"></span><button class="btn ghost icon" id="th" data-theme-ico aria-label="Tema">${icon(NS.getTheme() === 'dark' ? 'sun' : 'moon')}</button>`;
+  $('#th').onclick = NS.toggleTheme;
+
+  function login() {
+    $('#out').innerHTML = '';
+    $('#root').innerHTML = `<div class="tk-view"><div class="tk-intro"><h1>Bayi ve müşteri portalı</h1><p>Size özel fiyat listesiyle 7/24 sipariş verin; siparişinizin üretim ve sevk durumunu, irsaliye ve lot bilgilerini anlık izleyin.</p></div>
+      <div class="panel" style="border:1px solid var(--border);border-radius:16px;background:var(--surface);padding:20px">${NS.fieldsHtml([{ name: 'vkn', label: 'Vergi no veya e-posta', required: true }, { name: 'pin', label: 'Kayıtlı telefonunuzun son 4 hanesi', required: true }])}<button class="btn primary lg block mt" id="go">Giriş yap</button><p class="small muted" style="margin:10px 0 0">Demo için <a href="#" id="hint">örnek bayi bilgisi kullanın</a>.</p></div>
+      <div class="tk-how"><div>${icon('tag')}<b>Size özel fiyat</b>Sözleşmenizdeki iskonto fiyatlara otomatik uygulanır.</div><div>${icon('truck')}<b>Sevkiyat ve lot</b>İrsaliye, plaka ve sevk edilen lot numaraları.</div><div>${icon('refresh')}<b>Tekrar sipariş</b>Önceki siparişinizi tek tıkla yeniden oluşturun.</div></div></div>`;
+    const go = () => { db.load(); const v = $('[name=vkn]').value.trim().toLocaleLowerCase('tr'); const p = $('[name=pin]').value.replace(/\D/g, ''); const c = db.find('customers', (x) => (x.taxNo && x.taxNo === v) || (x.email && x.email.toLocaleLowerCase('tr') === v)); if (!c || p.length !== 4 || !String(c.phone || '').replace(/\D/g, '').endsWith(p)) return toast('Bilgiler eşleşmedi', 'err'); sset(c.id); cart = {}; render(); };
+    $('#go').onclick = go;
+    $('#hint').onclick = (e) => { e.preventDefault(); const c = db.all('customers')[0]; if (c) { $('[name=vkn]').value = c.taxNo || c.email; $('[name=pin]').value = String(c.phone || '').replace(/\D/g, '').slice(-4); } };
+  }
+  const disc = (c) => Number(c.discount) || 0;
+  const priceFor = (m, c) => r2(m.price * (1 - disc(c) / 100));
+  const soTotal = (s) => r2(sum(s.lines, (l) => l.qty * l.price));
+
+  function catalog(c) {
+    const ms = db.all('materials', (m) => m.type === 'mamul' && m.price > 0);
+    const lines = Object.entries(cart).filter(([, q]) => q > 0);
+    const tot = r2(sum(lines, ([id, q]) => q * priceFor(mat(id), c)));
+    return `<section class="tk-panel"><h3>${icon('tag')} Fiyat listeniz${disc(c) ? ` · %${disc(c)} bayi iskontosu uygulandı` : ''}</h3><div class="b">${ms.map((m) => { const free = Math.max(0, onHand(m.id) - reserved(m.id)); return `<div class="prod"><div><b>${esc(m.name)}</b><div class="small muted">${esc(m.code)} · ${esc(m.unit)} · barkod ${esc(m.barcode || '')}</div><div class="small" style="color:${free > 0 ? 'var(--ok)' : 'var(--warn)'}">${free > 0 ? `${NS.num(free)} ${esc(m.unit)} hemen sevke hazır` : 'Üretim planına alınır (3-5 iş günü)'}</div></div><div style="text-align:right">${disc(c) ? `<div class="small muted" style="text-decoration:line-through">${money(m.price)}</div>` : ''}<b>${money(priceFor(m, c))}</b><div class="small muted">/ ${esc(m.unit)} + KDV</div></div><div class="qty"><button data-q="${m.id}|-10" aria-label="Azalt">−</button><input data-qi="${m.id}" inputmode="numeric" value="${cart[m.id] || 0}" aria-label="Miktar"><button data-q="${m.id}|10" aria-label="Artır">+</button></div></div>`; }).join('')}</div></section>
+      ${lines.length ? `<div class="cartbar"><span class="grow"><b>${lines.length} ürün · ${NS.num(sum(lines, ([, q]) => q))} koli</b><div class="small muted">Ara toplam ${money(tot)} + KDV · vade ${c.term || 30} gün</div></span><input class="input" id="note" placeholder="Not / sevk adresi" style="max-width:240px"><button class="btn primary lg" id="order">${icon('send')} Siparişi gönder</button></div>` : ''}`;
+  }
+  function orders(c) {
+    const sos = db.all('so', (s) => s.cust === c.id).sort((a, b) => b.date.localeCompare(a.date));
+    return sos.map((s) => { const sh = db.all('shipments', (x) => x.so === s.id); const st = SOST[s.status] || [s.status, '']; const pct = Math.round((sum(s.lines, (l) => Math.min(l.qty, l.shipped || 0)) / Math.max(1, sum(s.lines, (l) => l.qty))) * 100);
+      return `<section class="tk-panel"><h3><span class="mono">${esc(s.no)}</span><span class="grow"></span>${NS.badge(st[0], st[1])}</h3><div class="b"><div class="row between small muted"><span>${NS.date(s.date)} · termin ${NS.date(s.due)}${s.portal ? ' · portal siparişi' : ''}</span><b style="color:var(--text)">${money(soTotal(s))} + KDV</b></div>
+        <div class="progress mt" style="height:6px"><i style="width:${pct}%"></i></div><div class="small muted">%${pct} sevk edildi</div>
+        <div class="mt">${s.lines.map((l) => `<div class="row between small" style="padding:4px 0"><span>${esc(mat(l.mat).name)}</span><span>${NS.num(l.shipped || 0)} / ${NS.num(l.qty)} ${esc(mat(l.mat).unit)}</span></div>`).join('')}</div>
+        ${sh.map((x) => `<div class="tk-call mt" style="--c:var(--accent);padding:12px 14px"><b>${icon('truck')} İrsaliye ${esc(x.no)} · ${NS.date(x.date)}</b><div class="small">${esc(x.plate || '')} · ${esc(x.driver || '')}</div><div class="small muted">${x.lines.map((l) => `${esc(mat(l.mat).code)} lot ${esc((db.get('lots', l.lot) || {}).no || l.lot)} × ${NS.num(l.qty)}`).join(' · ')}</div></div>`).join('')}
+        <button class="btn sm mt" data-re="${s.id}">${icon('refresh')} Tekrar sipariş ver</button></div></section>`; }).join('') || '<div class="tk-panel"><div class="b empty">Henüz siparişiniz yok.</div></div>';
+  }
+  function render() {
+    db.load();
+    const c = db.get('customers', sget()); if (!c) return login();
+    $('#out').innerHTML = `<button class="btn ghost" id="lo">${icon('logout')}<span class="hide-sm">Çıkış</span></button>`;
+    $('#lo').onclick = () => { sset(null); login(); };
+    const open = db.all('so', (s) => s.cust === c.id && ['acik', 'kismi', 'bekliyor'].includes(s.status));
+    const ym = today().slice(0, 7);
+    $('#root').innerHTML = `<div class="tk-view"><p class="small muted" style="margin:0 0 8px">${esc(c.name)} · ${esc(c.city || '')}</p><div class="stat3"><div><b>${open.length}</b><span>Açık sipariş</span></div><div><b>${money(sum(open, soTotal))}</b><span>Açık sipariş tutarı</span></div><div><b>${money(sum(db.all('so', (s) => s.cust === c.id && s.date.startsWith(ym)), soTotal))}</b><span>Bu ay sipariş</span></div></div>
+      <div class="tabs2" role="tablist">${[['katalog', 'Sipariş ver'], ['siparisler', 'Siparişlerim']].map(([k, l]) => `<button role="tab" data-tab="${k}" aria-selected="${tab === k}">${l}</button>`).join('')}</div>${tab === 'siparisler' ? orders(c) : catalog(c)}
+      <p class="tk-help">${icon('phone')} Satış ekibi: ${esc(S().bizPhone || '')}</p></div>`;
+  }
+  const root = $('#root');
+  on(root, 'click', '[data-tab]', (e, b) => { tab = b.dataset.tab; render(); });
+  on(root, 'click', '[data-q]', (e, b) => { const [id, d] = b.dataset.q.split('|'); cart[id] = Math.max(0, (cart[id] || 0) + Number(d)); render(); });
+  on(root, 'change', '[data-qi]', (e, i) => { cart[i.dataset.qi] = Math.max(0, Math.round(Number(i.value.replace(/\D/g, '')) || 0)); render(); });
+  on(root, 'click', '[data-re]', (e, b) => { const s = db.get('so', b.dataset.re); cart = {}; s.lines.forEach((l) => { cart[l.mat] = l.qty; }); tab = 'katalog'; render(); toast('Önceki sipariş sepete eklendi', 'ok'); });
+  on(root, 'click', '#order', () => {
+    db.load(); const c = db.get('customers', sget()); const lines = Object.entries(cart).filter(([, q]) => q > 0);
+    if (!lines.length) return;
+    const due = (() => { let d = new Date(); let n = 0; while (n < 5) { d = addDays(d, 1); if (![0, 6].includes(d.getDay())) n++; } return iso(d); })();
+    const so = db.insert('so', { no: db.nextNo('so', 'SP'), cust: c.id, date: today(), due, currency: 'TRY', status: 'bekliyor', portal: true, lines: lines.map(([id, q]) => ({ mat: id, qty: q, price: priceFor(mat(id), c), shipped: 0 })), note: 'Bayi portalı' + ($('#note').value.trim() ? ' · ' + $('#note').value.trim() : '') }, true);
+    db.log('Bayi portalı siparişi', `${so.no} · ${c.name}`); db.save();
+    cart = {}; tab = 'siparisler'; toast(`${so.no} numaralı siparişiniz alındı, onay bekliyor`, 'ok'); render();
+  });
+  render();
+})();
+</script>
+</body>
+</html>
