@@ -52,12 +52,38 @@ server.js             Bağımlılıksız yerel sunucu + donanım/servis köprüs
 | Araç Kiralama | `apps/kiralama` | Filo takvimi, sözleşme, km/yakıt/hasar, bakım hatırlatma | Emniyet kiralık araç bildirimi, HGS/OGS, GPS |
 | Site Yönetimi | `apps/site` | Aidat tahakkuku, gider dağıtımı, gecikme faizi, duyuru, sakin portalı | Banka hareketi eşleştirme, toplu SMS |
 | CRM | `apps/crm` | Kanban huni, aktivite/görev, teklif, tahmin | Arayan numara, takvim |
-| Personel & Puantaj | `apps/ik` | Aylık puantaj, fazla mesai, izin onayı, maaş özeti | SGK işe giriş/çıkış, PDKS, e-Bordro, banka maaş talimatı |
+| Personel & Puantaj | `apps/ik` | Aylık puantaj, fazla mesai, izin onayı, yasal bordro ve tazminat | SGK işe giriş/çıkış, PDKS, e-Bordro, banka maaş talimatı |
 | Veteriner | `apps/veteriner` | Aşı karnesi/hatırlatma, muayene, kilo takibi, pet otel | VETBİS, PETVET, e-SMM |
 | E-ticaret Mağazası | `apps/eticaret` | Varyantlı ürün, sipariş/kargo, kupon, terk edilen sepet, iade | Pazaryerleri, kargo firmaları API, e-İrsaliye |
 | Eczane | `apps/eczane` | Reçeteli satış ve SGK katkı payı, parti/SKT, muadil, depo siparişi, kurum mutabakatı | MEDULA, İTS, ÜTS, ecza deposu, ÖKC |
 | Kargo & Kurye | `apps/kargo` | Desi fiyatı, etiket, zimmet, kurye imzalı teslim, KT mutabakatı | Anlaşmalı kargo firmaları, GPS |
 | Etkinlik Bilet | `apps/bilet` | Koltuk planı, gişe, kapı kontrol, iade, indirim kodu, online bilet | Turnike / QR kapı okuyucu |
+
+## Müşteriye açık sayfalar
+
+| Sayfa | Adres | Ne yapar |
+|---|---|---|
+| Site sakin portalı | `apps/site/sakin.html` | Blok/daire + telefon son 4 hane ile giriş; aidat şeridi, kartla ödeme ve makbuz, ortak alan rezervasyonu, QR kodlu ziyaretçi bildirimi, talep takibi, anket, duyurular |
+| Servis takip | `apps/servis/takip.html?kod=` | Adım çubuğu, kalem kalem teklif onayı/reddi, teslime hazırda online ödeme, garanti bitişi, puanlama |
+| Kargo takip | `apps/kargo/takip.html?no=` | Rota görseli, saat aralığı, alıcı doğrulamalı teslimat tercihi (komşu/görevli/şube/başka gün), yeniden teslimat, puan |
+| CRM teklif onayı | `apps/crm/teklif.html?t=` | Müşteri teklifi görür, adıyla kabul veya nedenli red eder; fırsat otomatik güncellenir |
+| Pati karnesi | `apps/veteriner/karne.html` | Telefonla giriş; aşı karnesi, muayeneler, kilo grafiği, online randevu isteği |
+| Otel rezervasyon motoru | `apps/otel/rezervasyon.html` | Müsaitlik ve sezon fiyatı, pansiyon seçimi, OTA karşılaştırması, kapora, rezervasyon yönetimi/iptal |
+
+## Son eklenen ürün özellikleri
+
+- **Personel & Puantaj — yasal bordro:** `apps/ik/bordro.js` brüt/net, SGK ve işsizlik (tavan/taban), kümülatif gelir vergisi,
+  asgari ücret GV/DV istisnası, işveren maliyeti; bordro pusulası; kıdem/ihbar/kullanılmayan izin hesabı.
+  Parametreler (2026 varsayılanları) Ayarlar > Bordro'dan yıllık güncellenir — resmi beyandan önce mali müşavirle teyit edin.
+- **CRM:** KDV'li ve revizyonlu teklifler, teklif durumları ve görüntülenme takibi, Görevler ajandası, Firma 360° kartı.
+- **Klinik:** taksitli ödeme planı, Kasa & Tahsilat (gün sonu, geciken taksite SMS), Laboratuvar iş takibi, Hekim hakedişi.
+- **Site yönetimi:** Ziyaretçiler (kodla giriş doğrulama), Rezervasyonlar, Anketler; taleplere yönetim yanıtı.
+- **Veteriner:** online randevu isteklerini SMS ile onaylama, sahibine karne bağlantısı.
+
+## Tasarım skill'leri
+
+Depo kökündeki `.claude/skills` altında Claude Code oturumlarında otomatik yüklenen tasarım rehberleri bulunur:
+`design-taste-frontend`, `ui-ux-pro-max`, `design-motion-principles`.
 
 ## Kullanım kolaylıkları (tüm ürünlerde)
 
