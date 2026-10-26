@@ -41,7 +41,10 @@
     if (min <= s.graceMin) return 0;
     const days = Math.floor(min / 1440); const rest = min % 1440;
     const part = rest <= 0 ? 0 : Math.min(s.dailyMax, s.firstHour + Math.max(0, Math.ceil(rest / 60) - 1) * s.nextHour);
-    return days * s.dailyMax + part;
+    const full = days * s.dailyMax + part;
+    // Müşteri sayfasından önceden ödendiyse: 15 dk içinde çıkış ücretsiz, sonrası fark alınır
+    if (p.paidAt) return at - new Date(p.paidAt) <= 15 * 60000 ? 0 : Math.max(0, full - (p.paidAmount || 0));
+    return full;
   }
   const dur = (p, at = new Date()) => { const m = Math.round(((p.out ? new Date(p.out) : at) - new Date(p.in)) / 60000); return m >= 60 ? `${Math.floor(m / 60)} sa ${m % 60} dk` : `${m} dk`; };
 
@@ -115,7 +118,7 @@
         <div class="row mt">${k === 'bekliyor' ? `<button class="btn sm primary grow" data-j="${j.id}|yikaniyor">Başla</button>` : k === 'yikaniyor' ? `<button class="btn sm ok grow" data-j="${j.id}|hazir">Bitti</button>` : k === 'hazir' ? `<button class="btn sm grow" data-j="${j.id}|teslim">Teslim et</button>` : ''}</div></div>`; }).join('') || '<div class="faint small center">Boş</div>'}</div>`; }).join('')}</div>`;
     on(el, 'click', '[data-j]', async (e, b) => {
       const [id, st] = b.dataset.j.split('|'); const j = db.get('jobs', id);
-      if (st === 'yikaniyor') { const v = await formModal({ title: 'Yıkamacı', fields: [{ name: 'w', label: 'Kim yıkıyor?', type: 'select', options: db.all('workers').map((x) => ({ value: x.id, label: x.name })) }] }); if (!v) return; j.worker = v.w; }
+      if (st === 'yikaniyor') { const v = await formModal({ title: 'Yıkamacı', fields: [{ name: 'w', label: 'Kim yıkıyor?', type: 'select', options: db.all('workers').map((x) => ({ value: x.id, label: x.name })) }] }); if (!v) return; j.worker = v.w; j.started = new Date().toISOString(); }
       if (st === 'teslim') { const pk = db.find('parks', (x) => !x.out && x.plate === j.plate); if (pk) return checkout(app, pk); const v = await formModal({ title: `Tahsilat ${money(j.price)}`, fields: [{ name: 'pay', label: 'Ödeme', type: 'select', options: ['nakit', 'kart'] }] }); if (!v) return; j.pay = v.pay; j.done = new Date().toISOString(); }
       j.status = st; if (st === 'hazir') { j.done = new Date().toISOString(); NS.beep(1300, 150); }
       db.save(); app.refresh();
@@ -130,7 +133,7 @@
     const revPark = sum(outs, (x) => x.fee), revWash = sum(jobsD, (j) => j.price);
     const hours = Array.from({ length: 16 }, (_, i) => i + 7).map((h) => ({ label: String(h), value: db.all('parks', (x) => new Date(x.in).getHours() === h && x.in > addDays(new Date(), -14).toISOString()).length / 14 }));
     const ser = NS.dailySeries([...db.all('parks', (x) => x.out).map((x) => ({ at: x.out, v: x.fee })), ...db.all('jobs', (j) => j.status === 'teslim').map((j) => ({ at: j.done || j.in, v: j.price }))], 14, 'at', (x) => x.v);
-    el.innerHTML = pageHead(s.bizName, NS.dateLong(new Date()), `<a class="btn primary" href="#/gise">${icon('car2')} Giriş / çıkış</a>`) + `
+    el.innerHTML = pageHead(s.bizName, NS.dateLong(new Date()), `<a class="btn" href="arac.html" target="_blank" rel="noopener">${icon('globe')} Müşteri sayfası</a><a class="btn primary" href="#/gise">${icon('car2')} Giriş / çıkış</a>`) + `
       <div class="grid g4 mb">${kpi('Doluluk', `${inside().length} / ${s.capacity}`, 'car2', '', `<div class="park mt" style="height:8px"><i style="width:${Math.min(100, (inside().length / s.capacity) * 100)}%"></i></div>`)}${kpi('Bugünkü ciro', money(revPark + revWash), 'trend', 'ok')}${kpi('Otopark / yıkama', `${money(revPark)} · ${money(revWash)}`, 'wallet', 'info')}${kpi('Kuyrukta', db.all('jobs', (j) => ['bekliyor', 'yikaniyor'].includes(j.status)).length + ' araç', 'drop', 'warn')}</div>
       <div class="grid g2 mb"><div class="card"><div class="card-h"><h3>14 günlük ciro</h3></div><div class="card-b">${chart.bars(ser.labels.map((l, i) => ({ label: l, value: ser.values[i] })), { format: money })}</div></div><div class="card"><div class="card-h"><h3>Saatlik ortalama giriş</h3></div><div class="card-b">${chart.bars(hours, { format: num })}</div></div></div>
       <div class="card"><div class="card-h"><h3>Hizmet dağılımı (30 gün)</h3></div><div class="card-b">${chart.donut(db.all('packages').map((x) => ({ label: x.name, value: db.all('jobs', (j) => j.pkg === x.id && j.in > addDays(new Date(), -30).toISOString()).length, color: x.color })).filter((x) => x.value), { size: 140 })}</div></div>`;

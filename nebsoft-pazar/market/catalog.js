@@ -102,10 +102,10 @@ window.CATALOG = {
       modules: ['Öğrenciler', 'Sınıflar', 'Ders Programı', 'Yoklama', 'Sınavlar', 'Taksitler', 'Raporlar', 'Veli Portalı', 'Veli İletişimi'],
     },
     {
-      id: 'oto', ready: true, cat: 'randevu', name: 'Oto Yıkama & Otopark', tagline: 'Plaka ile giriş-çıkış ve süreye göre ücret', icon: 'car2', accent: '#0284c7',
+      id: 'oto', ready: true, extraDemos: [{ label: 'Aracım nerede? sayfasını aç', url: 'apps/oto/arac.html' }], cat: 'randevu', name: 'Oto Yıkama & Otopark', tagline: 'Plaka ile giriş-çıkış ve süreye göre ücret', icon: 'car2', accent: '#0284c7',
       prices: [249, 499, 999], rating: 4.6, reviews: 87, users: 390, sectors: ['Oto yıkama', 'Otopark', 'Detailing', 'Lastik oteli'],
       desc: 'Plaka ile araç girişi, süreye göre tarife, yıkama hizmet paketleri, abonelik, kuyruk ekranı ve gün sonu.',
-      features: ['Plaka ile hızlı giriş/çıkış', 'Saatlik/günlük tarife hesabı', 'Yıkama paketleri ve iş kuyruğu', 'Aylık abonelik', 'Araç geçmişi', 'Doluluk ekranı', 'Gün sonu ve raporlar'],
+      features: ['Müşteri sayfası: plakayla yıkama sırası ve tahmini hazır olma saati', 'Otopark ücretini çıkmadan online ödeme, 15 dk ücretsiz çıkış', 'Plaka ile hızlı giriş/çıkış', 'Saatlik/günlük tarife hesabı', 'Yıkama paketleri ve iş kuyruğu', 'Aylık abonelik', 'Araç geçmişi', 'Doluluk ekranı', 'Gün sonu ve raporlar'],
       modules: ['Giriş-Çıkış', 'Yıkama Kuyruğu', 'Abonelikler', 'Tarifeler', 'Kasa', 'Raporlar'],
     },
     {
