@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Altın Fiyatları</title>
+<link rel="stylesheet" href="../../core/core.css">
+<style>
+  html, body { margin: 0; background: #0d0b07; color: #f5ecd7; font-family: var(--font); min-height: 100%; }
+  .wrap { min-height: 100vh; display: flex; flex-direction: column; padding: clamp(16px, 3vw, 44px); box-sizing: border-box; gap: clamp(14px, 2vw, 28px); }
+  header { display: flex; align-items: center; gap: 18px; }
+  header h1 { margin: 0; font-size: clamp(22px, 3vw, 46px); letter-spacing: -.02em; color: #f3c969; }
+  header .t { margin-left: auto; text-align: right; font-variant-numeric: tabular-nums; }
+  header .t b { display: block; font-size: clamp(22px, 3vw, 44px); }
+  header .t span { font-size: clamp(12px, 1.2vw, 18px); opacity: .6; }
+  .board { flex: 1; display: grid; grid-template-columns: 1.3fr 1fr; gap: clamp(14px, 2vw, 28px); }
+  table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+  th { text-align: right; font-size: clamp(12px, 1.2vw, 18px); color: #b9a77a; font-weight: 600; padding: 8px 12px; letter-spacing: .06em; text-transform: uppercase; }
+  th:first-child, td:first-child { text-align: left; }
+  td { padding: clamp(8px, 1.1vw, 16px) 12px; font-size: clamp(18px, 2.3vw, 38px); border-top: 1px solid #2b2414; text-align: right; }
+  td:first-child { font-weight: 700; }
+  td.s { color: #f3c969; font-weight: 800; }
+  .panel { background: linear-gradient(180deg, #19140a, #110e07); border: 1px solid #2b2414; border-radius: 22px; padding: clamp(10px, 1.4vw, 22px); }
+  footer { display: flex; gap: 24px; font-size: clamp(13px, 1.3vw, 20px); color: #b9a77a; }
+  footer b { color: #f5ecd7; }
+  @media (max-width: 760px) { .board { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<div class="wrap"><header><svg width="46" height="46" viewBox="0 0 24 24" fill="#f3c969" aria-hidden="true"><path d="M12 2l2.9 6.9L22 10l-5.5 4.7L18.2 22 12 18.3 5.8 22l1.7-7.3L2 10l7.1-1.1z"/></svg><h1 id="nm"></h1><div class="t"><b id="clk"></b><span id="upd"></span></div></header>
+<div class="board"><div class="panel"><table id="coins"></table></div><div class="panel"><table id="ayar"></table></div></div>
+<footer id="ft"></footer></div>
+<script src="../../core/core.js"></script>
+<script src="data.js"></script>
+<script>
+(function () {
+  const K = window.KYM; const db = new NS.DB('kuyumcu', K.seed);
+  const tl = (n) => new Intl.NumberFormat('tr-TR', { maximumFractionDigits: 2 }).format(n);
+  function draw() {
+    db.load(); const s = db.settings({}); const r = K.rates(s);
+    document.getElementById('nm').textContent = s.bizName;
+    document.getElementById('coins').innerHTML = `<tr><th>Altın</th><th>Alış</th><th>Satış</th></tr>${r.coin.map((c) => `<tr><td>${NS.esc(c.name)}</td><td>${tl(c.buy)}</td><td class="s">${tl(c.sell)}</td></tr>`).join('')}`;
+    document.getElementById('ayar').innerHTML = `<tr><th>Gram</th><th>Alış</th><th>Satış</th></tr><tr><td>Has (24)</td><td>${tl(s.hasBuy)}</td><td class="s">${tl(s.hasSell)}</td></tr>${r.ayar.filter((a) => [22, 18, 14].includes(a.ayar)).map((a) => `<tr><td>${a.ayar} ayar</td><td>${tl(Math.round(a.buy))}</td><td class="s">${tl(Math.round(a.sell))}</td></tr>`).join('')}`;
+    document.getElementById('ft').innerHTML = `<span>USD <b>${tl(s.usd)}</b></span><span>EUR <b>${tl(s.eur)}</b></span><span style="margin-left:auto">Fiyatlar TL'dir · işçilik hariç · ${NS.esc(s.bizPhone || '')}</span>`;
+    document.getElementById('upd').textContent = 'Güncelleme ' + new Date(s.rateAt).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
+  }
+  const clk = () => { document.getElementById('clk').textContent = new Date().toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }); };
+  draw(); clk(); setInterval(clk, 10000);
+  // Panelde kur değişince ekran kendiliğinden yenilenir (aynı tarayıcı) + dakikada bir kontrol
+  window.addEventListener('storage', draw); setInterval(draw, 60000);
+})();
+</script>
+</body>
+</html>

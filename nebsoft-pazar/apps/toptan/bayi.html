@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bayi Sipariş</title>
+<link rel="stylesheet" href="../../core/core.css">
+<link rel="stylesheet" href="../../core/track.css">
+<style>
+  :root { --app-accent: #15803d; --app-accent-soft: #dcfce7; --app-accent-soft-dark: #052e16; }
+  .tabs2 { display: flex; gap: 6px; margin-bottom: 16px; overflow-x: auto; }
+  .tabs2 button { flex: none; border: 1px solid var(--border); background: var(--surface); color: var(--text-2); border-radius: 99px; padding: 8px 14px; font: 600 13px var(--font); cursor: pointer; }
+  .tabs2 button[aria-selected="true"] { background: var(--text); color: var(--surface); border-color: var(--text); }
+  .pg { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 12px; }
+  .pc { border: 1px solid var(--border); border-radius: 14px; background: var(--surface); padding: 14px; display: flex; flex-direction: column; gap: 6px; }
+  .pc .p { font-size: 18px; font-weight: 800; }
+  .qt { display: flex; align-items: center; gap: 6px; margin-top: auto; }
+  .qt input { width: 64px; text-align: center; }
+  .cartbar { position: sticky; bottom: 12px; margin-top: 16px; border-radius: 14px; background: var(--text); color: var(--surface); padding: 14px 16px; display: flex; align-items: center; gap: 12px; box-shadow: 0 12px 30px rgba(0,0,0,.25); }
+  .ln { display: grid; grid-template-columns: 1fr auto; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--border); }
+  .ln:last-child { border-bottom: 0; }
+</style>
+</head>
+<body>
+<header class="tk-bar"><div class="in" id="bar"></div></header>
+<main class="tk-wrap" id="root" style="max-width:980px"></main>
+<script src="../../core/core.js"></script>
+<script src="data.js"></script>
+<script>
+(function () {
+  const { esc, $, $$, icon, money, toast, sum } = NS;
+  const T = window.TPT;
+  const db = new NS.DB('toptan', T.seed);
+  const S = () => db.settings({});
+  const KEY = 'nebsoft:toptan:bayi';
+  const sget = () => { try { return sessionStorage.getItem(KEY); } catch (e) { return null; } };
+  const sset = (v) => { try { v ? sessionStorage.setItem(KEY, v) : sessionStorage.removeItem(KEY); } catch (e) { /* yok */ } };
+  const digits = (x) => String(x || '').replace(/\D/g, '').slice(-10);
+  let tab = 'katalog', q = '', cat = ''; const cart = {};
+  $('#bar').innerHTML = `<div class="tk-mark">${icon('truck')}</div><div class="grow"><b>${esc(S().bizName)}</b><span>Bayi sipariş</span></div><span id="out"></span>`;
+
+  function login() {
+    $('#out').innerHTML = '';
+    $('#root').innerHTML = `<div class="tk-intro"><h1>Plasiyeri beklemeden, 7/24 sipariş verin</h1><p>Size özel fiyat listenizle sipariş verin; bakiyenizi ve geçmiş siparişlerinizi görün.</p></div>
+      <div class="tk-find" style="flex-wrap:wrap"><input class="input" id="ph" type="tel" placeholder="05xx xxx xx xx" aria-label="Telefon"><input class="input" id="cd" placeholder="Bayi kodu" aria-label="Bayi kodu" style="max-width:160px;text-transform:uppercase"><button class="btn primary lg" id="go">Giriş</button></div>
+      <p class="small muted">Demo için <a href="#" id="hint">örnek bayi bilgisini doldurun</a>.</p>`;
+    const go = () => { db.load(); const c = db.find('customers', (x) => digits(x.phone) === digits($('#ph').value) && T.code(x) === $('#cd').value.trim().toUpperCase()); if (!c) return toast('Telefon veya kod hatalı', 'err'); sset(c.id); render(); };
+    $('#go').onclick = go; $('#cd').onkeydown = (e) => { if (e.key === 'Enter') go(); };
+    $('#hint').onclick = (e) => { e.preventDefault(); const c = db.all('customers')[2]; $('#ph').value = c.phone; $('#cd').value = T.code(c); };
+  }
+  const lines = (c) => Object.entries(cart).filter(([, v]) => v > 0).map(([pid, qty]) => { const p = db.get('products', pid); return { pid, name: p.name, qty, price: T.price(p, c.list), vat: p.vat, disc: 0 }; });
+  function katalog(c) {
+    const cats = [...new Set(db.all('products').map((p) => p.cat))];
+    const P = db.all('products', (p) => (!cat || p.cat === cat) && NS.match(q, p.name, p.code));
+    const t = T.orderTotal({ lines: lines(c) });
+    return `<div class="row mb" style="gap:8px;flex-wrap:wrap"><input class="input" id="q" placeholder="Ürün ara" value="${esc(q)}" style="max-width:260px"><select class="input" id="ct" style="max-width:200px"><option value="">Tüm kategoriler</option>${cats.map((x) => `<option ${x === cat ? 'selected' : ''}>${esc(x)}</option>`).join('')}</select></div>
+      <div class="pg">${P.map((p) => `<div class="pc"><b>${esc(p.name)}</b><span class="small muted">${esc(p.cat)} · koli ${p.pack} adet</span><span class="p">${money(T.price(p, c.list))}</span><span class="small ${p.stock < p.pack ? '' : 'muted'}" style="${p.stock < p.pack ? 'color:var(--err)' : ''}">${p.stock < p.pack ? 'Stokta yok' : 'Stokta'}</span><div class="qt"><button class="btn sm" data-k="-1" data-p="${p.id}" aria-label="Azalt">${icon('minus')}</button><input class="input" data-q="${p.id}" value="${cart[p.id] || ''}" inputmode="numeric" aria-label="Adet"><button class="btn sm primary" data-k="1" data-p="${p.id}" aria-label="1 koli ekle">${icon('plus')}</button></div></div>`).join('')}</div>
+      ${lines(c).length ? `<div class="cartbar"><span class="grow"><b>${lines(c).length} kalem</b> · KDV dahil <b style="font-size:18px">${money(t.total)}</b>${t.total < (Number(S().minOrder) || 0) ? `<div class="small" style="opacity:.75">En az sipariş ${money(S().minOrder)}</div>` : ''}</span><button class="btn primary" id="send" ${t.total < (Number(S().minOrder) || 0) ? 'disabled' : ''}>${icon('check')} Siparişi gönder</button></div>` : ''}`;
+  }
+  function siparis(c) {
+    const O = db.all('orders', (o) => o.customer === c.id).sort((a, b) => b.at.localeCompare(a.at)).slice(0, 15);
+    return `<section class="tk-panel"><h3>${icon('list')} Siparişlerim</h3><div class="b">${O.map((o) => `<div class="ln"><span><b>${esc(o.no)}</b> <span class="small muted">${NS.dt(o.at)} · ${o.lines.length} kalem</span><div>${NS.badge(T.ST[o.status][0], T.ST[o.status][1])}</div></span><span class="right"><b>${money(T.orderTotal(o).total)}</b><div><button class="btn sm ghost" data-re="${o.id}">${icon('refresh')} Tekrarla</button></div></span></div>`).join('') || '<span class="small muted">Henüz sipariş yok</span>'}</div></section>`;
+  }
+  function hesap(c) {
+    const P = db.all('payments', (x) => x.customer === c.id).sort((a, b) => b.at.localeCompare(a.at)).slice(0, 10);
+    return `<div class="tk-call"><h3>${icon('wallet')} Bakiyeniz: ${money(c.balance)}</h3><p>Limit ${money(c.limit)} · vade ${c.term} gün. Havale: ${esc(S().iban || '')}</p></div>
+      <section class="tk-panel"><h3>${icon('cash')} Son ödemeler</h3><div class="b">${P.map((x) => `<div class="ln"><span>${NS.date(x.at)} · ${esc(x.method)}</span><b>${money(x.amount)}</b></div>`).join('') || '<span class="small muted">Kayıt yok</span>'}</div></section>`;
+  }
+  function render() {
+    db.load(); const c = db.get('customers', sget()); if (!c) return login();
+    $('#out').innerHTML = `<button class="btn ghost" id="lo">${icon('logout')} Çıkış</button>`; $('#lo').onclick = () => { sset(null); login(); };
+    const TB = { katalog: ['Sipariş ver', katalog], siparis: ['Siparişlerim', siparis], hesap: ['Hesabım', hesap] };
+    $('#root').innerHTML = `<div class="tk-head"><div class="top"><span class="tk-pill">${esc(T.LISTS[c.list][0].split(' — ')[0])} fiyat listesi</span></div><h2>${esc(c.name)}</h2><p class="muted">${esc(c.district)} · Plasiyeriniz ${esc((db.get('reps', c.rep) || {}).name || '')} · ziyaret günü ${T.DAYS[c.day]}</p></div><div class="tabs2" role="tablist">${Object.entries(TB).map(([k, [l]]) => `<button role="tab" data-tab="${k}" aria-selected="${k === tab}">${l}</button>`).join('')}</div><div id="pane">${TB[tab][1](c)}</div>`;
+    $$('[data-tab]').forEach((b) => { b.onclick = () => { tab = b.dataset.tab; render(); }; });
+    if ($('#q')) { $('#q').oninput = (e) => { q = e.target.value; const pos = e.target.selectionStart; render(); $('#q').focus(); $('#q').setSelectionRange(pos, pos); }; $('#ct').onchange = (e) => { cat = e.target.value; render(); }; }
+    $$('[data-k]').forEach((b) => { b.onclick = () => { const p = db.get('products', b.dataset.p); cart[p.id] = Math.max(0, (cart[p.id] || 0) + Number(b.dataset.k) * p.pack); render(); }; });
+    $$('[data-q]').forEach((i) => { i.onchange = () => { cart[i.dataset.q] = Math.max(0, Number(i.value) || 0); render(); }; });
+    $$('[data-re]').forEach((b) => { b.onclick = () => { const o = db.get('orders', b.dataset.re); o.lines.forEach((l) => { cart[l.pid] = l.qty; }); tab = 'katalog'; render(); toast('Önceki sipariş sepete eklendi', 'ok'); }; });
+    if ($('#send')) $('#send').onclick = () => {
+      const L = lines(c); const t = T.orderTotal({ lines: L }); const over = c.balance + t.total > c.limit;
+      const o = db.insert('orders', { no: 'S' + (7000 + db.all('orders').length), customer: c.id, rep: c.rep, src: 'b2b', at: new Date().toISOString(), lines: L, status: over ? 'onay' : 'yeni', note: 'Bayi portalından' });
+      Object.keys(cart).forEach((k) => delete cart[k]); tab = 'siparis'; render();
+      toast(over ? `${o.no} alındı — limit aşıldığı için onaydan sonra hazırlanacak` : `${o.no} alındı, teşekkürler`, over ? '' : 'ok');
+    };
+  }
+  render();
+})();
+</script>
+</body>
+</html>
