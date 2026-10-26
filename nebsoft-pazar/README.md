@@ -87,6 +87,18 @@ server.js             Bağımlılıksız yerel sunucu + donanım/servis köprüs
 
 Entegrasyon merkezinde ilgili bağlantı kapalıyken merkezler **simülasyon modunda** çalışır ve bunu ekranda belirtir.
 
+## Pazaryeri Satıcı Paneli (apps/pazaryeri)
+
+Yalnız pazaryerinde satan işletmeler için: Trendyol, Hepsiburada, n11, Amazon TR, Pazarama, Çiçeksepeti ve İdefix siparişleri tek listede.
+
+- **Siparişler:** kargoya verme süresi geri sayımı, kanal filtresi, toplu toplama listesi / etiket / fatura / "kargoya verildi"
+- **Toplama listesi:** bekleyen siparişlerin ürünleri raf sırasına göre (tek turda toplama), yazdırılabilir
+- **Paketleme:** sipariş, paket veya kargo no okutulur → ürün barkodları doğrulanır (yanlış üründe sesli uyarı) → e-Arşiv fatura ve kargo etiketi otomatik. Tek ürünlü siparişlerde doğrudan ürün barkodu okutulabilir.
+- **Ürünler & stok:** tek merkezi stok; sipariş geldiğinde ve stok değişince tüm kanallara gönderilir (kanal başına stok tamponu)
+- **İadeler, müşteri soruları, hakediş & kâr** (komisyon, hizmet bedeli, kargo ve maliyet sonrası net kâr, ödeme takvimi, zarar eden siparişler)
+- Trendyol ve Hepsiburada **canlı** çalışır (Pazaryerleri > Ayarlar > Çalışma modu: Canlı); `node server.js` köprüsü gerekir. Diğer kanallar demo modundadır.
+- Tanıtım sayfası: `/pazaryeriprogrami`
+
 ## Son eklenen ürün özellikleri
 
 - **Personel & Puantaj — yasal bordro:** `apps/ik/bordro.js` brüt/net, SGK ve işsizlik (tavan/taban), kümülatif gelir vergisi,

@@ -118,7 +118,7 @@
   }
   const pcard = (p) => `<a class="pcard reveal" href="#/urun/${p.id}" style="--pc:${p.accent}">${p.ready ? '' : `<span class="badge warn soon">Yakında</span>`}
       <div class="pic">${icon(p.icon, 'ico-lg')}</div><h3>${esc(p.name)}</h3><p>${esc(p.tagline)}</p>
-      <div class="meta">${stars(p.rating)} <b>${p.rating}</b> <span>(${num(p.reviews)})</span><span class="grow"></span>${icon('users')} ${num(p.users)}+</div>
+      <div class="meta">${p.reviews ? `${stars(p.rating)} <b>${p.rating}</b> <span>(${num(p.reviews)})</span><span class="grow"></span>${icon('users')} ${num(p.users)}+` : '<span class="badge acc">Yeni ürün</span>'}</div>
       <div class="row between"><div class="price">Başlangıç <b>${money(p.prices[0]).replace(',00', '')}</b>/ay</div><span class="btn sm ${p.ready ? 'primary' : ''}">${p.ready ? 'İncele' : 'Haber ver'} ${icon('right')}</span></div></a>`;
 
   // ---------- Ana sayfa ----------
@@ -197,7 +197,7 @@
       <div class="pgrid" id="pg"></div></div></section>`;
     const draw = () => {
       let list = products().filter((p) => (!c || p.cat === c) && NS.match(q, p.name, p.tagline, p.desc, ...(p.sectors || [])));
-      list.sort(sort === 'rate' ? (a, b) => b.rating - a.rating : sort === 'price' ? (a, b) => a.prices[0] - b.prices[0] : sort === 'new' ? (a, b) => b.ready - a.ready : (a, b) => b.users - a.users);
+      list.sort(sort === 'rate' ? (a, b) => (b.rating || 0) - (a.rating || 0) : sort === 'price' ? (a, b) => a.prices[0] - b.prices[0] : sort === 'new' ? (a, b) => b.ready - a.ready : (a, b) => (b.users || 0) - (a.users || 0));
       $('#pg', el).innerHTML = list.map(pcard).join('') || `<div class="empty">${icon('search')}<div>Sonuç bulunamadı. <a href="#/iletisim">Bize yazın</a>, ihtiyacınız olan yazılımı birlikte planlayalım.</div></div>`;
       $$('.reveal', el).forEach((x) => x.classList.add('in'));
     };
@@ -227,7 +227,7 @@
           <div class="row nw mb"><div class="pcard" style="--pc:${p.accent};padding:0;border:0;background:none;box-shadow:none"><div class="pic" style="width:64px;height:64px">${icon(p.icon, 'ico-lg')}</div></div>
             <div><h1 style="font-size:36px">${esc(p.name)}</h1><div class="muted">${esc(p.tagline)}</div></div></div>
           <p style="font-size:16px" class="mb">${esc(p.desc)}</p>
-          <div class="row mb">${stars(p.rating)} <b>${p.rating}</b> <span class="muted">${num(p.reviews)} değerlendirme</span> · <span class="muted">${icon('users')} ${num(p.users)}+ işletme</span></div>
+          <div class="row mb">${p.reviews ? `${stars(p.rating)} <b>${p.rating}</b> <span class="muted">${num(p.reviews)} değerlendirme</span> · <span class="muted">${icon('users')} ${num(p.users)}+ işletme</span>` : '<span class="badge acc">Yeni ürün</span>'}</div>
           <div class="row">${p.ready ? `<a class="btn primary lg" href="${demo}" target="_blank">${icon('play')} Canlı demoyu aç</a><button class="btn lg" data-buy="1">${icon('cart')} Satın al</button>` : `<button class="btn primary lg" data-notify>${icon('bell')} Çıkınca haber ver</button><span class="badge warn">Geliştirme aşamasında</span>`}</div>
           ${(p.extraDemos || []).map((d) => `<a class="btn ghost mt" href="${d.url}" target="_blank">${icon('eye')} ${esc(d.label)}</a>`).join('')}
         </div>
