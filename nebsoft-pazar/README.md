@@ -69,6 +69,23 @@ server.js             Bağımlılıksız yerel sunucu + donanım/servis köprüs
 | CRM teklif onayı | `apps/crm/teklif.html?t=` | Müşteri teklifi görür, adıyla kabul veya nedenli red eder; fırsat otomatik güncellenir |
 | Pati karnesi | `apps/veteriner/karne.html` | Telefonla giriş; aşı karnesi, muayeneler, kilo grafiği, online randevu isteği |
 | Otel rezervasyon motoru | `apps/otel/rezervasyon.html` | Müsaitlik ve sezon fiyatı, pansiyon seçimi, OTA karşılaştırması, kapora, rezervasyon yönetimi/iptal |
+| Spor üye portalı | `apps/spor/uye.html` | QR üye kartı, ders rezervasyonu, ölçüm grafiği, taksit ödeme, yenileme, dondurma |
+| Kurs veli portalı | `apps/kurs/veli.html` | Yoklama, ders programı, deneme analizi, taksit ödeme, mazeret ve mesaj |
+| Online araç kiralama | `apps/kiralama/kirala.html` | Model bazında müsaitlik, ekstralar, yaş/ehliyet kontrolü, ön ödeme, iptal |
+| Aracım nerede? | `apps/oto/arac.html` | Yıkama sırası ve hazır saati, otopark ön ödemesi, abonelik |
+| Reçetemi hazırla | `apps/eczane/recete.html` | E-reçete hazırlatma ve takip, stok sorgu, nöbet bilgisi |
+| Bayi sipariş portalı | `apps/fabrika/bayi.html` | Özel fiyat listesiyle B2B sipariş, sevkiyat ve lot takibi |
+
+## Kanal / pazaryeri merkezleri
+
+| Merkez | Modül | Kanallar |
+|---|---|---|
+| Pazaryeri Merkezi | E-ticaret (`pazaryeri.js`) | Trendyol, Hepsiburada, n11, Amazon TR, Pazarama, Çiçeksepeti — fiyat/stok kuralı, listeleme matrisi, kategori eşleştirme, hakediş, sorular |
+| Hızlı ticaret | Market POS (`hizli.js`) | Getir Çarşı, Yemeksepeti Market, Trendyol Go — sipariş panosu, barkodla toplama, otomatik satış/stok |
+| Yemek platformları | Adisyon (`platform.js`) | Yemeksepeti, Getir Yemek, Trendyol Yemek, Migros Yemek — aç/kapat, yoğunluk modu, ürün kapatma, komisyon, yorumlar |
+| İlan portalları | Emlak (`portal.js`) | sahibinden.com, Hepsiemlak, Emlakjet — yetki belgesi, kota, doping, yenileme, talep başı maliyet |
+
+Entegrasyon merkezinde ilgili bağlantı kapalıyken merkezler **simülasyon modunda** çalışır ve bunu ekranda belirtir.
 
 ## Son eklenen ürün özellikleri
 
@@ -79,6 +96,8 @@ server.js             Bağımlılıksız yerel sunucu + donanım/servis köprüs
 - **Klinik:** taksitli ödeme planı, Kasa & Tahsilat (gün sonu, geciken taksite SMS), Laboratuvar iş takibi, Hekim hakedişi.
 - **Site yönetimi:** Ziyaretçiler (kodla giriş doğrulama), Rezervasyonlar, Anketler; taleplere yönetim yanıtı.
 - **Veteriner:** online randevu isteklerini SMS ile onaylama, sahibine karne bağlantısı.
+- **Ön Muhasebe:** KDV beyan taslağı (devreden KDV zinciri), Form Ba/Bs, cari mutabakat mektupları, beyan takvimi.
+- **Fabrika ERP:** bayi portalından gelen siparişlerin onayı ve SMS bildirimi.
 
 ## Tasarım skill'leri
 
