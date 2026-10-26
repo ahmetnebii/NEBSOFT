@@ -1,0 +1,200 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Online Rezervasyon</title>
+<link rel="stylesheet" href="../../core/core.css">
+<style>
+  :root { --app-accent: #0e7490; --app-accent-soft: #e0f2fe; --app-accent-soft-dark: #0c2a36; --sand: #f5efe6; }
+  body { background: var(--bg); }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .top { position: absolute; inset: 0 0 auto; z-index: 5; }
+  .top .in, .wrap { max-width: 1120px; margin: 0 auto; padding-left: 20px; padding-right: 20px; }
+  .top .in { display: flex; align-items: center; gap: 12px; padding-top: 16px; padding-bottom: 16px; color: #fff; }
+  .top a { color: #fff; text-decoration: none; }
+  .top .btn { background: rgba(255,255,255,.14); border-color: rgba(255,255,255,.3); color: #fff; }
+  .hero { position: relative; min-height: 460px; display: flex; align-items: flex-end; color: #fff; background: #0b3b4a center/cover; }
+  .hero::before { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(4,30,40,.55), rgba(4,30,40,.15) 40%, rgba(4,30,40,.75)); }
+  .hero .wrap { position: relative; width: 100%; padding-bottom: 36px; }
+  .hero h1 { color: #fff; font-size: clamp(34px, 5vw, 60px); line-height: 1; letter-spacing: -.02em; margin: 0 0 10px; max-width: 14ch; }
+  .hero p { margin: 0 0 22px; opacity: .9; max-width: 50ch; }
+  .sbar { display: grid; grid-template-columns: 1.2fr 1.2fr .8fr .8fr auto; gap: 1px; background: var(--border); border-radius: 14px; overflow: hidden; box-shadow: 0 20px 50px rgba(0,0,0,.3); }
+  .sbar > div { background: var(--surface); padding: 10px 14px; min-width: 0; }
+  .sbar label { display: block; color: var(--text); font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--text-3); }
+  .sbar input, .sbar select { display: block; width: 100%; height: auto; border: 0 !important; box-shadow: none !important; background: transparent !important; border-radius: 0; color: var(--text); font: 600 16px var(--font); padding: 4px 0 0; outline: none; }
+  .sbar button { border: 0; background: var(--accent); color: #fff; font: 700 15px var(--font); padding: 0 26px; cursor: pointer; display: flex; align-items: center; gap: 8px; }
+  .strip { display: flex; gap: 22px; flex-wrap: wrap; padding: 16px 0; color: var(--text-2); font-size: 13px; border-bottom: 1px solid var(--border); }
+  .strip span { display: inline-flex; gap: 6px; align-items: center; }
+  .strip .ico { color: var(--accent); }
+  .main { padding-top: 28px; padding-bottom: 80px; }
+  .h2 { font-size: 24px; letter-spacing: -.01em; margin: 0 0 4px; }
+  .rooms { display: grid; gap: 18px; margin-top: 18px; }
+  .room { display: grid; grid-template-columns: 320px 1fr; border: 1px solid var(--border); border-radius: 16px; overflow: hidden; background: var(--surface); }
+  .room .ph { background: #ccc center/cover; min-height: 230px; position: relative; }
+  .room .ph .left { position: absolute; left: 12px; top: 12px; background: #fff; color: #b91c1c; font-size: 12px; font-weight: 700; border-radius: 99px; padding: 4px 10px; }
+  .room .bd { padding: 20px 22px; display: grid; grid-template-columns: 1fr auto; gap: 16px; }
+  .room h3 { margin: 0 0 6px; font-size: 20px; }
+  .feat { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 13px; color: var(--text-2); margin: 10px 0 14px; }
+  .feat span { display: inline-flex; gap: 6px; align-items: center; }
+  .boards { display: grid; gap: 8px; }
+  .boards label { display: flex; gap: 10px; align-items: center; border: 1px solid var(--border); border-radius: 10px; padding: 9px 12px; cursor: pointer; font-size: 14px; }
+  .boards label:has(input:checked) { border-color: var(--accent); background: var(--accent-soft); }
+  .boards label b { margin-left: auto; font-variant-numeric: tabular-nums; }
+  .price { text-align: right; display: flex; flex-direction: column; justify-content: flex-end; gap: 4px; min-width: 190px; }
+  .price .ota { font-size: 12px; color: var(--text-3); text-decoration: line-through; }
+  .price .tot { font-size: 28px; font-weight: 800; letter-spacing: -.01em; font-variant-numeric: tabular-nums; }
+  .price small { color: var(--text-3); font-size: 12px; }
+  .save { display: inline-block; font-size: 12px; font-weight: 700; color: #047857; background: #d1fae5; border-radius: 99px; padding: 3px 10px; align-self: flex-end; }
+  .none { border: 1px dashed var(--border); border-radius: 16px; padding: 30px; text-align: center; color: var(--text-2); }
+  .book { display: grid; grid-template-columns: 1.3fr 1fr; gap: 20px; align-items: start; margin-top: 18px; }
+  .panel { border: 1px solid var(--border); border-radius: 16px; background: var(--surface); padding: 22px; }
+  .sum .row2 { display: flex; justify-content: space-between; padding: 6px 0; font-size: 14px; }
+  .sum .g { border-top: 1px solid var(--border); margin-top: 8px; padding-top: 12px; font-size: 20px; font-weight: 800; }
+  .payopt { display: grid; gap: 8px; margin: 14px 0; }
+  .payopt label { display: flex; gap: 10px; border: 1px solid var(--border); border-radius: 10px; padding: 12px; cursor: pointer; }
+  .payopt label:has(input:checked) { border-color: var(--accent); background: var(--accent-soft); }
+  .payopt small { display: block; color: var(--text-3); }
+  .ok { max-width: 640px; margin: 0 auto; }
+  .ok .code { font: 800 30px ui-monospace, Menlo, monospace; letter-spacing: .08em; }
+  .foot { border-top: 1px solid var(--border); padding: 24px 0 40px; color: var(--text-3); font-size: 13px; }
+  .view { animation: in .25s ease-out; } @keyframes in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+  @media (prefers-reduced-motion: reduce) { .view { animation: none; } }
+  @media (max-width: 860px) {
+    .hero { min-height: 520px; } .sbar { grid-template-columns: 1fr 1fr; } .sbar button { grid-column: 1 / -1; justify-content: center; padding: 14px; }
+    .room { grid-template-columns: 1fr; } .room .ph { min-height: 200px; } .room .bd { grid-template-columns: 1fr; } .price { text-align: left; } .save { align-self: flex-start; }
+    .book { grid-template-columns: 1fr; } .top .hide-sm { display: none; }
+  }
+</style>
+</head>
+<body>
+<header class="top"><div class="in" id="bar"></div></header>
+<div id="app"></div>
+<script src="../../core/core.js"></script>
+<script>
+(function () {
+  const { esc, $, $$, on, icon, money, toast, iso, today, addDays, daysBetween, sum } = NS;
+  const db = new NS.DB('otel');
+  const S = () => db.settings({ directDiscount: 10, otaMarkup: 18, hbPrice: 650, checkInTime: '14:00', checkOutTime: '12:00', freeCancelDays: 3 });
+  const IMG = (id, w = 900) => `https://images.unsplash.com/photo-${id}?w=${w}&q=75&auto=format&fit=crop`;
+  const HERO = '1613490493576-7fde63acd811';
+  const PHOTOS = ['1505691938895-1758d7feb511', '1540518614846-7eded433c457', '1600210492486-724fe5c67fb0', '1522708323590-d24dbb6b0267', '1600607687939-ce8a6c25118c'];
+  const FEAT = { t1: ['22 m²', 'Çift veya ikiz yatak', 'Duş', 'Klima'], t2: ['28 m²', 'Balkon ve deniz manzarası', 'Kahve makinesi', 'Klima'], t3: ['38 m²', '1 çift + 2 tek yatak', 'Oturma köşesi', 'Bahçe manzarası'], t4: ['55 m²', 'Ayrı salon', 'Jakuzi', 'Panoramik deniz manzarası'] };
+  const BOARD = { RO: 'Sadece oda', BB: 'Oda + kahvaltı', HB: 'Yarım pansiyon (kahvaltı + akşam)' };
+  const type = (id) => db.get('types', id) || { name: '-', price: 0, capacity: 2 };
+  const active = () => db.all('reservations', (r) => r.status !== 'iptal');
+  const seasonPct = (d) => sum(db.all('seasons', (x) => x.from <= d && d <= x.to), (x) => x.pct);
+  // Doğrudan rezervasyon indirimi uygulanmış gecelik fiyatlar
+  const nightly = (t, ci, co) => { const out = []; for (let d = ci; d < co; d = iso(addDays(d, 1))) out.push(Math.round((t.price * (1 + seasonPct(d) / 100)) / 10) * 10); return out; };
+  const freeRooms = (tid, ci, co) => db.all('rooms', (r) => r.type === tid && r.hk !== 'arizali').filter((rm) => !active().some((r) => r.room === rm.id && r.checkIn < co && ci < r.checkOut));
+  const st = { ci: iso(addDays(new Date(), 7)), co: iso(addDays(new Date(), 10)), ad: 2, ch: 0 };
+  try { Object.assign(st, JSON.parse(sessionStorage.getItem('nebsoft:otel:ara') || '{}')); } catch (e) { /* yok */ }
+  if (st.ci < today()) { st.ci = iso(addDays(new Date(), 1)); st.co = iso(addDays(new Date(), 3)); }
+  const keep = () => { try { sessionStorage.setItem('nebsoft:otel:ara', JSON.stringify(st)); } catch (e) { /* yok */ } };
+  const quote = (t, board) => { const ns = nightly(t, st.ci, st.co); const room = sum(ns); const disc = Math.round(room * S().directDiscount / 100); const hb = board === 'HB' ? S().hbPrice * (st.ad + st.ch * 0.5) * ns.length : 0; const ro = board === 'RO' ? Math.round((room - disc) * 0.1) : 0; const total = room - disc + hb - ro; return { ns, room, disc, hb, ro, total, ota: Math.round(room * (1 + S().otaMarkup / 100) + hb) }; };
+
+  $('#bar').innerHTML = `<a href="#/" class="row nw" style="gap:10px"><span style="width:36px;height:36px;border-radius:9px;background:rgba(255,255,255,.18);display:grid;place-items:center">${icon('bed')}</span><b style="font-size:16px">${esc(S().bizName || 'Otel')}</b></a><span class="grow"></span><a class="btn hide-sm" href="tel:${esc(String(S().bizPhone || '').replace(/\s/g, ''))}">${icon('phone')} ${esc(S().bizPhone || '')}</a><a class="btn" href="#/yonet">${icon('ticket')} Rezervasyonum</a>`;
+
+  const hero = (compact) => `<section class="hero" style="background-image:url('${IMG(HERO, 1800)}');${compact ? 'min-height:300px' : ''}"><div class="wrap">${compact ? '' : `<h1>${esc(S().bizName || 'Otelimiz')}</h1><p>${esc(S().bizAddress || '')} · Doğrudan rezervasyonda en iyi fiyat garantisi ve %${S().directDiscount} indirim.</p>`}
+    <form class="sbar" id="sf"><div><label for="ci">Giriş</label><input type="date" id="ci" value="${st.ci}" min="${today()}" required></div><div><label for="co">Çıkış</label><input type="date" id="co" value="${st.co}" min="${iso(addDays(st.ci, 1))}" required></div><div><label for="ad">Yetişkin</label><select id="ad">${[1, 2, 3, 4].map((n) => `<option ${n === st.ad ? 'selected' : ''}>${n}</option>`).join('')}</select></div><div><label for="ch">Çocuk</label><select id="ch">${[0, 1, 2].map((n) => `<option ${n === st.ch ? 'selected' : ''}>${n}</option>`).join('')}</select></div><button type="submit">${icon('search')} Müsaitlik</button></form></div></section>
+    <div class="wrap"><div class="strip"><span>${icon('check')} ${S().freeCancelDays} gün öncesine kadar ücretsiz iptal</span><span>${icon('clock')} Giriş ${esc(S().checkInTime)} · Çıkış ${esc(S().checkOutTime)}</span><span>${icon('wallet')} Otelde ödeme veya %30 kapora</span><span>${icon('shield')} Güvenli ödeme · 3D Secure</span></div></div>`;
+  const bindSearch = () => {
+    $('#ci').onchange = (e) => { if ($('#co').value <= e.target.value) $('#co').value = iso(addDays(e.target.value, 2)); $('#co').min = iso(addDays(e.target.value, 1)); };
+    $('#sf').onsubmit = (e) => { e.preventDefault(); st.ci = $('#ci').value; st.co = $('#co').value; st.ad = Number($('#ad').value); st.ch = Number($('#ch').value); if (st.co <= st.ci) return toast('Çıkış, girişten sonra olmalı', 'err'); keep(); location.hash = '#/oda'; route(); };
+  };
+
+  function results(el) {
+    db.load();
+    const n = daysBetween(st.ci, st.co);
+    const types = db.all('types').map((t, i) => ({ t, i, free: freeRooms(t.id, st.ci, st.co) })).sort((a, b) => a.t.price - b.t.price);
+    const fit = types.filter((x) => x.t.capacity >= st.ad + st.ch);
+    el.innerHTML = hero(location.hash === '#/oda') + `<div class="wrap main view"><h2 class="h2">${NS.dateLong(st.ci)} – ${NS.dateLong(st.co)}</h2><p class="muted" style="margin:0">${n} gece · ${st.ad} yetişkin${st.ch ? ` · ${st.ch} çocuk` : ''}</p>
+      <div class="rooms">${fit.map(({ t, i, free }) => { const q = quote(t, 'BB'); return `<article class="room" data-t="${t.id}"><div class="ph" style="background-image:url('${IMG(PHOTOS[i % PHOTOS.length])}')">${free.length && free.length <= 2 ? `<span class="left">Son ${free.length} oda</span>` : ''}</div>
+        <div class="bd"><div><h3>${esc(t.name)}</h3><div class="small muted">En fazla ${t.capacity} kişi</div><div class="feat">${(FEAT[t.id] || []).map((f) => `<span>${icon('check')}${esc(f)}</span>`).join('')}</div>
+          ${free.length ? `<div class="boards" role="radiogroup" aria-label="Pansiyon">${Object.entries(BOARD).map(([k, l]) => { const qq = quote(t, k); return `<label><input type="radio" name="b-${t.id}" value="${k}" ${k === 'BB' ? 'checked' : ''}> ${l}<b>${money(qq.total)}</b></label>`; }).join('')}</div>` : '<div class="small" style="color:var(--err);font-weight:600">Seçtiğiniz tarihlerde dolu</div>'}</div>
+          <div class="price">${free.length ? `<span class="save">Doğrudan rezervasyonda ${money(q.ota - q.total)} avantaj</span><span class="ota">Booking.com'da yaklaşık ${money(q.ota)}</span><span class="tot" data-tot>${money(q.total)}</span><small>${n} gece, vergiler dahil</small><button class="btn primary lg mt" data-sel="${t.id}">Seç</button>` : `<button class="btn lg" disabled>Dolu</button>`}</div></div></article>`; }).join('') || `<div class="none">${icon('bed')}<p>${st.ad + st.ch} kişiye uygun oda bulunamadı. Kişi sayısını azaltmayı veya bizi aramayı deneyin.</p></div>`}</div></div>`;
+    bindSearch();
+    on(el, 'change', 'input[type=radio]', (e, r) => { const art = r.closest('[data-t]'); const t = type(art.dataset.t); $('[data-tot]', art).textContent = money(quote(t, r.value).total); });
+    on(el, 'click', '[data-sel]', (e, b) => { const art = b.closest('[data-t]'); st.type = b.dataset.sel; st.board = ($('input[type=radio]:checked', art) || {}).value || 'BB'; keep(); location.hash = '#/bilgiler'; });
+  }
+
+  function details(el) {
+    db.load();
+    const t = db.get('types', st.type); if (!t) { location.hash = '#/'; return; }
+    const q = quote(t, st.board); const n = q.ns.length;
+    el.innerHTML = hero(true) + `<div class="wrap main view"><a href="#/oda" class="small">${icon('back')} Odalara dön</a><div class="book">
+      <form class="panel" id="gf" novalidate><h2 class="h2">Misafir bilgileri</h2><p class="small muted">Rezervasyon onayınız bu bilgilere gönderilir.</p>${NS.fieldsHtml([{ name: 'name', label: 'Ad soyad', required: true }, { name: 'phone', label: 'Telefon', type: 'tel', required: true }, { name: 'email', label: 'E-posta', type: 'email', required: true }, { name: 'nat', label: 'Uyruk', type: 'select', options: ['TR', 'DE', 'GB', 'RU', 'NL', 'FR', 'Diğer'] }, { name: 'eta', label: 'Tahmini varış saati', type: 'select', options: ['14:00-16:00', '16:00-18:00', '18:00-20:00', '20:00 sonrası'] }, { name: 'note', label: 'Özel istek (garanti edilmez)', type: 'textarea', full: true, placeholder: 'Ör. yüksek kat, bebek yatağı, balayı' }])}
+        <h3 style="margin:18px 0 0">Ödeme</h3><div class="payopt"><label><input type="radio" name="pay" value="otel" checked><span><b>Otelde öde</b><small>Kart bilgisi gerekmez. ${S().freeCancelDays} gün öncesine kadar ücretsiz iptal.</small></span></label><label><input type="radio" name="pay" value="kapora"><span><b>%30 kapora ile garantile · ${money(Math.round(q.total * 0.3))}</b><small>Odanız kesinleşir, kalan tutar girişte ödenir.</small></span></label></div>
+        <div id="card" hidden><div class="form-grid"><div class="field full"><label>Kart numarası</label><input class="input mono" id="cc" inputmode="numeric" placeholder="0000 0000 0000 0000" autocomplete="cc-number"></div><div class="field"><label>Son kullanma</label><input class="input mono" id="ce" placeholder="AA/YY" autocomplete="cc-exp"></div><div class="field"><label>CVC</label><input class="input mono" id="cv" placeholder="•••" maxlength="4" autocomplete="cc-csc"></div></div><p class="small faint">Demo: gerçek ödeme alınmaz.</p></div>
+        <label class="check small mt"><input type="checkbox" id="ag"> Rezervasyon ve iptal koşullarını, KVKK aydınlatma metnini okudum.</label><button class="btn primary lg block mt" type="submit">${icon('lock')} Rezervasyonu tamamla</button></form>
+      <aside class="panel sum" style="position:sticky;top:20px"><div style="height:150px;border-radius:12px;background:url('${IMG(PHOTOS[db.all('types').indexOf(t) % PHOTOS.length], 700)}') center/cover;margin-bottom:14px"></div><h3 style="margin:0">${esc(t.name)}</h3><p class="small muted" style="margin:4px 0 12px">${BOARD[st.board]} · ${st.ad} yetişkin${st.ch ? ', ' + st.ch + ' çocuk' : ''}</p>
+        <div class="row2"><span>Giriş</span><b>${NS.dateLong(st.ci)}</b></div><div class="row2"><span>Çıkış</span><b>${NS.dateLong(st.co)}</b></div>
+        <div class="row2"><span>${n} gece konaklama</span><span>${money(q.room)}</span></div><div class="row2" style="color:#047857"><span>Doğrudan rezervasyon indirimi %${S().directDiscount}</span><span>−${money(q.disc)}</span></div>${q.hb ? `<div class="row2"><span>Yarım pansiyon</span><span>${money(q.hb)}</span></div>` : ''}${q.ro ? `<div class="row2"><span>Kahvaltısız</span><span>−${money(q.ro)}</span></div>` : ''}
+        <div class="row2 g"><span>Toplam</span><span>${money(q.total)}</span></div><p class="small muted">KDV ve konaklama vergisi dahildir.</p></aside></div></div>`;
+    bindSearch();
+    on(el, 'change', 'input[name=pay]', () => { $('#card').hidden = $('input[name=pay]:checked').value !== 'kapora'; });
+    $('#cc') && ($('#cc').oninput = (e) => { e.target.value = e.target.value.replace(/\D/g, '').slice(0, 16).replace(/(\d{4})(?=\d)/g, '$1 '); });
+    $('#gf').onsubmit = (e) => {
+      e.preventDefault();
+      if (!NS.validate($('#gf'))) return; if (!$('#ag').checked) return toast('Koşulları onaylayın', 'err');
+      const pay = $('input[name=pay]:checked').value;
+      if (pay === 'kapora' && ($('#cc').value.replace(/\D/g, '').length !== 16 || !/^\d{2}\/?\d{2}$/.test($('#ce').value.replace(/\s/g, '')) || $('#cv').value.length < 3)) return toast('Kart bilgilerini kontrol edin', 'err');
+      const v = NS.readForm($('#gf'));
+      db.load();
+      const rooms = freeRooms(t.id, st.ci, st.co); if (!rooms.length) { toast('Üzgünüz, bu oda az önce doldu', 'err'); location.hash = '#/oda'; return; }
+      const dg = String(v.phone).replace(/\D/g, '').slice(-10);
+      let g = db.find('guests', (x) => String(x.phone || '').replace(/\D/g, '').slice(-10) === dg);
+      if (!g) g = db.insert('guests', { name: v.name, phone: v.phone, email: v.email, nat: v.nat, note: '' }, true);
+      const qq = quote(t, st.board); const dep = pay === 'kapora' ? Math.round(qq.total * 0.3) : 0;
+      const no = db.nextNo('reservations', 'W');
+      const r = db.insert('reservations', { no, room: rooms[0].id, guest: g.id, checkIn: st.ci, checkOut: st.co, adults: st.ad, children: st.ch, board: st.board, source: 'Web sitesi', direct: true, price: Math.round(qq.total / qq.ns.length), status: pay === 'kapora' ? 'rezerve' : 'opsiyon', deposit: dep, folio: dep ? [{ id: NS.uid(), date: today(), desc: 'Online kapora (kart)', amount: dep, type: 'payment', method: 'kart' }] : [], note: [v.note, 'Varış: ' + v.eta].filter(Boolean).join(' · '), email: v.email, created: new Date().toISOString() }, true);
+      db.log('Online rezervasyon', `${no} · ${v.name}`); db.save();
+      try { sessionStorage.setItem('nebsoft:otel:son', JSON.stringify({ no, phone: v.phone })); } catch (x) { /* yok */ }
+      location.hash = '#/tamam/' + r.no;
+    };
+  }
+
+  function done(el, no) {
+    db.load(); const r = db.find('reservations', (x) => x.no === no); if (!r) { location.hash = '#/'; return; }
+    const t = type(db.get('rooms', r.room).type); const g = db.get('guests', r.guest) || {};
+    const total = r.price * daysBetween(r.checkIn, r.checkOut);
+    el.innerHTML = `<div style="height:72px;background:#0b3b4a"></div><div class="wrap main view"><div class="ok panel center"><div style="width:60px;height:60px;border-radius:50%;background:var(--ok-soft);color:var(--ok);display:grid;place-items:center;margin:0 auto 12px">${icon('check', 'ico-lg')}</div>
+      <h2 class="h2">Rezervasyonunuz alındı</h2><p class="muted">Onay ${esc(g.email || 'e-posta')} adresine ve SMS ile gönderildi (demo).</p><div class="code mt">${esc(r.no)}</div>
+      <div class="sum" style="text-align:left;margin-top:20px"><div class="row2"><span>Oda</span><b>${esc(t.name)}</b></div><div class="row2"><span>Tarih</span><b>${NS.date(r.checkIn)} → ${NS.date(r.checkOut)}</b></div><div class="row2"><span>Pansiyon</span><b>${BOARD[r.board]}</b></div><div class="row2"><span>Toplam</span><b>${money(total)}</b></div>${r.deposit ? `<div class="row2"><span>Ödenen kapora</span><b>${money(r.deposit)}</b></div>` : `<div class="row2"><span>Ödeme</span><b>Otelde</b></div>`}</div>
+      <div class="row mt" style="justify-content:center;gap:8px"><button class="btn" id="ics">${icon('calendar')} Takvime ekle</button><button class="btn" id="pr">${icon('print')} Yazdır</button><a class="btn" href="#/yonet">${icon('edit')} Rezervasyonu yönet</a></div></div></div>`;
+    $('#pr').onclick = () => print();
+    $('#ics').onclick = () => { const ics = `BEGIN:VCALENDAR\r\nVERSION:2.0\r\nBEGIN:VEVENT\r\nDTSTART;VALUE=DATE:${r.checkIn.replace(/-/g, '')}\r\nDTEND;VALUE=DATE:${r.checkOut.replace(/-/g, '')}\r\nSUMMARY:${S().bizName} (${r.no})\r\nLOCATION:${S().bizAddress || ''}\r\nEND:VEVENT\r\nEND:VCALENDAR`; const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([ics], { type: 'text/calendar' })); a.download = r.no + '.ics'; a.click(); };
+  }
+
+  function manage(el) {
+    let last = {}; try { last = JSON.parse(sessionStorage.getItem('nebsoft:otel:son') || '{}'); } catch (e) { /* yok */ }
+    el.innerHTML = `<div style="height:72px;background:#0b3b4a"></div><div class="wrap main view" style="max-width:640px"><h2 class="h2">Rezervasyonumu yönet</h2><p class="muted">Rezervasyon numarası ve telefonunuzla görüntüleyin veya iptal edin.</p>
+      <form class="panel" id="mf"><div class="form-grid"><div class="field"><label for="mn">Rezervasyon no</label><input class="input mono" id="mn" value="${esc(last.no || '')}" style="text-transform:uppercase" required></div><div class="field"><label for="mp">Telefon</label><input class="input" id="mp" type="tel" value="${esc(last.phone || '')}" required></div></div><button class="btn primary mt" type="submit">Göster</button></form><div id="mr" class="mt"></div></div>`;
+    const show = () => {
+      db.load(); const no = $('#mn').value.trim().toUpperCase(); const dg = $('#mp').value.replace(/\D/g, '').slice(-10);
+      const r = db.find('reservations', (x) => x.no === no); const g = r && db.get('guests', r.guest);
+      if (!r || !g || String(g.phone || '').replace(/\D/g, '').slice(-10) !== dg) { $('#mr').innerHTML = `<div class="none">Eşleşen rezervasyon bulunamadı.</div>`; return; }
+      const t = type(db.get('rooms', r.room).type); const left = daysBetween(today(), r.checkIn);
+      const canCancel = ['rezerve', 'opsiyon'].includes(r.status) && left >= S().freeCancelDays;
+      $('#mr').innerHTML = `<div class="panel sum"><div class="row2"><span>Durum</span><b>${r.status === 'iptal' ? 'İptal edildi' : r.status === 'konaklama' ? 'Konaklamada' : r.status === 'cikis' ? 'Tamamlandı' : 'Onaylı'}</b></div><div class="row2"><span>Oda</span><b>${esc(t.name)}</b></div><div class="row2"><span>Tarih</span><b>${NS.date(r.checkIn)} → ${NS.date(r.checkOut)}</b></div><div class="row2"><span>Misafir</span><b>${esc(g.name)}</b></div>
+        ${canCancel ? `<button class="btn danger mt" id="cx">Ücretsiz iptal et</button>` : ['rezerve', 'opsiyon'].includes(r.status) ? `<p class="small muted mt">Girişe ${S().freeCancelDays} günden az kaldığı için online iptal yapılamıyor. Lütfen oteli arayın: ${esc(S().bizPhone || '')}</p>` : ''}</div>`;
+      if ($('#cx')) $('#cx').onclick = async () => { if (!(await NS.confirm('Rezervasyon iptal edilsin mi?', { ok: 'İptal et' }))) return; db.load(); const x = db.find('reservations', (y) => y.no === no); x.status = 'iptal'; x.cancelNote = 'Misafir online iptal etti'; db.log('Online iptal', no); db.save(); toast('Rezervasyonunuz iptal edildi', 'ok'); show(); };
+    };
+    $('#mf').onsubmit = (e) => { e.preventDefault(); show(); };
+    if (last.no) show();
+  }
+
+  function route() {
+    const [, pg, arg] = (location.hash || '#/').split('/');
+    const el = $('#app'); window.scrollTo(0, 0);
+    if (!db.all('types').length) { el.innerHTML = '<div class="wrap main"><div class="none">Otel bilgileri yüklenemedi. Önce yönetim panelini bir kez açın.</div></div>'; return; }
+    document.title = `${S().bizName} · Online rezervasyon`;
+    if (pg === 'bilgiler') details(el); else if (pg === 'tamam') done(el, arg); else if (pg === 'yonet') manage(el); else results(el);
+  }
+  window.addEventListener('hashchange', route);
+  route();
+})();
+</script>
+<footer class="foot"><div class="wrap">Rezervasyon altyapısı: NEBSOFT Otel · Fiyatlara KDV ve konaklama vergisi dahildir.</div></footer>
+</body>
+</html>
