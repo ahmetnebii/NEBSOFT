@@ -776,8 +776,32 @@
     }
   }
 
+  // ---------- Bulut API ----------
+  // Aynı kaynaktaki /api isteklerine CSRF başlığı eklenir; sunucu başka sitelerden gelen istekleri reddeder.
+  const nativeFetch = window.fetch ? window.fetch.bind(window) : null;
+  if (nativeFetch && !window.__nsFetch) {
+    window.__nsFetch = true;
+    window.fetch = (input, init = {}) => {
+      try {
+        const url = new URL(typeof input === 'string' ? input : input.url, location.href);
+        if (url.origin === location.origin && url.pathname.startsWith('/api/')) {
+          const h = new Headers(init.headers || (typeof input !== 'string' ? input.headers : undefined));
+          h.set('x-ns-csrf', '1'); init = { ...init, headers: h, credentials: 'same-origin' };
+        }
+      } catch (e) { /* göreli olmayan adres */ }
+      return nativeFetch(input, init);
+    };
+  }
+  async function api(method, url, body) {
+    let r;
+    try { r = await fetch(url, { method, headers: body ? { 'Content-Type': 'application/json' } : {}, body: body ? JSON.stringify(body) : undefined }); } catch (e) { throw Object.assign(new Error('Sunucuya ulaşılamadı. İnternet bağlantınızı kontrol edin.'), { status: 0 }); }
+    let j = {}; try { j = await r.json(); } catch (e) { j = { ok: false, error: 'Sunucu yanıtı okunamadı' }; }
+    if (!r.ok || j.ok === false) throw Object.assign(new Error(j.error || 'İşlem başarısız'), { status: r.status, data: j });
+    return j;
+  }
+
   window.NS = {
-    esc, $, $$, on, uid, rand, pick, sum, groupBy, clamp, money, num, iso, today, addDays, daysBetween, date, dateLong, time, dt, ago, pad,
+    api, esc, $, $$, on, uid, rand, pick, sum, groupBy, clamp, money, num, iso, today, addDays, daysBetween, date, dateLong, time, dt, ago, pad,
     MONTHS, DAYS, NAMES, phone, sampleGender, initials, logoMark, shade, setFavicon, slug, trLower, match, icon, ICONS, DB, toast, modal, confirm, prompt, formModal, fieldsHtml, readForm, validate,
     table, chart, compact, dailySeries, PALETTE, csv, readFile, parseCsv, printHtml, beep, barcodeSvg, qrSvg, shell, pageHead, kpi, badge, searchBox, crud,
     settingsPage, smsLog, toggleTheme, getTheme, currentUser: null,
