@@ -233,19 +233,17 @@ Her ürünün yönetici menüsünde **Entegrasyonlar** sayfası vardır. Ayarlar
 Resmi kurum sistemleri (GİB, SGK MEDULA, İTS, e-Nabız, KBS, VETBİS, MEBBİS) doğrudan tarayıcıdan
 çağrılamaz; yetkili entegratör veya kurumun verdiği web servis yetkisiyle sunucu tarafında bağlanır.
 
-## Canlıya alma için yapılacaklar
+## Canlıya alma (bulut sürümü)
 
-Bu sürüm, tam çalışan bir **ön yüz ve demo** sürümüdür. Gerçek müşterilere satış için:
+Kurulum, MySQL, nginx/HTTPS, yedekleme ve güvenlik kontrol listesi için **[DEPLOY.md](DEPLOY.md)**.
 
-1. **Sunucu ve veritabanı:** `core/core.js` içindeki `DB` sınıfı localStorage kullanır. Aynı API
-   (`all/get/insert/update/remove`) bir REST API'ye (Node.js + PostgreSQL vb.) bağlanarak
-   çok kullanıcılı ve çok şubeli yapıya geçilir.
-2. **Kimlik doğrulama:** PIN girişi sunucu tarafında şifreli parola/oturum yönetimine taşınmalı.
-3. **Ödeme:** Pazar yerindeki ödeme adımı iyzico veya PayTR'nin ortak ödeme sayfasına
-   yönlendirilecek şekilde tasarlandı. Üye işyeri anahtarlarıyla entegre edilmeli.
-4. **Resmi entegrasyonlar:** Entegrasyon merkezindeki her bağlayıcı için seçilen entegratörün
-   (e-Belge, MEDULA/İTS, KBS vb.) sözleşmesi yapılıp servis adresi ve kimlik bilgileri girilmeli.
-5. **Yasal metinler:** KVKK, mesafeli satış ve iade metinleri örnek şablondur; hukukçuya onaylatın.
+- **Veritabanı:** MySQL/MariaDB. Bağlantı yönetim panelindeki kurulum sihirbazından girilir ve diskte şifreli saklanır. Sihirbaz veritabanı/kullanıcı/yetki SQL'ini de üretir.
+- **Kimlik:** scrypt şifre özeti, HttpOnly oturum çerezi, CSRF ve istek sınırı, hesap kilidi.
+- **Satış:** Ödeme yalnızca havale/EFT ile alınır. Banka hesapları (ad soyad/unvan + IBAN) panelden girilir. Siparişler admin panelinde "Ödeme bekliyor → Ödendi" akışıyla onaylanır. Her ürün 7 gün ücretsiz denenir.
+- **Uygulama verisi:** İşletme başına MySQL'de tutulur. Cihazlar arası eşitleme, çakışma birleştirme ve çevrimdışı yedek vardır.
+- **Müşteri sayfaları:** `/t/<işletme>/apps/<uygulama>/<sayfa>.html` adresinde çalışır. Sunucu yalnızca izinli alanları verir; yazmalar `server/cloud/public-rules.js` beyaz listesiyle doğrulanır.
+- **SEO:** Dinamik `sitemap.xml`/`robots.txt`, `/programlar` merkez sayfası, işletme sayfaları (`/t/<işletme>/`), IndexNow bildirimi. Müşteri sayfalarında tavsiye kodlu "NEBSOFT ile hazırlandı" bağlantısı bulunur.
+- **Yerel mod:** Veritabanı yapılandırılmadan çalıştırılırsa sistem tarayıcıda (localStorage) demo olarak çalışır. `?demo=1` her zaman demo verisini açar.
 
 ## Ürün tanıtım siteleri (domain.com/<program>)
 

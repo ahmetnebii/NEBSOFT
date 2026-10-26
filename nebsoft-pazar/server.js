@@ -158,6 +158,12 @@ function serve(req, res, p) {
     fs.createReadStream(file).pipe(res);
   });
 }
-server.requestTimeout = 60000; server.headersTimeout = 20000;
+server.requestTimeout = 60000; server.headersTimeout = 20000; server.keepAliveTimeout = 65000;
+if (process.env.NODE_ENV === 'production' && !process.env.NEBSOFT_SECRET) console.warn('UYARI: NEBSOFT_SECRET tanımlı değil — şifreleme anahtarı data/secret.key dosyasında; bu dosyayı yedekleyin (kaybolursa veritabanı bağlantı ayarı çözülemez).');
+process.on('unhandledRejection', (e) => console.error('[hata] işlenmemiş söz:', e));
+process.on('uncaughtException', (e) => { console.error('[hata] yakalanmamış istisna, yeniden başlatılmak üzere çıkılıyor:', e); setTimeout(() => process.exit(1), 200); }); // systemd/pm2 otomatik yeniden başlatır
+// Düzgün kapanma (systemd / pm2 yeniden başlatmalarında yarım kalan istek olmasın)
+const stop = (sig) => { console.log(`${sig} alındı, kapanıyor…`); server.close(() => { cloud.db.close().finally(() => process.exit(0)); }); setTimeout(() => process.exit(0), 10000).unref(); };
+process.on('SIGTERM', () => stop('SIGTERM')); process.on('SIGINT', () => stop('SIGINT'));
 cloud.init().catch((e) => console.error('Bulut başlatılamadı:', e.message));
 server.listen(PORT, process.env.HOST || '0.0.0.0', () => console.log(`NEBSOFT çalışıyor: http://localhost:${PORT}`));
