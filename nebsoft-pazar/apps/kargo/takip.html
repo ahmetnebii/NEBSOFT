@@ -5,49 +5,149 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Gönderi Takip</title>
 <link rel="stylesheet" href="../../core/core.css">
+<link rel="stylesheet" href="../../core/track.css">
 <style>
-  :root { --app-accent: #ea580c; --app-accent-soft: #fff1e6; }
-  body { background: radial-gradient(800px 400px at 50% -10%, var(--accent-soft), transparent), var(--bg); }
-  .wrap { max-width: 640px; margin: 0 auto; padding: 32px 16px 60px; }
-  .step { display: flex; gap: 14px; padding-bottom: 18px; position: relative; }
-  .step::before { content: ''; position: absolute; left: 15px; top: 32px; bottom: 0; width: 2px; background: var(--border); }
-  .step:last-child::before { display: none; }
-  .step .d { width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center; flex: none; background: var(--bg-2); color: var(--text-3); }
-  .step.on .d { background: var(--accent); color: #fff; }
+  :root { --app-accent: #ea580c; --app-accent-soft: #fff1e6; --app-accent-soft-dark: #3a2213; }
+  /* Rota: gönderici ilçesi → transfer merkezi → alıcı ilçesi, paket bulunduğu noktada */
+  .route { display: grid; grid-template-columns: auto 1fr auto 1fr auto; align-items: start; gap: 10px; margin-top: 20px; font-size: 13px; }
+  .route .pt { text-align: center; }
+  .route .pt i { display: block; width: 14px; height: 14px; border-radius: 50%; margin: 0 auto 6px; border: 3px solid var(--border); background: var(--surface); }
+  .route .pt.on i { border-color: var(--accent); background: var(--accent); }
+  .route .pt b { display: block; }
+  .route .pt span { color: var(--text-3); font-size: 11px; }
+  .route .ln { height: 3px; border-radius: 2px; background: var(--border); position: relative; margin-top: 6px; }
+  .route .ln.on { background: var(--accent); }
+  .route .ln .van { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; background: var(--accent); color: #fff; box-shadow: 0 0 0 5px var(--accent-soft); }
+  .route .ln .van .ico { width: 16px; height: 16px; }
+  .pref { display: grid; gap: 8px; }
+  .pref label { display: flex; gap: 10px; align-items: flex-start; border: 1px solid var(--border); border-radius: 10px; padding: 12px; cursor: pointer; }
+  .pref label:has(input:checked) { border-color: var(--accent); background: var(--accent-soft); }
+  .pref small { display: block; color: var(--text-3); }
+  @media (max-width: 760px) { .route { font-size: 12px; gap: 6px; } .route .pt b { max-width: 80px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } }
 </style>
 </head>
 <body>
-<div class="wrap" id="root"></div>
+<header class="tk-bar"><div class="in" id="bar"></div></header>
+<main class="tk-wrap" id="root"></main>
 <script src="../../core/core.js"></script>
 <script src="data.js"></script>
 <script>
 (function () {
-  const { esc, $, icon, money } = NS;
+  const { esc, $, $$, on, icon, money, toast, iso, today, addDays } = NS;
   const K = window.KARGO;
   const db = new NS.DB('kargo', K.seed);
-  const s = db.settings({});
-  // Alıcı adını gizler, parantez içindeki yakınlık bilgisini ("kendisi") açık bırakır
-  const mask = (n) => { const [name, rel] = String(n).split(' ('); return name.split(' ').filter(Boolean).map((w) => w[0] + '*'.repeat(Math.max(1, w.length - 1))).join(' ') + (rel ? ' (' + rel : ''); };
-  const render = (no) => {
-    db.load();
-    const sh = no && db.find('ships', (x) => x.no === no.toUpperCase().trim());
-    const head = `<div class="center mb"><div class="ns-logo" style="margin:0 auto 10px;width:52px;height:52px">${icon('truck', 'ico-lg')}</div><h1>${esc(s.bizName)}</h1><p class="muted">Gönderi takip</p></div>
-      <div class="card pad mb"><div class="row nw"><input class="input lg mono" id="k" placeholder="Takip numarası (HK...)" value="${esc(no || '')}"><button class="btn primary lg" id="go">${icon('search')} Sorgula</button></div></div>`;
-    if (!no) { $('#root').innerHTML = head + `<p class="center small muted">Örnek: ${esc((db.all('ships').slice(-1)[0] || {}).no || '')}</p>`; return bind(); }
-    if (!sh) { $('#root').innerHTML = head + `<div class="card pad empty">${icon('search')}<div>Gönderi bulunamadı</div></div>`; return bind(); }
-    const flow = ['kabul', 'depoda', 'dagitimda', 'teslim'];
-    const cur = flow.indexOf(sh.status);
-    $('#root').innerHTML = head + `<div class="card pad mb"><div class="row between"><div><div class="small muted mono">${esc(sh.no)}</div><h2>${esc(K.ST[sh.status][0])}</h2></div>${NS.badge(K.SERVICE[sh.service][0], 'acc')}</div>
-        <div class="small muted mt">Gönderici: ${esc(sh.sender.name)} · Alıcı: ${esc(mask(sh.receiver.name))} · ${esc(sh.receiver.district || sh.receiver.city)}</div>
-        ${sh.status === 'dagitimda' ? `<div class="card pad mt" style="background:var(--accent-soft);border:0">${icon('truck')} Paketiniz bugün kuryemizle yola çıktı. Gün içinde teslim edilecek.${sh.cod ? ` Kapıda ödenecek tutar: <b>${money(sh.cod)}</b>` : ''}</div>` : ''}
-        ${sh.status === 'edilemedi' ? `<div class="card pad mt" style="background:var(--err-soft);border:0">${icon('alert')} ${esc(sh.failReason || 'Teslim edilemedi')} — bir sonraki iş günü tekrar denenecek. Bilgi: ${esc(s.bizPhone)}</div>` : ''}
-        ${sh.status === 'teslim' ? `<div class="card pad mt" style="background:var(--ok-soft);border:0">${icon('check')} Teslim alan: ${esc(mask(sh.deliveredTo || ''))}</div>` : ''}</div>
-      <div class="card pad">${['iade', 'edilemedi'].includes(sh.status) ? '' : flow.map((f, i) => `<div class="step ${i <= cur ? 'on' : ''}"><div class="d">${icon(K.ST[f][2])}</div><div><b>${esc(K.ST[f][0])}</b><div class="small muted">${(() => { const h = sh.history.filter((x) => x.status === f).pop(); return h ? NS.dt(h.at) + ' · ' + esc(h.note || '') : ''; })()}</div></div></div>`).join('')}
-        ${['iade', 'edilemedi'].includes(sh.status) ? sh.history.slice().reverse().map((h) => `<div class="list-item small"><span class="grow"><b>${esc(K.ST[h.status][0])}</b> · ${esc(h.note || '')}</span><span class="faint">${NS.dt(h.at)}</span></div>`).join('') : ''}</div>
-      <p class="center small muted mt">${icon('phone')} ${esc(s.bizPhone)}</p>`;
-    bind();
+  const s = () => db.settings({});
+  const tel = () => String(s().bizPhone || '').replace(/\D/g, '');
+  const RK = 'nebsoft:kargo:son';
+  const recent = () => { try { return JSON.parse(localStorage.getItem(RK) || '[]'); } catch (e) { return []; } };
+  const remember = (c) => { try { localStorage.setItem(RK, JSON.stringify([c, ...recent().filter((x) => x !== c)].slice(0, 4))); } catch (e) { /* yok */ } };
+  // Ad soyadı gizler, parantez içindeki yakınlık bilgisini ("kendisi") açık bırakır
+  const mask = (n) => { const [name, rel] = String(n || '').split(' ('); return name.split(' ').filter(Boolean).map((w) => w[0] + '*'.repeat(Math.max(1, w.length - 1))).join(' ') + (rel ? ' (' + rel : ''); };
+  const PREF = { komsu: ['Komşuma bırakılsın', 'Komşunun adı ve kapı numarasını yazın'], gorevli: ['Site görevlisine / kapıcıya bırakılsın', 'Güvenlik veya yönetim ofisi'], sube: ['Şubeden kendim alacağım', 'Ümraniye Transfer Merkezi, 09:00–19:00'], gun: ['Başka bir gün getirilsin', 'Önümüzdeki 5 iş günü içinden seçin'] };
+
+  $('#bar').innerHTML = `<div class="tk-mark">${icon('truck')}</div><div class="grow"><b>${esc(s().bizName)}</b><span>Gönderi takip</span></div>
+    <a class="btn ghost" href="tel:${tel()}">${icon('phone')}<span class="hide-sm">${esc(s().bizPhone)}</span></a><button class="btn ghost icon" id="th" data-theme-ico aria-label="Tema">${icon(NS.getTheme() === 'dark' ? 'sun' : 'moon')}</button>`;
+  $('#th').onclick = NS.toggleTheme;
+
+  const finder = (no) => `<div class="tk-find"><input class="input" id="k" placeholder="Takip numarası (HK...)" value="${esc(no || '')}" aria-label="Takip numarası" autocomplete="off"><button class="btn primary lg" id="go">${icon('search')} Sorgula</button></div>
+    ${recent().length ? `<div class="tk-recent">Son sorgulananlar: ${recent().map((c) => `<button data-r="${esc(c)}">${esc(c)}</button>`).join('')}</div>` : '<div class="tk-recent"></div>'}`;
+
+  const FLOW = ['kabul', 'depoda', 'dagitimda', 'teslim'];
+  const eta = (sh) => {
+    if (sh.status === 'teslim') { const h = sh.history.filter((x) => x.status === 'teslim').pop(); return ['Teslim edildi', h ? NS.dateLong(h.at.slice(0, 10)) + ' ' + NS.time(h.at) : '']; }
+    if (sh.status === 'iade') return ['Göndericiye iade edildi', 'Bilgi için göndericiyle iletişime geçin'];
+    if (sh.retryDate) return [sh.retryDate === today() ? 'Bugün' : NS.dateLong(sh.retryDate), 'Yeniden teslimat · 09:00–18:00'];
+    if (sh.pref && sh.pref.type === 'gun') return [NS.dateLong(sh.pref.date), 'Seçtiğiniz gün · 09:00–18:00'];
+    if (sh.status === 'dagitimda') return ['Bugün', new Date().getHours() < 13 ? '13:00–18:00 arası' : '18:00\'e kadar'];
+    if (sh.status === 'edilemedi') return ['Bir sonraki iş günü', 'Tekrar denenecek'];
+    const days = sh.service === 'ayni' ? 0 : sh.service === 'ekspres' || sh.region === 'sehirici' ? 1 : 2;
+    const d = addDays(new Date(sh.at), days); let dd = d < new Date() ? addDays(new Date(), 1) : d; if (dd.getDay() === 0) dd = addDays(dd, 1);
+    return [iso(dd) === today() ? 'Bugün' : iso(dd) === iso(addDays(new Date(), 1)) ? 'Yarın' : NS.dateLong(iso(dd)), 'Tahmini teslimat · 09:00–18:00'];
   };
-  const bind = () => { const go = () => { const k = $('#k').value.trim(); history.replaceState(null, '', '?no=' + encodeURIComponent(k)); render(k); }; $('#go').onclick = go; $('#k').onkeydown = (e) => { if (e.key === 'Enter') go(); }; };
+  function steps(sh) {
+    const cur = FLOW.indexOf(sh.status);
+    const when = (f) => { const h = sh.history.filter((x) => x.status === f).pop(); return h ? NS.date(h.at) + ' ' + NS.time(h.at) : ''; };
+    return `<div class="tk-steps" style="--n:4">${FLOW.map((f, i) => { const c = sh.status === 'teslim' || i < cur ? 'done' : i === cur ? 'cur' : 'todo'; return `<div class="tk-step ${c}"><div class="d">${icon(c === 'done' ? 'check' : K.ST[f][2])}</div><b>${esc(K.ST[f][0])}</b><span>${when(f)}</span></div>`; }).join('')}</div>`;
+  }
+  function route(sh) {
+    const hub = (s().bizAddress || 'Transfer merkezi').split(',')[0];
+    const to = sh.receiver.district || sh.receiver.city;
+    const at = sh.status === 'teslim' ? 3 : sh.status === 'dagitimda' || sh.status === 'edilemedi' ? 2 : sh.status === 'depoda' ? 1 : 0;
+    const ln = (on, van) => `<div class="ln ${on ? 'on' : ''}">${van ? `<span class="van">${icon('truck')}</span>` : ''}</div>`;
+    return `<div class="route" aria-label="Gönderi rotası"><div class="pt on"><i></i><b>${esc(sh.sender.district || 'Gönderici')}</b><span>Çıkış</span></div>${ln(at >= 1, at === 0)}<div class="pt ${at >= 1 ? 'on' : ''}"><i></i><b>${esc(hub.replace(' Transfer Merkezi', ''))}</b><span>Transfer</span></div>${ln(at >= 2, at === 2)}<div class="pt ${at >= 3 ? 'on' : ''}"><i></i><b>${esc(to)}</b><span>Teslimat</span></div></div>`;
+  }
+
+  function verify(sh) {
+    return NS.prompt('Güvenlik için alıcının telefon numarasının son 4 hanesini yazın', '', { title: 'Alıcı doğrulama' }).then((v) => {
+      if (v === null) return false;
+      if (String(v).replace(/\D/g, '') !== String(sh.receiver.phone).replace(/\D/g, '').slice(-4)) { toast('Numara eşleşmedi', 'err'); return false; }
+      return true;
+    });
+  }
+  const workdays = () => { const out = []; let d = new Date(); while (out.length < 5) { d = addDays(d, 1); if (d.getDay() !== 0) out.push(iso(d)); } return out; };
+
+  function render(no) {
+    db.load();
+    const k = (no || '').toUpperCase().trim();
+    const sh = k && db.find('ships', (x) => x.no === k);
+    if (!k) {
+      const ex = (db.all('ships').filter((x) => x.status === 'dagitimda').slice(-1)[0] || db.all('ships').slice(-1)[0] || {}).no;
+      $('#root').innerHTML = `<div class="tk-view"><div class="tk-intro"><h1>Gönderiniz nerede?</h1><p>Takip numaranızı yazın; paketinizin hangi aşamada olduğunu, tahmini teslimat saatini ve kuryenizi görün. Evde olmayacaksanız teslimat tercihinizi buradan değiştirin.</p></div>${finder('')}
+        ${ex ? `<p class="small muted">Demo için örnek: <a href="#" data-r="${esc(ex)}" class="mono">${esc(ex)}</a></p>` : ''}
+        <div class="tk-how"><div>${icon('clock')}<b>Saat aralığı</b>Dağıtıma çıkan paketler için tahmini saat aralığı gösterilir.</div><div>${icon('home')}<b>Evde yok musunuz?</b>Komşuya, görevliye bırakılmasını veya başka güne ertelenmesini isteyin.</div><div>${icon('cash')}<b>Kapıda ödeme</b>Kapıda ödemeli gönderilerde nakit veya kartla ödeyebilirsiniz.</div></div></div>`;
+      return bind();
+    }
+    if (!sh) { $('#root').innerHTML = `<div class="tk-view">${finder(k)}<div class="tk-panel"><div class="b empty">${icon('search')}<div><b>${esc(k)}</b> numaralı gönderi bulunamadı.</div><div class="small muted mt">Numara göndericinin ilettiği SMS'te yazar. Yardım: <a href="tel:${tel()}">${esc(s().bizPhone)}</a></div></div></div></div>`; return bind(); }
+    remember(sh.no);
+    const [e1, e2] = eta(sh);
+    const st = K.ST[sh.status];
+    const color = { ok: 'var(--ok)', err: 'var(--err)', warn: 'var(--warn)', info: 'var(--info)', acc: 'var(--accent)' }[st[1]] || 'var(--text-2)';
+    const cour = sh.courier && db.get('couriers', sh.courier);
+    const open = ['kabul', 'depoda', 'dagitimda', 'edilemedi'].includes(sh.status);
+    let call = '';
+    if (sh.status === 'dagitimda') call = `<div class="tk-call" style="--c:var(--accent)"><h3>${icon('truck')} Paketiniz bugün geliyor</h3><p class="small" style="margin:0">${cour ? `Kuryeniz <b>${esc(cour.name.split(' ')[0])}</b> (${esc(cour.vehicle)}) dağıtımda. ` : ''}Adresinizde olmayacaksanız aşağıdan teslimat tercihinizi değiştirin.</p>${sh.cod ? `<div class="row between mt"><span>Kapıda ödenecek</span><b style="font-size:22px">${money(sh.cod)}</b></div><div class="small muted">Nakit veya kredi kartı geçerlidir.</div>` : ''}</div>`;
+    else if (sh.status === 'edilemedi') call = `<div class="tk-call" style="--c:var(--err)"><h3>${icon('alert')} Teslim edilemedi</h3><p class="small" style="margin:0 0 10px">${esc(sh.failReason || 'Alıcı adreste bulunamadı')}.${sh.retryDate ? ` Yeniden teslimat ${NS.dateLong(sh.retryDate)} için planlandı.` : ' Bir sonraki iş günü tekrar denenecek; uygun gününüzü seçebilirsiniz.'}</p>${sh.retryDate ? '' : `<button class="btn primary" id="rt">${icon('calendar')} Yeniden teslimat günü seç</button>`}</div>`;
+    else if (sh.status === 'teslim') call = `<div class="tk-call" style="--c:var(--ok)"><h3>${icon('check')} Teslim edildi</h3><p class="small" style="margin:0 0 8px">Teslim alan: <b>${esc(mask(sh.deliveredTo || sh.receiver.name))}</b>${sh.pref && sh.pref.type === 'komsu' ? ' · komşu teslimi' : ''}</p>
+      ${sh.rating ? `<p class="small" style="margin:0">Değerlendirmeniz: <span style="color:#f59e0b">${'★'.repeat(sh.rating.stars)}</span>${'☆'.repeat(5 - sh.rating.stars)} — teşekkürler!</p>` : `<div class="small muted">Teslimatı değerlendirin</div><div class="tk-stars" role="radiogroup" aria-label="Puan">${[1, 2, 3, 4, 5].map((n) => `<button data-star="${n}" aria-label="${n} yıldız">★</button>`).join('')}</div>`}</div>`;
+    else if (sh.status === 'iade') call = `<div class="tk-call" style="--c:var(--warn)"><h3>${icon('refresh')} Göndericiye iade edildi</h3><p class="small" style="margin:0">Gönderi teslim edilemediği için göndericiye geri gönderildi.</p></div>`;
+
+    $('#root').innerHTML = `<div class="tk-view">${finder(sh.no)}
+      <section class="tk-head"><div class="top"><div><div class="small muted mono">${esc(sh.no)}</div><h2>${esc(st[0])}</h2><span class="tk-pill" style="--c:${color}">${esc(K.SERVICE[sh.service][0])}</span></div><div class="tk-eta"><b>${esc(e1)}</b><span>${esc(e2)}</span></div></div>
+        ${['iade', 'edilemedi'].includes(sh.status) ? '' : steps(sh)}${route(sh)}</section>
+      <div class="tk-grid"><div>${call}
+        ${open ? `<section class="tk-panel"><h3>${icon('home')} Teslimat tercihim</h3><div class="b">${sh.pref ? `<p style="margin:0 0 10px"><b>${esc(PREF[sh.pref.type][0])}</b>${sh.pref.note ? ` — ${esc(sh.pref.note)}` : ''}${sh.pref.date ? ` — ${NS.dateLong(sh.pref.date)}` : ''}</p>` : '<p class="small muted" style="margin:0 0 10px">Paket adresinize, alıcının kendisine teslim edilecek.</p>'}<button class="btn" id="pf">${icon('edit')} ${sh.pref ? 'Tercihi değiştir' : 'Teslimat tercihini değiştir'}</button></div></section>` : ''}
+        <section class="tk-panel"><h3>${icon('list')} Gönderi hareketleri</h3><div class="b"><ul class="tk-tl">${sh.history.slice().reverse().map((h) => `<li><b>${esc(K.ST[h.status] ? K.ST[h.status][0] : h.status)}</b>${esc(h.note || '')}<br><span>${NS.dt(h.at)}</span></li>`).join('')}</ul></div></section></div>
+        <div><section class="tk-panel"><h3>${icon('box')} Gönderi bilgileri</h3><div class="b"><dl class="tk-dl"><dt>Gönderici</dt><dd>${esc(sh.sender.name)}</dd><dt>Alıcı</dt><dd>${esc(mask(sh.receiver.name))}</dd><dt>Varış</dt><dd>${esc([sh.receiver.district, sh.receiver.city].filter(Boolean).join(', '))}</dd><dt>Hizmet</dt><dd>${esc(K.SERVICE[sh.service][0])}</dd><dt>Paket</dt><dd>${sh.pieces || 1} parça · ${sh.desi} desi</dd>${sh.cod ? `<dt>Kapıda ödeme</dt><dd>${money(sh.cod)}</dd>` : ''}<dt>Kabul</dt><dd>${NS.dt(sh.at)}</dd></dl></div></section>
+          <section class="tk-panel"><h3>${icon('phone')} Yardım</h3><div class="b"><div class="tk-acts"><a class="btn grow" href="tel:${tel()}">${icon('phone')} Ara</a><a class="btn grow" target="_blank" rel="noopener" href="https://wa.me/90${tel().replace(/^0/, '')}?text=${encodeURIComponent(`Merhaba, ${sh.no} numaralı gönderim hakkında bilgi almak istiyorum.`)}">${icon('message')} WhatsApp</a><button class="btn grow" id="sh">${icon('copy')} Bağlantıyı paylaş</button></div></div></section></div></div></div>`;
+    bind();
+
+    if ($('#pf')) $('#pf').onclick = async () => {
+      if (!(await verify(sh))) return;
+      const days = workdays();
+      const cur = sh.pref || {};
+      NS.modal({ title: 'Teslimat tercihim', body: `<div class="pref">${Object.entries(PREF).map(([k2, [t, d]]) => `<label><input type="radio" name="pt" value="${k2}" ${cur.type === k2 ? 'checked' : ''}><span><b>${t}</b><small>${d}</small></span></label>`).join('')}<label><input type="radio" name="pt" value="" ${cur.type ? '' : 'checked'}><span><b>Adresime, kendime teslim edilsin</b><small>Varsayılan</small></span></label></div>
+        <div class="field mt"><label for="pn">Not / komşu bilgisi</label><input class="input" id="pn" value="${esc(cur.note || '')}" placeholder="Ör. Daire 4, Ayşe Hanım"></div>
+        <div class="field mt"><label for="pd">Gün (başka gün seçeneği için)</label><select class="input" id="pd">${days.map((d) => `<option value="${d}" ${cur.date === d ? 'selected' : ''}>${NS.dateLong(d)}</option>`).join('')}</select></div>`,
+        actions: [{ label: 'Vazgeç' }, { label: 'Kaydet', cls: 'primary', onClick: (close, b) => {
+          const t = ($('input[name=pt]:checked', b) || {}).value || '';
+          if (t === 'komsu' && !$('#pn', b).value.trim()) return toast('Komşunuzun adını ve kapı numarasını yazın', 'err');
+          db.load(); const x = db.find('ships', (y) => y.id === sh.id);
+          x.pref = t ? { type: t, note: $('#pn', b).value.trim(), date: t === 'gun' ? $('#pd', b).value : '', at: new Date().toISOString() } : null;
+          x.history.push({ at: new Date().toISOString(), status: x.status, note: t ? `Alıcı tercihi: ${PREF[t][0]}${x.pref.note ? ' (' + x.pref.note + ')' : ''}${x.pref.date ? ' · ' + NS.date(x.pref.date) : ''}` : 'Alıcı tercihi kaldırıldı' });
+          db.save(); close(); toast('Tercihiniz kuryeye iletildi', 'ok'); render(sh.no);
+        } }] });
+    };
+    if ($('#rt')) $('#rt').onclick = async () => {
+      if (!(await verify(sh))) return;
+      const v = await NS.formModal({ title: 'Yeniden teslimat', fields: [{ name: 'date', label: 'Gün', type: 'select', options: workdays().map((d) => ({ value: d, label: NS.dateLong(d) })) }, { name: 'note', label: 'Adres tarifi / not', full: true }] });
+      if (!v) return; db.load(); const x = db.find('ships', (y) => y.id === sh.id); x.retryDate = v.date; x.history.push({ at: new Date().toISOString(), status: 'edilemedi', note: `Alıcı yeniden teslimat istedi: ${NS.date(v.date)}${v.note ? ' — ' + v.note : ''}` }); db.save(); toast('Yeniden teslimat planlandı', 'ok'); render(sh.no);
+    };
+    $$('[data-star]').forEach((b) => { b.onclick = () => { db.load(); const x = db.find('ships', (y) => y.id === sh.id); x.rating = { stars: Number(b.dataset.star), at: new Date().toISOString() }; db.save(); toast('Teşekkür ederiz!', 'ok'); render(sh.no); }; });
+    $('#sh').onclick = async () => { const u = location.href; if (navigator.share) { try { await navigator.share({ title: 'Gönderi takip ' + sh.no, url: u }); return; } catch (x) { /* iptal */ } } try { await navigator.clipboard.writeText(u); toast('Bağlantı kopyalandı', 'ok'); } catch (x) { NS.prompt('Takip bağlantısı', u); } };
+  }
+  const go = (k) => { history.replaceState(null, '', k ? '?no=' + encodeURIComponent(k.toUpperCase().trim()) : location.pathname); render(k); };
+  const bind = () => { $('#go').onclick = () => go($('#k').value); $('#k').onkeydown = (e) => { if (e.key === 'Enter') go($('#k').value); }; };
+  on($('#root'), 'click', '[data-r]', (e, b) => { e.preventDefault(); go(b.dataset.r); });
   render(new URLSearchParams(location.search).get('no'));
 })();
 </script>

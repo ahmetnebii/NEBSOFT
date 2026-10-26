@@ -91,6 +91,7 @@
       </div><div class="col" style="gap:16px">
         <div class="card"><div class="card-h"><h3>Geçmiş</h3></div><div class="card-b"><div class="timeline">${t.log.slice().reverse().map((l) => `<div class="tl" style="--c:${(ST[l.status] || {}).color}"><b>${esc((ST[l.status] || {}).name || l.status)}</b><div class="small">${esc(l.note || '')}</div><div class="small faint">${NS.dt(l.at)}${l.user ? ' · ' + esc(l.user) : ''}</div></div>`).join('')}</div>
           <div class="row nw mt"><input class="input" id="nt" placeholder="Not ekle..."><button class="btn" id="nts">${icon('plus')}</button></div></div></div>
+        ${t.review ? `<div class="card pad"><div class="small muted">Müşteri değerlendirmesi</div><div style="font-size:20px;color:#f59e0b">${'★'.repeat(t.review.stars)}<span style="color:var(--border)">${'★'.repeat(5 - t.review.stars)}</span></div>${t.review.text ? `<div class="small mt">“${esc(t.review.text)}”</div>` : ''}<div class="small faint">${NS.dt(t.review.at)}</div></div>` : ''}
         <div class="card pad center"><div class="small muted mb">Müşteri takip kodu</div><div style="font-size:24px;font-weight:800;letter-spacing:.1em" class="mono">${esc(t.code)}</div><div class="mt">${NS.qrSvg(trackUrl(t), 110)}</div></div>
       </div></div>`;
     const re = () => app.refresh();
