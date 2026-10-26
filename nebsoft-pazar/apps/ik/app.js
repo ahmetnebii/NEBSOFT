@@ -10,7 +10,7 @@
     db.data._settings = { bizName: 'Kale Mobilya San. Tic.', weekend: [0], otRate: 1.5, monthHours: 225 };
     db.data.users = [{ id: 'u1', name: 'Pelin İK Müdürü', role: 'admin', pin: '1234', active: true }, { id: 'u2', name: 'Okan Şef', role: 'sef', pin: '1234', active: true, dept: 'Üretim' }];
     const depts = [['Üretim', ['Usta', 'Kalfa', 'Operatör', 'Montaj elemanı']], ['Satış', ['Satış danışmanı', 'Mağaza müdürü']], ['Lojistik', ['Şoför', 'Depo sorumlusu']], ['İdari', ['Muhasebe uzmanı', 'İK uzmanı']]];
-    db.data.employees = NS.NAMES.slice(0, 22).map((n, i) => { const [dept, titles] = depts[i % 4 === 3 && i > 10 ? 3 : i % 3]; return { id: 'e' + i, name: n, tc: String(rand(10000000000, 99999999999)), dept, title: pick(titles), start: iso(addDays(new Date(), -rand(60, 4000))), salary: pick([22104, 24500, 26000, 28500, 32000, 38000, 45000]), phone: NS.phone(), iban: `TR${rand(10, 99)} 0001 ${rand(1000, 9999)} ${rand(1000, 9999)} ${rand(1000, 9999)} ${rand(10, 99)}`, birth: `${rand(1970, 2003)}-${NS.pad(rand(1, 12))}-${NS.pad(rand(1, 28))}`, active: true }; });
+    db.data.employees = NS.NAMES.slice(0, 22).map((n, i) => { const [dept, titles] = depts[i % 4 === 3 && i > 10 ? 3 : i % 3]; return { id: 'e' + i, name: n, tc: String(rand(10000000000, 99999999999)), dept, title: pick(titles), start: iso(addDays(new Date(), -rand(60, 4000))), salary: pick([28075.5, 30000, 32500, 36000, 42000, 50000, 62000]), salaryType: i % 5 === 4 ? 'brut' : 'net', phone: NS.phone(), iban: `TR${rand(10, 99)} 0001 ${rand(1000, 9999)} ${rand(1000, 9999)} ${rand(1000, 9999)} ${rand(10, 99)}`, birth: `${rand(1970, 2003)}-${NS.pad(rand(1, 12))}-${NS.pad(rand(1, 28))}`, active: true }; });
     const ts = {};
     const start = new Date(); start.setDate(1); start.setMonth(start.getMonth() - 1);
     for (let d = new Date(start); d <= new Date(); d.setDate(d.getDate() + 1)) {
@@ -37,11 +37,31 @@
     monthDays(ym).forEach((d) => { const c = cell(e.id, d); if (!c) { if (d <= today()) st.empty++; return; } st[c.s]++; st.ot += c.ot || 0; });
     return st;
   }
+  // Bordro parametreleri: Ayarlar'da girilen değer yoksa bordro.js varsayılanı
+  const BP = () => { const s = S(); return Object.fromEntries(Object.keys(BORDRO.DEFAULTS).map((k) => [k, s[k] === undefined || s[k] === '' ? BORDRO.DEFAULTS[k] : s[k]])); };
+  const isNet = (e) => e.salaryType !== 'brut';
+  function monthCalc(e, ym, P, cum, mo) {
+    const st = monthStats(e, ym);
+    const first = ym + '-01', last = monthDays(ym).slice(-1)[0];
+    if (e.start > last || (e.end && e.end < first)) return { ...BORDRO.month(P, { gross: 0, days: 0, cum, month: mo }), st, monthlyGross: 0, otPay: 0, deduct: 0, lost: 0 };
+    const gross = isNet(e) ? BORDRO.grossFromNet(P, e.salary, { cum, month: mo }) : e.salary;
+    // Ay içinde işe giriş/çıkış ve ücretsiz izin/devamsızlık SGK gününden düşer
+    const pre = e.start > first ? Number(e.start.slice(8)) - 1 : 0;
+    const post = e.end && e.end < last ? 30 - Math.min(30, Number(e.end.slice(8))) : 0;
+    const lost = st.U + st.D;
+    const days = Math.max(0, 30 - pre - post - lost);
+    const otPay = Math.round(st.ot * (gross / S().monthHours) * S().otRate * 100) / 100;
+    const m = BORDRO.month(P, { gross, days, extra: otPay, cum, month: mo });
+    return { ...m, st, monthlyGross: gross, otPay, deduct: Math.round((gross * (30 - days)) / 30), lost };
+  }
   function payroll(e, ym) {
-    const s = S(); const st = monthStats(e, ym); const daily = e.salary / 30; const hourly = e.salary / s.monthHours;
-    const deduct = (st.U + st.D) * daily; const otPay = st.ot * hourly * s.otRate;
+    const P = BP(); const y = ym.slice(0, 4), mo = Number(ym.slice(5));
+    // Gelir vergisi kümülatif: yılbaşından bu aya kadarki matrahlar
+    let cum = 0;
+    for (let k = 1; k < mo; k++) cum = monthCalc(e, `${y}-${NS.pad(k)}`, P, cum, k).cumAfter;
+    const r = monthCalc(e, ym, P, cum, mo);
     const adv = sum(db.all('advances', (a) => a.emp === e.id && a.date.startsWith(ym)), (a) => a.amount);
-    return { st, base: e.salary, deduct, otPay, adv, net: Math.round(e.salary - deduct + otPay - adv) };
+    return { ...r, cumBefore: cum, base: r.monthlyGross, adv, netSalary: r.net, net: Math.round((r.net - adv) * 100) / 100 };
   }
 
   // ---------- Puantaj ----------
@@ -79,7 +99,7 @@
   }
 
   // ---------- Personel ----------
-  const EF = [{ name: 'name', label: 'Ad soyad', required: true }, { name: 'tc', label: 'TC kimlik no' }, { name: 'dept', label: 'Departman', type: 'select', options: ['Üretim', 'Satış', 'Lojistik', 'İdari'] }, { name: 'title', label: 'Görev' }, { name: 'start', label: 'İşe giriş', type: 'date', required: true }, { name: 'salary', label: 'Net maaş (₺)', type: 'number', required: true }, { name: 'phone', label: 'Telefon' }, { name: 'birth', label: 'Doğum tarihi', type: 'date' }, { name: 'iban', label: 'IBAN', full: true }, { name: 'active', label: 'Aktif çalışan', type: 'checkbox' }];
+  const EF = [{ name: 'name', label: 'Ad soyad', required: true }, { name: 'tc', label: 'TC kimlik no' }, { name: 'dept', label: 'Departman', type: 'select', options: ['Üretim', 'Satış', 'Lojistik', 'İdari'] }, { name: 'title', label: 'Görev' }, { name: 'start', label: 'İşe giriş', type: 'date', required: true }, { name: 'salary', label: 'Maaş (₺)', type: 'number', required: true }, { name: 'salaryType', label: 'Maaş türü', type: 'select', options: [{ value: 'net', label: 'Net (anlaşılan ele geçen)' }, { value: 'brut', label: 'Brüt' }] }, { name: 'phone', label: 'Telefon' }, { name: 'birth', label: 'Doğum tarihi', type: 'date' }, { name: 'iban', label: 'IBAN', full: true }, { name: 'active', label: 'Aktif çalışan', type: 'checkbox' }];
   let wasActive = true;
   function employeesPage(el, p, app) {
     NS.crud(el, app, {
@@ -87,6 +107,8 @@
       sort: (a, b) => a.name.localeCompare(b.name, 'tr'), searchFields: (e) => [e.name, e.tc, e.dept, e.title],
       rowsFilter: (e) => !myDept() || e.dept === myDept(),
       filters: [{ value: 'all', label: 'Aktif', test: (e) => e.active !== false }, { value: 'x', label: 'Ayrılanlar', test: (e) => e.active === false }],
+      extraActions: [{ icon: 'file', act: 'sev', title: 'Kıdem / ihbar tazminatı hesapla' }],
+      onAction: (a, e) => severanceModal(e),
       beforeSave: (v, rec) => { wasActive = rec ? rec.active !== false : true; },
       onSave: (v, rec) => {
         // SGK: yeni personelde işe giriş, pasife alınanda işten çıkış bildirimi
@@ -97,6 +119,31 @@
       },
       columns: [{ key: 'name', label: 'Personel', render: (e) => `<div class="row nw"><div class="avatar">${esc(NS.initials(e.name))}</div><div><b>${esc(e.name)}</b><div class="small faint">${esc(e.title || '')}${e.sgkIn ? ' · SGK giriş ✓' : ''}${e.sgkOut ? ' · SGK çıkış ✓' : ''}</div></div></div>` }, { key: 'dept', label: 'Departman', render: (e) => badge(e.dept, 'acc') }, { key: 'start', label: 'Kıdem', render: (e) => `${NS.date(e.start)}<div class="small faint">${seniority(e)} yıl</div>` }, { label: 'Yıllık izin', render: (e) => `${usedLeave(e)} / ${entitlement(e)} gün` }, { key: 'salary', label: 'Net maaş', cls: 'right', render: (e) => money(e.salary) }],
     });
+  }
+
+  // İşten çıkışta ödenecek kıdem, ihbar ve kullanılmayan izin ücreti
+  function severanceModal(e) {
+    const P = BP();
+    const remain = Math.max(0, entitlement(e) - usedLeave(e));
+    const draw = (b) => {
+      const end = $('[name=end]', b).value || today();
+      const ym2 = end.slice(0, 7); const pr = payroll(e, ym2);
+      const r = BORDRO.severance(P, { start: e.start, end, gross: pr.monthlyGross || e.salary, notice: $('[name=notice]', b).checked, leaveDays: Number($('[name=leave]', b).value) || 0, cum: pr.cumAfter });
+      const row = (l, v, strong) => `<tr><td>${l}</td><td class="right">${strong ? `<b>${money(v)}</b>` : money(v)}</td></tr>`;
+      $('#sv', b).innerHTML = `<table class="tbl"><tbody>
+        <tr><td colspan="2" class="small muted">Kıdem: ${r.years} yıl · esas brüt ${money(r.kidemBase)}${r.capped ? ' (tavandan)' : ''}</td></tr>
+        ${row('Kıdem tazminatı (brüt)', r.kidem)}${row('Damga vergisi', -r.kidemStamp)}${row('Kıdem tazminatı (net)', r.kidemNet, true)}
+        <tr><td colspan="2" class="small muted">İhbar süresi: ${r.weeks} hafta${$('[name=notice]', b).checked ? '' : ' — süre kullandırıldı, ödeme yok'}</td></tr>
+        ${row('İhbar tazminatı (brüt)', r.ihbar)}${row('Gelir + damga vergisi', -(r.ihbarTax + r.ihbarStamp))}${row('İhbar tazminatı (net)', r.ihbarNet, true)}
+        <tr><td colspan="2" class="small muted">Kullanılmayan izin: ${r.leaveDays} gün</td></tr>${row('İzin ücreti (brüt)', r.leavePay)}${row('İzin ücreti (net)', r.leaveNet, true)}
+        <tr><td><b>Toplam net ödeme</b></td><td class="right"><b style="font-size:20px">${money(r.kidemNet + r.ihbarNet + r.leaveNet)}</b></td></tr></tbody></table>
+        ${seniority(e) < 1 ? '<p class="small" style="color:var(--warn)">1 yılı doldurmayan çalışana kıdem tazminatı ödenmez.</p>' : ''}`;
+      b._r = r;
+    };
+    NS.modal({ title: `Tazminat hesabı — ${e.name}`, size: 'wide',
+      body: `<div class="form-grid"><div class="field"><label>İşten ayrılış tarihi</label><input class="input" type="date" name="end" value="${today()}"></div><div class="field"><label>Kullanılmayan izin (gün)</label><input class="input" type="number" name="leave" value="${remain}" min="0"></div><label class="check full"><input type="checkbox" name="notice" checked> İhbar süresi kullandırılmadan çıkış (ihbar tazminatı ödenecek)</label></div><div id="sv" class="mt"></div><p class="small faint">Giriş: ${NS.date(e.start)} · Hesap, bordro parametreleri ve son ayın kümülatif matrahıyla yapılır. Giydirilmiş ücret (yol, yemek vb.) için brüt maaşı güncelleyin.</p>`,
+      onOpen: (b) => { draw(b); b.addEventListener('input', () => draw(b)); b.addEventListener('change', () => draw(b)); },
+      actions: [{ label: 'Kapat' }, { label: 'Yazdır', icon: 'print', cls: 'primary', onClick: (close, b) => NS.printHtml(`<div class="doc"><h2>${esc(S().bizName)}</h2><h3>KIDEM / İHBAR TAZMİNATI HESAP PUSULASI</h3><p><b>${esc(e.name)}</b> · TC ${esc(e.tc || '-')} · Giriş ${NS.date(e.start)} · Çıkış ${NS.date($('[name=end]', b).value)}</p>${$('#sv', b).innerHTML}</div>`, { title: 'Tazminat' }) }] });
   }
 
   // ---------- İzin ----------
@@ -119,10 +166,36 @@
   // ---------- Maaş ----------
   function payrollPage(el, p, app) {
     const rows = emps().map((e) => ({ id: e.id, e, ...payroll(e, ym) }));
-    el.innerHTML = pageHead('Maaş Özeti', `${NS.MONTHS[Number(ym.slice(5)) - 1]} ${ym.slice(0, 4)} · puantaj, fazla mesai ve avanslara göre net ödeme`, `<button class="btn icon" data-m="-1">${icon('left')}</button><button class="btn icon" data-m="1">${icon('right')}</button><button class="btn" id="adv">${icon('plus')} Avans ver</button><button class="btn" id="pr">${icon('print')} Ödeme listesi</button><button class="btn" id="ex">${icon('download')} Banka listesi (CSV)</button><button class="btn" id="bank">${icon('building')} Bankaya talimat</button><button class="btn" id="eb">${icon('mail')} e-Bordro gönder</button>`) + `
-      <div class="grid g4 mb">${kpi('Toplam net ödeme', money(sum(rows, (r) => r.net)), 'wallet', 'ok')}${kpi('Fazla mesai', money(sum(rows, (r) => r.otPay)), 'clock', 'info')}${kpi('Kesintiler', money(sum(rows, (r) => r.deduct)), 'minus', 'err')}${kpi('Avanslar', money(sum(rows, (r) => r.adv)), 'cash', 'warn')}</div>
-      <div class="card">${table({ rows, columns: [{ label: 'Personel', render: (r) => `<b>${esc(r.e.name)}</b><div class="small faint">${esc(r.e.dept)}</div>` }, { label: 'Net maaş', cls: 'right', render: (r) => money(r.base) }, { label: 'Çalışılan', cls: 'right', render: (r) => r.st.C + (r.st.empty ? ` <span class="faint small">(+${r.st.empty} boş)</span>` : '') }, { label: 'Ücretsiz/devamsız', cls: 'right', render: (r) => (r.st.U + r.st.D ? `<span style="color:var(--err)">${r.st.U + r.st.D} gün · -${money(r.deduct)}</span>` : '-') }, { label: 'Fazla mesai', cls: 'right', render: (r) => (r.st.ot ? `${r.st.ot}s · +${money(r.otPay)}` : '-') }, { label: 'Avans', cls: 'right', render: (r) => (r.adv ? '-' + money(r.adv) : '-') }, { label: 'Ödenecek', cls: 'right', render: (r) => `<b>${money(r.net)}</b>` }] })}</div>
-      <p class="small faint mt">Not: Basitleştirilmiş net hesaptır. Yasal bordro (SGK, gelir vergisi, damga vergisi) için mali müşavir entegrasyonu önerilir.</p>`;
+    const P = BP(); const T = (k) => sum(rows, (r) => r[k]);
+    const gov = T('sgk') + T('unemp') + T('sgkEr') + T('unempEr') + T('incomeTax') + T('stamp');
+    el.innerHTML = pageHead('Bordro', `${NS.MONTHS[Number(ym.slice(5)) - 1]} ${ym.slice(0, 4)}`, `<button class="btn icon" data-m="-1" aria-label="Önceki ay">${icon('left')}</button><button class="btn icon" data-m="1" aria-label="Sonraki ay">${icon('right')}</button><button class="btn" id="adv">${icon('plus')} Avans ver</button><button class="btn" id="slips">${icon('print')} Bordro pusulaları</button><button class="btn" id="pr">${icon('print')} Ödeme listesi</button><button class="btn" id="ex">${icon('download')} Banka listesi (CSV)</button><button class="btn" id="bank">${icon('building')} Bankaya talimat</button><button class="btn" id="eb">${icon('mail')} e-Bordro gönder</button>`) + `
+      <div class="grid g4 mb">${kpi('Personele ödenecek', money(T('net')), 'wallet', 'ok')}${kpi('Toplam brüt', money(T('gross')), 'cash', 'info')}${kpi('İşveren maliyeti', money(T('cost')), 'building')}${kpi('SGK + vergi (muhtasar)', money(gov), 'percent', 'warn')}</div>
+      <div class="card">${table({ rows, columns: [
+        { label: 'Personel', render: (r) => `<b>${esc(r.e.name)}</b><div class="small faint">${esc(r.e.dept)} · ${isNet(r.e) ? 'net ' + money(r.e.salary) : 'brüt'}${r.monthlyGross && r.monthlyGross < P.minGross ? ' · <span style="color:var(--err)">asgari ücretin altında</span>' : ''}</div>` },
+        { label: 'Gün', cls: 'right', render: (r) => `${r.days}${r.lost ? ` <span class="small" style="color:var(--err)">−${r.lost}</span>` : ''}${r.st.empty ? `<div class="faint small">${r.st.empty} boş</div>` : ''}` },
+        { label: 'Brüt', cls: 'right', render: (r) => `${money(r.gross)}${r.otPay ? `<div class="small" style="color:var(--accent)">+${r.st.ot}s FM ${money(r.otPay)}</div>` : ''}` },
+        { label: 'SGK + işsizlik', cls: 'right', render: (r) => money(r.sgk + r.unemp) },
+        { label: 'Gelir v.', cls: 'right', render: (r) => `${money(r.incomeTax)}${r.taxEx ? `<div class="small faint">istisna ${money(r.taxEx)}</div>` : ''}` },
+        { label: 'Damga v.', cls: 'right', render: (r) => money(r.stamp) },
+        { label: 'Net', cls: 'right', render: (r) => money(r.netSalary) },
+        { label: 'Avans', cls: 'right', render: (r) => (r.adv ? `<span style="white-space:nowrap">−${money(r.adv)}</span>` : '-') },
+        { label: 'Ödenecek', cls: 'right', render: (r) => `<b>${money(r.net)}</b>` },
+        { label: 'İşveren maliyeti', cls: 'right', render: (r) => money(r.cost) },
+      ], actions: [{ icon: 'print', act: 'slip', title: 'Bordro pusulası' }], foot: `${rows.length} personel · kümülatif GV matrahı yılbaşından itibaren hesaplanır` })}</div>
+      <p class="small faint mt">SGK günü puantajdan (ücretsiz izin, devamsızlık, ay içi giriş/çıkış) gelir; gelir vergisi yılbaşından kümülatif matrahla ve asgari ücret istisnası düşülerek hesaplanır. ${P.year} parametreleri: asgari ücret ${money(P.minGross)} brüt · SGK tavanı ${money(P.minGross * P.ceilingX)} · işveren SGK %${P.sgkEr} (teşvik −${P.incentive} puan). Değerler Ayarlar &gt; Bordro'dan güncellenir; resmi beyan öncesi mali müşavirinizle teyit edin.</p>`;
+    const slip = (r) => `<div class="doc" style="page-break-after:always"><h2>${esc(S().bizName)}</h2><h3>ÜCRET BORDROSU — ${NS.MONTHS[Number(ym.slice(5)) - 1].toLocaleUpperCase('tr')} ${ym.slice(0, 4)}</h3>
+      <p><b>${esc(r.e.name)}</b> · TC ${esc(r.e.tc || '-')} · ${esc(r.e.dept)} / ${esc(r.e.title || '')} · İşe giriş ${NS.date(r.e.start)}</p>
+      <table><tr><th>Kazançlar</th><th style="text-align:right">Tutar</th><th>Kesintiler</th><th style="text-align:right">Tutar</th></tr>
+      <tr><td>Aylık brüt ücret (${r.days} gün)</td><td style="text-align:right">${money(r.gross - r.otPay)}</td><td>SGK işçi payı (%${P.sgkEmp})</td><td style="text-align:right">${money(r.sgk)}</td></tr>
+      <tr><td>Fazla mesai (${r.st.ot} saat)</td><td style="text-align:right">${money(r.otPay)}</td><td>İşsizlik işçi payı (%${P.unempEmp})</td><td style="text-align:right">${money(r.unemp)}</td></tr>
+      <tr><td></td><td></td><td>Gelir vergisi (istisna ${money(r.taxEx)} düşüldü)</td><td style="text-align:right">${money(r.incomeTax)}</td></tr>
+      <tr><td></td><td></td><td>Damga vergisi (istisna ${money(r.stampEx)} düşüldü)</td><td style="text-align:right">${money(r.stamp)}</td></tr>
+      <tr><td></td><td></td><td>Avans</td><td style="text-align:right">${money(r.adv)}</td></tr>
+      <tr><th>Toplam brüt</th><th style="text-align:right">${money(r.gross)}</th><th>Net ödenecek</th><th style="text-align:right">${money(r.net)}</th></tr></table>
+      <p style="font-size:12px">SGK matrahı ${money(r.sgkBase)} · GV matrahı ${money(r.base)} · Kümülatif GV matrahı ${money(r.cumAfter)} · İşveren SGK ${money(r.sgkEr)} · İşveren işsizlik ${money(r.unempEr)} · İşveren maliyeti ${money(r.cost)}</p>
+      <p style="margin-top:36px;display:flex;justify-content:space-between"><span>İşveren</span><span>Personel imzası</span></p></div>`;
+    on(el, 'click', '[data-act="slip"]', (e, b) => { const r = rows.find((x) => x.id === b.dataset.id); NS.printHtml(slip(r), { title: 'Bordro pusulası' }); });
+    $('#slips', el).onclick = () => NS.printHtml(rows.map(slip).join(''), { title: 'Bordro pusulaları' });
     on(el, 'click', '[data-m]', (e, b) => { const d = new Date(ym + '-15'); d.setMonth(d.getMonth() + Number(b.dataset.m)); ym = iso(d).slice(0, 7); app.refresh(); });
     $('#adv', el).onclick = async () => { const v = await formModal({ title: 'Avans', fields: [{ name: 'emp', label: 'Personel', type: 'select', options: emps().map((e) => ({ value: e.id, label: e.name })) }, { name: 'amount', label: 'Tutar', type: 'number', required: true }, { name: 'date', label: 'Tarih', type: 'date', value: today() }, { name: 'note', label: 'Not' }] }); if (v) { db.insert('advances', v); app.refresh(); } };
     $('#pr', el).onclick = () => NS.printHtml(`<div class="doc"><h2>${esc(S().bizName)}</h2><h3>MAAŞ ÖDEME LİSTESİ — ${NS.MONTHS[Number(ym.slice(5)) - 1]} ${ym.slice(0, 4)}</h3><table><tr><th>Personel</th><th>IBAN</th><th style="text-align:right">Tutar</th><th>İmza</th></tr>${rows.map((r) => `<tr><td>${esc(r.e.name)}</td><td style="font-family:monospace">${esc(r.e.iban || '')}</td><td style="text-align:right">${money(r.net)}</td><td style="width:120px"></td></tr>`).join('')}<tr><td colspan="2"><b>TOPLAM</b></td><td style="text-align:right"><b>${money(sum(rows, (r) => r.net))}</b></td><td></td></tr></table></div>`, { title: 'Maaş listesi' });
@@ -133,7 +206,7 @@
       if (r && r.ok) { db.saveSettings({ ['paid_' + ym]: r.ref }); toast(`${list.length} kişilik maaş talimatı bankaya iletildi (${r.ref})`, 'ok'); }
     };
     $('#eb', el).onclick = async () => {
-      const r = NS.integ ? await NS.integ.call('ebordro', 'gonder', { month: ym, list: rows.map((x) => ({ tc: x.e.tc, name: x.e.name, phone: x.e.phone, net: x.net, base: x.base, ot: x.otPay, deduct: x.deduct, adv: x.adv })) }) : null;
+      const r = NS.integ ? await NS.integ.call('ebordro', 'gonder', { month: ym, list: rows.map((x) => ({ tc: x.e.tc, name: x.e.name, phone: x.e.phone, gross: x.gross, days: x.days, sgk: x.sgk, unemp: x.unemp, incomeTax: x.incomeTax, stamp: x.stamp, netSalary: x.netSalary, net: x.net, ot: x.otPay, adv: x.adv })) }) : null;
       if (r && r.ok) toast(`${rows.length} personele e-bordro iletildi`, 'ok');
     };
     $('#ex', el).onclick = () => NS.csv(`maas-${ym}`, rows, [{ label: 'Ad Soyad', value: (r) => r.e.name }, { label: 'IBAN', value: (r) => r.e.iban }, { label: 'Tutar', value: (r) => r.net }, { label: 'Açıklama', value: () => `${ym} maaş` }]);
@@ -158,7 +231,7 @@
   const ROLES = { admin: 'İK / Yönetici', sef: 'Departman şefi' };
   NS.shell({
     id: 'ik', integrations: ['sms', 'whatsapp', 'email', 'printer', 'webhook', 'backup'], name: 'Personel & Puantaj', tagline: 'İnsan Kaynakları', icon: 'users', accent: '#475569', db, home: 'ozet', auth: { roles: ROLES },
-    nav: [{ sec: 'İK' }, { id: 'ozet', label: 'Özet', icon: 'home' }, { id: 'puantaj', label: 'Puantaj', icon: 'grid' }, { id: 'izinler', label: 'İzinler', icon: 'calendar' }, { id: 'personel', label: 'Personel', icon: 'users' }, { sec: 'Bordro' }, { id: 'maas', label: 'Maaş & Avans', icon: 'wallet', roles: ['admin'] }, { id: 'ayarlar', label: 'Ayarlar', icon: 'settings', roles: ['admin'] }],
-    routes: { ozet: dashboard, puantaj: timesheetPage, izinler: leavesPage, personel: employeesPage, maas: payrollPage, ayarlar: (el, p, a) => NS.settingsPage(el, a, { roles: ROLES, fields: [{ type: 'section', label: 'Hesaplama' }, { name: 'monthHours', label: 'Aylık çalışma saati', type: 'number' }, { name: 'otRate', label: 'Fazla mesai katsayısı', type: 'number', step: '0.1' }] }) },
+    nav: [{ sec: 'İK' }, { id: 'ozet', label: 'Özet', icon: 'home' }, { id: 'puantaj', label: 'Puantaj', icon: 'grid' }, { id: 'izinler', label: 'İzinler', icon: 'calendar' }, { id: 'personel', label: 'Personel', icon: 'users' }, { sec: 'Bordro' }, { id: 'maas', label: 'Bordro & Avans', icon: 'wallet', roles: ['admin'] }, { id: 'ayarlar', label: 'Ayarlar', icon: 'settings', roles: ['admin'] }],
+    routes: { ozet: dashboard, puantaj: timesheetPage, izinler: leavesPage, personel: employeesPage, maas: payrollPage, ayarlar: (el, p, a) => NS.settingsPage(el, a, { roles: ROLES, fields: [{ type: 'section', label: 'Hesaplama' }, { name: 'monthHours', label: 'Aylık çalışma saati', type: 'number' }, { name: 'otRate', label: 'Fazla mesai katsayısı', type: 'number', step: '0.1' }, { type: 'section', label: `Bordro parametreleri (boş bırakılan alanda ${BORDRO.DEFAULTS.year} varsayılanı kullanılır)` }, { name: 'year', label: 'Parametre yılı', type: 'number', placeholder: String(BORDRO.DEFAULTS.year) }, { name: 'minGross', label: 'Asgari ücret (brüt ₺)', type: 'number', step: '0.01', placeholder: String(BORDRO.DEFAULTS.minGross) }, { name: 'ceilingX', label: 'SGK tavanı (asgari ücretin katı)', type: 'number', step: '0.5', placeholder: String(BORDRO.DEFAULTS.ceilingX) }, { name: 'sgkEmp', label: 'SGK işçi payı %', type: 'number', step: '0.01', placeholder: String(BORDRO.DEFAULTS.sgkEmp) }, { name: 'unempEmp', label: 'İşsizlik işçi payı %', type: 'number', step: '0.01', placeholder: String(BORDRO.DEFAULTS.unempEmp) }, { name: 'sgkEr', label: 'SGK işveren payı %', type: 'number', step: '0.01', placeholder: String(BORDRO.DEFAULTS.sgkEr) }, { name: 'unempEr', label: 'İşsizlik işveren payı %', type: 'number', step: '0.01', placeholder: String(BORDRO.DEFAULTS.unempEr) }, { name: 'incentive', label: 'Hazine teşviki (puan)', type: 'number', step: '0.01', placeholder: String(BORDRO.DEFAULTS.incentive) }, { name: 'stampPermille', label: 'Damga vergisi (binde)', type: 'number', step: '0.01', placeholder: String(BORDRO.DEFAULTS.stampPermille) }, { name: 'severanceCap', label: 'Kıdem tazminatı tavanı (₺)', type: 'number', step: '0.01', placeholder: String(BORDRO.DEFAULTS.severanceCap) }, { name: 'brackets', label: 'Gelir vergisi tarifesi (üst sınır:oran, son dilim 0:oran)', full: true, placeholder: BORDRO.DEFAULTS.brackets }] }) },
   });
 })();
