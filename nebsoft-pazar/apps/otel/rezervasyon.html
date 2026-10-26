@@ -114,8 +114,6 @@
           ${free.length ? `<div class="boards" role="radiogroup" aria-label="Pansiyon">${Object.entries(BOARD).map(([k, l]) => { const qq = quote(t, k); return `<label><input type="radio" name="b-${t.id}" value="${k}" ${k === 'BB' ? 'checked' : ''}> ${l}<b>${money(qq.total)}</b></label>`; }).join('')}</div>` : '<div class="small" style="color:var(--err);font-weight:600">Seçtiğiniz tarihlerde dolu</div>'}</div>
           <div class="price">${free.length ? `<span class="save">Doğrudan rezervasyonda ${money(q.ota - q.total)} avantaj</span><span class="ota">Booking.com'da yaklaşık ${money(q.ota)}</span><span class="tot" data-tot>${money(q.total)}</span><small>${n} gece, vergiler dahil</small><button class="btn primary lg mt" data-sel="${t.id}">Seç</button>` : `<button class="btn lg" disabled>Dolu</button>`}</div></div></article>`; }).join('') || `<div class="none">${icon('bed')}<p>${st.ad + st.ch} kişiye uygun oda bulunamadı. Kişi sayısını azaltmayı veya bizi aramayı deneyin.</p></div>`}</div></div>`;
     bindSearch();
-    on(el, 'change', 'input[type=radio]', (e, r) => { const art = r.closest('[data-t]'); const t = type(art.dataset.t); $('[data-tot]', art).textContent = money(quote(t, r.value).total); });
-    on(el, 'click', '[data-sel]', (e, b) => { const art = b.closest('[data-t]'); st.type = b.dataset.sel; st.board = ($('input[type=radio]:checked', art) || {}).value || 'BB'; keep(); location.hash = '#/bilgiler'; });
   }
 
   function details(el) {
@@ -132,7 +130,6 @@
         <div class="row2"><span>${n} gece konaklama</span><span>${money(q.room)}</span></div><div class="row2" style="color:#047857"><span>Doğrudan rezervasyon indirimi %${S().directDiscount}</span><span>−${money(q.disc)}</span></div>${q.hb ? `<div class="row2"><span>Yarım pansiyon</span><span>${money(q.hb)}</span></div>` : ''}${q.ro ? `<div class="row2"><span>Kahvaltısız</span><span>−${money(q.ro)}</span></div>` : ''}
         <div class="row2 g"><span>Toplam</span><span>${money(q.total)}</span></div><p class="small muted">KDV ve konaklama vergisi dahildir.</p></aside></div></div>`;
     bindSearch();
-    on(el, 'change', 'input[name=pay]', () => { $('#card').hidden = $('input[name=pay]:checked').value !== 'kapora'; });
     $('#cc') && ($('#cc').oninput = (e) => { e.target.value = e.target.value.replace(/\D/g, '').slice(0, 16).replace(/(\d{4})(?=\d)/g, '$1 '); });
     $('#gf').onsubmit = (e) => {
       e.preventDefault();
@@ -191,6 +188,11 @@
     document.title = `${S().bizName} · Online rezervasyon`;
     if (pg === 'bilgiler') details(el); else if (pg === 'tamam') done(el, arg); else if (pg === 'yonet') manage(el); else results(el);
   }
+  // Sayfa içi olaylar #app üzerinde bir kez bağlanır
+  const app = $('#app');
+  on(app, 'change', '[data-t] input[type=radio]', (e, r) => { const art = r.closest('[data-t]'); const t = type(art.dataset.t); $('[data-tot]', art).textContent = money(quote(t, r.value).total); });
+  on(app, 'click', '[data-sel]', (e, b) => { const art = b.closest('[data-t]'); st.type = b.dataset.sel; st.board = ($('input[type=radio]:checked', art) || {}).value || 'BB'; keep(); location.hash = '#/bilgiler'; });
+  on(app, 'change', 'input[name=pay]', () => { $('#card').hidden = $('input[name=pay]:checked').value !== 'kapora'; });
   window.addEventListener('hashchange', route);
   route();
 })();
