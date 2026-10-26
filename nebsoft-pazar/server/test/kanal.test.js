@@ -1,12 +1,13 @@
 // Adaptör testleri: node server/test/kanal.test.js
-process.env.NEBSOFT_MOCK = 'http://127.0.0.1:5099';
+const PORT = Number(process.env.MOCK_PORT) || 5098;
+process.env.NEBSOFT_MOCK = 'http://127.0.0.1:' + PORT;
 const assert = require('assert');
 const mock = require('./mock-pazaryeri');
 const kanal = require('../connectors');
 const TY = { sellerId: '482913', apiKey: 'tykey', apiSecret: 'tysecret' };
 const HB = { sellerId: 'LINA-HB', apiKey: 'hbuser', apiSecret: 'hbkey' };
 (async () => {
-  const m = await mock.start(5099); let n = 0; const t = async (name, fn) => { await fn(); n++; console.log('✓', name); };
+  const m = await mock.start(PORT); let n = 0; const t = async (name, fn) => { await fn(); n++; console.log('✓', name); };
   try {
     await t('Trendyol bağlantı testi + Basic auth + User-Agent', async () => { const r = await kanal.run('trendyol', 'baglanti-test', TY); assert.ok(r.ok, r.error); const e = m.log.at(-1); assert.equal(e.path, '/integration/order/sellers/482913/orders'); assert.equal(e.ua, '482913 - SelfIntegration'); });
     await t('Trendyol yanlış anahtar → anlaşılır yetki hatası', async () => { const r = await kanal.run('trendyol', 'baglanti-test', { ...TY, apiSecret: 'x' }); assert.equal(r.ok, false); assert.match(r.error, /Yetki hatası/); });
