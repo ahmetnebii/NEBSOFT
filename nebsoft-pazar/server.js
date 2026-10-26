@@ -1,4 +1,5 @@
-// NEBSOFT Pazar — bağımlılıksız yerel sunucu + donanım/servis köprüsü.  Çalıştır: node server.js  →  http://localhost:5050
+// NEBSOFT Pazar — web sunucusu, bulut API'si (MySQL) ve donanım/servis köprüsü.  Çalıştır: npm install && node server.js
+// Bulut API: server/cloud (kurulum /admin/ üzerinden). Veritabanı yapılandırılmamışsa sistem yerel demo modunda çalışır.
 //
 // Köprü uç noktaları (tarayıcının yapamadığı işleri yapar):
 //   GET  /api/durum              → köprü çalışıyor mu
@@ -13,7 +14,10 @@ const http = require('http');
 const fs = require('fs');
 const net = require('net');
 const path = require('path');
+const crypto = require('crypto');
 const kanal = require('./server/connectors');
+const cloud = require('./server/cloud');
+const sec = require('./server/cloud/security');
 
 const ROOT = __dirname;
 const PORT = Number(process.env.PORT) || 5050;
@@ -85,10 +89,20 @@ async function api(req, res, p) {
 }
 
 const SITES = new Set(fs.existsSync(path.join(ROOT, 'site')) ? fs.readdirSync(path.join(ROOT, 'site')).filter((d) => fs.existsSync(path.join(ROOT, 'site', d, 'index.html'))) : []);
+// Dışarıya asla sunulmayacak yollar (sunucu kodu, veriler, gizli dosyalar, araçlar)
+const DENY = /^\/(data|server|node_modules|site\/tools|site\/src|awesome-claude-design|\.[^/]*)(\/|$)|^\/(package(-lock)?\.json|skills-lock\.json|baslat\.bat|DESIGN\.md|README\.md|DEPLOY\.md)$|\/\.[^/]+$/i;
+const LONG = /\.(jpg|jpeg|png|webp|svg|ico|woff2?)$/i;
 
-http.createServer((req, res) => {
-  let p = decodeURIComponent(req.url.split('?')[0]);
-  if (p.startsWith('/api/')) return api(req, res, p).catch((e) => json(res, 500, { ok: false, error: e.message }));
+const server = http.createServer((req, res) => {
+  sec.headers(req, res);
+  let p;
+  try { p = decodeURIComponent(req.url.split('?')[0]); } catch (e) { res.writeHead(400); return res.end('Geçersiz adres'); }
+  if (p.includes('\0')) { res.writeHead(400); return res.end('Geçersiz adres'); }
+  if (p.startsWith('/api/')) {
+    return cloud.handle(req, res, p).then((done) => { if (!done) return api(req, res, p); }).catch((e) => { console.error(e); json(res, 500, { ok: false, error: 'Beklenmeyen bir hata oluştu' }); });
+  }
+  if (!['GET', 'HEAD'].includes(req.method)) { res.writeHead(405, { Allow: 'GET, HEAD' }); return res.end(); }
+  if (DENY.test(p)) { res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' }); return res.end('Bulunamadı'); }
   // Tanıtım siteleri: /randevusistemi → site/randevusistemi/index.html (görseller /randevusistemi/img/…)
   const seg = p.split('/')[1] || '';
   if (/^[a-z0-9-]+$/.test(seg) && SITES.has(seg)) {
@@ -97,10 +111,18 @@ http.createServer((req, res) => {
   } else if (p === '/sitemap.xml') p = '/site/sitemap.xml';
   if (p.endsWith('/')) p += 'index.html';
   const file = path.normalize(path.join(ROOT, p));
-  if (!file.startsWith(ROOT)) { res.writeHead(403); return res.end('Yasak'); }
-  fs.readFile(file, (err, data) => {
-    if (err) { res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' }); return res.end('Bulunamadı'); }
-    res.writeHead(200, { 'Content-Type': TYPES[path.extname(file).toLowerCase()] || 'application/octet-stream', 'Cache-Control': 'no-store' });
-    res.end(data);
+  if (!file.startsWith(ROOT + path.sep)) { res.writeHead(403); return res.end('Yasak'); }
+  fs.stat(file, (e, st) => {
+    if (e || !st.isFile()) { res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' }); return res.end('Bulunamadı'); }
+    const ext = path.extname(file).toLowerCase();
+    const etag = `W/"${st.size.toString(16)}-${Math.floor(st.mtimeMs).toString(16)}"`;
+    const h = { 'Content-Type': TYPES[ext] || 'application/octet-stream', ETag: etag, 'Cache-Control': ext === '.html' ? 'no-cache' : LONG.test(ext) ? 'public, max-age=604800' : 'public, max-age=300, must-revalidate' };
+    if (req.headers['if-none-match'] === etag) { res.writeHead(304, h); return res.end(); }
+    res.writeHead(200, { ...h, 'Content-Length': st.size });
+    if (req.method === 'HEAD') return res.end();
+    fs.createReadStream(file).pipe(res);
   });
-}).listen(PORT, () => console.log(`NEBSOFT Pazar çalışıyor: http://localhost:${PORT}  (donanım/servis köprüsü: /api)`));
+});
+server.requestTimeout = 60000; server.headersTimeout = 20000;
+cloud.init().catch((e) => console.error('Bulut başlatılamadı:', e.message));
+server.listen(PORT, process.env.HOST || '0.0.0.0', () => console.log(`NEBSOFT çalışıyor: http://localhost:${PORT}`));

@@ -1,0 +1,61 @@
+// MySQL / MariaDB bağlantı havuzu ve tablo şeması. Tüm sorgular parametreli (SQL enjeksiyonuna kapalı).
+const mysql = require('mysql2/promise');
+
+let pool = null; let info = null;
+const opts = (c) => ({ host: c.host, port: Number(c.port) || 3306, user: c.user, password: c.password, database: c.database, charset: 'utf8mb4', timezone: 'Z', dateStrings: false, supportBigNumbers: true, connectTimeout: 8000, ...(c.ssl ? { ssl: { rejectUnauthorized: c.sslVerify !== false } } : {}) });
+
+async function test(c) {
+  const conn = await mysql.createConnection(opts(c));
+  try {
+    const [[v]] = await conn.query('SELECT VERSION() AS v, DATABASE() AS d');
+    // Şema oluşturma yetkisi var mı?
+    await conn.query('CREATE TABLE IF NOT EXISTS _ns_probe (id INT) ENGINE=InnoDB'); await conn.query('DROP TABLE _ns_probe');
+    return { version: v.v, database: v.d };
+  } finally { await conn.end(); }
+}
+async function connect(c) {
+  if (pool) await pool.end().catch(() => {});
+  pool = mysql.createPool({ ...opts(c), connectionLimit: Number(process.env.DB_POOL) || 10, waitForConnections: true, enableKeepAlive: true });
+  const [[v]] = await pool.query('SELECT VERSION() AS v'); info = { host: c.host, database: c.database, version: v.v };
+  await migrate(); return info;
+}
+const ready = () => !!pool;
+const q = async (sql, params = []) => { if (!pool) throw Object.assign(new Error('Veritabanı yapılandırılmadı'), { code: 'NO_DB' }); const [rows] = await pool.execute(sql, params); return rows; };
+const one = async (sql, params) => (await q(sql, params))[0] || null;
+async function tx(fn) { const c = await pool.getConnection(); try { await c.beginTransaction(); const r = await fn({ q: async (s, p = []) => (await c.execute(s, p))[0] }); await c.commit(); return r; } catch (e) { await c.rollback(); throw e; } finally { c.release(); } }
+
+const SCHEMA = [
+  `CREATE TABLE IF NOT EXISTS tenants (id CHAR(16) PRIMARY KEY, name VARCHAR(160) NOT NULL, slug VARCHAR(80) NOT NULL UNIQUE, tax_no VARCHAR(20), tax_office VARCHAR(80), city VARCHAR(60), address VARCHAR(255), phone VARCHAR(40), sector VARCHAR(60), ref_code VARCHAR(16) NOT NULL UNIQUE, referred_by CHAR(16) NULL, referral_rewarded TINYINT NOT NULL DEFAULT 0, webhook_token CHAR(32) NOT NULL, status VARCHAR(16) NOT NULL DEFAULT 'active', note TEXT, created DATETIME NOT NULL) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
+  `CREATE TABLE IF NOT EXISTS users (id CHAR(16) PRIMARY KEY, email VARCHAR(190) NOT NULL UNIQUE, pass VARCHAR(255) NOT NULL, name VARCHAR(120) NOT NULL, phone VARCHAR(40), role VARCHAR(16) NOT NULL DEFAULT 'customer', tenant_id CHAR(16) NULL, status VARCHAR(16) NOT NULL DEFAULT 'active', failed INT NOT NULL DEFAULT 0, locked_until DATETIME NULL, kvkk_at DATETIME NULL, created DATETIME NOT NULL, last_login DATETIME NULL, last_ip VARCHAR(64), INDEX (tenant_id)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
+  `CREATE TABLE IF NOT EXISTS sessions (id CHAR(64) PRIMARY KEY, user_id CHAR(16) NOT NULL, created DATETIME NOT NULL, expires DATETIME NOT NULL, ip VARCHAR(64), ua VARCHAR(255), INDEX (user_id), INDEX (expires)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
+  `CREATE TABLE IF NOT EXISTS licenses (id CHAR(16) PRIMARY KEY, tenant_id CHAR(16) NOT NULL, product VARCHAR(40) NOT NULL, plan TINYINT NOT NULL DEFAULT 1, period VARCHAR(10) NOT NULL DEFAULT 'aylik', branches INT NOT NULL DEFAULT 1, status VARCHAR(16) NOT NULL, start DATETIME NOT NULL, end DATETIME NOT NULL, lic_key VARCHAR(40) NOT NULL, order_id CHAR(16) NULL, UNIQUE KEY tp (tenant_id, product), INDEX (end)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
+  `CREATE TABLE IF NOT EXISTS orders (id CHAR(16) PRIMARY KEY, no VARCHAR(20) NOT NULL UNIQUE, tenant_id CHAR(16) NOT NULL, user_id CHAR(16) NOT NULL, items LONGTEXT NOT NULL, subtotal DECIMAL(12,2) NOT NULL, discount DECIMAL(12,2) NOT NULL DEFAULT 0, vat DECIMAL(12,2) NOT NULL, total DECIMAL(12,2) NOT NULL, coupon VARCHAR(40), status VARCHAR(20) NOT NULL, billing LONGTEXT, note VARCHAR(255), created DATETIME NOT NULL, paid_at DATETIME NULL, approved_by CHAR(16) NULL, INDEX (status), INDEX (tenant_id)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
+  `CREATE TABLE IF NOT EXISTS bank_accounts (id CHAR(16) PRIMARY KEY, holder VARCHAR(160) NOT NULL, iban VARCHAR(34) NOT NULL, bank VARCHAR(80) NOT NULL, active TINYINT NOT NULL DEFAULT 1, created DATETIME NOT NULL) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
+  `CREATE TABLE IF NOT EXISTS app_data (tenant_id CHAR(16) NOT NULL, app VARCHAR(40) NOT NULL, data LONGTEXT NOT NULL, version INT NOT NULL, updated DATETIME NOT NULL, updated_by CHAR(16) NULL, PRIMARY KEY (tenant_id, app)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
+  `CREATE TABLE IF NOT EXISTS app_data_history (id BIGINT AUTO_INCREMENT PRIMARY KEY, tenant_id CHAR(16) NOT NULL, app VARCHAR(40) NOT NULL, version INT NOT NULL, data LONGTEXT NOT NULL, at DATETIME NOT NULL, INDEX (tenant_id, app, version)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
+  `CREATE TABLE IF NOT EXISTS coupons (code VARCHAR(40) PRIMARY KEY, pct INT NOT NULL, active TINYINT NOT NULL DEFAULT 1, uses INT NOT NULL DEFAULT 0, max_uses INT NULL, expires DATE NULL) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
+  `CREATE TABLE IF NOT EXISTS leads (id CHAR(16) PRIMARY KEY, name VARCHAR(120), phone VARCHAR(40), email VARCHAR(190), biz VARCHAR(160), type VARCHAR(30), product VARCHAR(40), msg TEXT, status VARCHAR(16) NOT NULL DEFAULT 'yeni', ip VARCHAR(64), created DATETIME NOT NULL, INDEX (created)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
+  `CREATE TABLE IF NOT EXISTS tickets (id CHAR(16) PRIMARY KEY, tenant_id CHAR(16) NOT NULL, user_id CHAR(16) NOT NULL, subject VARCHAR(200) NOT NULL, product VARCHAR(40), status VARCHAR(16) NOT NULL, messages LONGTEXT NOT NULL, created DATETIME NOT NULL, updated DATETIME NOT NULL, INDEX (tenant_id), INDEX (status)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
+  `CREATE TABLE IF NOT EXISTS audit (id BIGINT AUTO_INCREMENT PRIMARY KEY, at DATETIME NOT NULL, user_id CHAR(16) NULL, tenant_id CHAR(16) NULL, ip VARCHAR(64), action VARCHAR(60) NOT NULL, detail VARCHAR(500), INDEX (at), INDEX (tenant_id)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
+  `CREATE TABLE IF NOT EXISTS settings (k VARCHAR(60) PRIMARY KEY, v TEXT) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
+  `CREATE TABLE IF NOT EXISTS inbox (id BIGINT AUTO_INCREMENT PRIMARY KEY, tenant_id CHAR(16) NOT NULL, channel VARCHAR(40) NOT NULL, payload MEDIUMTEXT NOT NULL, at DATETIME NOT NULL, INDEX (tenant_id, channel)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
+];
+async function migrate() { for (const s of SCHEMA) await q(s); }
+
+// Yöneticinin MySQL sunucusunda çalıştıracağı veritabanı + kullanıcı + yetki SQL'i
+function setupSql({ database = 'nebsoft', user = 'nebsoft_app', host = '%', password }) {
+  const id = (x) => String(x).replace(/[^A-Za-z0-9_]/g, '');
+  const h = String(host).replace(/[^A-Za-z0-9_.%:-]/g, '') || '%';
+  const pw = String(password).replace(/'/g, "''");
+  return [
+    `-- NEBSOFT veritabanı kurulumu (MySQL 8 / MariaDB 10.4+). root veya yetkili kullanıcıyla çalıştırın.`,
+    `CREATE DATABASE IF NOT EXISTS \`${id(database)}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;`,
+    `CREATE USER IF NOT EXISTS '${id(user)}'@'${h}' IDENTIFIED BY '${pw}';`,
+    `-- Uygulama kullanıcısına yalnızca kendi veritabanında gereken yetkiler verilir (sunucu geneli yetki verilmez)`,
+    `GRANT SELECT, INSERT, UPDATE, DELETE, CREATE, ALTER, INDEX, DROP, REFERENCES ON \`${id(database)}\`.* TO '${id(user)}'@'${h}';`,
+    `FLUSH PRIVILEGES;`,
+    `-- Uzak sunucudan bağlanacaksanız: my.cnf içinde bind-address ayarını ve güvenlik duvarında 3306 portunu yalnız uygulama sunucusunun IP'sine açın.`,
+    `-- SSL önerilir: ALTER USER '${id(user)}'@'${h}' REQUIRE SSL;`,
+  ].join('\n');
+}
+module.exports = { test, connect, ready, q, one, tx, migrate, setupSql, info: () => info, close: async () => { if (pool) await pool.end(); pool = null; } };

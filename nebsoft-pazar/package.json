@@ -1,0 +1,16 @@
+{
+  "name": "nebsoft-pazar",
+  "version": "2.0.0",
+  "private": true,
+  "description": "NEBSOFT işletme yazılımları pazaryeri ve bulut sunucusu",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node server/test/kanal.test.js && node server/test/cloud.test.js",
+    "build:sites": "node site/tools/build-sites.js"
+  },
+  "engines": { "node": ">=18" },
+  "dependencies": {
+    "mysql2": "3.11.5"
+  }
+}
