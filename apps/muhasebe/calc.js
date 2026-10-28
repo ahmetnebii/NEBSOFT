@@ -12,7 +12,7 @@
     const gross = r2((Number(l.qty) || 0) * (Number(l.price) || 0));
     const net = r2((Number(l.qty) || 0) * (Number(l.price) || 0) * (1 - (Number(l.disc) || 0) / 100));
     const vat = r2(net * (Number(l.vat) || 0) / 100);
-    const wht = l.wht ? r2(vat * Number(l.wht) / 10) : 0; // KDV tevkifatı: alıcının ödeyeceği KDV payı (x/10)
+    const wht = l.whtCode && l.wht ? r2(vat * Number(l.wht) / 10) : 0; // KDV tevkifatı: alıcının ödeyeceği KDV payı (x/10)
     return { gross, disc: r2(gross - net), net, vat, wht };
   }
   function totals(inv) {

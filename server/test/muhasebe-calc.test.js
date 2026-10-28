@@ -16,6 +16,11 @@ for (let i = 0; i < 20000; i++) {
   const [eq, a, u] = same(lines); assert.ok(eq, `fark: ${JSON.stringify(lines)} program ${a.total} e-Fatura ${u.gross}`);
 }
 ok('20.000 rastgele faturada program toplamı = e-Fatura toplamı (matrah, KDV, genel toplam)');
-const t = C.totals({ rate: 2, lines: [{ qty: 1, price: 1000, vat: 20, wht: 5 }] });
+const t = C.totals({ rate: 2, lines: [{ qty: 1, price: 1000, vat: 20, wht: 5, whtCode: '616' }] });
 assert.deepStrictEqual([t.net, t.vat, t.wht, t.total, t.payable, t.tl], [1000, 200, 100, 1200, 1100, 2200]); ok('Tevkifat 5/10: KDV 200 → alıcı 100 öder; cariye 1.100 (×kur) işlenir');
+for (let i = 0; i < 5000; i++) {
+  const lines = Array.from({ length: 1 + Math.floor(rnd() * 4) }, () => ({ name: 'x', qty: 1 + Math.floor(rnd() * 9), price: Math.round(rnd() * 99999) / 100, disc: [0, 5, 10][Math.floor(rnd() * 3)], vat: [10, 20][Math.floor(rnd() * 2)], wht: [2, 5, 7, 9][Math.floor(rnd() * 4)], whtCode: '616' }));
+  const a = C.totals({ lines }); const u = U.build({ id: 'NEB2026000000001', seller, buyer, lines }).totals; assert.deepStrictEqual([a.wht, a.payable], [u.wht, u.payable]);
+}
+ok('5.000 tevkifatlı faturada tevkifat ve ödenecek tutar program = e-Fatura');
 console.log(`\n${n} test geçti`);

@@ -17,6 +17,8 @@ const cases = {
   earsiv_usd: { profile: 'EARSIVFATURA', id: 'EAR2026000000003', date: '2026-10-28', currency: 'USD', rate: 49.6997, seller, buyer: tckn, lines: [{ name: 'Tişört', total: 600, vat: 10 }] },
   iade: { profile: 'TEMELFATURA', type: 'IADE', refundOf: 'NEB2026000000002', refundDate: '2026-10-28', id: 'NEB2026000000004', date: '2026-10-28', seller, buyer: vkn, lines: [{ name: 'İade', qty: 1, price: 1500, vat: 20 }] },
   istisna: { profile: 'TEMELFATURA', id: 'NEB2026000000005', date: '2026-10-28', seller, buyer: vkn, lines: [{ name: 'İhraç kayıtlı', qty: 1, price: 100, vat: 0, exemptionCode: '301', exemptionReason: '11/1-a Mal ihracatı' }] },
+  tevkifat: { profile: 'TICARIFATURA', id: 'NEB2026000000007', date: '2026-10-28', seller, buyer: vkn, lines: [{ name: 'Bahçe bakımı', qty: 15, price: 15, vat: 10, wht: 9, whtCode: '613', whtName: 'Çevre ve Bahçe Bakım Hizmetleri' }, { name: 'Temizlik', qty: 1, price: 1000, vat: 20, wht: 9, whtCode: '612', whtName: 'Temizlik Hizmeti' }] },
+  tevkifat_iade: { profile: 'TEMELFATURA', type: 'IADE', refundOf: 'NEB2026000000007', id: 'NEB2026000000008', date: '2026-10-28', seller, buyer: vkn, lines: [{ name: 'Yemek', qty: 10, price: 50, vat: 10, wht: 5, whtCode: '604', whtName: 'Yemek Servis Hizmeti' }] },
   gomulu_xslt: { profile: 'EARSIVFATURA', id: 'EAR2026000000006', date: '2026-10-28', seller, buyer: tckn, xslt, lines: [{ name: 'Ürün', qty: 1, price: 100, vat: 20 }] },
 };
 const files = Object.entries(cases).map(([k, doc]) => { const f = path.join(tmp, k + '.xml'); fs.writeFileSync(f, U.xml(doc).xml.replace('<cbc:UBLVersionID>', EXT + '<cbc:UBLVersionID>')); return f; });

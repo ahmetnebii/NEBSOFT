@@ -44,7 +44,12 @@
       else net = Number(l.total) / (1 + rate / 100);
       net = r2(net); if (!(net >= 0)) throw new Error(`${i + 1}. satırın tutarı geçersiz`);
       if (rate === 0 && !l.exemptionCode) throw new Error(`${i + 1}. satır KDV %0: GİB istisna / muafiyet kodu (TaxExemptionReasonCode) gerekli`);
-      return { n: i + 1, name: String(l.name || 'Ürün').slice(0, 250), code: l.code || '', qty, unit: unitOf(l.unit), net, rate, vat: r2(net * rate / 100), exemptionCode: l.exemptionCode, exemptionReason: l.exemptionReason };
+      const vat = r2(net * rate / 100);
+      const pay = l.whtCode ? Number(l.wht) : 0;
+      if (l.whtCode && !(pay >= 1 && pay <= 10)) throw new Error(`${i + 1}. satırın tevkifat oranı geçersiz (1/10 – 10/10)`);
+      if (l.whtCode && rate === 0) throw new Error(`${i + 1}. satır: KDV %0 iken tevkifat uygulanamaz`);
+      return { n: i + 1, name: String(l.name || 'Ürün').slice(0, 250), code: l.code || '', qty, unit: unitOf(l.unit), net, rate, vat, exemptionCode: l.exemptionCode, exemptionReason: l.exemptionReason,
+        whtCode: l.whtCode ? String(l.whtCode) : '', whtName: l.whtName || '', pay, wht: pay ? r2(vat * pay / 10) : 0 };
     });
   }
 
@@ -66,10 +71,25 @@
       + (isT ? `<cac:Person><cbc:FirstName>${esc(first)}</cbc:FirstName><cbc:FamilyName>${esc(fam)}</cbc:FamilyName></cac:Person>` : '') + '</cac:Party>';
   }
 
-  const taxBlock = (cur, groups) => {
-    const total = r2(groups.reduce((s, g) => s + g.vat, 0));
+  const taxBlock = (cur, groups, wht = 0) => {
+    const total = r2(groups.reduce((s, g) => s + g.vat, 0) - wht);
     return `<cac:TaxTotal><cbc:TaxAmount currencyID="${cur}">${a2(total)}</cbc:TaxAmount>${groups.map((g, i) => `<cac:TaxSubtotal><cbc:TaxableAmount currencyID="${cur}">${a2(g.net)}</cbc:TaxableAmount><cbc:TaxAmount currencyID="${cur}">${a2(g.vat)}</cbc:TaxAmount><cbc:CalculationSequenceNumeric>${i + 1}</cbc:CalculationSequenceNumeric><cbc:Percent>${num(g.rate, 2)}</cbc:Percent><cac:TaxCategory>${g.exemptionCode ? `<cbc:TaxExemptionReasonCode>${esc(g.exemptionCode)}</cbc:TaxExemptionReasonCode><cbc:TaxExemptionReason>${esc(g.exemptionReason || g.exemptionCode)}</cbc:TaxExemptionReason>` : ''}<cac:TaxScheme><cbc:Name>KDV</cbc:Name><cbc:TaxTypeCode>0015</cbc:TaxTypeCode></cac:TaxScheme></cac:TaxCategory></cac:TaxSubtotal>`).join('')}</cac:TaxTotal>`;
   };
+
+  // WithholdingTaxTotal: koda göre gruplar; TaxableAmount = KDV, Percent = pay × 10 (GİB örnekleri)
+  const whtBlock = (cur, items) => {
+    const g = []; items.filter((x) => x.whtCode).forEach((x) => { let o = g.find((y) => y.code === x.whtCode && y.pay === x.pay); if (!o) { o = { code: x.whtCode, name: x.whtName, pay: x.pay, vat: 0, wht: 0 }; g.push(o); } o.vat = r2(o.vat + x.vat); o.wht = r2(o.wht + x.wht); });
+    if (!g.length) return '';
+    return `<cac:WithholdingTaxTotal><cbc:TaxAmount currencyID="${cur}">${a2(g.reduce((s, o) => s + o.wht, 0))}</cbc:TaxAmount>${g.map((o) => `<cac:TaxSubtotal><cbc:TaxableAmount currencyID="${cur}">${a2(o.vat)}</cbc:TaxableAmount><cbc:TaxAmount currencyID="${cur}">${a2(o.wht)}</cbc:TaxAmount><cbc:Percent>${o.pay * 10}</cbc:Percent><cac:TaxCategory><cac:TaxScheme>${o.name ? `<cbc:Name>${esc(o.name)}</cbc:Name>` : ''}<cbc:TaxTypeCode>${esc(o.code)}</cbc:TaxTypeCode></cac:TaxScheme></cac:TaxCategory></cac:TaxSubtotal>`).join('')}</cac:WithholdingTaxTotal>`;
+  };
+  // Fatura tipi kalemlerden: tevkifat → TEVKIFAT(IADE), istisna kodu (351 / 555 hariç) → ISTISNA (GİB şematron: GeneralWithholdingTaxTotalCheck, TaxExemptionReasonCode kuralları)
+  const NON_EXEMPT = ['351', '555'];
+  function typeOf(base, L) {
+    const hasW = L.some((l) => l.whtCode); const hasE = L.some((l) => l.exemptionCode && !NON_EXEMPT.includes(String(l.exemptionCode)));
+    if (hasW && hasE) throw new Error('Aynı faturada tevkifat ve istisna birlikte kullanılamaz; ayrı fatura kesin');
+    if (base === 'IADE') return hasW ? 'TEVKIFATIADE' : 'IADE';
+    return hasW ? 'TEVKIFAT' : hasE ? 'ISTISNA' : 'SATIS';
+  }
 
   /* doc: { profile, type ('SATIS' | 'IADE'), id, uuid, date (YYYY-AA-GG), time, currency ('TRY'), rate (kur), notes[],
             seller {id, name, taxOffice, street, district, city, phone, email}, buyer {aynı alanlar}, lines[], refundOf, refundDate }
@@ -77,15 +97,16 @@
   function build(doc) {
     const profile = doc.profile || 'TEMELFATURA';
     if (!['TEMELFATURA', 'TICARIFATURA', 'EARSIVFATURA'].includes(profile)) throw new Error('Desteklenen senaryolar: TEMELFATURA, TICARIFATURA, EARSIVFATURA');
-    const type = doc.type || 'SATIS'; if (!['SATIS', 'IADE'].includes(type)) throw new Error('Fatura tipi SATIS veya IADE olmalı');
-    if (type === 'IADE' && !idOk(doc.refundOf)) throw new Error('İade faturası için iade edilen faturanın 16 haneli numarası gerekli');
-    if (type === 'IADE' && profile === 'TICARIFATURA') throw new Error('İade faturası TICARIFATURA senaryosunda kesilemez (GİB kuralı)');
+    const base = doc.type || 'SATIS'; if (!['SATIS', 'IADE'].includes(base)) throw new Error('Fatura tipi SATIS veya IADE olmalı');
+    if (base === 'IADE' && !idOk(doc.refundOf)) throw new Error('İade faturası için iade edilen faturanın 16 haneli numarası gerekli');
+    if (base === 'IADE' && profile === 'TICARIFATURA') throw new Error('İade faturası TICARIFATURA senaryosunda kesilemez (GİB kuralı)');
     if (!idOk(doc.id)) throw new Error(`Fatura numarası "${doc.id}" GİB biçiminde değil (ör. ABC2026000000001)`);
     const cur = String(doc.currency || 'TRY').toUpperCase(); if (cur !== 'TRY' && !(Number(doc.rate) > 0)) throw new Error('TRY dışı para biriminde kur bilgisi zorunludur');
     const date = doc.date || new Date().toISOString().slice(0, 10); const id = doc.id; const u = doc.uuid || uuid();
-    const L = lines(doc); const groups = [];
+    const L = lines(doc); const groups = []; const type = typeOf(base, L);
     L.forEach((l) => { const k = l.rate + '|' + (l.exemptionCode || ''); let g = groups.find((x) => x.k === k); if (!g) { g = { k, rate: l.rate, net: 0, vat: 0, exemptionCode: l.exemptionCode, exemptionReason: l.exemptionReason }; groups.push(g); } g.net = r2(g.net + l.net); g.vat = r2(g.vat + l.vat); });
     const net = r2(L.reduce((s, l) => s + l.net, 0)); const vat = r2(groups.reduce((s, g) => s + g.vat, 0)); const gross = r2(net + vat);
+    const wht = r2(L.reduce((s, l) => s + l.wht, 0)); const payable = r2(gross - wht);
     const sellerId = digits(doc.seller && doc.seller.id);
     const body = [
       '<cbc:UBLVersionID>2.1</cbc:UBLVersionID>', '<cbc:CustomizationID>TR1.2</cbc:CustomizationID>', `<cbc:ProfileID>${profile}</cbc:ProfileID>`,
@@ -93,18 +114,18 @@
       doc.time ? `<cbc:IssueTime>${esc(doc.time)}</cbc:IssueTime>` : '', `<cbc:InvoiceTypeCode>${type}</cbc:InvoiceTypeCode>`,
       ...(doc.notes || []).filter(Boolean).map((n) => `<cbc:Note>${esc(n)}</cbc:Note>`),
       `<cbc:DocumentCurrencyCode>${cur}</cbc:DocumentCurrencyCode>`, `<cbc:LineCountNumeric>${L.length}</cbc:LineCountNumeric>`,
-      type === 'IADE' ? `<cac:BillingReference><cac:InvoiceDocumentReference><cbc:ID>${esc(doc.refundOf)}</cbc:ID><cbc:IssueDate>${esc(doc.refundDate || date)}</cbc:IssueDate><cbc:DocumentTypeCode>IADE</cbc:DocumentTypeCode></cac:InvoiceDocumentReference></cac:BillingReference>` : '',
+      base === 'IADE' ? `<cac:BillingReference><cac:InvoiceDocumentReference><cbc:ID>${esc(doc.refundOf)}</cbc:ID><cbc:IssueDate>${esc(doc.refundDate || date)}</cbc:IssueDate><cbc:DocumentTypeCode>IADE</cbc:DocumentTypeCode></cac:InvoiceDocumentReference></cac:BillingReference>` : '',
       // Görünüm şablonu: GİB örneklerindeki gibi DocumentType XSLT + Base64 gömülü dosya (alıcı faturayı bu tasarımla görür)
       doc.xslt ? `<cac:AdditionalDocumentReference><cbc:ID>${esc(u)}</cbc:ID><cbc:IssueDate>${esc(date)}</cbc:IssueDate><cbc:DocumentType>XSLT</cbc:DocumentType><cac:Attachment><cbc:EmbeddedDocumentBinaryObject characterSetCode="UTF-8" encodingCode="Base64" filename="${esc(id)}.xslt" mimeCode="application/xml">${b64(doc.xslt)}</cbc:EmbeddedDocumentBinaryObject></cac:Attachment></cac:AdditionalDocumentReference>` : '',
       `<cac:Signature><cbc:ID schemeID="VKN_TCKN">${sellerId}</cbc:ID><cac:SignatoryParty><cac:PartyIdentification><cbc:ID schemeID="${sellerId.length === 11 ? 'TCKN' : 'VKN'}">${sellerId}</cbc:ID></cac:PartyIdentification>${address(doc.seller, 'Satıcı')}</cac:SignatoryParty><cac:DigitalSignatureAttachment><cac:ExternalReference><cbc:URI>#Signature_${esc(id)}</cbc:URI></cac:ExternalReference></cac:DigitalSignatureAttachment></cac:Signature>`,
       `<cac:AccountingSupplierParty>${party(doc.seller, 'Satıcı')}</cac:AccountingSupplierParty>`,
       `<cac:AccountingCustomerParty>${party(doc.buyer, 'Alıcı')}</cac:AccountingCustomerParty>`,
       cur !== 'TRY' ? `<cac:PricingExchangeRate><cbc:SourceCurrencyCode>${cur}</cbc:SourceCurrencyCode><cbc:TargetCurrencyCode>TRY</cbc:TargetCurrencyCode><cbc:CalculationRate>${num(doc.rate, 6)}</cbc:CalculationRate></cac:PricingExchangeRate>` : '',
-      taxBlock(cur, groups),
-      `<cac:LegalMonetaryTotal><cbc:LineExtensionAmount currencyID="${cur}">${a2(net)}</cbc:LineExtensionAmount><cbc:TaxExclusiveAmount currencyID="${cur}">${a2(net)}</cbc:TaxExclusiveAmount><cbc:TaxInclusiveAmount currencyID="${cur}">${a2(gross)}</cbc:TaxInclusiveAmount><cbc:AllowanceTotalAmount currencyID="${cur}">0.00</cbc:AllowanceTotalAmount><cbc:PayableAmount currencyID="${cur}">${a2(gross)}</cbc:PayableAmount></cac:LegalMonetaryTotal>`,
-      ...L.map((l) => `<cac:InvoiceLine><cbc:ID>${l.n}</cbc:ID><cbc:InvoicedQuantity unitCode="${l.unit}">${num(l.qty, 4)}</cbc:InvoicedQuantity><cbc:LineExtensionAmount currencyID="${cur}">${a2(l.net)}</cbc:LineExtensionAmount>${taxBlock(cur, [l])}<cac:Item><cbc:Name>${esc(l.name)}</cbc:Name>${l.code ? `<cac:SellersItemIdentification><cbc:ID>${esc(l.code)}</cbc:ID></cac:SellersItemIdentification>` : ''}</cac:Item><cac:Price><cbc:PriceAmount currencyID="${cur}">${num(l.net / l.qty, 6)}</cbc:PriceAmount></cac:Price></cac:InvoiceLine>`),
+      taxBlock(cur, groups, wht), whtBlock(cur, L),
+      `<cac:LegalMonetaryTotal><cbc:LineExtensionAmount currencyID="${cur}">${a2(net)}</cbc:LineExtensionAmount><cbc:TaxExclusiveAmount currencyID="${cur}">${a2(net)}</cbc:TaxExclusiveAmount><cbc:TaxInclusiveAmount currencyID="${cur}">${a2(gross)}</cbc:TaxInclusiveAmount><cbc:AllowanceTotalAmount currencyID="${cur}">0.00</cbc:AllowanceTotalAmount><cbc:PayableAmount currencyID="${cur}">${a2(payable)}</cbc:PayableAmount></cac:LegalMonetaryTotal>`,
+      ...L.map((l) => `<cac:InvoiceLine><cbc:ID>${l.n}</cbc:ID><cbc:InvoicedQuantity unitCode="${l.unit}">${num(l.qty, 4)}</cbc:InvoicedQuantity><cbc:LineExtensionAmount currencyID="${cur}">${a2(l.net)}</cbc:LineExtensionAmount>${taxBlock(cur, [l], l.wht)}${whtBlock(cur, [l])}<cac:Item><cbc:Name>${esc(l.name)}</cbc:Name>${l.code ? `<cac:SellersItemIdentification><cbc:ID>${esc(l.code)}</cbc:ID></cac:SellersItemIdentification>` : ''}</cac:Item><cac:Price><cbc:PriceAmount currencyID="${cur}">${num(l.net / l.qty, 6)}</cbc:PriceAmount></cac:Price></cac:InvoiceLine>`),
     ].filter(Boolean).join('');
-    return { body, id, uuid: u, profile, type, totals: { net, vat, gross, currency: cur, lines: L.length } };
+    return { body, id, uuid: u, profile, type, totals: { net, vat, gross, wht, payable, currency: cur, lines: L.length } };
   }
   // Bağımsız UBL belgesi (önizleme / dosya olarak indirme / testler için)
   const wrap = (body) => `<?xml version="1.0" encoding="UTF-8"?><Invoice xmlns="urn:oasis:names:specification:ubl:schema:xsd:Invoice-2" xmlns:cac="${NS.cac}" xmlns:cbc="${NS.cbc}" xmlns:ext="${NS.ext}">${body}</Invoice>`;

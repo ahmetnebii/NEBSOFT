@@ -586,7 +586,7 @@
       }
       const seller = { id: c.vkn, name: c.title, taxOffice: c.taxOffice, street: c.street, district: c.district, city: c.city, phone: c.phone, email: c.email };
       const buyer = { id: buyerId, name: doc.buyer, taxOffice: doc.buyerTaxOffice, street: doc.address, district: doc.district, city: doc.city, email: doc.buyerEmail };
-      const b = U.build({ profile: ef ? (c.profile === 'TICARIFATURA' ? 'TICARIFATURA' : 'TEMELFATURA') : 'EARSIVFATURA', type: doc.refund ? 'IADE' : 'SATIS', refundOf: doc.refundOf, refundDate: doc.refundDate, id, date: doc.date, currency: doc.currency, rate: doc.rate, notes: [doc.note, doc.no ? 'Belge no: ' + doc.no : ''], seller, buyer, lines: doc.lines, total: doc.total, vat: doc.vat, xslt: doc.xslt });
+      const b = U.build({ profile: ef ? (c.profile === 'TICARIFATURA' && !doc.refund ? 'TICARIFATURA' : 'TEMELFATURA') : 'EARSIVFATURA', type: doc.refund ? 'IADE' : 'SATIS', refundOf: doc.refundOf, refundDate: doc.refundDate, id, date: doc.date, currency: doc.currency, rate: doc.rate, notes: [doc.note, doc.no ? 'Belge no: ' + doc.no : ''], seller, buyer, lines: doc.lines, total: doc.total, vat: doc.vat, xslt: doc.xslt });
       const r = await uyCall(c, 'SendInvoice', U.UY.sendInvoice([{ body: b.body, scenario, target: { vkn: buyerId, alias, title: doc.buyer }, delivery: 'Electronic', internet, localId: doc.no ? String(doc.no) : undefined }]));
       if (!r.ok) return fail(r.error);
       seq[key] = last + 1; setCfg('efatura', { ...cfg('efatura'), seq });
@@ -637,15 +637,20 @@
     const fail = (msg) => { log('efatura', doc.buyer || '', 'Paraşüt', 'hata', msg); toast('e-Fatura gönderilemedi: ' + msg, 'err'); return { ok: false, error: msg }; };
     try {
       if (doc.docType === 'e-İrsaliye') return fail('Paraşüt API’sinde e-İrsaliye resmileştirme uç noktası yok');
+      const dl = doc.lines || [];
+      if (dl.some((l) => l.whtCode)) return fail('Tevkifatlı fatura bu sürümde Paraşüt’e gönderilmiyor: Paraşüt API dokümanında tevkifat oranının birimi belirtilmemiş (doğrulanamadı). Uyumsoft ile gönderin veya Paraşüt panelinden kesin.');
+      const exc = [...new Set(dl.filter((l) => l.exemptionCode).map((l) => String(l.exemptionCode)))];
+      if (exc.length > 1) return fail('Paraşüt’te bir faturada tek istisna kodu kullanılabilir; farklı istisna kodlu kalemleri ayrı faturada kesin');
+      const ex = exc.length ? { vat_exemption_reason_code: exc[0], vat_exemption_reason: ['250', '350'].includes(exc[0]) ? (dl.find((l) => l.exemptionCode) || {}).exemptionReason || undefined : undefined } : {};
       const P = await prsSession(c); const inv = await prsInvoice(P, doc, { itemType: doc.refund ? 'refund' : 'invoice' });
       const ib = await P.api('GET', `/e_invoice_inboxes?filter[vkn]=${inv.tax}`); const box = ((ib.data || [])[0] || {}).attributes;
       let type, res;
-      if (box && box.e_invoice_address) { type = 'e-Fatura'; res = await P.api('POST', '/e_invoices', { data: { type: 'e_invoices', attributes: { scenario: c.scenario === 'commercial' ? 'commercial' : 'basic', to: box.e_invoice_address }, relationships: { invoice: { data: { id: inv.id, type: 'sales_invoices' } } } } }); }
+      if (box && box.e_invoice_address) { type = 'e-Fatura'; res = await P.api('POST', '/e_invoices', { data: { type: 'e_invoices', attributes: { ...ex, scenario: c.scenario === 'commercial' ? 'commercial' : 'basic', to: box.e_invoice_address }, relationships: { invoice: { data: { id: inv.id, type: 'sales_invoices' } } } } }); }
       else {
         type = 'e-Arşiv'; const it = doc.internet;
         const attrs = it ? { internet_sale: { url: it.web || c.webAddress, payment_type: it.payType, payment_platform: it.payBroker || undefined, payment_date: it.payDate || undefined }, shipment: { title: it.carrierName || c.carrierName, vkn: it.carrierVkn || c.carrierVkn, date: it.sendDate || new Date().toISOString().slice(0, 10) } } : {};
         if (it && (!attrs.internet_sale.url || !attrs.shipment.vkn || !attrs.shipment.title)) return fail('İnternet satışı e-Arşiv faturasında web adresi ve kargo firmasının VKN / unvanı zorunludur');
-        res = await P.api('POST', '/e_archives', { data: { type: 'e_archives', attributes: attrs, relationships: { sales_invoice: { data: { id: inv.id, type: 'sales_invoices' } } } } });
+        res = await P.api('POST', '/e_archives', { data: { type: 'e_archives', attributes: { ...ex, ...attrs }, relationships: { sales_invoice: { data: { id: inv.id, type: 'sales_invoices' } } } } });
       }
       await prsJob(P, res);
       log('efatura', doc.buyer || '', `${type} (Paraşüt fatura ${inv.id})`, 'gönderildi', 'Paraşüt'); toast(`${type} Paraşüt’te resmileştirildi`, 'ok');
@@ -838,15 +843,16 @@
   function normLines(doc) {
     const ls = (doc.lines && doc.lines.length ? doc.lines : [{ name: doc.desc || 'Hizmet bedeli', total: doc.total }]).map((l) => {
       const qty = Number(l.qty) || 1; const vat = l.vat !== undefined && l.vat !== '' ? Number(l.vat) : Number(doc.vatRate !== undefined ? doc.vatRate : 20);
-      const base = { name: l.name || l.desc || 'Kalem', code: l.code || l.barcode || '', qty, unit: l.unit || 'adet', vat };
+      const base = { name: l.name || l.desc || 'Kalem', code: l.code || l.barcode || '', qty, unit: l.unit || 'adet', vat, exemptionCode: l.exemptionCode || '', exemptionReason: l.exemptionReason || '', whtCode: l.whtCode || '', wht: l.whtCode ? Number(l.wht) || 0 : 0, whtName: l.whtName || '' };
+      const W = (o) => ({ ...o, whtAmt: o.whtCode && o.wht ? r2(o.vatAmt * o.wht / 10) : 0 });
       // Yalnız KDV dahil tutar verilmişse brüt korunur: KDV = brüt - matrah (kuruş kayması olmaz)
-      if (l.price === undefined || l.price === null || l.price === '') { const gross = r2(l.total); const net = r2(gross / (1 + vat / 100)); return { ...base, price: Math.round((net / qty) * 10000) / 10000, disc: 0, net, vatAmt: r2(gross - net) }; }
+      if (l.price === undefined || l.price === null || l.price === '') { const gross = r2(l.total); const net = r2(gross / (1 + vat / 100)); return W({ ...base, price: Math.round((net / qty) * 10000) / 10000, disc: 0, net, vatAmt: r2(gross - net) }); }
       const price = Number(l.price); const disc = Number(l.disc) || 0; const net = r2(qty * price * (1 - disc / 100));
-      return { ...base, price: r2(price), disc, net, vatAmt: r2(net * vat / 100) };
+      return W({ ...base, price: r2(price), disc, net, vatAmt: r2(net * vat / 100) });
     });
     return ls;
   }
-  const totals = (d) => { const net = r2(sum(d.lines, (l) => l.net !== undefined ? l.net : l.qty * l.price)); const vat = r2(sum(d.lines, (l) => l.vatAmt !== undefined ? l.vatAmt : l.qty * l.price * (l.vat || 0) / 100)); const byVat = {}; d.lines.forEach((l) => { byVat[l.vat] = r2((byVat[l.vat] || 0) + (l.vatAmt !== undefined ? l.vatAmt : l.qty * l.price * l.vat / 100)); }); return { net, vat, total: r2(net + vat), byVat }; };
+  const totals = (d) => { const net = r2(sum(d.lines, (l) => l.net !== undefined ? l.net : l.qty * l.price)); const vat = r2(sum(d.lines, (l) => l.vatAmt !== undefined ? l.vatAmt : l.qty * l.price * (l.vat || 0) / 100)); const byVat = {}; d.lines.forEach((l) => { byVat[l.vat] = r2((byVat[l.vat] || 0) + (l.vatAmt !== undefined ? l.vatAmt : l.qty * l.price * l.vat / 100)); }); const wht = r2(sum(d.lines, (l) => l.whtAmt || 0)); return { net, vat, wht, total: r2(net + vat), payable: r2(net + vat - wht), byVat }; };
   // Mükellef sorgusu: entegratör / GİB listesinden; simülasyonda VKN kontrol hanesi geçerli ve rakamlar toplamı çift olanlar mükellef sayılır
   // Mükellef sorgusu: simülasyonda (yalnızca test) VKN rakamları toplamı çift olanlar mükellef sayılır;
   // Uyumsoft'ta IsEInvoiceUser + GetUserAliasses, Paraşüt'te e_invoice_inboxes (resmî WSDL / swagger), özel API'de {action:'mukellef-sorgu'}
@@ -888,7 +894,7 @@
     }
     if (/irsaliye/i.test(type)) type = 'e-İrsaliye';
     const prefix = type === 'e-İrsaliye' ? (c.irsPrefix || 'IRS') : type === 'e-Fatura' ? (c.efPrefix || 'NEB') : (c.eaPrefix || 'EAR');
-    const rec = { id: NS.uid(), dir: 'giden', type, scenario: type === 'e-Fatura' ? (doc.scenario || c.profile || 'TICARIFATURA') : type === 'e-Arşiv' ? 'EARSIVFATURA' : 'TEMELIRSALIYE', kind: doc.kind || (doc.refund ? 'IADE' : 'SATIS'), no: nextNo(String(prefix).toUpperCase().slice(0, 3).padEnd(3, 'X')), uuid: uuid(), date: doc.date || today(), time: new Date().toTimeString().slice(0, 5),
+    const rec = { id: NS.uid(), dir: 'giden', type, scenario: type === 'e-Fatura' ? (doc.refund ? 'TEMELFATURA' : doc.scenario || c.profile || 'TICARIFATURA') : type === 'e-Arşiv' ? 'EARSIVFATURA' : 'TEMELIRSALIYE', kind: doc.kind || (doc.refund ? 'IADE' : 'SATIS'), no: nextNo(String(prefix).toUpperCase().slice(0, 3).padEnd(3, 'X')), uuid: uuid(), date: doc.date || today(), time: new Date().toTimeString().slice(0, 5),
       party: { name: doc.buyer || 'Nihai tüketici', vkn: String(doc.buyerVkn || '11111111111'), taxOffice: doc.buyerTaxOffice || '', address: doc.address || doc.buyerAddress || '', district: doc.district || '', city: doc.city || '', email: doc.buyerEmail || '' }, seller: sellerInfo(),
       currency: doc.currency || 'TRY', rate: doc.rate || 1, lines: normLines(doc), note: doc.note || '', ref: doc.no || '', refundOf: doc.refundOf || '', refundDate: doc.refundDate || '', app: appId(), plate: doc.plate || '', driver: doc.driver || '', status: 'taslak', created: new Date().toISOString(), history: [], test: c.provider === 'sim' || !!c.test };
     const tt = totals(rec); Object.assign(rec, tt);
@@ -897,7 +903,7 @@
   }
   // Kayıttan entegratör belgesi (yeniden gönderimde kaynak belge yoksa)
   const docOf = (rec) => ({ docType: rec.type, buyer: rec.party.name, buyerVkn: rec.party.vkn, buyerTaxOffice: rec.party.taxOffice, address: rec.party.address, district: rec.party.district, city: rec.party.city, buyerEmail: rec.party.email, no: rec.ref, date: rec.date, currency: rec.currency, rate: rec.rate, note: rec.note, refund: rec.kind === 'IADE', refundOf: rec.refundOf, refundDate: rec.refundDate,
-    lines: rec.lines.map((l) => ({ name: l.name, code: l.code, qty: l.qty, unit: l.unit, price: l.price, disc: l.disc, vat: l.vat, exemptionCode: l.exemptionCode, exemptionReason: l.exemptionReason })), total: rec.total, vat: rec.vat });
+    lines: rec.lines.map((l) => ({ name: l.name, code: l.code, qty: l.qty, unit: l.unit, price: l.price, disc: l.disc, vat: l.vat, exemptionCode: l.exemptionCode, exemptionReason: l.exemptionReason, whtCode: l.whtCode, wht: l.wht, whtName: l.whtName })), total: rec.total, vat: rec.vat });
   const EFATN = { uyumsoft: 'Uyumsoft', parasut: 'Paraşüt', custom: 'Özel API', logo: 'Logo e-Dönüşüm', sovos: 'Sovos', mysoft: 'Mysoft', edm: 'EDM' };
   async function send(rec, src) {
     const c = I.cfg('efatura'); const hist = (st, note) => { rec.history.push({ at: new Date().toISOString(), st, note, user: NS.currentUser ? NS.currentUser.name : '' }); };
@@ -916,7 +922,7 @@
         if (!r.ok) { rec.status = 'hata'; hist('hata', r.error || 'Gönderilemedi'); }
         else {
           Object.assign(rec, { type: r.type || rec.type, no: r.no || rec.no, uuid: r.uuid || rec.uuid, provider: c.provider, providerId: r.providerId || r.parasutId || '', xml: r.xml || rec.xml });
-          rec.scenario = rec.type === 'e-Arşiv' ? 'EARSIVFATURA' : (c.profile === 'TICARIFATURA' || c.scenario === 'commercial' ? 'TICARIFATURA' : 'TEMELFATURA');
+          rec.scenario = rec.type === 'e-Arşiv' ? 'EARSIVFATURA' : ((c.profile === 'TICARIFATURA' || c.scenario === 'commercial') && rec.kind !== 'IADE' ? 'TICARIFATURA' : 'TEMELFATURA');
           rec.status = 'gonderildi'; hist('gonderildi', `${pname} kabul etti${rec.providerId ? ' · ' + rec.providerId : ''}`);
         }
       }
@@ -944,7 +950,7 @@
     const sup = d.dir === 'gelen' ? d.party : me; const cus = d.dir === 'gelen' ? me : d.party;
     const P = (p) => ({ id: p.vkn, name: p.name, taxOffice: p.taxOffice, street: p.address, district: p.district, city: p.city, email: p.email, phone: p.phone });
     return U.xml({ profile: d.scenario, type: d.kind === 'IADE' ? 'IADE' : 'SATIS', refundOf: d.refundOf, refundDate: d.refundDate, id: d.no, uuid: d.uuid, date: d.date, time: d.time ? d.time + ':00' : undefined, currency: d.currency, rate: d.rate, notes: [d.note, d.ref ? 'Belge no: ' + d.ref : ''], seller: P(sup), buyer: P(cus), xslt: xslt || undefined,
-      lines: d.lines.map((l) => ({ name: l.name, code: l.code, qty: l.qty, unit: l.unit, price: l.price, disc: l.disc, vat: l.vat, exemptionCode: l.exemptionCode, exemptionReason: l.exemptionReason })) }).xml;
+      lines: d.lines.map((l) => ({ name: l.name, code: l.code, qty: l.qty, unit: l.unit, price: l.price, disc: l.disc, vat: l.vat, exemptionCode: l.exemptionCode, exemptionReason: l.exemptionReason, whtCode: l.whtCode, wht: l.wht, whtName: l.whtName })) }).xml;
   }
   function html(d) {
     const sup = d.dir === 'gelen' ? d.party : d.seller || sellerInfo(); const cus = d.dir === 'gelen' ? sellerInfo() : d.party;

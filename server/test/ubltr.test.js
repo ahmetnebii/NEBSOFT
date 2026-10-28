@@ -10,7 +10,7 @@ let n = 0; const ok = (m) => { n++; console.log('✓ ' + m); };
   assert.strictEqual(U.makeId('neb', 2026, 42), 'NEB2026000000042'); assert.ok(U.idOk('NEB2026000000042') && !U.idOk('NEB26000000042') && !U.idOk('ne2026000000042')); ok('Fatura no GİB biçimi: 3 karakter + yıl + 9 hane (16)');
   // Karışık satır biçimleri: KDV hariç fiyat + iskonto, KDV dahil toplam; KDV oranına göre gruplama
   let b = U.build({ profile: 'TICARIFATURA', id: 'NEB2026000000001', date: '2026-10-28', seller, buyer: { ...A, id: '9876543210', name: 'Alıcı Ltd.' }, lines: [{ name: 'Süt', qty: 3, price: 30, vat: 1 }, { name: 'Deterjan', qty: 2, price: 50, disc: 10, vat: 20 }, { name: 'Sabun', total: 24, vat: 20 }] });
-  assert.deepStrictEqual(b.totals, { net: 200, vat: 22.9, gross: 222.9, currency: 'TRY', lines: 3 });
+  assert.deepStrictEqual(b.totals, { net: 200, vat: 22.9, gross: 222.9, wht: 0, payable: 222.9, currency: 'TRY', lines: 3 });
   assert.match(b.body, /<cbc:UBLVersionID>2\.1<\/cbc:UBLVersionID><cbc:CustomizationID>TR1\.2<\/cbc:CustomizationID><cbc:ProfileID>TICARIFATURA<\/cbc:ProfileID>/);
   assert.strictEqual((b.body.match(/<cac:TaxSubtotal>/g) || []).length, 2 + 3); ok('Toplamlar: KDV hariç 200,00 + KDV 22,90 = 222,90; %1 ve %20 ayrı alt toplam');
   assert.match(b.body, /<cbc:ID schemeID="VKN_TCKN">1234567801<\/cbc:ID>/); assert.match(b.body, /<cbc:URI>#Signature_NEB2026000000001<\/cbc:URI>/); assert.match(b.body, /schemeID="VKN">9876543210<\/cbc:ID><\/cac:PartyIdentification><cac:PartyName>/); ok('İmza bilgisi (VKN_TCKN, #Signature_) ve VKN’li alıcıda unvan');
@@ -40,6 +40,20 @@ let n = 0; const ok = (m) => { n++; console.log('✓ ' + m); };
   assert.strictEqual(U.UY.cancelEArchive('abc', '2026-10-28T10:00:00Z'), '<CancelEArchiveInvoice xmlns="http://tempuri.org/"><request InvoiceId="abc" CancelDate="2026-10-28T10:00:00Z"/></CancelEArchiveInvoice>');
   assert.deepStrictEqual(['Approved', 'Declined', 'WaitingForAprovement', 'SentToGib', 'EArchivedCanceled', 'Error', 'Queued', 'Bilinmeyen'].map((s) => U.UY.status(s, false)), ['kabul', 'red', 'yanit-bekliyor', 'gonderildi', 'iptal', 'hata', 'kuyrukta', '']);
   assert.strictEqual(U.UY.status('SentToGib', true), 'raporlandi'); ok('Uyumsoft: e-Arşiv iptal zarfı ve durum eşlemesi (WSDL InvoiceStatus listesi)');
+  // Tevkifat (GİB YTB_Tevkıfat_Efatura.xml yapısı): TaxTotal = KDV − tevkifat, WithholdingTaxTotal (TaxableAmount = KDV, Percent = pay×10), Payable = brüt − tevkifat
+  b = U.build({ id: 'NEB2026000000012', seller, buyer: { ...A, id: '9876543210', name: 'A' }, lines: [{ name: 'Bahçe bakımı', qty: 15, price: 15, vat: 10, wht: 9, whtCode: '613', whtName: 'Çevre ve Bahçe Bakım Hizmetleri' }] });
+  assert.strictEqual(b.type, 'TEVKIFAT'); assert.deepStrictEqual([b.totals.net, b.totals.vat, b.totals.wht, b.totals.gross, b.totals.payable], [225, 22.5, 20.25, 247.5, 227.25]);
+  assert.match(b.body, /<cac:TaxTotal><cbc:TaxAmount currencyID="TRY">2\.25<\/cbc:TaxAmount><cac:TaxSubtotal><cbc:TaxableAmount currencyID="TRY">225\.00<\/cbc:TaxableAmount><cbc:TaxAmount currencyID="TRY">22\.50<\/cbc:TaxAmount>/);
+  assert.match(b.body, /<cac:WithholdingTaxTotal><cbc:TaxAmount currencyID="TRY">20\.25<\/cbc:TaxAmount><cac:TaxSubtotal><cbc:TaxableAmount currencyID="TRY">22\.50<\/cbc:TaxableAmount><cbc:TaxAmount currencyID="TRY">20\.25<\/cbc:TaxAmount><cbc:Percent>90<\/cbc:Percent><cac:TaxCategory><cac:TaxScheme><cbc:Name>Çevre ve Bahçe Bakım Hizmetleri<\/cbc:Name><cbc:TaxTypeCode>613<\/cbc:TaxTypeCode>/);
+  assert.match(b.body, /<cbc:PayableAmount currencyID="TRY">227\.25<\/cbc:PayableAmount>/); assert.strictEqual((b.body.match(/<cac:WithholdingTaxTotal>/g) || []).length, 2);
+  ok('Tevkifatlı fatura: GİB 2026 örneğiyle aynı tutarlar (225 + 22,50 KDV, 9/10 tevkifat 20,25 → ödenecek 227,25)');
+  const T = (lines, extra = {}) => U.build({ id: 'NEB2026000000013', seller, buyer: { ...A, id: '9876543210', name: 'A' }, lines, ...extra }).type;
+  assert.strictEqual(T([{ name: 'İhracat', qty: 1, price: 100, vat: 0, exemptionCode: '301', exemptionReason: '11/1-a Mal ihracatı' }]), 'ISTISNA');
+  assert.strictEqual(T([{ name: 'Yansıtma', qty: 1, price: 100, vat: 0, exemptionCode: '351', exemptionReason: 'KDV - İstisna Olmayan Diğer' }]), 'SATIS');
+  assert.strictEqual(T([{ name: 'İade', qty: 1, price: 100, vat: 20, wht: 5, whtCode: '604' }], { type: 'IADE', refundOf: 'NEB2026000000001' }), 'TEVKIFATIADE');
+  assert.throws(() => T([{ name: 'a', qty: 1, price: 1, vat: 20, wht: 5, whtCode: '604' }, { name: 'b', qty: 1, price: 1, vat: 0, exemptionCode: '301' }]), /birlikte/);
+  assert.throws(() => T([{ name: 'a', qty: 1, price: 1, vat: 20, wht: 12, whtCode: '604' }]), /tevkifat oranı/);
+  ok('Fatura tipi kalemlerden: istisna → ISTISNA, 351 → SATIS, iade + tevkifat → TEVKIFATIADE; karışık kullanım reddedilir');
   if (process.env.UYUMSOFT_LIVE) {
     const call = async (op, inner) => { const r = await fetch(U.UY.url(true), { method: 'POST', headers: { 'Content-Type': 'text/xml; charset=utf-8', SOAPAction: `"${U.UY.action(op)}"` }, body: U.UY.envelope('nebsoft-test-yok', 'yanlis', inner) }); return U.UY.parse(await r.text()); };
     let r = await call('GetSystemDate', U.UY.systemDate()); assert.ok(r.fault && /yetkiniz yok/i.test(r.error), JSON.stringify(r)); ok('Uyumsoft test sunucusu: GetSystemDate → sahte kullanıcıya yetki hatası');
