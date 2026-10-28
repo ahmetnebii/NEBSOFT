@@ -6,6 +6,12 @@
       "runtimeExecutable": "node",
       "runtimeArgs": ["server.js"],
       "port": 5050
+    },
+    {
+      "name": "profesyonel",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["-e", "process.env.PORT='5066';require('./server.js')"],
+      "port": 5066
     }
   ]
 }
