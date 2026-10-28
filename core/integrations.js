@@ -982,6 +982,8 @@
   // Bu yüzden dönüşüm her zaman Chrome ekibinin libxslt/WASM polyfill'iyle yapılır (core/vendor, BSD-3, sürüm 1.0.31).
   let xpP = null;
   const xsltReady = () => xpP || (xpP = new Promise((ok, no) => { if (window.xsltPolyfillReady) return ok(); const sc = document.createElement('script'); sc.src = BASE + 'vendor/xslt-polyfill-1.0.31/xslt-polyfill.min.js'; sc.charset = 'utf-8'; sc.onload = ok; sc.onerror = () => { xpP = null; no(new Error('XSLT motoru yüklenemedi')); }; window.xsltDontAutoloadXmlDocs = true; document.head.appendChild(sc); }).then(() => (window.xsltPolyfillReady ? window.xsltPolyfillReady() : null)));
+  // Not: GİB general.xslt version="2.0" yazar; libxslt bunu ileri uyumlu modda çalıştırıp konsola "only 1.1 features" bilgisini basar.
+  // 1.0'a çevrilirse şablondaki xsl:character-map hata verir; bu yüzden sürüm değiştirilmez.
   async function transform(xml, xsl) {
     await xsltReady();
     if (typeof XSLTProcessor === 'undefined') throw new Error('XSLT motoru kullanılamıyor');
@@ -1090,7 +1092,7 @@
     const docs = () => store.all('docs').filter((d) => (tab === 'giden' ? d.dir === 'giden' : d.dir === 'gelen'));
     const mo = today().slice(0, 7); const out = store.all('docs').filter((d) => d.dir === 'giden' && d.date.slice(0, 7) === mo && d.status !== 'iptal');
     const imp = importer;
-    el.innerHTML = pageHead('e-Belgeler', 'e-Fatura, e-Arşiv ve e-İrsaliye giden / gelen kutusu — tüm NEBSOFT ürünlerinde ortak', `<button class="btn" id="eb-q">${icon('search')} Mükellef sorgula</button><button class="btn" id="eb-in">${icon('download')} Gelen belgeleri al</button><button class="btn" id="eb-bulk">${icon('refresh')} Durumları güncelle</button><button class="btn primary" id="eb-new">${icon('plus')} Manuel e-Arşiv</button>`) + `
+    el.innerHTML = pageHead('e-Belgeler', 'e-Fatura, e-Arşiv ve e-İrsaliye giden / gelen kutusu — tüm NEBSOFT ürünlerinde ortak', `<button class="btn" id="eb-q">${icon('search')} Mükellef sorgula</button><button class="btn" id="eb-in">${icon('download')} Gelen belgeleri al</button><button class="btn" id="eb-bulk">${icon('refresh')} Durumları güncelle</button><button class="btn" id="eb-zip">${icon('download')} Arşivi indir</button><button class="btn primary" id="eb-new">${icon('plus')} Manuel e-Arşiv</button>`) + `
       <div class="grid g4 mb">${kpi('Bu ay giden', out.length, 'send', 'info', `<div class="small faint">${money(sum(out, (d) => d.total * (d.rate || 1)))}</div>`)}${kpi('e-Fatura / e-Arşiv', `${out.filter((d) => d.type === 'e-Fatura').length} / ${out.filter((d) => d.type === 'e-Arşiv').length}`, 'file')}${kpi('Yanıt bekleyen gelen', store.all('docs').filter((d) => d.dir === 'gelen' && d.status === 'yanit-bekliyor').length, 'clock', 'warn')}${kpi('Hatalı / kuyrukta', store.all('docs').filter((d) => ['hata', 'kuyrukta'].includes(d.status)).length, 'alert', 'err')}</div>
       <div class="tabs">${[['giden', 'Giden kutusu'], ['gelen', 'Gelen kutusu'], ['mukellef', 'Mükellef listesi'], ['tasarim', 'Fatura görünümü']].map(([k, l]) => `<a href="#/ebelge/${k}"><button class="${k === tab ? 'active' : ''}">${l}</button></a>`).join('')}</div>
       <div class="card"><div class="card-h">${NS.searchBox('ebq', 'Belge no, ünvan, VKN, ETTN...')}${tab !== 'mukellef' ? `<select class="input" id="ebt" style="max-width:160px"><option value="">Tüm türler</option><option>e-Fatura</option><option>e-Arşiv</option><option>e-İrsaliye</option></select><select class="input" id="ebs" style="max-width:170px"><option value="">Tüm durumlar</option>${Object.entries(ST).map(([k, v]) => `<option value="${k}">${v[0]}</option>`).join('')}</select>` : ''}<span class="grow"></span><button class="btn sm" id="ebx">${icon('download')}</button></div><div id="ebl"></div></div>`;
@@ -1115,6 +1117,23 @@
       store.data._meta.inSince = new Date().toISOString(); store.save(); toast(`${n} yeni gelen belge`, n ? 'ok' : ''); app.refresh();
     };
     $('#eb-bulk', el).onclick = async () => { const ds = store.all('docs').filter((d) => d.dir === 'giden' && ['gonderildi', 'yanit-bekliyor', 'kuyrukta'].includes(d.status)); let n = 0, bad = ''; for (const d of ds) { const r = await query(d, { silent: true }); if (r.ok) n++; else bad = r.error; } toast(`${n} / ${ds.length} belgenin durumu güncellendi${bad ? ' · ' + bad : ''}`, n === ds.length ? 'ok' : 'warn'); app.refresh(); };
+    // Toplu arşiv: seçilen dönemdeki belgelerin UBL-TR XML'leri (+ isteğe bağlı resmî görünüm HTML) ve dizin tablosu tek ZIP'te
+    $('#eb-zip', el).onclick = async () => {
+      const v = await formModal({ title: 'e-Belge arşivini indir', fields: [{ name: 'from', label: 'Başlangıç', type: 'date', value: today().slice(0, 4) + '-01-01' }, { name: 'to', label: 'Bitiş', type: 'date', value: today() }, { name: 'dir', label: 'Belgeler', type: 'select', options: [{ value: '', label: 'Giden + gelen' }, { value: 'giden', label: 'Yalnızca giden' }, { value: 'gelen', label: 'Yalnızca gelen' }] }, { name: 'html', label: 'Resmî görünümü (HTML) de ekle', type: 'checkbox' }, { name: 'test', label: 'Test (simülasyon) belgelerini de ekle', type: 'checkbox' }] });
+      if (!v) return; store.load();
+      const list = store.all('docs').filter((d) => d.date >= v.from && d.date <= v.to && (!v.dir || d.dir === v.dir) && (v.test || d.status !== 'test'));
+      if (!list.length) return toast('Bu aralıkta belge yok', 'warn');
+      toast(`${list.length} belge hazırlanıyor…`); const files = []; const skip = [];
+      for (const d of list) {
+        const base = `${d.dir}/${d.date.slice(0, 7)}/${d.no}`;
+        try { files.push({ name: base + '.xml', data: await ublXml(d) }); if (v.html) files.push({ name: base + '.html', data: await visualHtml(d) }); } catch (e) { skip.push(`${d.no}: ${e.message}`); }
+      }
+      const csv = ['Yön;Tarih;Belge no;Tür;Senaryo;ETTN;Ünvan;VKN/TCKN;Matrah;KDV;Toplam;Durum', ...list.map((d) => [d.dir, d.date, d.no, d.type, d.scenario, d.uuid, d.party.name, d.party.vkn, d.net, d.vat, d.total, ST[d.status][0]].map((x) => `"${String(x == null ? '' : x).replace(/"/g, '""')}"`).join(';'))].join('\r\n');
+      files.push({ name: 'dizin.csv', data: '\ufeff' + csv }); if (skip.length) files.push({ name: 'atlananlar.txt', data: skip.join('\r\n') });
+      const a = document.createElement('a'); a.href = URL.createObjectURL(NS.zip(files)); a.download = `e-belge-arsivi-${v.from}-${v.to}.zip`; a.click();
+      I.log('efatura', '', `Arşiv indirildi: ${list.length} belge`, 'tamam', `${v.from} – ${v.to}`);
+      toast(`${list.length - skip.length} belge indirildi${skip.length ? ` · ${skip.length} belge atlandı (dosyada nedeni yazıyor)` : ''}`, skip.length ? 'warn' : 'ok');
+    };
     $('#eb-new', el).onclick = async () => {
       const v = await formModal({ title: 'Manuel e-Arşiv / e-Fatura', size: 'wide', fields: [{ name: 'buyer', label: 'Alıcı ünvan / ad soyad', required: true, full: true }, { name: 'buyerVkn', label: 'VKN / TCKN', value: '11111111111' }, { name: 'buyerEmail', label: 'E-posta', type: 'email' }, { name: 'address', label: 'Adres', full: true }, { name: 'desc', label: 'Mal / hizmet', required: true, full: true }, { name: 'qty', label: 'Miktar', type: 'number', value: 1 }, { name: 'price', label: 'Birim fiyat (KDV hariç ₺)', type: 'number', step: '0.01', required: true }, { name: 'vat', label: 'KDV %', type: 'select', options: ['20', '10', '1', '0'] }, { name: 'note', label: 'Not', full: true }] });
       if (!v) return; await create({ docType: 'auto', buyer: v.buyer, buyerVkn: v.buyerVkn, buyerEmail: v.buyerEmail, address: v.address, note: v.note, lines: [{ name: v.desc, qty: v.qty || 1, price: v.price, vat: Number(v.vat) }] }); app.refresh();

@@ -61,7 +61,35 @@
   const invTotals = (inv) => window.MUHCALC.totals(inv);
   const lineNet = (l) => window.MUHCALC.line(l).net;
   const db = new NS.DB('muhasebe', seed);
+  // ---------- İşlem geçmişi: kayıt ekleme / değiştirme / silme kim tarafından, ne zaman, neyi değiştirerek yapıldı ----------
+  const AUD = { invoices: 'Fatura', caris: 'Cari', txns: 'Kasa/banka hareketi', items: 'Stok kartı', cheques: 'Çek/senet', quotes: 'Teklif', orders: 'Sipariş', dispatches: 'İrsaliye', accounts: 'Hesap', depots: 'Depo', users: 'Kullanıcı' };
+  const FLD = { date: 'tarih', due: 'vade', cari: 'cari', lines: 'kalemler', note: 'not', currency: 'para birimi', rate: 'kur', amount: 'tutar', name: 'ad', taxNo: 'VKN', taxOffice: 'vergi dairesi', address: 'adres', district: 'ilçe', city: 'il', phone: 'telefon', email: 'e-posta', price: 'fiyat', buy: 'alış fiyatı', vat: 'KDV', active: 'durum', role: 'rol', pin: 'PIN', status: 'durum', account: 'hesap', term: 'vade günü' };
+  const audLabel = (r) => (r ? r.no || r.name || r.desc || r.id : '');
+  ['insert', 'update', 'remove'].forEach((fn) => {
+    const orig = db[fn].bind(db);
+    db[fn] = (col, a, b) => {
+      if (!AUD[col]) return orig(col, a, b);
+      const before = fn === 'insert' ? null : JSON.parse(JSON.stringify(db.get(col, a) || null));
+      const out = orig(col, a, b); const after = fn === 'remove' ? null : fn === 'insert' ? out : db.get(col, a);
+      const ch = fn === 'update' && before && after ? Object.keys(FLD).filter((k) => JSON.stringify(before[k]) !== JSON.stringify(after[k])).map((k) => (k === 'pin' ? 'PIN' : FLD[k])) : [];
+      if (fn !== 'update' || ch.length) { db.log(`${AUD[col]} ${fn === 'insert' ? 'eklendi' : fn === 'update' ? 'değiştirildi' : 'silindi'}`, `${audLabel(after || before)}${ch.length ? ' · ' + ch.join(', ') : ''}`); if (!(fn === 'insert' && b)) db.save(); }
+      return out;
+    };
+  });
+  function auditPage(el) {
+    let q = '', who = '', from = iso(addDays(new Date(), -30)), to = today();
+    const users = [...new Set(db.all('_log').map((l) => l.user).filter(Boolean))];
+    el.innerHTML = pageHead('İşlem geçmişi', 'Kim, ne zaman, neyi ekledi / değiştirdi / sildi — son 5.000 işlem', `<button class="btn" id="ax">${icon('download')} Excel (CSV)</button>`) + `
+      <div class="card"><div class="card-h row wrap" style="gap:8px">${NS.searchBox('aq', 'İşlem, belge no, cari...')}<select class="input" id="au" style="max-width:200px"><option value="">Tüm kullanıcılar</option>${users.map((u) => `<option>${esc(u)}</option>`).join('')}</select><input class="input" type="date" id="af" value="${from}" style="max-width:160px"><input class="input" type="date" id="at" value="${to}" style="max-width:160px"></div><div id="al"></div></div>`;
+    const rows = () => db.all('_log', (l) => (!who || l.user === who) && l.at.slice(0, 10) >= from && l.at.slice(0, 10) <= to && NS.match(q, l.action, l.detail, l.user));
+    const draw = () => { $('#al', el).innerHTML = table({ rows: rows().slice(0, 1000), empty: 'Bu aralıkta işlem yok', columns: [{ label: 'Zaman', render: (l) => NS.dt(l.at) }, { label: 'Kullanıcı', render: (l) => esc(l.user || '') }, { label: 'İşlem', render: (l) => `<b>${esc(l.action)}</b>` }, { label: 'Ayrıntı', render: (l) => `<span class="small">${esc(l.detail || '')}</span>` }] }); };
+    $('#aq', el).oninput = (e) => { q = e.target.value; draw(); }; $('#au', el).onchange = (e) => { who = e.target.value; draw(); };
+    $('#af', el).onchange = (e) => { from = e.target.value; draw(); }; $('#at', el).onchange = (e) => { to = e.target.value; draw(); };
+    $('#ax', el).onclick = () => NS.csv('islem-gecmisi', rows(), [{ key: 'at', label: 'Zaman' }, { key: 'user', label: 'Kullanıcı' }, { key: 'action', label: 'İşlem' }, { key: 'detail', label: 'Ayrıntı' }]);
+    draw();
+  }
   const S = () => db.settings({});
+  window.MUHAKTAR.init({ db, isStock: (i) => isStock(i), depots: () => depots() });
   window.MUHBEYAN.init({ db, invTotals, cari: (id) => db.get('caris', id) || { name: '-' }, cariBalance: (id) => cariBalance(id), S });
   const cari = (id) => db.get('caris', id) || { name: '-' };
   const acc = (id) => db.get('accounts', id) || { name: '-' };
@@ -73,7 +101,8 @@
     const inv = db.all('invoices', (i) => i.cari === id);
     const sales = sum(inv.filter((i) => i.kind === 'satis'), (i) => invTotals(i).tl), buys = sum(inv.filter((i) => i.kind === 'alis'), (i) => invTotals(i).tl);
     const tx = db.all('txns', (t) => t.cari === id);
-    return r2(sales - buys - sum(tx.filter((t) => t.type === 'tahsilat'), (t) => t.amount) + sum(tx.filter((t) => t.type === 'odeme'), (t) => t.amount));
+    // Açılış bakiyesi (içe aktarımdan): + cari bize borçlu, − biz cariye borçluyuz
+    return r2((Number(cari(id).opening) || 0) + sales - buys - sum(tx.filter((t) => t.type === 'tahsilat'), (t) => t.amount) + sum(tx.filter((t) => t.type === 'odeme'), (t) => t.amount));
   }
   function accBalance(id) {
     const a = acc(id); const tx = db.all('txns');
@@ -163,7 +192,7 @@
           if (T.dir < 0 && !(doc.dispatches || []).length && !S().allowNegative) { const short = doc.lines.find((l) => { const it = l.item && db.get('items', l.item); return it && isStock(it) && stockOf(it.id, doc.depot) + (rec ? stockOfRef(rec.id, it.id) : 0) < l.qty; }); if (short) return toast(`${short.name}: depoda yeterli stok yok (Ayarlar > eksi stoğa izin ver)`, 'err'); }
           let saved;
           if (rec) { db.update(T.col, rec.id, doc); saved = db.get(T.col, rec.id); }
-          else { const px = doc.iade ? (kind === 'satis' ? 'AIF' : 'SIF') : T.prefix; doc.no = px + new Date().getFullYear() + String(db.nextNo(px)).padStart(6, '0'); if (isQuote) doc.status = 'taslak'; if (T.col === 'orders') doc.status = 'acik'; saved = db.insert(T.col, doc); db.log(T.title, `${doc.no} · ${cari(doc.cari).name} · ${money(invTotals(doc).tl)}`); if (NS.integ) NS.integ.emit(T.col === 'orders' ? 'siparis' : T.col === 'invoices' ? 'fatura' : 'teklif', { no: doc.no, kind, total: invTotals(doc).tl }); }
+          else { const px = doc.iade ? (kind === 'satis' ? 'AIF' : 'SIF') : T.prefix; doc.no = px + new Date().getFullYear() + String(db.nextNo(px)).padStart(6, '0'); if (isQuote) doc.status = 'taslak'; if (T.col === 'orders') doc.status = 'acik'; saved = db.insert(T.col, doc); db.log(doc.iade ? docLabel(doc) : T.title, `${doc.no} · ${cari(doc.cari).name} · ${money(invTotals(doc).tl)}`); if (NS.integ) NS.integ.emit(T.col === 'orders' ? 'siparis' : T.col === 'invoices' ? 'fatura' : 'teklif', { no: doc.no, kind, total: invTotals(doc).tl }); }
           if (T.col === 'invoices' && !(saved.dispatches || []).length) syncMoves('fatura', saved, T.dir);
           close(); toast('Kaydedildi', 'ok'); app.refresh();
           // Ayar açıksa yeni satış faturası kaydedilir kaydedilmez e-Fatura / e-Arşiv olarak kesilir
@@ -220,8 +249,8 @@
     const mo = today().slice(0, 7);
     const sales = db.all('invoices', (i) => isSale(i) && i.date.slice(0, 7) === mo);
     const months = Array.from({ length: 6 }, (_, i) => { const d = new Date(); d.setDate(1); d.setMonth(d.getMonth() - 5 + i); return iso(d).slice(0, 7); });
-    const inc = months.map((m) => sum(db.all('invoices', (i) => isSale(i) && i.date.slice(0, 7) === m), (i) => invTotals(i).net) - sum(db.all('invoices', (i) => i.iade && i.kind === 'alis' && i.date.slice(0, 7) === m), (i) => invTotals(i).net) + sum(db.all('txns', (t) => t.type === 'gelir' && t.date.slice(0, 7) === m), (t) => t.amount));
-    const exp = months.map((m) => sum(db.all('invoices', (i) => isBuy(i) && i.date.slice(0, 7) === m), (i) => invTotals(i).net) - sum(db.all('invoices', (i) => i.iade && i.kind === 'satis' && i.date.slice(0, 7) === m), (i) => invTotals(i).net) + sum(db.all('txns', (t) => t.type === 'gider' && t.date.slice(0, 7) === m), (t) => t.amount));
+    const inc = months.map((m) => sum(db.all('invoices', (i) => isSale(i) && i.date.slice(0, 7) === m), tlNet) - sum(db.all('invoices', (i) => i.iade && i.kind === 'alis' && i.date.slice(0, 7) === m), tlNet) + sum(db.all('txns', (t) => t.type === 'gelir' && t.date.slice(0, 7) === m), (t) => t.amount));
+    const exp = months.map((m) => sum(db.all('invoices', (i) => isBuy(i) && i.date.slice(0, 7) === m), tlNet) - sum(db.all('invoices', (i) => i.iade && i.kind === 'satis' && i.date.slice(0, 7) === m), tlNet) + sum(db.all('txns', (t) => t.type === 'gider' && t.date.slice(0, 7) === m), (t) => t.amount));
     const overdue = db.all('invoices', (i) => isSale(i) && invStatus(i) === 'gecikti');
     const upcoming = db.all('invoices', (i) => isBuy(i) && ['acik', 'kismi'].includes(invStatus(i)) && i.due <= iso(addDays(new Date(), 15)));
     el.innerHTML = pageHead('Finansal Özet', NS.dateLong(new Date()), `<button class="btn" data-n="alis">${icon('plus')} Alış faturası</button><button class="btn primary" data-n="satis">${icon('plus')} Satış faturası</button>`) + `
@@ -249,6 +278,7 @@
     const locked = (i) => { const d = i.ebelge && i.ebelge.id && NS.ebelge ? NS.ebelge.byId(i.ebelge.id) : null; return d && d.dir === 'giden' && !['iptal', 'hata'].includes(d.status) ? d : null; };
     on(el, 'click', '[data-act]', async (e, b) => {
       const i = db.get('invoices', b.dataset.id);
+      if (b.dataset.act === 'del' && !app.can('muhasebe')) return toast('Fatura silme yetkiniz yok (Muhasebe veya Yönetici)', 'err');
       if ((b.dataset.act === 'edit' || b.dataset.act === 'del') && locked(i)) { const d = locked(i); if (await confirm(`${i.no} için ${d.type} ${d.no} kesilmiş. Fatura değiştirilemez; e-Belgeyi iptal edip yeniden kesmeniz gerekir. e-Belgeler ekranına gidilsin mi?`, { ok: 'e-Belgelere git', danger: false, title: 'Kilitli fatura' })) app.go('ebelge', 'giden'); return; }
       if (b.dataset.act === 'print') { if (i.ebelge && i.ebelge.id && NS.ebelge && NS.ebelge.byId(i.ebelge.id)) NS.ebelge.view(i.ebelge.id); else printDoc(i); }
       else if (b.dataset.act === 'edit') docEditor(app, i.kind, i);
@@ -282,14 +312,31 @@
       col: 'caris', title: 'Cari Hesaplar', sub: 'Müşteri ve tedarikçi bakiyeleri', single: 'Cari', addLabel: 'Yeni cari', emptyIcon: 'building',
       fields: [{ name: 'name', label: 'Ünvan', required: true, full: true }, { name: 'type', label: 'Tür', type: 'select', options: [{ value: 'musteri', label: 'Müşteri' }, { value: 'tedarikci', label: 'Tedarikçi' }, { value: 'ikisi', label: 'Müşteri + Tedarikçi' }] }, { name: 'term', label: 'Vade (gün)', type: 'number', value: 30 }, { name: 'taxNo', label: 'VKN / TCKN' }, { name: 'taxOffice', label: 'Vergi dairesi' }, { name: 'phone', label: 'Telefon' }, { name: 'email', label: 'E-posta', type: 'email' }, { name: 'address', label: 'Adres (cadde, sokak, no)', full: true }, { name: 'district', label: 'İlçe' }, { name: 'city', label: 'İl' }],
       sort: (a, b) => a.name.localeCompare(b.name, 'tr'), searchFields: (c) => [c.name, c.taxNo, c.phone],
-      filters: [{ value: 'all', label: 'Tümü' }, { value: 'm', label: 'Müşteriler', test: (c) => c.type !== 'tedarikci' }, { value: 't', label: 'Tedarikçiler', test: (c) => c.type !== 'musteri' }, { value: 'b', label: 'Bakiyesi olan', test: (c) => Math.abs(cariBalance(c.id)) > 0.01 }],
-      columns: [{ key: 'name', label: 'Cari', render: (c) => `<a href="#/cariler/${c.id}" style="color:inherit"><b>${esc(c.name)}</b></a><div class="small faint">${esc(c.taxNo || '')}</div>` }, { label: 'Tür', render: (c) => badge({ musteri: 'Müşteri', tedarikci: 'Tedarikçi', ikisi: 'Her ikisi' }[c.type], c.type === 'musteri' ? 'ok' : 'info') }, { key: 'term', label: 'Vade', render: (c) => (c.term || 0) + ' gün' }, { label: 'Bakiye', cls: 'right', render: (c) => { const b = cariBalance(c.id); return b > 0.01 ? `<b style="color:var(--ok)">${money(b)} (A)</b>` : b < -0.01 ? `<b style="color:var(--err)">${money(-b)} (B)</b>` : '<span class="faint">0</span>'; } }],
+      filters: [{ value: 'all', label: 'Tümü' }, { value: 'm', label: 'Müşteriler', test: (c) => c.type !== 'tedarikci' }, { value: 't', label: 'Tedarikçiler', test: (c) => c.type !== 'musteri' }, { value: 'b', label: 'Bakiyesi olan', test: (c) => Math.abs(cariBalance(c.id)) > 0.01 }, { value: 'e', label: 'e-Belge bilgisi eksik', test: (c) => !!eMissing(c) }],
+      columns: [{ key: 'name', label: 'Cari', render: (c) => `<a href="#/cariler/${c.id}" style="color:inherit"><b>${esc(c.name)}</b></a><div class="small faint">${esc(c.taxNo || '')}</div>${eMissing(c) ? `<div class="small" style="color:var(--warn)">${esc(eMissing(c))}</div>` : ''}` }, { label: 'Tür', render: (c) => badge({ musteri: 'Müşteri', tedarikci: 'Tedarikçi', ikisi: 'Her ikisi' }[c.type], c.type === 'musteri' ? 'ok' : 'info') }, { key: 'term', label: 'Vade', render: (c) => (c.term || 0) + ' gün' }, { label: 'Bakiye', cls: 'right', render: (c) => { const b = cariBalance(c.id); return b > 0.01 ? `<b style="color:var(--ok)">${money(b)} (A)</b>` : b < -0.01 ? `<b style="color:var(--err)">${money(-b)} (B)</b>` : '<span class="faint">0</span>'; } }],
       extraActions: [{ icon: 'file', act: 'ext', title: 'Ekstre' }], onAction: (a, c) => app.go('cariler', c.id),
     });
+    // e-Fatura / e-Arşiv için eksik bilgi uyarısı ve toplu tamamlama (GİB UBL-TR: adreste ilçe ve il zorunlu)
+    { const r = el.querySelector('.page-h .row'); if (r && app.can('muhasebe')) { r.insertAdjacentHTML('afterbegin', `<button class="btn" id="imp">${icon('upload')} İçe aktar</button>`); $('#imp', el).onclick = () => window.MUHAKTAR.open(app, 'cari'); } }
+    const miss = db.all('caris', (c) => eMissing(c));
+    if (miss.length) {
+      const h = el.querySelector('.page-h') || el.firstElementChild;
+      h.insertAdjacentHTML('afterend', `<div class="card pad mb row between wrap" style="border-color:var(--warn)"><span>${icon('alert')} <b>${miss.length} carinin</b> e-Fatura / e-Arşiv için bilgisi eksik (VKN/TCKN, ilçe veya il). Eksikse fatura gönderilirken hata alırsınız.</span><button class="btn sm primary" id="emf">Toplu tamamla</button></div>`);
+      $('#emf', el).onclick = () => fillMissing(app, miss);
+    }
+  }
+  const eMissing = (c) => { const m = []; const t = String(c.taxNo || '').replace(/\D/g, ''); if (t.length !== 10 && t.length !== 11) m.push('VKN/TCKN'); if (!String(c.district || '').trim()) m.push('ilçe'); if (!String(c.city || '').trim()) m.push('il'); return m.length ? 'Eksik: ' + m.join(', ') : ''; };
+  function fillMissing(app, list) {
+    modal({ title: 'e-Belge bilgilerini tamamla', size: 'xl', body: `<p class="small muted mb">Yalnızca boş alanları doldurun; dolu alanlar değişmez. VKN 10, TCKN 11 hanedir.</p><div class="tbl-wrap"><table class="tbl"><thead><tr><th>Cari</th><th>VKN / TCKN</th><th>İlçe</th><th>İl</th></tr></thead><tbody>${list.map((c) => `<tr><td><b>${esc(c.name)}</b></td><td><input class="input" data-c="${c.id}" data-f="taxNo" value="${esc(c.taxNo || '')}" inputmode="numeric"></td><td><input class="input" data-c="${c.id}" data-f="district" value="${esc(c.district || '')}"></td><td><input class="input" data-c="${c.id}" data-f="city" value="${esc(c.city || '')}"></td></tr>`).join('')}</tbody></table></div>`,
+      actions: [{ label: 'Vazgeç' }, { label: 'Kaydet', cls: 'primary', icon: 'check', onClick: (close, b) => {
+        const bad = [...b.querySelectorAll('[data-f="taxNo"]')].find((x) => x.value.trim() && ![10, 11].includes(x.value.replace(/\D/g, '').length)); if (bad) { bad.focus(); return toast('VKN 10, TCKN 11 haneli olmalı', 'err'); }
+        let n = 0; b.querySelectorAll('[data-c]').forEach((x) => { const c = db.get('caris', x.dataset.c); const v = x.dataset.f === 'taxNo' ? x.value.replace(/\D/g, '') : x.value.trim(); if (v && v !== (c[x.dataset.f] || '')) { c[x.dataset.f] = v; n++; } });
+        db.save(); db.log('Cari e-Belge bilgileri tamamlandı', `${n} alan`); close(); toast(`${n} alan güncellendi`, 'ok'); app.refresh(); } }] });
   }
   function cariDetail(el, id, app) {
     const c = cari(id);
-    const mv = [...db.all('invoices', (i) => i.cari === id).map((i) => ({ id: i.id, date: i.date, desc: `${docLabel(i)} ${i.no}`, debit: i.kind === 'satis' ? invTotals(i).tl : 0, credit: i.kind === 'alis' ? invTotals(i).tl : 0 })), ...db.all('txns', (t) => t.cari === id).map((t) => ({ id: t.id, date: t.date, desc: `${t.type === 'tahsilat' ? 'Tahsilat' : 'Ödeme'} · ${acc(t.account).name}${t.desc ? ' · ' + t.desc : ''}`, debit: t.type === 'odeme' ? t.amount : 0, credit: t.type === 'tahsilat' ? t.amount : 0 }))].sort((a, b) => a.date.localeCompare(b.date));
+    const op = Number(c.opening) || 0;
+    const mv = [...(op ? [{ id: 'acilis', date: String(c.created || '').slice(0, 10) || '0000-00-00', desc: 'Açılış bakiyesi (devir)', debit: op > 0 ? op : 0, credit: op < 0 ? -op : 0 }] : []), ...db.all('invoices', (i) => i.cari === id).map((i) => ({ id: i.id, date: i.date, desc: `${docLabel(i)} ${i.no}`, debit: i.kind === 'satis' ? invTotals(i).tl : 0, credit: i.kind === 'alis' ? invTotals(i).tl : 0 })), ...db.all('txns', (t) => t.cari === id).map((t) => ({ id: t.id, date: t.date, desc: `${t.type === 'tahsilat' ? 'Tahsilat' : 'Ödeme'} · ${acc(t.account).name}${t.desc ? ' · ' + t.desc : ''}`, debit: t.type === 'odeme' ? t.amount : 0, credit: t.type === 'tahsilat' ? t.amount : 0 }))].sort((a, b) => a.date.localeCompare(b.date));
     let run = 0; mv.forEach((m) => { run = r2(run + m.debit - m.credit); m.bal = run; });
     const bal = cariBalance(id);
     el.innerHTML = `<div class="row mb"><a class="btn" href="#/cariler">${icon('back')} Cariler</a><h1 class="grow">${esc(c.name)}</h1><button class="btn" id="pr">${icon('print')} Ekstre yazdır</button><button class="btn ok" data-t="tahsilat">${icon('plus')} Tahsilat</button><button class="btn" data-t="odeme">${icon('minus')} Ödeme</button></div>
@@ -344,22 +391,28 @@
       columns: [{ key: 'no', label: 'No', render: (x) => `<b>${esc(x.no)}</b><div class="small faint">${x.kind === 'cek' ? 'Çek' : 'Senet'} · ${esc(x.bank || '')}</div>` }, { key: 'dir', label: 'Yön', render: (x) => badge(x.dir === 'alinan' ? 'Alınan' : 'Verilen', x.dir === 'alinan' ? 'ok' : 'warn') }, { label: 'Cari', render: (x) => esc(cari(x.cari).name) }, { key: 'due', label: 'Vade', render: (x) => `${NS.date(x.due)}${x.status === 'portfoy' ? `<div class="small" style="color:${x.due < today() ? 'var(--err)' : 'var(--text-3)'}">${x.due < today() ? daysBetween(x.due, new Date()) + ' gün geçti' : daysBetween(new Date(), x.due) + ' gün kaldı'}</div>` : ''}` }, { key: 'amount', label: 'Tutar', cls: 'right', render: (x) => `<b>${money(x.amount)}</b>` }, { key: 'status', label: 'Durum', render: (x) => badge(CS[x.status][0], CS[x.status][1]) }],
     });
   }
+  // Dönem: hazır aralıklar veya serbest tarih aralığı (seçim bu cihazda hatırlanır)
+  const PERIODS = () => { const d = new Date(); const y = d.getFullYear(), mo = d.getMonth(); const f = (a, b) => [iso(a), iso(b)]; const q = Math.floor(mo / 3) * 3;
+    return { ay: ['Bu ay', ...f(new Date(y, mo, 1), new Date(y, mo + 1, 0))], gay: ['Geçen ay', ...f(new Date(y, mo - 1, 1), new Date(y, mo, 0))], ceyrek: ['Bu çeyrek', ...f(new Date(y, q, 1), new Date(y, q + 3, 0))], yil: ['Bu yıl', ...f(new Date(y, 0, 1), new Date(y, 11, 31))], gyil: ['Geçen yıl', ...f(new Date(y - 1, 0, 1), new Date(y - 1, 11, 31))] }; };
+  const tlNet = (i) => r2(invTotals(i).net * (Number(i.rate) || 1)), tlVat = (i) => r2(invTotals(i).vat * (Number(i.rate) || 1)); // dövizli belgeler TL'ye çevrilir
   function reportsPage(el) {
-    let year = new Date().getFullYear();
+    let per = 'yil', from, to; [from, to] = PERIODS()[per].slice(1);
     const draw = () => {
-      const months = Array.from({ length: 12 }, (_, i) => `${year}-${NS.pad(i + 1)}`);
+      const inR = (x) => x.date >= from && x.date <= to;
+      const months = []; { const d = new Date(from.slice(0, 7) + '-01'); const end = to.slice(0, 7); while (iso(d).slice(0, 7) <= end && months.length < 60) { months.push(iso(d).slice(0, 7)); d.setMonth(d.getMonth() + 1); } }
       const rows = months.map((m) => {
-        const s = db.all('invoices', (i) => isSale(i) && i.date.slice(0, 7) === m), a = db.all('invoices', (i) => isBuy(i) && i.date.slice(0, 7) === m);
-        const si = db.all('invoices', (i) => i.iade && i.kind === 'alis' && i.date.slice(0, 7) === m), ai = db.all('invoices', (i) => i.iade && i.kind === 'satis' && i.date.slice(0, 7) === m);
-        const inc = sum(s, (i) => invTotals(i).net) - sum(si, (i) => invTotals(i).net) + sum(db.all('txns', (t) => t.type === 'gelir' && t.date.slice(0, 7) === m), (t) => t.amount);
-        const exp = sum(a, (i) => invTotals(i).net) - sum(ai, (i) => invTotals(i).net) + sum(db.all('txns', (t) => t.type === 'gider' && t.date.slice(0, 7) === m), (t) => t.amount);
-        return { id: m, m, inc, exp, vOut: sum(s, (i) => invTotals(i).vat) + sum(ai, (i) => invTotals(i).vat), vIn: sum(a, (i) => invTotals(i).vat) + sum(si, (i) => invTotals(i).vat) };
+        const inM = (x) => x.date.slice(0, 7) === m && inR(x);
+        const s = db.all('invoices', (i) => isSale(i) && inM(i)), a = db.all('invoices', (i) => isBuy(i) && inM(i));
+        const si = db.all('invoices', (i) => i.iade && i.kind === 'alis' && inM(i)), ai = db.all('invoices', (i) => i.iade && i.kind === 'satis' && inM(i));
+        const inc = sum(s, tlNet) - sum(si, tlNet) + sum(db.all('txns', (t) => t.type === 'gelir' && inM(t)), (t) => t.amount);
+        const exp = sum(a, tlNet) - sum(ai, tlNet) + sum(db.all('txns', (t) => t.type === 'gider' && inM(t)), (t) => t.amount);
+        return { id: m, m, inc, exp, vOut: sum(s, tlVat) + sum(ai, tlVat), vIn: sum(a, tlVat) + sum(si, tlVat) };
       });
       const aging = [[0, 30], [31, 60], [61, 90], [91, 9999]].map(([a, b]) => ({ label: b > 999 ? '90+ gün' : `${a}-${b} gün`, value: sum(db.all('invoices', (i) => isSale(i) && invStatus(i) !== 'odendi' && i.due < today() && daysBetween(i.due, new Date()) >= a && daysBetween(i.due, new Date()) <= b), (i) => invTotals(i).tl - paidOf(i)) }));
-      const giderCat = NS.groupBy(db.all('txns', (t) => t.type === 'gider' && t.date.startsWith(String(year))), (t) => t.cat || 'Diğer');
-      el.innerHTML = pageHead('Raporlar', 'Kâr-zarar, KDV, yaşlandırma ve gider dağılımı', `<div class="seg">${[year - 1, year].map((y) => `<button data-y="${y}" class="${y === year ? 'active' : ''}">${y}</button>`).join('')}</div><button class="btn" id="aktar">${icon('send')} Resmi muhasebeye aktar</button>${NS.integ && NS.integ.isOn('edefter') ? `<button class="btn" id="edf">${icon('book')} e-Defter</button>` : ''}`) + `
-        <div class="grid g4 mb">${kpi('Yıllık gelir', money(sum(rows, (r) => r.inc)), 'trend', 'ok')}${kpi('Yıllık gider', money(sum(rows, (r) => r.exp)), 'minus', 'err')}${kpi('Net kâr', money(sum(rows, (r) => r.inc - r.exp)), 'wallet')}${kpi('Ödenecek KDV', money(sum(rows, (r) => r.vOut - r.vIn)), 'percent', 'warn')}</div>
-        <div class="card mb"><div class="card-h"><h3>Aylık kâr-zarar ve KDV</h3><button class="btn sm" id="ex">${icon('download')}</button></div>${table({ rows, columns: [{ label: 'Ay', render: (r) => NS.MONTHS[Number(r.m.slice(5)) - 1] }, { label: 'Gelir', cls: 'right', render: (r) => money(r.inc) }, { label: 'Gider', cls: 'right', render: (r) => money(r.exp) }, { label: 'Kâr/Zarar', cls: 'right', render: (r) => `<b style="color:${r.inc - r.exp >= 0 ? 'var(--ok)' : 'var(--err)'}">${money(r.inc - r.exp)}</b>` }, { label: 'Hesaplanan KDV', cls: 'right', render: (r) => money(r.vOut) }, { label: 'İndirilecek KDV', cls: 'right', render: (r) => money(r.vIn) }, { label: 'Ödenecek KDV', cls: 'right', render: (r) => money(r.vOut - r.vIn) }] })}</div>
+      const giderCat = NS.groupBy(db.all('txns', (t) => t.type === 'gider' && inR(t)), (t) => t.cat || 'Diğer');
+      el.innerHTML = pageHead('Raporlar', `Kâr-zarar, KDV, yaşlandırma ve gider dağılımı · ${NS.date(from)} – ${NS.date(to)}`, `<div class="seg">${Object.entries(PERIODS()).map(([k, [l]]) => `<button data-p="${k}" class="${k === per ? 'active' : ''}">${l}</button>`).join('')}</div><input class="input" type="date" id="rf" value="${from}" style="max-width:150px" title="Başlangıç"><input class="input" type="date" id="rt" value="${to}" style="max-width:150px" title="Bitiş"><button class="btn" id="aktar">${icon('send')} Resmi muhasebeye aktar</button>${NS.integ && NS.integ.isOn('edefter') ? `<button class="btn" id="edf">${icon('book')} e-Defter</button>` : ''}`) + `
+        <div class="grid g4 mb">${kpi('Dönem geliri', money(sum(rows, (r) => r.inc)), 'trend', 'ok')}${kpi('Dönem gideri', money(sum(rows, (r) => r.exp)), 'minus', 'err')}${kpi('Net kâr', money(sum(rows, (r) => r.inc - r.exp)), 'wallet')}${kpi('Ödenecek KDV', money(sum(rows, (r) => r.vOut - r.vIn)), 'percent', 'warn')}</div>
+        <div class="card mb"><div class="card-h"><h3>Aylık kâr-zarar ve KDV (TL)</h3><button class="btn sm" id="ex">${icon('download')}</button></div>${table({ rows, columns: [{ label: 'Ay', render: (r) => `${NS.MONTHS[Number(r.m.slice(5)) - 1]} ${r.m.slice(0, 4)}` }, { label: 'Gelir', cls: 'right', render: (r) => money(r.inc) }, { label: 'Gider', cls: 'right', render: (r) => money(r.exp) }, { label: 'Kâr/Zarar', cls: 'right', render: (r) => `<b style="color:${r.inc - r.exp >= 0 ? 'var(--ok)' : 'var(--err)'}">${money(r.inc - r.exp)}</b>` }, { label: 'Hesaplanan KDV', cls: 'right', render: (r) => money(r.vOut) }, { label: 'İndirilecek KDV', cls: 'right', render: (r) => money(r.vIn) }, { label: 'Ödenecek KDV', cls: 'right', render: (r) => money(r.vOut - r.vIn) }] })}</div>
         <div class="grid g2"><div class="card"><div class="card-h"><h3>Alacak yaşlandırma</h3></div><div class="card-b">${chart.bars(aging, { format: money, color: '#dc2626' })}</div></div><div class="card"><div class="card-h"><h3>Gider dağılımı</h3></div><div class="card-b">${chart.donut(Object.entries(giderCat).map(([label, v]) => ({ label, value: sum(v, (t) => t.amount) })).sort((a, b) => b.value - a.value), { format: money, size: 140 })}</div></div></div>`;
       // Logo / Mikro / Luca / Zirve... aktarımı: bağlayıcı açıksa API, değilse fiş listesi CSV
       $('#aktar', el).onclick = async () => {
@@ -370,9 +423,11 @@
         else { NS.csv(`muhasebe-aktarim-${v.month}`, [...invs.map((i) => ({ tur: i.iadeLabel || (i.kind === 'satis' ? 'Satış faturası' : 'Alış faturası'), tarih: i.date, belge: i.no, cari: i.cari, vkn: i.vkn, matrah: i.net, kdv: i.vat, tutar: i.total })), ...txs.map((t) => ({ tur: t.type, tarih: t.date, belge: '', cari: t.cari || t.cat, vkn: '', matrah: '', kdv: '', tutar: t.amount }))], [{ key: 'tur', label: 'Fiş türü' }, { key: 'tarih', label: 'Tarih' }, { key: 'belge', label: 'Belge no' }, { key: 'cari', label: 'Cari / hesap' }, { key: 'vkn', label: 'VKN' }, { key: 'matrah', label: 'Matrah' }, { key: 'kdv', label: 'KDV' }, { key: 'tutar', label: 'Tutar' }]); toast('Bağlayıcı kapalı — aktarım dosyası (CSV) indirildi', 'ok'); }
       };
       if ($('#edf', el)) $('#edf', el).onclick = async () => { const m = await NS.prompt('Berat oluşturulacak dönem (YYYY-AA)', today().slice(0, 7), { title: 'e-Defter' }); if (!m) return; const r = NS.integ ? await NS.integ.call('edefter', 'berat-olustur', { month: m, invoices: db.all('invoices', (i) => i.date.slice(0, 7) === m).length }) : null; if (r && r.ok && r.simulated) toast('e-Defter simülasyonu — berat oluşturulmadı', 'warn'); else if (r && r.ok) { db.saveSettings({ ['edefter_' + m]: r.ref }); toast(`${m} e-Defter beratı hazırlandı (${r.ref})`, 'ok'); } };
-      $('#ex', el).onclick = () => NS.csv(`kar-zarar-${year}`, rows, [{ key: 'm', label: 'Ay' }, { key: 'inc', label: 'Gelir' }, { key: 'exp', label: 'Gider' }, { label: 'Kâr', value: (r) => r.inc - r.exp }, { key: 'vOut', label: 'Hesaplanan KDV' }, { key: 'vIn', label: 'İndirilecek KDV' }]);
+      $('#rf', el).onchange = (e) => { if (e.target.value) { from = e.target.value; per = ''; if (from > to) to = from; draw(); } };
+      $('#rt', el).onchange = (e) => { if (e.target.value) { to = e.target.value; per = ''; if (to < from) from = to; draw(); } };
+      $('#ex', el).onclick = () => NS.csv(`kar-zarar-${from}-${to}`, rows, [{ key: 'm', label: 'Ay' }, { key: 'inc', label: 'Gelir' }, { key: 'exp', label: 'Gider' }, { label: 'Kâr', value: (r) => r.inc - r.exp }, { key: 'vOut', label: 'Hesaplanan KDV' }, { key: 'vIn', label: 'İndirilecek KDV' }]);
     };
-    on(el, 'click', '[data-y]', (e, b) => { year = Number(b.dataset.y); draw(); });
+    on(el, 'click', '[data-p]', (e, b) => { per = b.dataset.p; [from, to] = PERIODS()[per].slice(1); draw(); });
     draw();
   }
 
@@ -402,6 +457,7 @@
       extraActions: [{ icon: 'layers', act: 'mv', title: 'Stok hareketleri', show: isStock }],
       onAction: (a, i) => modal({ title: `${i.name} — stok hareketleri`, size: 'wide', body: `<div class="row mb">${depots().map((d) => badge(`${d.name}: ${num(stockOf(i.id, d.id))} ${i.unit}`, 'acc')).join(' ')}</div>` + table({ rows: db.all('moves', (m) => m.item === i.id).sort((x, y) => y.date.localeCompare(x.date)), empty: 'Hareket yok', columns: [{ label: 'Tarih', render: (m) => NS.date(m.date) }, { label: 'Tür', render: (m) => badge(MT[m.type][0], MT[m.type][1]) }, { label: 'Belge', render: (m) => esc(m.refNo || '-') }, { label: 'Cari', render: (m) => esc(m.cari ? cari(m.cari).name : '-') }, { label: 'Depo', render: (m) => esc(depotName(m.depot)) }, { label: 'Miktar', cls: 'right', render: (m) => `<b style="color:${m.qty > 0 ? 'var(--ok)' : 'var(--err)'}">${m.qty > 0 ? '+' : ''}${num(m.qty)}</b>` }] }) }),
     });
+    { const r = el.querySelector('.page-h .row'); if (r && app.can('muhasebe')) { r.insertAdjacentHTML('afterbegin', `<button class="btn" id="imp">${icon('upload')} İçe aktar</button>`); $('#imp', el).onclick = () => window.MUHAKTAR.open(app, 'urun'); } }
   }
   function stockPage(el, p, app) {
     let tab = p || 'durum';
@@ -569,7 +625,12 @@
   // ---------- e-Fatura / e-posta / makbuz ----------
   async function sendEDoc(app, inv) {
     if (!NS.integ) return toast('Entegrasyon modülü yüklü değil', 'err');
-    const c = cari(inv.cari); const t = invTotals(inv);
+    const c = cari(inv.cari); const t = invTotals(inv); const s = S();
+    if (!String(s.bizDistrict || '').trim() || !String(s.bizCity || '').trim()) { if (await confirm('İşletmenizin ilçe ve il bilgisi eksik; e-Fatura bunlarsız kesilemez (GİB UBL-TR). Ayarlar açılsın mı?', { ok: 'Ayarlara git', danger: false })) app.go('ayarlar'); return; }
+    if (!String(c.district || '').trim() || !String(c.city || '').trim()) {
+      const v = await formModal({ title: `${c.name} — adres eksik`, fields: [{ type: 'section', label: 'e-Fatura için alıcının ilçe ve il bilgisi zorunludur' }, { name: 'district', label: 'İlçe', required: true, value: c.district || '' }, { name: 'city', label: 'İl', required: true, value: c.city || '' }] });
+      if (!v) return; c.district = v.district.trim(); c.city = v.city.trim(); db.save();
+    }
     if (!c.taxNo && !(await confirm(`${c.name} için VKN/TCKN girilmemiş. Nihai tüketici adına e-Arşiv kesilsin mi?`, { ok: 'Devam', danger: false }))) return;
     const r = await NS.integ.sendEInvoice({ buyer: c.name, buyerVkn: c.taxNo, buyerTaxOffice: c.taxOffice, buyerEmail: c.email, address: c.address, district: c.district, city: c.city, no: inv.no, date: inv.date, currency: inv.currency || 'TRY', rate: inv.rate || 1, total: t.total, vat: t.vat, note: inv.note, refund: !!inv.iade, refundOf: inv.iade ? inv.iade.of : undefined, refundDate: inv.iade ? inv.iade.date : undefined, lines: inv.lines.map((l) => ({ ...l, code: (db.get('items', l.item) || {}).code || '' })) });
     if (r.ok) { inv.ebelge = { id: r.id, type: r.type, no: r.no, at: new Date().toISOString(), status: r.status }; db.log(r.type, `${inv.no} → ${r.no}`); db.save(); if (app) app.refresh(); }
@@ -591,14 +652,15 @@
       <p>${t.type === 'tahsilat' ? 'Sayın' : 'Alıcı:'} <b>${esc(c.name)}</b></p><p>${t.type === 'tahsilat' ? 'tarafınızdan' : 'tarafınıza'} <b style="font-size:18px">${money(t.amount)}</b> ${t.type === 'tahsilat' ? 'tahsil edilmiştir' : 'ödenmiştir'}.</p><p>Hesap: ${esc(acc(t.account).name)}<br>Açıklama: ${esc(t.desc || '')}</p><p>Güncel cari bakiye: ${money(Math.abs(cariBalance(c.id)))} ${cariBalance(c.id) > 0 ? '(borçlu)' : cariBalance(c.id) < 0 ? '(alacaklı)' : ''}</p><table style="margin-top:50px"><tr><td>Teslim eden<br><br>__________</td><td style="text-align:right">Teslim alan<br><br>__________</td></tr></table></div>`, { title: 'Makbuz' });
   }
 
-  const ROLES = { admin: 'Muhasebe / Yönetici', satis: 'Satış' };
+  const ROLES = { admin: 'Yönetici (her şey + ayarlar, kullanıcılar)', muhasebe: 'Muhasebe (finans, raporlar, e-Belge)', satis: 'Satış (teklif, sipariş, satış faturası, cari)', depo: 'Depo (stok, irsaliye)' };
+  const FIN = ['muhasebe'], SAT = ['muhasebe', 'satis'], DEP = ['muhasebe', 'satis', 'depo'];
   NS.shell({
     id: 'muhasebe', integrations: ['efatura','email','sms','whatsapp','printer','webhook','backup'], name: 'Ön Muhasebe', tagline: 'Fatura · Cari · Kasa', icon: 'file', accent: '#0d9488', db, home: 'ozet', auth: { roles: ROLES },
-    nav: [{ sec: 'Muhasebe' }, { id: 'ozet', label: 'Finansal Özet', icon: 'home', roles: ['admin'] }, { id: 'faturalar', label: 'Faturalar', icon: 'file' }, { id: 'teklifler', label: 'Teklifler', icon: 'send' }, { id: 'siparisler', label: 'Siparişler', icon: 'bag' }, { id: 'irsaliyeler', label: 'İrsaliyeler', icon: 'truck' }, { id: 'cariler', label: 'Cari Hesaplar', icon: 'building' }, window.MUHBEYAN.nav, { sec: 'Stok' }, { id: 'urunler', label: 'Stok & Hizmet Kartları', icon: 'box' }, { id: 'stok', label: 'Stok & Depo', icon: 'layers' }, { sec: 'Finans' }, { id: 'kasa', label: 'Kasa & Banka', icon: 'wallet', roles: ['admin'] }, { id: 'cek', label: 'Çek & Senet', icon: 'ticket', roles: ['admin'] }, { id: 'kurlar', label: 'Döviz Kurları', icon: 'refresh', roles: ['admin'] }, { id: 'raporlar', label: 'Raporlar', icon: 'chart', roles: ['admin'] }, { id: 'ayarlar', label: 'Ayarlar', icon: 'settings', roles: ['admin'] }],
+    nav: [{ sec: 'Muhasebe' }, { id: 'ozet', label: 'Finansal Özet', icon: 'home', roles: FIN }, { id: 'faturalar', label: 'Faturalar', icon: 'file', roles: SAT }, { id: 'teklifler', label: 'Teklifler', icon: 'send', roles: SAT }, { id: 'siparisler', label: 'Siparişler', icon: 'bag', roles: SAT }, { id: 'irsaliyeler', label: 'İrsaliyeler', icon: 'truck', roles: DEP }, { id: 'cariler', label: 'Cari Hesaplar', icon: 'building', roles: SAT }, window.MUHBEYAN.nav, { sec: 'Stok' }, { id: 'urunler', label: 'Stok & Hizmet Kartları', icon: 'box', roles: DEP }, { id: 'stok', label: 'Stok & Depo', icon: 'layers', roles: DEP }, { sec: 'Finans' }, { id: 'kasa', label: 'Kasa & Banka', icon: 'wallet', roles: FIN }, { id: 'cek', label: 'Çek & Senet', icon: 'ticket', roles: FIN }, { id: 'kurlar', label: 'Döviz Kurları', icon: 'refresh', roles: FIN }, { id: 'raporlar', label: 'Raporlar', icon: 'chart', roles: FIN }, { sec: 'Yönetim' }, { id: 'gecmis', label: 'İşlem geçmişi', icon: 'clock', roles: FIN }, { id: 'ayarlar', label: 'Ayarlar', icon: 'settings', roles: ['admin'] }], ebelgeRoles: FIN,
     routes: {
       ...window.MUHBEYAN.routes,
       ozet: dashboard, faturalar: invoicesPage, teklifler: quotesPage, siparisler: ordersPage, irsaliyeler: dispatchesPage, cariler: carisPage, kasa: accountsPage, cek: chequesPage, raporlar: reportsPage,
-      urunler: itemsPage, stok: stockPage, kurlar: ratesPage,
+      urunler: itemsPage, stok: stockPage, kurlar: ratesPage, gecmis: auditPage,
       ayarlar: (el, p, a) => NS.settingsPage(el, a, { roles: ROLES, fields: [{ type: 'section', label: 'Beyanname' }, { name: 'babsLimit', label: 'Ba/Bs bildirim sınırı (₺, KDV hariç)', type: 'number', placeholder: '5000' }, { type: 'section', label: 'Fatura ve stok ayarları' }, { name: 'iban', label: 'IBAN (faturada görünür)', full: true }, { name: 'invoiceNote', label: 'Varsayılan fatura notu', full: true }, { name: 'allowNegative', label: 'Eksi stokla satış/sevke izin ver', type: 'checkbox', full: true }, { name: 'autoEBelge', label: 'Satış faturası kaydedilince otomatik e-Fatura / e-Arşiv kes', type: 'checkbox', full: true }] }),
     },
   });

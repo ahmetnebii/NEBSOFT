@@ -1,4 +1,22 @@
-# Ön Muhasebe — Ürün Spesifikasyonu (onay bekliyor)
+# Ön Muhasebe — Ürün Spesifikasyonu
+
+> **Durum (29.10.2026):** Kullanıcı onayladı. **1. dalga tamamlandı** (aşağıda). 2. ve 3. dalga sırada.
+
+## 1. dalga — yapılanlar
+| # | Konu | Sonuç | Kanıt |
+|---|---|---|---|
+| H1 | Kuruş farkı | Tutarlar `apps/muhasebe/calc.js` ile satır satır yuvarlanıyor; e-Fatura ile aynı kural | `server/test/muhasebe-calc.test.js`: 20.000 rastgele + 5.000 tevkifatlı fatura, program = e-Fatura |
+| H2 | Telefonda fatura ekranı | 2 sütunlu başlık, kalemler kart görünümü | 375 px tarayıcı denemesi |
+| H3 | İade faturası | Alış iadesi (tedarikçiye, e-Fatura `IADE` + iade edilen fatura no, temel senaryo) ve müşteri iadesi; "İadeler" sekmesi; alış faturasına "tedarikçi fatura no"; raporlar ve KDV iadeleri doğru tarafa yazıyor | Tarayıcı + XSD testi |
+| H4 | İstisna ve tevkifat | Kalem bazında GİB istisna kodu ve tevkifat kodu (GİB Kod Listeleri V1.43, şemayla karşılaştırıldı, `core/ebelge/kodlar.js`); UBL'de `ISTISNA` / `TEVKIFAT` / `TEVKIFATIADE` ve `WithholdingTaxTotal` (GİB 2026 örneğiyle aynı tutarlar). Paraşüt: istisna var; tevkifat oranının birimi Paraşüt dokümanında yazmadığı için kapalı (açık hata mesajı) | `ubltr.test.js`, `ubltr-xsd.test.js` (9 belge) |
+| H5 | İlçe/il eksik | Cariler sayfasında uyarı, "e-Belge bilgisi eksik" filtresi, toplu tamamlama; e-Fatura göndermeden önce işletme ve alıcı adresi kontrolü | Tarayıcı |
+| H6 | Yetki ve işlem geçmişi | Roller: Yönetici, Muhasebe, Satış, Depo (menü + fatura silme yetkisi); **pasife alınan kullanıcının açık oturumu anında kapanıyor** (çekirdek, tüm programlar); otomatik işlem kaydı (ne değişti dahil) ve "İşlem geçmişi" sayfası (filtre, CSV); kayıt sınırı 300 → 5.000 | Tarayıcı |
+| H7 | Raporlarda dönem | Bu ay / geçen ay / bu çeyrek / bu yıl / geçen yıl / serbest aralık. **Ek hata düzeltildi:** dövizli faturalar raporlarda ve ana sayfada TL'ye çevrilmeden toplanıyordu | Tarayıcı |
+| H8 | e-Belge arşivi | e-Belgeler > "Arşivi indir": dönemdeki XML'ler, isteğe bağlı resmî görünüm HTML'i, dizin CSV'si tek ZIP'te | Tarayıcı (ZIP içeriği doğrulandı) |
+| + | Excel'den aktarım | Cari (açılış bakiyesi veya borç/alacak sütunları dahil) ve stok/hizmet kartı (açılış stoğu dahil); .xlsx ve CSV; sütunlar otomatik eşleşir; Türkçe sayı biçimi; hata listesi; var olan kaydı ezmez. Çekirdeğe `NS.readSheet` (.xlsx okuyucu) eklendi | `server/test/fixtures/cari-baska-program.xlsx` ile tarayıcı denemesi |
+
+Bilinen not: GİB görünüm şablonu `version="2.0"` olduğu için XSLT motoru konsola "only 1.1 features are supported" bilgisini yazar; görünüm etkilenmez (1.0'a çevirmek şablonu bozuyor, denendi).
+
 
 Tarih: 29.10.2026 · Dal: `muhasebe/urun-spec` · Yöntem: `CLAUDE.md` §2
 

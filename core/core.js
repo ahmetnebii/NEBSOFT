@@ -510,7 +510,7 @@
       this._label = detail ? `${action} · ${detail}` : action;
       const c = this.col('_log');
       c.unshift({ id: uid(), at: new Date().toISOString(), action, detail, user: NS.currentUser ? NS.currentUser.name : 'Sistem' });
-      if (c.length > 300) c.length = 300;
+      if (c.length > 5000) c.length = 5000;
     }
   }
 
@@ -848,7 +848,7 @@
     // e-Fatura kullanan ürünlere ortak e-Belgeler (giden / gelen kutusu) sayfası
     if (NS.ebelge && (opts.integrations || []).includes('efatura') && !opts.routes.ebelge) {
       const k = opts.nav.findIndex((n) => n.id === 'entegrasyonlar');
-      opts.nav.splice(k, 0, { id: 'ebelge', label: 'e-Belgeler', icon: 'file', roles: ['admin'] });
+      opts.nav.splice(k, 0, { id: 'ebelge', label: 'e-Belgeler', icon: 'file', roles: opts.ebelgeRoles || ['admin'] });
       opts.routes.ebelge = (el, p, a) => NS.ebelge.page(el, p, a);
     }
     if (opts.accent) {
@@ -869,7 +869,9 @@
         const admin = app.db.find('users', (u) => u.role === 'admin' && u.active !== false);
         if (admin) { id = admin.id; try { sessionStorage.setItem(SESSION, id); } catch (e) { /* yok */ } }
       }
-      return id ? app.db.get('users', id) : null;
+      const u = id ? app.db.get('users', id) : null;
+      if (u && u.active === false) { try { sessionStorage.removeItem(SESSION); } catch (e) { /* yok */ } return null; }
+      return u || null;
     };
     app.user = () => NS.currentUser;
     app.navLocked = (id) => id === 'ayarlar' || id === (opts.home || (opts.nav.find((n) => n.id) || {}).id);
@@ -991,6 +993,7 @@
       app.route = route; app.param = p ? decodeURIComponent(p) : null;
       const nav = opts.nav.find((n) => n.id === route);
       if (nav && !app.navVisible(nav)) { $('#view').innerHTML = `<div class="empty">${icon('eye')}<div>Bu bölüm menüden gizlendi. Açmak için Ayarlar &gt; Menü ve modüller.</div></div>`; return; }
+      if (nav && nav.roles && !app.can(...nav.roles) && route === home) { const alt = opts.nav.find((n) => n.id && (!n.roles || app.can(...n.roles)) && app.navVisible(n)); if (alt) return app.go(alt.id); }
       if (nav && nav.roles && !app.can(...nav.roles)) { $('#view').innerHTML = `<div class="empty">${icon('lock')}<div>Bu bölüme erişim yetkiniz yok.</div></div>`; return; }
       $$('[data-nav]').forEach((a) => a.classList.toggle('active', a.dataset.nav === route));
       { const act = document.querySelector(`[data-nav="${route}"]`); const g = act && act.closest('.nv-grp'); if (g && !g.classList.contains('open')) { g.classList.add('open'); const t = g.querySelector('[data-grp-t]'); if (t) t.setAttribute('aria-expanded', 'true'); } }
@@ -1458,6 +1461,8 @@
   // ---------- XLSX yazıcı (sıkıştırmasız zip) ----------
   const CRC = (() => { const t = new Uint32Array(256); for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; } return t; })();
   const crc32 = (b) => { let c = 0xffffffff; for (let i = 0; i < b.length; i++) c = CRC[(c ^ b[i]) & 0xff] ^ (c >>> 8); return (c ^ 0xffffffff) >>> 0; };
+  // Genel ZIP (sıkıştırmasız, UTF-8 adlar): NS.zip([{ name, data }]) → Blob — e-Belge arşivi, toplu dışa aktarım
+  NS.zip = (files) => new Blob([zip(files)], { type: 'application/zip' });
   function zip(files) {
     const enc = new TextEncoder(); const parts = []; const central = []; let off = 0;
     const u16 = (v) => [v & 255, (v >> 8) & 255]; const u32 = (v) => [v & 255, (v >> 8) & 255, (v >> 16) & 255, (v >>> 24) & 255];
@@ -1494,6 +1499,41 @@
   // Sayfalardaki tüm "dışa aktar" düğmeleri artık gerçek Excel dosyası üretir
   NS.csv = (filename, rows, columns) => { const cols = columns || Object.keys(rows[0] || {}).map((k) => ({ key: k, label: k })); xlsx(filename, cols.map((c) => c.label), rows.map((r) => cols.map((c) => { const v = c.value ? c.value(r) : r[c.key]; return v === null || v === undefined ? '' : v; }))); };
   NS.xlsx = xlsx;
+
+  // ---------- Excel (.xlsx) / CSV okuma: NS.readSheet() → { name, rows: [{ başlık: değer }] } ----------
+  // .xlsx bir ZIP'tir: merkezi dizin okunur, sayfa ve ortak metinler DecompressionStream('deflate-raw') ile açılır (bağımlılık yok)
+  async function unzipEntries(buf) {
+    const dv = new DataView(buf.buffer, buf.byteOffset, buf.byteLength); let e = buf.length - 22;
+    while (e >= 0 && dv.getUint32(e, true) !== 0x06054b50) e--;
+    if (e < 0) throw new Error('Geçerli bir Excel (.xlsx) dosyası değil');
+    const n = dv.getUint16(e + 10, true); let p = dv.getUint32(e + 16, true); const ent = {}; const td = new TextDecoder();
+    for (let k = 0; k < n; k++) { const nl = dv.getUint16(p + 28, true), xl = dv.getUint16(p + 30, true), cl = dv.getUint16(p + 32, true); ent[td.decode(buf.subarray(p + 46, p + 46 + nl))] = { method: dv.getUint16(p + 10, true), size: dv.getUint32(p + 20, true), off: dv.getUint32(p + 42, true) }; p += 46 + nl + xl + cl; }
+    const read = async (name) => {
+      const z = ent[name]; if (!z) return null; const s = z.off + 30 + dv.getUint16(z.off + 26, true) + dv.getUint16(z.off + 28, true); const data = buf.subarray(s, s + z.size);
+      if (z.method === 0) return td.decode(data);
+      if (z.method !== 8 || typeof DecompressionStream === 'undefined') throw new Error('Bu Excel dosyası bu tarayıcıda açılamıyor; dosyayı CSV olarak kaydedip deneyin');
+      return new Response(new Blob([data]).stream().pipeThrough(new DecompressionStream('deflate-raw'))).text();
+    };
+    return { names: Object.keys(ent), read };
+  }
+  async function xlsxRows(buf) {
+    const z = await unzipEntries(buf); const P = new DOMParser(); const X = (t) => (t ? P.parseFromString(t, 'application/xml') : null);
+    const strs = [...((X(await z.read('xl/sharedStrings.xml')) || { getElementsByTagName: () => [] }).getElementsByTagName('si'))].map((si) => [...si.getElementsByTagName('t')].map((t) => t.textContent).join(''));
+    // İlk sayfa: workbook.xml + ilişki dosyasından (yoksa sheet1.xml)
+    let sheet = 'xl/worksheets/sheet1.xml';
+    try { const wb = X(await z.read('xl/workbook.xml')); const rid = wb.getElementsByTagName('sheet')[0].getAttribute('r:id'); const rel = [...X(await z.read('xl/_rels/workbook.xml.rels')).getElementsByTagName('Relationship')].find((r) => r.getAttribute('Id') === rid); if (rel) { const t = rel.getAttribute('Target').replace(/^\//, ''); sheet = t.startsWith('xl/') ? t : 'xl/' + t; } } catch (e) { /* varsayılan sayfa */ }
+    const doc = X(await z.read(sheet)); if (!doc) throw new Error('Excel dosyasında sayfa bulunamadı');
+    const col = (ref) => [...ref.replace(/\d+/g, '')].reduce((a, ch) => a * 26 + ch.charCodeAt(0) - 64, 0) - 1;
+    const arr = [...doc.getElementsByTagName('row')].map((r) => { const o = []; [...r.getElementsByTagName('c')].forEach((c) => { const t = c.getAttribute('t'); const v = c.getElementsByTagName('v')[0]; o[col(c.getAttribute('r'))] = t === 's' ? strs[Number(v && v.textContent)] || '' : t === 'inlineStr' ? [...c.getElementsByTagName('t')].map((x) => x.textContent).join('') : v ? v.textContent : ''; }); return Array.from(o, (x) => (x == null ? '' : String(x))); });
+    const head = (arr.shift() || []).map((h) => String(h).trim());
+    return arr.filter((r) => r.some((x) => x.trim())).map((r) => Object.fromEntries(head.map((h, i) => [h, r[i] == null ? '' : r[i]])));
+  }
+  NS.readSheet = (accept = '.xlsx,.csv,.txt') => new Promise((res, rej) => {
+    const i = document.createElement('input'); i.type = 'file'; i.accept = accept;
+    i.onchange = async () => { const f = i.files[0]; if (!f) return res(null); try { res({ name: f.name, rows: /\.(csv|txt)$/i.test(f.name) ? NS.parseCsv(await f.text()) : await xlsxRows(new Uint8Array(await f.arrayBuffer())) }); } catch (e) { rej(e); } };
+    i.click();
+  });
+  NS.xlsxRows = xlsxRows;
 
   // ---------- Tablo yardımcıları ----------
   const cellText = (td) => (td ? (td.innerText || td.textContent || '').replace(/\s*\n\s*/g, ' · ').trim() : '');

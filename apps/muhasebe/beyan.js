@@ -65,5 +65,5 @@ window.MUHBEYAN = (function () {
     });
     draw();
   }
-  return { init(ctx) { X = ctx; }, nav: { id: 'beyanname', label: 'Beyanname & Mutabakat', icon: 'percent', roles: ['admin'] }, routes: { beyanname: page } };
+  return { init(ctx) { X = ctx; }, nav: { id: 'beyanname', label: 'Beyanname & Mutabakat', icon: 'percent', roles: ['muhasebe'] }, routes: { beyanname: page } };
 })();
