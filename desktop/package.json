@@ -1,0 +1,34 @@
+{
+  "name": "nebsoft-masaustu",
+  "productName": "NEBSOFT",
+  "version": "3.0.0",
+  "description": "NEBSOFT işletme programları — masaüstü sürümü (giriş, lisansa göre program, yazıcı/terazi köprüsü, bildirimler)",
+  "main": "main.js",
+  "private": true,
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder --win --x64",
+    "dist:mac": "electron-builder --mac"
+  },
+  "dependencies": {
+    "electron-updater": "6.3.9"
+  },
+  "devDependencies": {
+    "electron": "33.2.1",
+    "electron-builder": "25.1.8"
+  },
+  "build": {
+    "appId": "com.nebsoft.masaustu",
+    "productName": "NEBSOFT",
+    "artifactName": "NEBSOFT-Kurulum.${ext}",
+    "directories": { "output": "../indir" },
+    "files": ["main.js", "preload.js", "splash.html", "setup.html", "config.json"],
+    "extraResources": [
+      { "from": "..", "to": "web", "filter": ["server.js", "server/**/*", "core/**/*", "apps/**/*", "market/**/*", "admin/**/*", "assets/**/*", "site/**/*", "index.html", "sw.js", "package.json", "sunucu.json", "!server/test/**", "!site/tools/**", "!site/src/**", "!desktop/**", "!indir/**", "!data/**", "!docs/**"] }
+    ],
+    "win": { "target": [{ "target": "nsis", "arch": ["x64"] }], "signAndEditExecutable": false },
+    "nsis": { "oneClick": false, "allowToChangeInstallationDirectory": true, "createDesktopShortcut": true, "shortcutName": "NEBSOFT" },
+    "mac": { "target": ["dmg"], "category": "public.app-category.business" },
+    "publish": [{ "provider": "generic", "url": "https://www.nebsoft.com.tr/indir/" }]
+  }
+}

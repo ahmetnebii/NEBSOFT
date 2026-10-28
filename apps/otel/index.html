@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NEBSOFT Otel</title>
+<link rel="stylesheet" href="../../core/core.css">
+<style>
+  .gantt-wrap { overflow: auto; max-height: calc(100vh - 250px); }
+  .gantt { display: grid; position: relative; font-size: 12px; }
+  .gantt .h { position: sticky; top: 0; z-index: 4; background: var(--surface); border-bottom: 1px solid var(--border); text-align: center; padding: 6px 0; font-weight: 600; color: var(--text-2); }
+  .gantt .h.we { color: var(--warn); }
+  .gantt .h.td { background: var(--accent-soft); color: var(--accent); }
+  .gantt .rl { position: sticky; left: 0; z-index: 3; background: var(--surface); border-right: 1px solid var(--border); border-bottom: 1px solid var(--border); padding: 0 10px; display: flex; align-items: center; gap: 6px; white-space: nowrap; }
+  .gantt .rl.corner { z-index: 5; top: 0; }
+  .gantt .c { border-bottom: 1px solid var(--border); border-left: 1px solid color-mix(in srgb, var(--border) 50%, transparent); cursor: cell; }
+  .gantt .c:hover { background: var(--accent-soft); }
+  .gantt .c.td { background: color-mix(in srgb, var(--accent) 6%, transparent); }
+  .bar { position: absolute; height: 30px; border-radius: 8px; color: #fff; padding: 0 8px; display: flex; align-items: center; gap: 6px; font-weight: 600; overflow: hidden; white-space: nowrap; cursor: pointer; z-index: 2; box-shadow: 0 2px 6px rgba(0,0,0,.15); }
+  .bar.rezerve { background: #0891b2; } .bar.konaklama { background: #16a34a; } .bar.cikis { background: #64748b; opacity: .7; } .bar.opsiyon { background: #d97706; background-image: repeating-linear-gradient(135deg, rgba(255,255,255,.18) 0 6px, transparent 6px 12px); }
+  .rooms { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; }
+  .room { border-radius: 14px; padding: 14px; border: 2px solid var(--border); background: var(--surface); cursor: pointer; position: relative; min-height: 112px; display: flex; flex-direction: column; gap: 4px; }
+  .room .no { font-size: 22px; font-weight: 800; }
+  .room.temiz { border-color: var(--ok); } .room.kirli { border-color: var(--warn); background: var(--warn-soft); } .room.arizali { border-color: var(--err); background: var(--err-soft); }
+  .room.dolu::after { content: ''; position: absolute; top: 12px; right: 12px; width: 12px; height: 12px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 4px var(--accent-soft); }
+</style>
+</head>
+<body>
+<script src="../../core/core.js"></script>
+<script src="../../core/integrations.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

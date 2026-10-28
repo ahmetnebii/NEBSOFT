@@ -1,0 +1,187 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Online Randevu</title>
+<link rel="preconnect" href="https://images.unsplash.com">
+<link rel="stylesheet" href="../../core/core.css">
+<style>
+  :root { --app-accent: #9333ea; --app-accent-soft: #f3e8ff; }
+  body { background: var(--bg); }
+  .cover { position: relative; height: 300px; background: #2a1740 center/cover; color: #fff; }
+  .cover::before { content: ''; position: absolute; inset: 0; background: linear-gradient(transparent 10%, rgba(20,8,35,.85)); }
+  .cover .in { position: absolute; left: 0; right: 0; bottom: 0; max-width: 1140px; margin: 0 auto; padding: 0 16px 22px; display: flex; gap: 16px; align-items: flex-end; }
+  .cover .lg { width: 76px; height: 76px; border-radius: 20px; background: var(--accent); display: grid; place-items: center; color: #fff; flex: none; box-shadow: 0 10px 30px rgba(0,0,0,.35); border: 3px solid rgba(255,255,255,.85); } .cover .lg svg { width: 36px; height: 36px; }
+  .cover h1 { color: #fff; font-size: clamp(24px, 3.4vw, 36px); }
+  .meta { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; } .meta span { background: rgba(255,255,255,.16); backdrop-filter: blur(6px); border-radius: 99px; padding: 5px 11px; font-size: 12.5px; font-weight: 600; display: inline-flex; gap: 5px; align-items: center; } .meta svg { width: 14px; height: 14px; } .meta .open { background: #16a34a; } .meta .closed { background: #dc2626; }
+  .tabs { position: sticky; top: 0; z-index: 9; background: var(--surface); border-bottom: 1px solid var(--border); } .tabs .in { max-width: 1140px; margin: 0 auto; padding: 0 16px; display: flex; gap: 4px; overflow-x: auto; } .tabs a { padding: 14px 12px; font-weight: 600; font-size: 14px; color: var(--text-2); border-bottom: 2px solid transparent; white-space: nowrap; text-decoration: none; } .tabs a:hover { color: var(--accent); border-color: var(--accent); }
+  .wrap { max-width: 1140px; margin: 0 auto; padding: 24px 16px 60px; }
+  .lay { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 24px; align-items: start; }
+  .side { position: sticky; top: 70px; display: flex; flex-direction: column; gap: 14px; }
+  .steps { display: flex; gap: 6px; margin-bottom: 20px; } .steps div { flex: 1; font-size: 12px; font-weight: 600; color: var(--text-3); } .steps div i { display: block; height: 4px; border-radius: 4px; background: var(--border); margin-bottom: 6px; } .steps div.on { color: var(--accent); } .steps div.on i { background: var(--accent); }
+  .pills { display: flex; gap: 6px; flex-wrap: wrap; margin: 12px 0 4px; } .pills button { border: 1px solid var(--border); background: var(--surface); color: var(--text-2); border-radius: 99px; padding: 7px 13px; font: 600 13px var(--font); cursor: pointer; } .pills button.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .svc { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  .opt { display: flex; gap: 12px; align-items: center; padding: 10px; border: 1px solid var(--border); background: var(--surface); border-radius: 14px; cursor: pointer; width: 100%; text-align: left; font-family: var(--font); color: var(--text); transition: .15s; }
+  .opt:hover { border-color: var(--accent); } .opt.sel { border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 18%, transparent); }
+  .opt img { width: 64px; height: 64px; border-radius: 10px; object-fit: cover; flex: none; background: var(--surface-2); }
+  .opt .av { width: 56px; height: 56px; border-radius: 50%; display: grid; place-items: center; font-weight: 800; font-size: 18px; flex: none; }
+  .days { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 6px; scrollbar-width: thin; }
+  .day { flex: none; width: 64px; padding: 10px 0; text-align: center; border: 1px solid var(--border); border-radius: 14px; background: var(--surface); cursor: pointer; font-family: var(--font); color: var(--text); }
+  .day b { display: block; font-size: 19px; } .day small { display: block; font-size: 10.5px; color: var(--ok); font-weight: 700; }
+  .day.sel { background: var(--accent); border-color: var(--accent); color: #fff; } .day.sel small { color: #fff; } .day.off { opacity: .4; pointer-events: none; }
+  .times { display: grid; grid-template-columns: repeat(auto-fill, minmax(74px, 1fr)); gap: 8px; margin: 6px 0 14px; }
+  .times button.sel { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .tl { font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--text-3); margin-top: 16px; }
+  .sum img { width: 100%; aspect-ratio: 16/9; object-fit: cover; border-radius: 12px; margin-bottom: 12px; }
+  .gal { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; } .gal img { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 12px; }
+  .team { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; } .team .card { padding: 18px; text-align: center; }
+  .hrs div { display: flex; justify-content: space-between; padding: 5px 0; font-size: 13.5px; } .hrs .today { font-weight: 700; color: var(--accent); }
+  .sec2 { margin-top: 36px; scroll-margin-top: 70px; } .sec2 h2 { margin-bottom: 14px; }
+  .pl { display: flex; justify-content: space-between; gap: 10px; padding: 12px 0; border-bottom: 1px dashed var(--border); }
+  .mob { display: none; }
+  @media (max-width: 900px) { .lay { grid-template-columns: 1fr; } .side { position: static; } .side .sum { display: none; } .team { grid-template-columns: 1fr 1fr; } .mob { display: flex; position: fixed; left: 0; right: 0; bottom: 0; background: var(--surface); border-top: 1px solid var(--border); padding: 10px 14px; gap: 10px; align-items: center; z-index: 20; } body { padding-bottom: 76px; } .wiz-nav { display: none !important; } }
+  @media (max-width: 600px) { .svc { grid-template-columns: 1fr; } .cover { height: 240px; } .cover .lg { width: 58px; height: 58px; } }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script src="../../core/core.js"></script>
+<script src="data.js"></script>
+<script>
+/* Online randevu sayfası — NEBSOFT Randevu paneliyle aynı takvimi kullanır (müsaitlik, çakışma kontrolü, iptal kuralı) */
+(function () {
+  const { esc, $, on, icon, money, toast, iso, addDays, today } = NS;
+  const R = window.RANDEVU;
+  const db = new NS.DB('randevu', R.seed);
+  const s = db.settings({});
+  document.title = s.bizName + ' · Online Randevu';
+  const st = { step: 1, service: null, staff: null, date: null, time: null, assigned: null, cat: '', q: '', done: null };
+  const svc = (id) => db.get('services', id);
+  const staffFor = (sid) => db.all('staff', (x) => x.active !== false && svc(sid).staff.includes(x.id));
+  const tel = (p) => String(p || '').replace(/\s/g, '');
+  const wa = (text) => `https://wa.me/90${String(s.whatsapp || s.bizPhone || '').replace(/\D/g, '').replace(/^0/, '')}?text=${encodeURIComponent(text)}`;
+  const mapUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(s.bizName + ' ' + (s.bizAddress || ''))}`;
+  const STEPS = ['Hizmet', 'Uzman', 'Tarih & saat', 'Bilgiler'];
+  const nowOpen = () => { const n = new Date(); const m = n.getHours() * 60 + n.getMinutes(); return n.getDay() !== 0 && m >= R.toMin(s.open || '09:00') && m < R.toMin(s.close || '20:00'); };
+  const done = db.all('appointments', (a) => a.status === 'tamam').length;
+  const cutoff = () => { const n = new Date(); return n.getHours() * 60 + n.getMinutes() + 30; };
+
+  function slotsFor(date) {
+    const sv = svc(st.service);
+    const list = st.staff ? [st.staff] : staffFor(st.service).map((x) => x.id);
+    const map = {};
+    list.forEach((id) => R.freeSlots(db, id, date, sv.duration).forEach((t) => { if (!map[t]) map[t] = id; }));
+    // Bugün için geçmiş (ve 30 dk içindeki) saatleri gösterme
+    if (date === today()) Object.keys(map).forEach((t) => { if (R.toMin(t) < cutoff()) delete map[t]; });
+    return map;
+  }
+  const nextFree = (staffId) => { const sv = svc(st.service); for (let i = 0; i < 14; i++) { const d = iso(addDays(new Date(), i)); let f = R.freeSlots(db, staffId, d, sv.duration); if (d === today()) f = f.filter((t) => R.toMin(t) >= cutoff()); if (f.length) return `${i === 0 ? 'Bugün' : i === 1 ? 'Yarın' : NS.date(d)} ${f[0]}`; } return 'Müsait gün yok'; };
+
+  function frame() {
+    const cats = [...new Set(db.all('services', (x) => x.online).map((x) => x.cat || 'Diğer'))];
+    $('#root').innerHTML = `<div class="cover" style="background-image:url('https://images.unsplash.com/photo-${R.COVER[0]}?w=1800&q=70&auto=format&fit=crop')"><div class="in"><div class="lg">${icon('scissors')}</div><div class="grow"><h1>${esc(s.bizName)}</h1><div class="meta"><span class="${nowOpen() ? 'open' : 'closed'}">${nowOpen() ? 'Şu an açık' : 'Şu an kapalı'} · ${esc(s.open || '09:00')}–${esc(s.close || '20:00')}</span><span>${icon('map')} ${esc(String(s.bizAddress || '').split(',')[0])}</span>${done ? `<span>${icon('check')} ${done}+ tamamlanan randevu</span>` : ''}</div></div><button class="btn ghost icon" id="th" style="color:#fff" aria-label="Tema">${icon(NS.getTheme() === 'dark' ? 'sun' : 'moon')}</button></div></div>
+      <nav class="tabs"><div class="in"><a href="#randevu">Randevu al</a><a href="#fiyatlar">Hizmetler & fiyatlar</a><a href="#ekip">Ekibimiz</a><a href="#hakkinda">Hakkında</a><a href="#" data-my>Randevumu sorgula</a></div></nav>
+      <div class="wrap"><div class="lay"><div id="randevu" style="scroll-margin-top:70px"><div class="card pad" id="wiz"></div></div><aside class="side"><div class="card pad sum" id="sum"></div>
+        <div class="card pad"><h3 class="mb">İletişim</h3><div class="small" style="line-height:1.7">${icon('map')} ${esc(s.bizAddress || '')}</div><div class="row mt" style="gap:6px"><a class="btn sm" href="tel:${esc(tel(s.bizPhone))}">${icon('phone')} Ara</a><a class="btn sm" target="_blank" rel="noopener" href="${wa('Merhaba, randevu hakkında bilgi almak istiyorum.')}">${icon('message')} WhatsApp</a><a class="btn sm" target="_blank" rel="noopener" href="${mapUrl}">${icon('map')} Yol tarifi</a></div>
+          <div class="hrs mt">${[1, 2, 3, 4, 5, 6, 0].map((d) => `<div class="${new Date().getDay() === d ? 'today' : ''}"><span>${NS.DAYS[d]}</span><span>${d === 0 ? 'Kapalı' : `${esc(s.open || '09:00')} – ${esc(s.close || '20:00')}`}</span></div>`).join('')}</div></div></aside></div>
+        <section class="sec2" id="fiyatlar"><h2>Hizmetler ve fiyatlar</h2><div class="grid g2">${cats.map((c) => `<div class="card pad"><h3 class="mb">${esc(c)}</h3>${db.all('services', (x) => x.online && (x.cat || 'Diğer') === c).map((x) => `<div class="pl"><div><b>${esc(x.name)}</b><div class="small muted">${x.duration} dk${x.desc ? ' · ' + esc(x.desc) : ''}</div></div><div class="right nw"><b>${money(x.price)}</b><br><button class="btn sm ghost" data-pick="${x.id}">Seç</button></div></div>`).join('')}</div>`).join('')}</div></section>
+        <section class="sec2" id="ekip"><h2>Ekibimiz</h2><div class="team">${db.all('staff', (x) => x.active !== false).map((x) => `<div class="card"><div class="avatar" style="width:72px;height:72px;font-size:22px;margin:0 auto 10px;background:${x.color}22;color:${x.color}">${esc(NS.initials(x.name))}</div><b>${esc(x.name)}</b><div class="small muted">${esc(x.title || '')}</div><div class="small faint mt">${db.all('services', (v) => v.staff.includes(x.id)).length} hizmet</div></div>`).join('')}</div></section>
+        <section class="sec2" id="hakkinda"><h2>Salonumuz</h2><div class="gal">${R.COVER.map((id) => `<img src="https://images.unsplash.com/photo-${id}?w=500&h=500&q=65&auto=format&fit=crop" alt="" loading="lazy">`).join('')}</div><p class="muted mt" style="line-height:1.7">${esc(s.bookingNote || '')} Hijyen kurallarına uygun, tek kullanımlık malzeme ve sterilize ekipmanla hizmet veriyoruz. Randevunuzu ${s.cancelHours ? s.cancelHours + ' saat öncesine kadar' : 'dilediğiniz zaman'} bu sayfadan iptal edebilirsiniz.</p></section>
+        <p class="center small faint mt">NEBSOFT Randevu ile güçlendirilmiştir</p></div>
+      <div class="mob" id="mob"></div>`;
+    $('#th').onclick = () => { NS.toggleTheme(); frame(); render(); };
+  }
+
+  function render() {
+    db.load();
+    const sv = st.service && svc(st.service);
+    let body = '';
+    if (st.step === 1) {
+      const all = db.all('services', (x) => x.online); const cats = [...new Set(all.map((x) => x.cat || 'Diğer'))];
+      const list = all.filter((x) => (!st.cat || (x.cat || 'Diğer') === st.cat) && (!st.q || NS.match(st.q, x.name, x.desc, x.cat)));
+      body = `<h2>Hizmet seçin</h2><input class="input mt" id="sq" placeholder="Hizmet ara (ör. manikür, boya)" value="${esc(st.q)}"><div class="pills"><button data-cat="" class="${!st.cat ? 'on' : ''}">Tümü</button>${cats.map((c) => `<button data-cat="${esc(c)}" class="${st.cat === c ? 'on' : ''}">${esc(c)}</button>`).join('')}</div>
+        <div class="svc mt">${list.map((x) => `<button class="opt ${st.service === x.id ? 'sel' : ''}" data-sv="${x.id}"><img src="${R.photo(x, 160)}" alt="" loading="lazy"><div class="grow"><b>${esc(x.name)}</b><div class="small muted">${icon('clock')} ${x.duration} dk${x.desc ? ' · ' + esc(x.desc) : ''}</div><b style="color:var(--accent)">${money(x.price)}</b></div></button>`).join('') || '<div class="empty">Hizmet bulunamadı</div>'}</div>`;
+    } else if (st.step === 2) {
+      body = `<h2 class="mb">Uzman seçin</h2><div class="svc"><button class="opt ${st.staff === null ? 'sel' : ''}" data-sf=""><div class="av" style="background:var(--app-accent-soft);color:var(--accent)">${icon('users')}</div><div class="grow"><b>Fark etmez</b><div class="small muted">En erken müsait uzman</div></div></button>${staffFor(st.service).map((x) => `<button class="opt ${st.staff === x.id ? 'sel' : ''}" data-sf="${x.id}"><div class="av" style="background:${x.color}22;color:${x.color}">${esc(NS.initials(x.name))}</div><div class="grow"><b>${esc(x.name)}</b><div class="small muted">${esc(x.title)}</div><div class="small" style="color:var(--ok);font-weight:600">İlk boş: ${nextFree(x.id)}</div></div></button>`).join('')}</div>`;
+    } else if (st.step === 3) {
+      const days = Array.from({ length: 21 }, (_, i) => iso(addDays(new Date(), i)));
+      if (!st.date) st.date = days.find((d) => Object.keys(slotsFor(d)).length) || days[0];
+      const map = slotsFor(st.date); const ts = Object.keys(map).sort();
+      const grp = [['Sabah', (t) => R.toMin(t) < 720], ['Öğleden sonra', (t) => R.toMin(t) >= 720 && R.toMin(t) < 1020], ['Akşam', (t) => R.toMin(t) >= 1020]];
+      const cd = new Date(st.date + 'T12:00');
+      body = `<h2 class="mb">Tarih ve saat</h2><div class="small muted mb">${NS.MONTHS[cd.getMonth()]} ${cd.getFullYear()}</div><div class="days">${days.map((d) => { const n = Object.keys(slotsFor(d)).length; const dt = new Date(d + 'T12:00'); return `<button class="day ${d === st.date ? 'sel' : ''} ${n ? '' : 'off'}" data-d="${d}"><span class="small">${d === today() ? 'Bugün' : NS.DAYS[dt.getDay()].slice(0, 3)}</span><b>${dt.getDate()}</b><small>${n ? n + ' boş' : 'dolu'}</small></button>`; }).join('')}</div>
+        ${ts.length ? grp.map(([l, f]) => { const g = ts.filter(f); return g.length ? `<div class="tl">${l}</div><div class="times">${g.map((t) => `<button class="btn ${st.time === t ? 'sel' : ''}" data-t="${t}">${t}</button>`).join('')}</div>` : ''; }).join('') : '<div class="empty">Bu gün için boş saat kalmadı. Başka bir gün seçin.</div>'}`;
+    } else if (st.step === 4) {
+      body = `<h2 class="mb">Bilgileriniz</h2><form class="form-grid" id="f" onsubmit="return false"><div class="field"><label>Ad soyad *</label><input class="input lg" name="name" required autocomplete="name"></div><div class="field"><label>Cep telefonu *</label><input class="input lg" name="phone" type="tel" placeholder="05xx xxx xx xx" required autocomplete="tel"></div><div class="field full"><label>E-posta</label><input class="input" name="email" type="email" autocomplete="email"></div><div class="field full"><label>Not</label><textarea class="input" name="note" placeholder="Alerji, saç uzunluğu, özel istek…"></textarea></div></form>
+        <label class="check small mt"><input type="checkbox" id="rm" checked> Randevumdan ${s.reminderHours || 24} saat önce SMS hatırlatma gönderilsin</label><label class="check small mt"><input type="checkbox" id="kv"> Kişisel verilerimin randevu hizmeti kapsamında işlenmesini kabul ediyorum (KVKK).</label>`;
+    } else if (st.step === 5) {
+      const a = st.done; const stf = db.get('staff', st.assigned);
+      const dd = st.date.replace(/-/g, ''); const gcal = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(sv.name + ' - ' + s.bizName)}&dates=${dd}T${st.time.replace(':', '')}00/${dd}T${R.toHM(R.toMin(st.time) + sv.duration).replace(':', '')}00&location=${encodeURIComponent(s.bizAddress || '')}`;
+      body = `<div class="center" style="padding:16px 0"><div style="width:76px;height:76px;border-radius:50%;background:#dcfce7;color:#15803d;display:grid;place-items:center;margin:0 auto">${icon('check')}</div><h1 class="mt">${s.autoConfirm ? 'Randevunuz onaylandı!' : 'Randevu talebiniz alındı!'}</h1><p class="muted mt">${s.autoConfirm ? 'Randevunuzdan önce SMS ile hatırlatma göndereceğiz.' : 'İşletme onayladığında size SMS ile bilgi verilecek.'}</p>${a ? `<div class="mt"><span class="badge acc" style="font-size:14px;padding:6px 12px">Randevu kodu: <b class="mono">${esc(a.id.slice(-6).toUpperCase())}</b></span></div>` : ''}</div>
+        <div class="card pad mb">${[['Hizmet', sv.name], ['Uzman', stf ? stf.name : '-'], ['Tarih', NS.dateLong(st.date)], ['Saat', `${st.time} (${sv.duration} dk)`], ['Ücret', money(sv.price)]].map(([k, v]) => `<div class="list-item"><span class="grow muted">${k}</span><b>${esc(v)}</b></div>`).join('')}</div><div class="small muted mb">${esc(s.bookingNote || '')}</div>
+        <div class="row" style="gap:8px"><button class="btn" id="ics">${icon('calendar')} Takvime ekle (.ics)</button><a class="btn" target="_blank" rel="noopener" href="${gcal}">${icon('calendar')} Google Takvim</a><a class="btn" target="_blank" rel="noopener" href="${mapUrl}">${icon('map')} Yol tarifi</a><span class="grow"></span><button class="btn primary" id="again">Yeni randevu</button></div>`;
+    }
+    const canNext = (st.step === 1 && st.service) || st.step === 2 || (st.step === 3 && st.time) || st.step === 4;
+    const nextLbl = st.step === 4 ? 'Randevuyu onayla' : 'Devam';
+    $('#wiz').innerHTML = `${st.step < 5 ? `<div class="steps">${STEPS.map((l, i) => `<div class="${i + 1 <= st.step ? 'on' : ''}"><i></i>${i + 1}. ${l}</div>`).join('')}</div>` : ''}${body}
+      ${st.step < 5 ? `<div class="row mt wiz-nav" style="margin-top:22px">${st.step > 1 ? `<button class="btn lg" data-back>${icon('back')} Geri</button>` : `<button class="btn lg ghost" data-my>${icon('search')} Randevumu sorgula</button>`}<span class="grow"></span><button class="btn lg primary" data-next ${canNext ? '' : 'disabled'}>${nextLbl} ${icon('right')}</button></div>` : ''}`;
+    const stf = db.get('staff', st.assigned || st.staff);
+    $('#sum').innerHTML = sv ? `<img src="${R.photo(sv, 600)}" alt=""><h3>${esc(sv.name)}</h3><div class="small muted">${sv.duration} dk</div>${[['Uzman', stf ? stf.name : 'En erken müsait'], ['Tarih', st.date && st.step >= 3 ? NS.dateLong(st.date) : '—'], ['Saat', st.time || '—']].map(([k, v]) => `<div class="list-item small"><span class="grow muted">${k}</span><b>${esc(v)}</b></div>`).join('')}<div class="row between mt"><span class="muted">Toplam</span><b style="font-size:22px">${money(sv.price)}</b></div><div class="small faint">Ödeme salonda alınır</div>${st.step < 5 ? `<button class="btn primary lg block mt" data-next ${canNext ? '' : 'disabled'}>${nextLbl}</button>` : ''}` : '<h3>Randevu özeti</h3><p class="small muted mt">Bir hizmet seçerek başlayın. Uygun saatler anlık olarak salonun takviminden gelir.</p>';
+    $('#mob').innerHTML = st.step < 5 ? `${st.step > 1 ? `<button class="btn lg icon" data-back aria-label="Geri">${icon('back')}</button>` : ''}<div class="grow small">${sv ? `<b>${esc(sv.name)}</b><br>${money(sv.price)}${st.time ? ' · ' + st.time : ''}` : '<span class="muted">Hizmet seçin</span>'}</div><button class="btn lg primary" data-next ${canNext ? '' : 'disabled'}>${nextLbl}</button>` : '';
+    $('#mob').style.visibility = st.step < 5 ? '' : 'hidden';
+    const sq = $('#sq'); if (sq) sq.oninput = () => { st.q = sq.value.trim(); clearTimeout(sq._t); sq._t = setTimeout(() => { render(); const n = $('#sq'); n.focus(); n.setSelectionRange(n.value.length, n.value.length); }, 250); };
+  }
+  const toTop = () => { const w = $('#randevu'); if (w && w.getBoundingClientRect().top < 0) w.scrollIntoView({ behavior: 'smooth' }); };
+
+  frame();
+  on(document.body, 'click', '[data-cat]', (e, b) => { st.cat = b.dataset.cat; render(); });
+  on(document.body, 'click', '[data-sv]', (e, b) => { st.service = b.dataset.sv; st.staff = null; st.date = null; st.time = null; render(); });
+  on(document.body, 'click', '[data-pick]', (e, b) => { Object.assign(st, { step: 2, service: b.dataset.pick, staff: null, date: null, time: null }); render(); $('#randevu').scrollIntoView({ behavior: 'smooth' }); });
+  on(document.body, 'click', '[data-sf]', (e, b) => { st.staff = b.dataset.sf || null; st.date = null; st.time = null; render(); });
+  on(document.body, 'click', '[data-d]', (e, b) => { st.date = b.dataset.d; st.time = null; render(); });
+  on(document.body, 'click', '[data-t]', (e, b) => { st.time = b.dataset.t; st.assigned = slotsFor(st.date)[st.time]; render(); });
+  on(document.body, 'click', '[data-back]', () => { st.step--; render(); toTop(); });
+  on(document.body, 'click', '#again', () => { Object.assign(st, { step: 1, service: null, staff: null, date: null, time: null, assigned: null, done: null }); render(); toTop(); });
+  on(document.body, 'click', '[data-next]', () => {
+    if (st.step < 4) { st.step++; render(); return toTop(); }
+    const f = $('#f');
+    if (!NS.validate(f)) return;
+    if (!$('#kv').checked) return toast('KVKK onayı gerekli', 'err');
+    const v = NS.readForm(f);
+    if (String(v.phone).replace(/\D/g, '').length < 10) return toast('Geçerli bir telefon numarası girin', 'err');
+    db.load();
+    const staffId = st.staff || slotsFor(st.date)[st.time];
+    if (!staffId || !R.freeSlots(db, staffId, st.date, svc(st.service).duration).includes(st.time)) { toast('Bu saat az önce doldu, lütfen başka saat seçin', 'err'); st.step = 3; st.time = null; return render(); }
+    const phone = v.phone.replace(/\s+/g, ' ').trim();
+    let c = db.find('customers', (x) => String(x.phone).replace(/\D/g, '').slice(-10) === phone.replace(/\D/g, '').slice(-10));
+    if (!c) c = db.insert('customers', { name: v.name, phone, email: v.email || '', tags: ['Online'], notes: '' }, true);
+    else if (v.email && !c.email) c.email = v.email;
+    const sv = svc(st.service);
+    st.done = db.insert('appointments', { date: st.date, start: st.time, duration: sv.duration, staff: staffId, service: sv.id, customer: c.id, price: sv.price, status: s.autoConfirm ? 'onay' : 'bekliyor', source: 'online', note: v.note || '', paid: false, noReminder: !$('#rm').checked });
+    st.assigned = staffId; st.step = 5; render(); toTop();
+  });
+  on(document.body, 'click', '#ics', () => {
+    const sv = svc(st.service); const d = st.date.replace(/-/g, ''); const t = st.time.replace(':', '') + '00';
+    const end = R.toHM(R.toMin(st.time) + sv.duration).replace(':', '') + '00';
+    const ics = `BEGIN:VCALENDAR\r\nVERSION:2.0\r\nBEGIN:VEVENT\r\nDTSTART:${d}T${t}\r\nDTEND:${d}T${end}\r\nSUMMARY:${sv.name} - ${s.bizName}\r\nLOCATION:${s.bizAddress}\r\nBEGIN:VALARM\r\nTRIGGER:-PT2H\r\nACTION:DISPLAY\r\nDESCRIPTION:Randevu hatırlatma\r\nEND:VALARM\r\nEND:VEVENT\r\nEND:VCALENDAR`;
+    const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([ics], { type: 'text/calendar' })); a.download = 'randevu.ics'; a.click();
+  });
+  on(document.body, 'click', '[data-my]', async (e) => {
+    e.preventDefault();
+    const p = await NS.prompt('Randevu aldığınız telefon numarası', '', { title: 'Randevumu sorgula', type: 'tel' });
+    if (!p) return;
+    if (db.lookup({ phone: p }) === null) db.load();
+    const c = db.find('customers', (x) => String(x.phone).replace(/\D/g, '').slice(-10) === p.replace(/\D/g, '').slice(-10));
+    const list = c ? db.all('appointments', (a) => a.customer === c.id && a.date >= today() && !['iptal', 'tamam'].includes(a.status)).sort((a, b) => (a.date + a.start).localeCompare(b.date + b.start)) : [];
+    NS.modal({
+      title: 'Randevularınız',
+      body: list.length ? list.map((a) => { const canCancel = (new Date(`${a.date}T${a.start}`) - Date.now()) / 3600000 > (s.cancelHours || 0); return `<div class="list-item"><img src="${R.photo(svc(a.service), 100)}" style="width:48px;height:48px;border-radius:10px;object-fit:cover" alt=""><div class="grow"><b>${NS.date(a.date)} ${a.start}</b><div class="small muted">${esc(svc(a.service).name)} · ${esc((db.get('staff', a.staff) || {}).name)}</div><div class="small">${NS.badge(a.status === 'onay' ? 'Onaylandı' : 'Onay bekliyor', a.status === 'onay' ? 'ok' : 'warn')}</div></div>${canCancel ? `<button class="btn sm danger" data-cx="${a.id}">İptal et</button>` : `<span class="small faint">İptal süresi geçti<br><a href="tel:${esc(tel(s.bizPhone))}">Bizi arayın</a></span>`}</div>`; }).join('') : '<div class="empty">Yaklaşan randevu bulunamadı</div>',
+      onOpen: (b, close) => on(b, 'click', '[data-cx]', async (e, x) => { if (!(await NS.confirm('Randevunuz iptal edilsin mi?'))) return; db.update('appointments', x.dataset.cx, { status: 'iptal', note: 'Müşteri online iptal etti' }); close(); toast('Randevunuz iptal edildi', 'ok'); render(); }),
+    });
+  });
+  render();
+})();
+</script>
+</body>
+</html>

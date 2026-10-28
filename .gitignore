@@ -1,0 +1,14 @@
+data/
+node_modules/
+
+# Tanıtım videosu çıktıları (büyük dosyalar)
+brag-output*/
+
+# .NET derleme çıktıları (GİB XSD doğrulayıcısı)
+server/test/xsd/validator/bin/
+server/test/xsd/validator/obj/
+
+# Derlenmiş kurulum dosyaları (exe, apk) — depoya girmez, yeniden üretilir
+indir/
+android/build/
+desktop/dist/

@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NEBSOFT Spor Salonu</title>
+<link rel="stylesheet" href="../../core/core.css">
+<style>
+  .gate { display: grid; grid-template-columns: 1fr 380px; gap: 16px; }
+  .gate-card { border-radius: 20px; padding: 28px; min-height: 320px; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; gap: 10px; transition: background .2s; }
+  .gate-card.ok { background: var(--ok); color: #fff; }
+  .gate-card.err { background: var(--err); color: #fff; }
+  .gate-card.idle { background: var(--surface); border: 2px dashed var(--border); color: var(--text-2); }
+  .gate-card .big-av { width: 96px; height: 96px; border-radius: 50%; background: rgba(255,255,255,.2); display: grid; place-items: center; font-size: 34px; font-weight: 800; }
+  .week { display: grid; grid-template-columns: repeat(7, minmax(140px, 1fr)); gap: 10px; overflow-x: auto; }
+  .wday h4 { text-align: center; padding: 8px; border-radius: 10px; background: var(--surface-2); margin-bottom: 8px; font-size: 13px; }
+  .wday h4.td { background: var(--accent); color: #fff; }
+  .cls { border-radius: 12px; padding: 10px; margin-bottom: 8px; color: #fff; cursor: pointer; font-size: 12px; }
+  .cls b { display: block; font-size: 13px; }
+  @media (max-width: 900px) { .gate { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<script src="../../core/core.js"></script>
+<script src="../../core/integrations.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

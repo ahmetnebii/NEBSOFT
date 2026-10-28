@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NEBSOFT Araç Kiralama</title>
+<link rel="stylesheet" href="../../core/core.css">
+<style>
+  .gantt-wrap { overflow: auto; max-height: calc(100vh - 250px); }
+  .gantt { display: grid; position: relative; font-size: 12px; }
+  .gantt .h { position: sticky; top: 0; z-index: 4; background: var(--surface); border-bottom: 1px solid var(--border); text-align: center; padding: 6px 0; font-weight: 600; color: var(--text-2); }
+  .gantt .h.td { background: var(--accent-soft); color: var(--accent); }
+  .gantt .rl { position: sticky; left: 0; z-index: 3; background: var(--surface); border-right: 1px solid var(--border); border-bottom: 1px solid var(--border); padding: 0 10px; display: flex; flex-direction: column; justify-content: center; white-space: nowrap; overflow: hidden; }
+  .gantt .rl.corner { z-index: 5; top: 0; }
+  .gantt .c { border-bottom: 1px solid var(--border); border-left: 1px solid color-mix(in srgb, var(--border) 50%, transparent); cursor: cell; }
+  .gantt .c:hover { background: var(--accent-soft); }
+  .bar { position: absolute; height: 30px; border-radius: 8px; color: #fff; padding: 0 8px; display: flex; align-items: center; font-weight: 600; overflow: hidden; white-space: nowrap; cursor: pointer; z-index: 2; }
+  .bar.rezervasyon { background: #0891b2; } .bar.kirada { background: #dc2626; } .bar.tamamlandi { background: #64748b; opacity: .6; } .bar.bakim { background: repeating-linear-gradient(135deg, #d97706 0 6px, #b45309 6px 12px); }
+  .fuel { display: inline-flex; gap: 2px; } .fuel i { width: 10px; height: 14px; border-radius: 2px; background: var(--border); } .fuel i.on { background: var(--ok); }
+  .carcard { display: flex; gap: 14px; align-items: center; }
+  .carcard .cc { width: 64px; height: 44px; border-radius: 10px; display: grid; place-items: center; color: #fff; }
+</style>
+</head>
+<body>
+<script src="../../core/core.js"></script>
+<script src="../../core/integrations.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

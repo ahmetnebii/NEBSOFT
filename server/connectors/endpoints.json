@@ -1,0 +1,35 @@
+{
+  "_not": "Pazaryeri adresleri. Pazaryeri bir yolu değiştirirse kod değil bu dosya güncellenir. Yerel değişiklikler için data/endpoints.local.json oluşturun (aynı yapı, yalnızca değişen alanlar).",
+  "trendyol": {
+    "base": "https://apigw.trendyol.com",
+    "stage": "https://stageapigw.trendyol.com",
+    "orders": "/integration/order/sellers/{sid}/orders",
+    "package": "/integration/order/sellers/{sid}/shipment-packages/{id}",
+    "tracking": "/integration/order/sellers/{sid}/shipment-packages/{id}/update-tracking-number",
+    "inventory": "/integration/inventory/sellers/{sid}/products/price-and-inventory",
+    "products": "/integration/product/sellers/{sid}/products",
+    "batch": "/integration/product/sellers/{sid}/products/batch-requests/{id}",
+    "categories": "/integration/product/product-categories",
+    "questions": "/integration/qna/sellers/{sid}/questions/filter",
+    "answer": "/integration/qna/sellers/{sid}/questions/{id}/answers",
+    "settlements": "/integration/finance/che/sellers/{sid}/settlements"
+  },
+  "hepsiburada": {
+    "listing": "https://listing-external.hepsiburada.com",
+    "listingStage": "https://listing-external-sit.hepsiburada.com",
+    "oms": "https://oms-external.hepsiburada.com",
+    "omsStage": "https://oms-external-sit.hepsiburada.com",
+    "listings": "/listings/merchantid/{mid}",
+    "inventory": "/listings/merchantid/{mid}/inventory-uploads",
+    "inventoryStatus": "/listings/merchantid/{mid}/inventory-uploads/id/{id}",
+    "orders": "/orders/merchantid/{mid}",
+    "packages": "/packages/merchantid/{mid}"
+  },
+  "n11": {
+    "base": "https://api.n11.com",
+    "products": "/ms/product-query",
+    "orders": "/rest/delivery/v1/shipmentPackages",
+    "priceStock": "/ms/product/tasks/price-stock-update",
+    "taskDetail": "/ms/product/task-details/page-query"
+  }
+}

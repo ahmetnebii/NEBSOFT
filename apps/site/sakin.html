@@ -1,0 +1,506 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#065f46">
+<title>Sakin Portalı</title>
+<link rel="stylesheet" href="../../core/core.css">
+<style>
+  :root { --app-accent: #059669; --app-accent-soft: #e6f7f1; --app-accent-soft-dark: #0f2e25; --deep: #064e3b; }
+  body { background: var(--bg); }
+  button { font-family: inherit; }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  /* Giriş: solda sitenin blokları (her daire bir pencere), sağda form */
+  .gate { min-height: 100vh; display: grid; grid-template-columns: 1.1fr 1fr; }
+  .gate .art { background: var(--deep); color: #ecfdf5; padding: 48px; display: flex; flex-direction: column; justify-content: space-between; position: relative; overflow: hidden; }
+  .gate .art h1 { color: #fff; font-size: clamp(30px, 3.6vw, 46px); line-height: 1.05; letter-spacing: -.02em; margin: 0 0 10px; max-width: 12ch; }
+  .gate .art p { color: #a7f3d0; max-width: 40ch; margin: 0; }
+  .towers { display: flex; align-items: flex-end; gap: 22px; margin-top: 40px; }
+  .tower { display: grid; grid-template-columns: repeat(2, 30px); gap: 8px; padding: 12px; background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.12); border-radius: 6px 6px 0 0; position: relative; }
+  .tower::after { content: attr(data-b); position: absolute; bottom: -26px; left: 0; right: 0; text-align: center; font-weight: 700; font-size: 13px; color: #6ee7b7; }
+  .tower i { width: 30px; height: 34px; border-radius: 3px; background: rgba(255,255,255,.12); transition: background .25s; }
+  .tower i.lit { background: #fde68a; box-shadow: 0 0 14px rgba(253,230,138,.6); }
+  .ground { height: 2px; background: rgba(255,255,255,.2); margin-top: 0; }
+  .gate .form { display: grid; place-items: center; padding: 32px 20px; }
+  .gate .form > div { width: 100%; max-width: 400px; }
+  .seg2 { display: flex; gap: 8px; }
+  .seg2 button { flex: 1; height: 46px; border-radius: 10px; border: 1px solid var(--border); background: var(--surface); color: var(--text); font-weight: 700; font-size: 15px; cursor: pointer; transition: border-color .15s, background .15s; }
+  .seg2 button[aria-pressed="true"] { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); }
+  .fgrid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; }
+  .fgrid button { height: 42px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface); color: var(--text); font-weight: 600; cursor: pointer; font-variant-numeric: tabular-nums; }
+  .fgrid button[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .pin { display: flex; gap: 10px; }
+  .pin input { width: 100%; height: 56px; text-align: center; font-size: 24px; font-weight: 700; border-radius: 10px; border: 1px solid var(--border); background: var(--surface); color: var(--text); }
+  .pin input:focus { border-color: var(--accent); outline: none; box-shadow: 0 0 0 3px var(--accent-soft); }
+  .lbl { font-size: 12px; font-weight: 600; color: var(--text-2); margin: 18px 0 8px; display: block; }
+
+  /* Uygulama kabuğu */
+  .shell { display: grid; grid-template-columns: 232px 1fr; min-height: 100vh; }
+  .side { border-right: 1px solid var(--border); background: var(--surface); padding: 18px 12px; position: sticky; top: 0; height: 100vh; display: flex; flex-direction: column; gap: 2px; }
+  .brand { display: flex; gap: 10px; align-items: center; padding: 4px 8px 18px; }
+  .mk { width: 36px; height: 36px; border-radius: 9px; background: var(--deep); color: #fde68a; display: grid; place-items: center; font-weight: 800; font-size: 15px; flex: none; }
+  .brand b { display: block; font-size: 14px; line-height: 1.2; }
+  .brand span { font-size: 12px; color: var(--text-3); }
+  .nav a { display: flex; align-items: center; gap: 10px; padding: 9px 10px; border-radius: 8px; color: var(--text-2); text-decoration: none; font-weight: 500; position: relative; }
+  .nav a:hover { background: var(--bg); color: var(--text); }
+  .nav a[aria-current="page"] { background: var(--bg-2); color: var(--text); font-weight: 600; }
+  .nav a .ico { width: 18px; height: 18px; }
+  .dot { margin-left: auto; min-width: 18px; height: 18px; border-radius: 9px; background: var(--err); color: #fff; font-size: 11px; font-weight: 700; display: grid; place-items: center; padding: 0 5px; }
+  .me { margin-top: auto; border-top: 1px solid var(--border); padding: 14px 8px 0; font-size: 13px; }
+  .main { min-width: 0; }
+  .topbar { display: none; }
+  .content { max-width: 1040px; margin: 0 auto; padding: 28px 28px 80px; }
+  .ph { display: flex; justify-content: space-between; align-items: flex-start; gap: 4px 12px; flex-wrap: wrap; }
+  .ph > :nth-child(2) { margin-bottom: 18px; }
+  .h1 { font-size: 24px; font-weight: 700; letter-spacing: -.01em; margin: 0; }
+  .sub { color: var(--text-2); margin: 4px 0 22px; }
+  .bnav { display: none; }
+
+  /* Bakiye ve aidat şeridi */
+  .bal { display: grid; grid-template-columns: 1.3fr 1fr; border: 1px solid var(--border); border-radius: 14px; background: var(--surface); overflow: hidden; margin-bottom: 18px; }
+  .bal .l { padding: 22px 24px; }
+  .bal .r { padding: 22px 24px; border-left: 1px solid var(--border); background: var(--surface-2); display: flex; flex-direction: column; gap: 10px; justify-content: center; }
+  .amt { font-size: 40px; font-weight: 800; letter-spacing: -.02em; font-variant-numeric: tabular-nums; line-height: 1.1; margin: 4px 0 6px; }
+  .amt.due { color: var(--err); }
+  .amt.clear { color: var(--ok); }
+  .strip { display: grid; grid-template-columns: repeat(12, 1fr); gap: 4px; margin-top: 16px; }
+  .strip div { text-align: center; font-size: 11px; color: var(--text-3); }
+  .strip i { display: block; height: 30px; border-radius: 5px; margin-bottom: 4px; background: var(--bg-2); }
+  .strip i.p { background: var(--accent); }
+  .strip i.u { background: var(--err); }
+  .strip i.h { background: repeating-linear-gradient(135deg, var(--warn) 0 4px, color-mix(in srgb, var(--warn) 55%, transparent) 4px 8px); }
+  .legend { display: flex; gap: 14px; font-size: 12px; color: var(--text-2); margin-top: 8px; flex-wrap: wrap; }
+  .legend span::before { content: ''; display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 6px; vertical-align: -1px; background: var(--c); }
+  .iban { display: flex; align-items: center; gap: 8px; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; font-family: ui-monospace, Menlo, monospace; font-size: 13px; }
+  .iban span { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  .two { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+  .panel { border: 1px solid var(--border); border-radius: 14px; background: var(--surface); margin-bottom: 18px; }
+  .panel > header { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 10px; padding: 14px 18px; border-bottom: 1px solid var(--border); }
+  .panel > header h3 { margin: 0; font-size: 15px; flex: 1; }
+  .panel > header a { font-size: 13px; color: var(--accent); text-decoration: none; font-weight: 600; }
+  .panel .b { padding: 6px 18px 14px; }
+  .row2 { display: flex; align-items: center; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--border); }
+  .row2:last-child { border-bottom: 0; }
+  .row2 .g { flex: 1; min-width: 0; }
+  .row2 .t { font-weight: 600; }
+  .row2 .m { font-size: 12px; color: var(--text-3); }
+  .num { font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap; }
+  .none { color: var(--text-3); font-size: 13px; padding: 18px 0; text-align: center; }
+  .quick { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 18px; }
+  .quick a { display: flex; flex-direction: column; gap: 8px; padding: 14px; border-radius: 12px; border: 1px solid var(--border); background: var(--surface); color: var(--text); text-decoration: none; font-weight: 600; font-size: 13px; transition: border-color .15s, transform .15s; }
+  .quick a:hover { border-color: var(--accent); }
+  .quick a:active { transform: scale(.98); }
+  .quick a .ico { color: var(--accent); }
+
+  /* Rezervasyon */
+  .facs { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
+  .chip { display: inline-flex; align-items: center; gap: 8px; height: 38px; padding: 0 14px; border-radius: 99px; border: 1px solid var(--border); background: var(--surface); color: var(--text); font-weight: 600; font-size: 13px; cursor: pointer; }
+  .chip[aria-pressed="true"] { background: var(--text); border-color: var(--text); color: var(--surface); }
+  .days { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; margin-bottom: 14px; }
+  .days button { border: 1px solid var(--border); background: var(--surface); color: var(--text); border-radius: 10px; padding: 8px 4px; cursor: pointer; line-height: 1.2; }
+  .days button small { display: block; font-size: 11px; color: var(--text-3); }
+  .days button b { font-size: 18px; font-variant-numeric: tabular-nums; }
+  .days button[aria-pressed="true"] { border-color: var(--accent); background: var(--accent-soft); }
+  .days button[aria-pressed="true"] small { color: var(--accent); }
+  .slots { display: grid; grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: 8px; }
+  .slot { border: 1px solid var(--border); background: var(--surface); color: var(--text); border-radius: 10px; padding: 12px; text-align: left; cursor: pointer; font-variant-numeric: tabular-nums; transition: border-color .15s; }
+  .slot b { display: block; font-size: 16px; }
+  .slot span { font-size: 12px; color: var(--ok); }
+  .slot:hover:not(:disabled) { border-color: var(--accent); }
+  .slot:disabled { cursor: not-allowed; background: var(--bg); }
+  .slot:disabled b { color: var(--text-3); }
+  .slot:disabled span { color: var(--text-3); }
+  .slot.mine { border-color: var(--accent); background: var(--accent-soft); cursor: default; }
+  .slot.mine span { color: var(--accent); font-weight: 600; }
+
+  /* Ziyaretçi kartı */
+  .pass { display: flex; gap: 16px; align-items: center; border: 1px dashed var(--border); border-radius: 12px; padding: 14px; }
+  .pass svg { flex: none; background: #fff; border-radius: 8px; padding: 6px; }
+  .code { font-family: ui-monospace, Menlo, monospace; font-size: 20px; font-weight: 800; letter-spacing: .12em; }
+
+  /* Talep durumu */
+  .track { display: flex; gap: 4px; margin-top: 8px; }
+  .track i { flex: 1; height: 4px; border-radius: 2px; background: var(--bg-2); }
+  .track i.on { background: var(--accent); }
+  .reply { margin-top: 8px; padding: 10px 12px; border-radius: 8px; background: var(--surface-2); border: 1px solid var(--border); font-size: 13px; }
+
+  /* Anket */
+  .opt { display: block; width: 100%; text-align: left; border: 1px solid var(--border); background: var(--surface); color: var(--text); border-radius: 10px; padding: 12px 14px; margin-bottom: 8px; cursor: pointer; position: relative; overflow: hidden; font-size: 14px; }
+  .opt .bar { position: absolute; inset: 0 auto 0 0; background: var(--accent-soft); transition: width .5s cubic-bezier(.2,.8,.2,1); }
+  .opt > span { position: relative; display: flex; gap: 10px; align-items: center; }
+  .opt > span em { margin-left: auto; font-style: normal; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .opt.sel { border-color: var(--accent); }
+  .opt.sel > span::after { content: none; }
+
+  .ann { padding: 16px 0; border-bottom: 1px solid var(--border); }
+  .ann:last-child { border-bottom: 0; }
+  .ann h4 { margin: 0 0 4px; font-size: 15px; display: flex; gap: 8px; align-items: center; }
+  .ann p { margin: 8px 0 0; color: var(--text-2); }
+  .new { font-size: 11px; font-weight: 700; color: var(--err); text-transform: uppercase; letter-spacing: .04em; }
+  .tabs { display: flex; gap: 6px; margin-bottom: 14px; }
+
+  .view { animation: in .22s ease-out; }
+  @keyframes in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+  @media (prefers-reduced-motion: reduce) { .view { animation: none; } .opt .bar, .tower i { transition: none; } }
+
+  @media (max-width: 900px) {
+    .gate { grid-template-columns: 1fr; }
+    .gate .art { padding: 28px 20px 48px; }
+    .towers { margin-top: 24px; gap: 14px; }
+    .tower { grid-template-columns: repeat(2, 14px); gap: 4px; padding: 6px; }
+    .tower i { width: 14px; height: 16px; }
+    .shell { grid-template-columns: 1fr; }
+    .side { display: none; }
+    .topbar { display: flex; align-items: center; gap: 10px; padding: 12px 16px; background: var(--surface); border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 20; }
+    .topbar .grow { flex: 1; min-width: 0; }
+    .topbar b { display: block; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .topbar span { font-size: 12px; color: var(--text-3); }
+    .content { padding: 18px 16px 100px; }
+    .bnav { display: grid; grid-template-columns: repeat(5, 1fr); position: fixed; bottom: 0; left: 0; right: 0; z-index: 20; background: var(--surface); border-top: 1px solid var(--border); padding: 6px 4px calc(6px + env(safe-area-inset-bottom)); }
+    .bnav a { display: flex; flex-direction: column; align-items: center; gap: 2px; font-size: 11px; color: var(--text-3); text-decoration: none; padding: 6px 0; min-height: 44px; position: relative; }
+    .bnav a[aria-current="page"] { color: var(--accent); font-weight: 600; }
+    .bnav .dot { position: absolute; top: 0; left: 55%; margin: 0; }
+    .ns-toasts { bottom: calc(76px + env(safe-area-inset-bottom)) !important; }
+    .bal { grid-template-columns: 1fr; }
+    .bal .r { border-left: 0; border-top: 1px solid var(--border); }
+    .amt { font-size: 34px; }
+    .two { grid-template-columns: 1fr; gap: 0; }
+    .quick { grid-template-columns: repeat(2, 1fr); }
+    .strip div { font-size: 10px; }
+    .days button b { font-size: 16px; }
+  }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script src="../../core/core.js"></script>
+<script src="data.js"></script>
+<script>
+(function () {
+  const { esc, $, $$, on, icon, money, toast, sum, iso, today, addDays } = NS;
+  const SITE = window.SITE;
+  const db = new NS.DB('site', SITE.seed);
+  SITE.ensure(db);
+  const s = () => db.settings({});
+  const KEY = 'nebsoft:site:sakin';
+  const store = {
+    get: (k) => { try { return sessionStorage.getItem(k); } catch (e) { return null; } },
+    set: (k, v) => { try { v ? sessionStorage.setItem(k, v) : sessionStorage.removeItem(k); } catch (e) { /* yok */ } },
+    lget: (k) => { try { return JSON.parse(localStorage.getItem(k) || 'null'); } catch (e) { return null; } },
+    lset: (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { /* yok */ } },
+  };
+  const perName = (p) => `${NS.MONTHS[Number(p.slice(5)) - 1]} ${p.slice(0, 4)}`;
+  const initials = (n) => String(n || '').split(' ').filter(Boolean).slice(0, 2).map((w) => w[0]).join('').toLocaleUpperCase('tr');
+  const RQ = { acik: 'Açık', islemde: 'İşlemde', cozuldu: 'Çözüldü' };
+  const VT = { misafir: 'Misafir', kargo: 'Kargo / kurye', servis: 'Teknik servis', taksi: 'Taksi', nakliye: 'Nakliye' };
+  const flatOf = () => db.get('flats', store.get(KEY));
+  const residentOf = (f) => f.tenant || f.owner;
+  const readKey = (f) => 'nebsoft:site:okunan:' + f.id;
+  const unread = (f) => { const seen = store.lget(readKey(f)) || []; return db.all('announcements').filter((n) => !seen.includes(n.id)).length; };
+  const openPolls = () => db.all('polls').filter((p) => p.active && p.until >= today());
+  const pendingPolls = (f) => openPolls().filter((p) => p.votes[f.id] === undefined).length;
+
+  // ---------- Giriş ----------
+  function gate() {
+    const flats = db.all('flats');
+    const blocks = [...new Set(flats.map((f) => f.block))].sort();
+    let bl = blocks[0], sel = null;
+    const towers = blocks.map((b) => { const fs = flats.filter((f) => f.block === b).sort((x, y) => y.no - x.no); return `<div class="tower" data-b="${esc(b)} Blok">${fs.map((f) => `<i data-w="${f.id}"></i>`).join('')}</div>`; }).join('');
+    $('#root').innerHTML = `<div class="gate"><section class="art"><div><div class="row nw" style="gap:10px;margin-bottom:36px"><div class="mk">${esc(initials(s().bizName))}</div><b style="color:#fff">${esc(s().bizName)}</b></div>
+        <h1>Siteniz, cebinizde.</h1><p>Aidatınızı görün ve ödeyin, ortak alanları ayırtın, misafirinizi güvenliğe bildirin, arızayı fotoğrafla değil tek cümleyle iletin.</p></div>
+        <div><div class="towers">${towers}</div><div class="ground"></div><p class="small" style="margin-top:40px;color:#6ee7b7">${icon('map')} ${esc(s().bizAddress)} · ${icon('phone')} ${esc(s().bizPhone)}</p></div></section>
+      <section class="form"><div><h2 style="margin:0 0 4px">Daire girişi</h2><p class="muted" style="margin:0">Bloğunuzu ve dairenizi seçin, kayıtlı telefonunuzun son 4 hanesiyle girin.</p>
+        <span class="lbl" id="lb">Blok</span><div class="seg2" role="group" aria-labelledby="lb">${blocks.map((b) => `<button type="button" data-bl="${esc(b)}">${esc(b)} Blok</button>`).join('')}</div>
+        <span class="lbl" id="lf">Daire</span><div class="fgrid" id="fg" role="group" aria-labelledby="lf"></div>
+        <label class="lbl" for="p0">Telefonunuzun son 4 hanesi</label><div class="pin">${[0, 1, 2, 3].map((i) => `<input id="p${i}" inputmode="numeric" maxlength="1" autocomplete="off" aria-label="${i + 1}. hane">`).join('')}</div>
+        <button class="btn primary lg block" style="margin-top:20px;height:50px" id="go">Giriş yap</button>
+        ${NS.pub ? '' : '<p class="small faint mt center">Demo için <a href="#" id="hint">bu dairenin kodunu göster</a></p>'}</div></section></div>`;
+    const light = () => $$('.tower i').forEach((w) => w.classList.toggle('lit', w.dataset.w === sel));
+    const drawFlats = () => {
+      $$('[data-bl]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.bl === bl)));
+      $('#fg').innerHTML = flats.filter((f) => f.block === bl).sort((a, b) => a.no - b.no).map((f) => `<button type="button" data-f="${f.id}" aria-pressed="${f.id === sel}">${f.no}</button>`).join('');
+      light();
+    };
+    on($('.gate'), 'click', '[data-bl]', (e, b) => { bl = b.dataset.bl; sel = null; drawFlats(); });
+    on($('.gate'), 'click', '[data-f]', (e, b) => { sel = b.dataset.f; drawFlats(); $('#p0').focus(); });
+    const pins = [0, 1, 2, 3].map((i) => $('#p' + i));
+    pins.forEach((p, i) => {
+      p.oninput = () => { p.value = p.value.replace(/\D/g, '').slice(-1); if (p.value && pins[i + 1]) pins[i + 1].focus(); if (pins.every((x) => x.value)) submit(); };
+      p.onkeydown = (e) => { if (e.key === 'Backspace' && !p.value && pins[i - 1]) pins[i - 1].focus(); if (e.key === 'Enter') submit(); };
+      p.onpaste = (e) => { const t = (e.clipboardData.getData('text') || '').replace(/\D/g, '').slice(-4); if (t.length === 4) { e.preventDefault(); pins.forEach((x, k) => { x.value = t[k]; }); submit(); } };
+    });
+    const submit = () => {
+      if (!sel) return toast('Önce dairenizi seçin', 'err');
+      const p = pins.map((x) => x.value).join('');
+      const pr = p.length === 4 ? db.lookup({ flat: sel, pin: p }) : false; const f = db.get('flats', sel);
+      const ok = pr !== null ? pr : p.length === 4 && [f.ownerPhone, f.tenantPhone].filter(Boolean).some((x) => x.replace(/\D/g, '').endsWith(p));
+      if (!ok) { toast('Telefon numarası bu daireyle eşleşmedi', 'err'); pins.forEach((x) => { x.value = ''; }); pins[0].focus(); return; }
+      store.set(KEY, f.id); if (!location.hash) location.hash = '#/ozet'; render();
+    };
+    $('#go').onclick = submit;
+    if ($('#hint')) $('#hint').onclick = (e) => { e.preventDefault(); if (!sel) return toast('Önce bir daire seçin'); const f = db.get('flats', sel); toast(`${f.block} Blok ${f.no}: ${f.ownerPhone.replace(/\D/g, '').slice(-4)}`); };
+    drawFlats();
+  }
+
+  // ---------- Kabuk ----------
+  const NAV = [
+    { id: 'ozet', label: 'Özet', short: 'Özet', icon: 'home' },
+    { id: 'odeme', label: 'Aidat & ödeme', short: 'Ödeme', icon: 'wallet' },
+    { id: 'rezervasyon', label: 'Rezervasyon', short: 'Rezerve', icon: 'calendar' },
+    { id: 'ziyaretci', label: 'Ziyaretçi bildirimi', short: 'Ziyaretçi', icon: 'users' },
+    { id: 'talep', label: 'Talep & arıza', short: 'Talep', icon: 'wrench' },
+    { id: 'duyuru', label: 'Duyurular', icon: 'bell' },
+    { id: 'anket', label: 'Anketler', icon: 'list' },
+  ];
+  function render() {
+    db.load(); SITE.ensure(db);
+    const f = flatOf();
+    if (!f) return gate();
+    const route = (location.hash.replace(/^#\//, '') || 'ozet').split('/')[0];
+    const page = PAGES[route] ? route : 'ozet';
+    const badges = { duyuru: unread(f), anket: pendingPolls(f) };
+    const dot = (id) => (badges[id] ? `<span class="dot" aria-label="${badges[id]} yeni">${badges[id]}</span>` : '');
+    const cur = (id) => (id === page ? 'aria-current="page"' : '');
+    $('#root').innerHTML = `<div class="shell"><aside class="side"><div class="brand"><div class="mk">${esc(initials(s().bizName))}</div><div><b>${esc(s().bizName)}</b><span>Sakin portalı</span></div></div>
+        <nav class="nav">${NAV.map((n) => `<a href="#/${n.id}" ${cur(n.id)}>${icon(n.icon)}${esc(n.label)}${dot(n.id)}</a>`).join('')}</nav>
+        <div class="me"><div class="row nw" style="gap:10px"><div class="avatar">${esc(initials(residentOf(f)))}</div><div style="min-width:0"><b style="display:block">${esc(residentOf(f))}</b><span class="small muted">${esc(f.block)} Blok · Daire ${f.no}</span></div></div>
+          <div class="row nw mt" style="gap:6px"><button class="btn sm grow" data-out>${icon('logout')} Çıkış</button><button class="btn sm icon" data-th data-theme-ico aria-label="Tema">${icon(NS.getTheme() === 'dark' ? 'sun' : 'moon')}</button></div></div></aside>
+      <div class="main"><header class="topbar"><div class="mk">${esc(initials(s().bizName))}</div><div class="grow"><b>${esc(s().bizName)}</b><span>${esc(f.block)} Blok · Daire ${f.no}</span></div>
+          <a class="btn ghost icon" href="#/duyuru" aria-label="Duyurular" style="position:relative">${icon('bell')}${badges.duyuru ? `<span class="dot" style="position:absolute;top:-2px;right:-4px;margin:0">${badges.duyuru}</span>` : ''}</a><button class="btn ghost icon" data-th data-theme-ico aria-label="Tema">${icon(NS.getTheme() === 'dark' ? 'sun' : 'moon')}</button><button class="btn ghost icon" data-out aria-label="Çıkış">${icon('logout')}</button></header>
+        <main class="content"><div class="view" id="v"></div></main></div>
+      <nav class="bnav">${NAV.slice(0, 5).map((n) => `<a href="#/${n.id}" ${cur(n.id)}>${icon(n.icon)}${esc(n.short)}${dot(n.id)}</a>`).join('')}</nav></div>`;
+    on($('.shell'), 'click', '[data-out]', () => { store.set(KEY, null); db.pubLogout(); location.hash = ''; gate(); });
+    on($('.shell'), 'click', '[data-th]', NS.toggleTheme);
+    document.title = `${NAV.find((n) => n.id === page).label} · ${s().bizName}`;
+    PAGES[page]($('#v'), f);
+  }
+  const head = (t, sub, right = '') => `<div class="ph"><div><h1 class="h1">${esc(t)}</h1><p class="sub">${sub}</p></div>${right}</div>`;
+
+  // Son 12 ayın aidat durumu: ödendi / kısmen / ödenmedi
+  function strip(f) {
+    const months = Array.from({ length: 12 }, (_, i) => { const d = new Date(); d.setDate(1); d.setMonth(d.getMonth() - 11 + i); return iso(d).slice(0, 7); });
+    return `<div class="strip" role="img" aria-label="Son 12 ay aidat durumu">${months.map((p) => {
+      const ds = db.all('dues', (d) => d.flat === f.id && d.period === p);
+      const a = sum(ds, (d) => d.amount), pd = sum(ds, (d) => d.paid || 0);
+      const c = !ds.length ? '' : pd >= a ? 'p' : pd > 0 ? 'h' : 'u';
+      return `<div title="${perName(p)}: ${ds.length ? money(pd) + ' / ' + money(a) : 'kayıt yok'}"><i class="${c}"></i>${NS.MONTHS[Number(p.slice(5)) - 1].slice(0, 3)}</div>`;
+    }).join('')}</div><div class="legend"><span style="--c:var(--accent)">Ödendi</span><span style="--c:var(--warn)">Kısmen</span><span style="--c:var(--err)">Ödenmedi</span><span style="--c:var(--bg-2)">Kayıt yok</span></div>`;
+  }
+  function balance(f) {
+    const d = SITE.debt(db, f.id), fee = SITE.lateFee(db, f.id);
+    const next = (() => { const n = new Date(); const due = new Date(n.getFullYear(), n.getMonth(), s().dueDay); if (n > due) due.setMonth(due.getMonth() + 1); return due; })();
+    return `<div class="bal"><div class="l"><div class="small muted">Güncel borcunuz</div><div class="amt ${d > 0 ? 'due' : 'clear'}">${money(d)}</div>
+        <div class="small muted">${d > 0 ? `${fee > 0 ? `Gecikme faizi: <b>${money(fee)}</b> (aylık %${s().lateFee}) · ` : ''}` : 'Borcunuz bulunmuyor, teşekkür ederiz. · '}Sıradaki son ödeme: <b>${NS.dateLong(iso(next))}</b></div>${strip(f)}</div>
+      <div class="r">${d > 0 ? `<button class="btn primary lg block" data-pay>${icon('card')} ${NS.pub ? 'Ödeme bilgisi' : 'Kartla öde'} · ${money(d + fee)}</button>` : ''}
+        <div class="small muted">veya havale / EFT: ${esc(s().bank)}</div><div class="iban"><span>${esc(s().iban)}</span><button class="btn ghost icon sm" data-copy="${esc(s().iban.replace(/\s/g, ''))}" aria-label="IBAN kopyala">${icon('copy')}</button></div>
+        <div class="small muted">Açıklamaya <b>${esc(f.id)}</b> yazın; ödemeniz otomatik eşleşir.</div></div></div>`;
+  }
+  const copy = async (t) => { try { await navigator.clipboard.writeText(t); toast('Kopyalandı', 'ok'); } catch (e) { NS.prompt('Kopyalayın', t); } };
+
+  // Demo kart ödemesi: en eski borçtan başlayarak kapatır, makbuz verir
+  function pay(f, done) {
+    const open = db.all('dues', (d) => d.flat === f.id && d.amount > (d.paid || 0)).sort((a, b) => a.period.localeCompare(b.period));
+    const fee = SITE.lateFee(db, f.id);
+    if (!open.length) return toast('Ödenecek borcunuz yok');
+    if (NS.pub) return NS.payInfo({ amount: sum(open, (d) => d.amount - (d.paid || 0)) + (fee > 0 ? fee : 0), title: 'Aidat ödemesi', s: s(), note: `Aidatınızı yönetimin banka hesabına havale ile veya yönetim ofisine elden ödeyebilirsiniz. Havale açıklamasına "${f.block} Blok ${f.no}" yazın. Ödemeniz işlendiğinde bu sayfada görünür.` });
+    const m = NS.modal({
+      title: 'Kartla aidat ödemesi', body: `<div class="mb">${open.map((d) => `<label class="row2" style="cursor:pointer"><input type="checkbox" checked data-d="${d.id}"><span class="g"><span class="t">${esc(d.desc)}</span><span class="m" style="display:block">${perName(d.period)}</span></span><b class="num">${money(d.amount - (d.paid || 0))}</b></label>`).join('')}
+        ${fee > 0 ? `<div class="row2"><span class="g"><span class="t">Gecikme faizi</span><span class="m" style="display:block">Seçili borçlar tamamen ödenirse alınır</span></span><b class="num" id="fe">${money(fee)}</b></div>` : ''}</div>
+        <div class="form-grid"><div class="field full"><label>Kart üzerindeki isim</label><input class="input" id="cn" value="${esc(residentOf(f))}" autocomplete="cc-name"></div><div class="field full"><label>Kart numarası</label><input class="input mono" id="cc" inputmode="numeric" placeholder="0000 0000 0000 0000" autocomplete="cc-number"></div>
+        <div class="field"><label>Son kullanma</label><input class="input mono" id="ce" placeholder="AA/YY" inputmode="numeric" autocomplete="cc-exp"></div><div class="field"><label>CVC</label><input class="input mono" id="cv" placeholder="•••" inputmode="numeric" maxlength="4" autocomplete="cc-csc"></div></div>
+        <p class="small faint mt">${icon('lock')} 3D Secure ile korunur. Demo: gerçek ödeme alınmaz, herhangi bir 16 haneli numara kabul edilir.</p>`,
+      actions: [{ label: 'Vazgeç' }, { label: 'Öde', cls: 'primary', icon: 'lock', onClick: (close, b) => {
+        const ids = $$('[data-d]', b).filter((x) => x.checked).map((x) => x.dataset.d);
+        if (!ids.length) return toast('En az bir borç seçin', 'err');
+        if ($('#cc', b).value.replace(/\D/g, '').length !== 16) return toast('Kart numarası 16 hane olmalı', 'err');
+        if (!/^\d{2}\/\d{2}$/.test($('#ce', b).value)) return toast('Son kullanma tarihi AA/YY biçiminde olmalı', 'err');
+        if ($('#cv', b).value.replace(/\D/g, '').length < 3) return toast('CVC eksik', 'err');
+        db.load();
+        let amount = 0;
+        ids.forEach((id) => { const d = db.get('dues', id); amount += d.amount - (d.paid || 0); d.paid = d.amount; d.paidAt = today(); });
+        const all = ids.length === open.length;
+        if (all && fee > 0) { db.insert('dues', { flat: f.id, period: today().slice(0, 7), type: 'faiz', desc: 'Gecikme faizi', amount: fee, paid: fee, paidAt: today() }, true); amount += fee; }
+        const ref = 'ONL' + Date.now().toString().slice(-8);
+        db.insert('receipts', { flat: f.id, amount, type: 'kart', ref, at: new Date().toISOString(), online: true }, true);
+        db.log('Online aidat ödemesi', `${f.id} · ${money(amount)}`); db.save();
+        close();
+        NS.modal({ title: 'Ödeme alındı', body: `<div class="center"><div style="width:56px;height:56px;border-radius:50%;background:var(--ok-soft);color:var(--ok);display:grid;place-items:center;margin:0 auto 12px">${icon('check', 'ico-lg')}</div><div class="amt clear">${money(amount)}</div><p class="muted">Makbuz no: <b class="mono">${ref}</b><br>Makbuzunuz e-posta ve SMS ile gönderildi (demo).</p></div>`, actions: [{ label: 'Makbuzu yazdır', icon: 'print', onClick: () => receipt(f, amount, ref) }, { label: 'Tamam', cls: 'primary' }] });
+        done && done();
+      } }],
+    });
+    const b = m.root;
+    $('#cc', b).oninput = (e) => { e.target.value = e.target.value.replace(/\D/g, '').slice(0, 16).replace(/(\d{4})(?=\d)/g, '$1 '); };
+    $('#ce', b).oninput = (e) => { const v = e.target.value.replace(/\D/g, '').slice(0, 4); e.target.value = v.length > 2 ? v.slice(0, 2) + '/' + v.slice(2) : v; };
+    $$('[data-d]', b).forEach((x) => { x.onchange = () => { const fe = $('#fe', b); if (fe) fe.style.textDecoration = $$('[data-d]', b).every((y) => y.checked) ? '' : 'line-through'; }; });
+  }
+  const receipt = (f, amount, ref) => NS.printHtml(`<div class="doc"><h2>${esc(s().bizName)}</h2><p>${esc(s().bizAddress)}</p><h3>TAHSİLAT MAKBUZU</h3><p>Makbuz no: <b>${esc(ref)}</b> · Tarih: ${NS.dt(new Date().toISOString())}</p><p>Daire: <b>${esc(f.block)} Blok No ${f.no}</b> · ${esc(residentOf(f))}</p><p>Tutar: <b>${money(amount)}</b> · Ödeme şekli: Kredi kartı (online)</p><p style="margin-top:40px">Yönetim: ${esc(s().manager || '')}</p></div>`, { title: 'Makbuz' });
+
+  // ---------- Sayfalar ----------
+  const PAGES = {
+    ozet(el, f) {
+      const ann = db.all('announcements').sort((a, b) => (b.pinned - a.pinned) || b.date.localeCompare(a.date)).slice(0, 3);
+      const seen = store.lget(readKey(f)) || [];
+      const myB = db.all('bookings', (b) => b.flat === f.id && b.status === 'aktif' && b.date >= today()).sort((a, b) => (a.date + a.slot).localeCompare(b.date + b.slot)).slice(0, 3);
+      const myR = db.all('requests', (r) => r.flat === f.id && r.status !== 'cozuldu');
+      const pp = pendingPolls(f);
+      const hour = new Date().getHours();
+      el.innerHTML = head(`${hour < 12 ? 'Günaydın' : hour < 18 ? 'İyi günler' : 'İyi akşamlar'}, ${residentOf(f).split(' ')[0]}`, `${esc(f.block)} Blok · Daire ${f.no} · ${f.m2} m² · ${NS.dateLong(today())}`) + balance(f) + `
+        <div class="quick"><a href="#/rezervasyon">${icon('calendar')}Alan ayırt</a><a href="#/ziyaretci">${icon('users')}Misafir bildir</a><a href="#/talep">${icon('wrench')}Arıza bildir</a><a href="#/anket">${icon('list')}${pp ? `${pp} anket bekliyor` : 'Anketler'}</a></div>
+        <div class="two"><section class="panel"><header><h3>Duyurular</h3><a href="#/duyuru">Tümü</a></header><div class="b">${ann.map((n) => `<div class="row2"><div class="g"><div class="t">${n.pinned ? icon('star') + ' ' : ''}${esc(n.title)} ${seen.includes(n.id) ? '' : '<span class="new">Yeni</span>'}</div><div class="m">${NS.date(n.date)} · ${esc(n.text.slice(0, 80))}${n.text.length > 80 ? '…' : ''}</div></div></div>`).join('') || '<div class="none">Duyuru yok</div>'}</div></section>
+          <div><section class="panel"><header><h3>Yaklaşan rezervasyonlarım</h3><a href="#/rezervasyon">Yeni</a></header><div class="b">${myB.map((b) => { const fc = SITE.FAC.find((x) => x.id === b.facility) || {}; return `<div class="row2">${icon(fc.icon || 'calendar')}<div class="g"><div class="t">${esc(fc.name || b.facility)}</div><div class="m">${NS.dateLong(b.date)} · ${esc(b.slot)}</div></div></div>`; }).join('') || '<div class="none">Rezervasyonunuz yok</div>'}</div></section>
+          <section class="panel"><header><h3>Açık taleplerim</h3><a href="#/talep">Tümü</a></header><div class="b">${myR.map((r) => `<div class="row2"><div class="g"><div class="t">${esc(r.title)}</div><div class="m">${NS.ago(r.at)}</div></div><span class="badge ${r.status === 'islemde' ? 'info' : 'warn'}">${RQ[r.status]}</span></div>`).join('') || '<div class="none">Açık talebiniz yok</div>'}</div></section></div></div>`;
+      on(el, 'click', '[data-pay]', () => pay(f, render));
+      on(el, 'click', '[data-copy]', (e, b) => copy(b.dataset.copy));
+    },
+
+    odeme(el, f) {
+      let flt = 'all';
+      const draw = () => {
+        db.load();
+        const dues = db.all('dues', (x) => x.flat === f.id).sort((a, b) => b.period.localeCompare(a.period) || a.type.localeCompare(b.type));
+        const rows = flt === 'open' ? dues.filter((d) => d.amount > (d.paid || 0)) : dues;
+        const rc = db.all('receipts', (r) => r.flat === f.id).sort((a, b) => b.at.localeCompare(a.at));
+        const yr = String(new Date().getFullYear());
+        const paidY = sum(dues.filter((d) => (d.paidAt || '').startsWith(yr)), (d) => d.paid || 0);
+        el.innerHTML = head('Aidat & ödeme', `Bu yıl ödenen: <b>${money(paidY)}</b> · Aylık aidatınız: <b>${money(f.dueOverride || (s().baseDue + (f.m2 > 120 ? 250 : 0)))}</b>`, `<button class="btn" id="st">${icon('print')} Hesap ekstresi</button>`) + balance(f) + `
+          <section class="panel"><header><h3>Hesap hareketleri</h3><div class="seg"><button data-fl="all" class="${flt === 'all' ? 'active' : ''}">Tümü</button><button data-fl="open" class="${flt === 'open' ? 'active' : ''}">Ödenmemiş</button></div></header><div class="b">
+            ${rows.map((d) => { const left = d.amount - (d.paid || 0); return `<div class="row2"><div class="g"><div class="t">${esc(d.desc)}</div><div class="m">${perName(d.period)}${d.paidAt && !left ? ' · ödeme ' + NS.date(d.paidAt) : ''}</div></div><div class="num"><b>${money(d.amount)}</b>${left > 0 && d.paid ? `<div class="m">kalan ${money(left)}</div>` : ''}</div>${left <= 0 ? '<span class="badge ok">Ödendi</span>' : d.paid ? '<span class="badge warn">Kısmen</span>' : '<span class="badge err">Ödenmedi</span>'}</div>`; }).join('') || '<div class="none">Ödenmemiş borcunuz yok</div>'}</div></section>
+          <section class="panel"><header><h3>Makbuzlarım</h3></header><div class="b">${rc.map((r) => `<div class="row2">${icon(r.online ? 'card' : r.type === 'banka' || r.type === 'havale' ? 'building' : 'cash')}<div class="g"><div class="t">${money(r.amount)}</div><div class="m">${NS.dt(r.at)} · ${r.online ? 'Online kart' : esc(r.type || 'Tahsilat')}${r.ref ? ' · ' + esc(r.ref) : ''}</div></div><button class="btn sm ghost" data-rc="${r.id}">${icon('print')} Makbuz</button></div>`).join('') || '<div class="none">Henüz makbuz yok. Yönetime yapılan ödemeler burada listelenir.</div>'}</div></section>`;
+      };
+      on(el, 'click', '[data-fl]', (e, b) => { flt = b.dataset.fl; draw(); });
+      on(el, 'click', '[data-pay]', () => pay(f, draw));
+      on(el, 'click', '[data-copy]', (e, b) => copy(b.dataset.copy));
+      on(el, 'click', '[data-rc]', (e, b) => { const r = db.get('receipts', b.dataset.rc); receipt(f, r.amount, r.ref || r.id.slice(0, 8).toUpperCase()); });
+      on(el, 'click', '#st', () => {
+        const dues = db.all('dues', (x) => x.flat === f.id).sort((a, b) => a.period.localeCompare(b.period));
+        NS.printHtml(`<div class="doc"><h2>${esc(s().bizName)}</h2><h3>DAİRE HESAP EKSTRESİ</h3><p>${esc(f.block)} Blok No ${f.no} · ${esc(residentOf(f))} · ${NS.date(today())}</p><table><tr><th>Dönem</th><th>Açıklama</th><th style="text-align:right">Tahakkuk</th><th style="text-align:right">Ödenen</th><th style="text-align:right">Kalan</th></tr>${dues.map((d) => `<tr><td>${perName(d.period)}</td><td>${esc(d.desc)}</td><td style="text-align:right">${money(d.amount)}</td><td style="text-align:right">${money(d.paid || 0)}</td><td style="text-align:right">${money(d.amount - (d.paid || 0))}</td></tr>`).join('')}<tr><th colspan="4" style="text-align:right">Toplam borç</th><th style="text-align:right">${money(SITE.debt(db, f.id))}</th></tr></table></div>`, { title: 'Hesap ekstresi' });
+      });
+      draw();
+    },
+
+    rezervasyon(el, f) {
+      let fac = SITE.FAC[0].id, day = today();
+      const taken = (fid, d, slot) => db.find('bookings', (b) => b.facility === fid && b.date === d && b.slot === slot && b.status === 'aktif');
+      const draw = () => {
+        db.load();
+        const F = SITE.FAC.find((x) => x.id === fac);
+        const mine = db.all('bookings', (b) => b.flat === f.id && b.status === 'aktif' && b.date >= today()).sort((a, b) => (a.date + a.slot).localeCompare(b.date + b.slot));
+        const used = mine.filter((b) => b.facility === fac).length;
+        const now = new Date(); const hm = NS.pad(now.getHours()) + ':' + NS.pad(now.getMinutes());
+        el.innerHTML = head('Ortak alan rezervasyonu', `Önümüzdeki 7 gün için yer ayırtın. Her alan için aynı anda en fazla ${F.max} aktif rezervasyon yapılabilir.`) + `
+          <div class="facs" role="group" aria-label="Alan">${SITE.FAC.map((x) => `<button class="chip" data-fac="${x.id}" aria-pressed="${x.id === fac}">${icon(x.icon)}${esc(x.name)}</button>`).join('')}</div>
+          <div class="days" role="group" aria-label="Gün">${Array.from({ length: 7 }, (_, i) => { const d = addDays(new Date(), i); const k = iso(d); return `<button data-day="${k}" aria-pressed="${k === day}"><small>${i === 0 ? 'Bugün' : i === 1 ? 'Yarın' : NS.DAYS[d.getDay()].slice(0, 3)}</small><b>${d.getDate()}</b></button>`; }).join('')}</div>
+          <section class="panel"><header><h3>${esc(F.name)} · ${NS.dateLong(day)}</h3><span class="small muted">${used}/${F.max} hakkınız kullanıldı</span></header><div class="b" style="padding-top:14px"><div class="slots">${F.slots.map((sl) => {
+            const t = taken(fac, day, sl); const past = day === today() && sl <= hm;
+            if (t && t.flat === f.id) return `<div class="slot mine"><b>${sl}</b><span>Sizin</span></div>`;
+            return `<button class="slot" data-slot="${sl}" ${t || past ? 'disabled' : ''}><b>${sl}</b><span>${t ? 'Dolu' : past ? 'Geçti' : 'Müsait'}</span></button>`;
+          }).join('')}</div></div></section>
+          <section class="panel"><header><h3>Rezervasyonlarım</h3></header><div class="b">${mine.map((b) => { const fc = SITE.FAC.find((x) => x.id === b.facility) || {}; return `<div class="row2">${icon(fc.icon || 'calendar')}<div class="g"><div class="t">${esc(fc.name || b.facility)}</div><div class="m">${NS.dateLong(b.date)} · ${esc(b.slot)}${b.note ? ' · ' + esc(b.note) : ''}</div></div><button class="btn sm" data-cancel="${b.id}">İptal</button></div>`; }).join('') || '<div class="none">Aktif rezervasyonunuz yok</div>'}</div></section>`;
+      };
+      on(el, 'click', '[data-fac]', (e, b) => { fac = b.dataset.fac; draw(); });
+      on(el, 'click', '[data-day]', (e, b) => { day = b.dataset.day; draw(); });
+      on(el, 'click', '[data-slot]', async (e, b) => {
+        const F = SITE.FAC.find((x) => x.id === fac); const sl = b.dataset.slot;
+        db.load();
+        if (db.all('bookings', (x) => x.flat === f.id && x.facility === fac && x.status === 'aktif' && x.date >= today()).length >= F.max) return toast(`${F.name} için en fazla ${F.max} aktif rezervasyon yapabilirsiniz`, 'err');
+        const v = await NS.formModal({ title: `${F.name} · ${NS.dateLong(day)} ${sl}`, fields: [{ name: 'people', label: 'Kişi sayısı', type: 'number', value: 2, min: 1, max: 30 }, { name: 'note', label: 'Not (isteğe bağlı)', full: true, placeholder: 'Ör. doğum günü, 6 kişi' }] });
+        if (!v) return;
+        db.load();
+        if (taken(fac, day, sl)) { toast('Bu saat az önce başkası tarafından alındı', 'err'); return draw(); }
+        db.insert('bookings', { flat: f.id, facility: fac, date: day, slot: sl, people: v.people, note: v.note || '', status: 'aktif', at: new Date().toISOString() });
+        toast('Rezervasyonunuz oluşturuldu', 'ok'); draw();
+      });
+      on(el, 'click', '[data-cancel]', async (e, b) => {
+        const r = db.get('bookings', b.dataset.cancel);
+        if (new Date(r.date + 'T' + r.slot) - new Date() < 2 * 3600e3) return toast('Başlangıca 2 saatten az kaldığı için iptal edilemez. Yönetimi arayın.', 'err');
+        if (!(await NS.confirm('Rezervasyon iptal edilsin mi?', { ok: 'İptal et' }))) return;
+        db.update('bookings', r.id, { status: 'iptal' }); toast('İptal edildi'); draw();
+      });
+      draw();
+    },
+
+    ziyaretci(el, f) {
+      const draw = () => {
+        db.load();
+        const list = db.all('visitors', (v) => v.flat === f.id).sort((a, b) => (b.date + b.time).localeCompare(a.date + a.time));
+        const up = list.filter((v) => v.status === 'bekleniyor' && v.date >= today());
+        const old = list.filter((v) => !up.includes(v)).slice(0, 15);
+        el.innerHTML = head('Ziyaretçi bildirimi', 'Misafirinizi veya kuryenizi önceden bildirin; güvenlik girişte kodu doğrulayıp sizi aramadan içeri alır.', `<button class="btn primary" id="nv">${icon('plus')} Ziyaretçi bildir</button>`) + `
+          <section class="panel"><header><h3>Beklenen ziyaretçiler</h3></header><div class="b">${up.map((v) => `<div class="row2"><div class="pass g">${NS.qrSvg(v.code, 84)}<div style="min-width:0;flex:1"><div class="t">${esc(v.name)}</div><div class="m">${esc(VT[v.type] || v.type)}${v.plate ? ' · ' + esc(v.plate) : ''}</div><div class="m">${NS.dateLong(v.date)} · ${esc(v.time || '')}</div><div class="code mt">${esc(v.code)}</div>
+              <div class="row nw mt" style="gap:6px"><button class="btn sm" data-share="${v.id}">${icon('message')} Misafire gönder</button><button class="btn sm ghost" data-vx="${v.id}">İptal</button></div></div></div></div>`).join('') || '<div class="none">Bekleyen ziyaretçi bildiriminiz yok</div>'}</div></section>
+          <section class="panel"><header><h3>Geçmiş</h3></header><div class="b">${old.map((v) => `<div class="row2"><div class="g"><div class="t">${esc(v.name)}</div><div class="m">${esc(VT[v.type] || v.type)} · ${NS.date(v.date)} ${esc(v.time || '')}${v.arrivedAt ? ' · giriş ' + NS.time(v.arrivedAt) : ''}</div></div><span class="badge ${v.status === 'geldi' ? 'ok' : ''}">${v.status === 'geldi' ? 'Giriş yaptı' : v.status === 'iptal' ? 'İptal' : 'Gelmedi'}</span></div>`).join('') || '<div class="none">Kayıt yok</div>'}</div></section>`;
+      };
+      on(el, 'click', '#nv', async () => {
+        const v = await NS.formModal({ title: 'Ziyaretçi bildir', fields: [{ name: 'name', label: 'Ziyaretçi adı / firma', required: true, full: true }, { name: 'type', label: 'Tür', type: 'select', options: Object.entries(VT).map(([value, label]) => ({ value, label })) }, { name: 'plate', label: 'Araç plakası (otoparka girecekse)', placeholder: '34 ABC 123' }, { name: 'date', label: 'Tarih', type: 'date', value: today(), min: today(), required: true }, { name: 'time', label: 'Tahmini saat', type: 'time', value: NS.pad(Math.min(23, new Date().getHours() + 1)) + ':00' }, { name: 'note', label: 'Güvenliğe not', full: true, placeholder: 'Ör. paketi güvenliğe bırakabilir' }] });
+        if (!v) return;
+        if (v.date < today()) return toast('Geçmiş bir tarih seçilemez', 'err');
+        const code = Math.random().toString(36).slice(2, 8).toUpperCase();
+        db.load(); db.insert('visitors', { ...v, plate: (v.plate || '').toLocaleUpperCase('tr'), flat: f.id, code, status: 'bekleniyor', at: new Date().toISOString() });
+        toast('Güvenliğe bildirildi', 'ok'); draw();
+      });
+      on(el, 'click', '[data-share]', (e, b) => { const v = db.get('visitors', b.dataset.share); window.open(`https://wa.me/?text=${encodeURIComponent(`Merhaba ${v.name}, ${s().bizName} (${s().bizAddress}) girişinde güvenliğe bu kodu söylemeniz yeterli: ${v.code}\n${f.block} Blok, Daire ${f.no} · ${NS.dateLong(v.date)} ${v.time || ''}`)}`, '_blank', 'noopener'); });
+      on(el, 'click', '[data-vx]', async (e, b) => { if (!(await NS.confirm('Ziyaretçi bildirimi iptal edilsin mi?', { ok: 'İptal et' }))) return; db.update('visitors', b.dataset.vx, { status: 'iptal' }); draw(); });
+      draw();
+    },
+
+    talep(el, f) {
+      const CATS = ['Elektrik', 'Su/Tesisat', 'Asansör', 'Bahçe', 'Temizlik', 'Güvenlik', 'Otopark', 'Gürültü / komşuluk', 'Genel'];
+      const draw = () => {
+        db.load();
+        const list = db.all('requests', (r) => r.flat === f.id).sort((a, b) => b.at.localeCompare(a.at));
+        const step = { acik: 1, islemde: 2, cozuldu: 3 };
+        el.innerHTML = head('Talep & arıza', 'İletiniz doğrudan yönetimin iş listesine düşer; durumu buradan izleyebilirsiniz.') + `<div class="two" style="align-items:start">
+          <section class="panel"><header><h3>Yeni talep</h3></header><div class="b" style="padding-top:14px"><div class="field mb"><label for="rc">Konu</label><select class="input" id="rc">${CATS.map((c) => `<option>${c}</option>`).join('')}</select></div>
+            <div class="field mb"><label for="rt">Başlık</label><input class="input" id="rt" placeholder="Ör. 3. kat koridor lambası yanmıyor" maxlength="80"></div>
+            <div class="field mb"><label for="rd">Açıklama</label><textarea class="input" id="rd" rows="4" placeholder="Nerede, ne zamandan beri?"></textarea></div>
+            <label class="check small mb"><input type="checkbox" id="ru"> Acil (güvenlik veya su baskını gibi)</label><button class="btn primary block" id="rs">${icon('send')} Yönetime gönder</button></div></section>
+          <section class="panel"><header><h3>Taleplerim</h3><span class="small muted">${list.length} kayıt</span></header><div class="b">${list.map((r) => `<div class="row2" style="display:block"><div class="row nw between"><div class="t">${r.urgent ? '<span class="badge err">Acil</span> ' : ''}${esc(r.title)}</div><span class="badge ${r.status === 'cozuldu' ? 'ok' : r.status === 'islemde' ? 'info' : 'warn'}">${RQ[r.status]}</span></div>
+              <div class="m">${esc(r.cat || 'Genel')} · ${NS.ago(r.at)}</div><div class="track" aria-label="Durum: ${RQ[r.status]}">${[1, 2, 3].map((k) => `<i class="${k <= step[r.status] ? 'on' : ''}"></i>`).join('')}</div>
+              ${r.reply ? `<div class="reply"><b>Yönetim:</b> ${esc(r.reply)}</div>` : ''}
+              ${r.status === 'cozuldu' && !r.rating ? `<div class="row nw small mt" style="gap:6px"><span class="grow muted">Sorun çözüldü mü?</span><button class="btn sm" data-rate="${r.id}|iyi">${icon('check')} Evet</button><button class="btn sm" data-rate="${r.id}|kotu">Hayır, devam ediyor</button></div>` : ''}
+              ${r.rating ? `<div class="small muted mt">${r.rating === 'iyi' ? 'Geri bildiriminiz için teşekkürler.' : 'Talebiniz yeniden açıldı.'}</div>` : ''}</div>`).join('') || '<div class="none">Henüz talebiniz yok</div>'}</div></section></div>`;
+        $('#rs', el).onclick = () => {
+          const t = $('#rt', el).value.trim(); if (t.length < 4) return toast('Kısa bir başlık yazın', 'err');
+          db.load(); db.insert('requests', { flat: f.id, title: t, desc: $('#rd', el).value.trim(), cat: $('#rc', el).value, urgent: $('#ru', el).checked, status: 'acik', at: new Date().toISOString() });
+          toast('Talebiniz yönetime iletildi', 'ok'); draw();
+        };
+      };
+      on(el, 'click', '[data-rate]', (e, b) => { const [id, v] = b.dataset.rate.split('|'); db.update('requests', id, v === 'iyi' ? { rating: 'iyi' } : { rating: 'kotu', status: 'acik', reply: '' }); draw(); });
+      draw();
+    },
+
+    duyuru(el, f) {
+      const seen = store.lget(readKey(f)) || [];
+      const list = db.all('announcements').sort((a, b) => (b.pinned - a.pinned) || b.date.localeCompare(a.date));
+      el.innerHTML = head('Duyurular', `${esc(s().bizName)} yönetiminden`) + `<section class="panel"><div class="b">${list.map((n) => `<article class="ann"><h4>${n.pinned ? icon('star') : ''}${esc(n.title)} ${seen.includes(n.id) ? '' : '<span class="new">Yeni</span>'}</h4><div class="small muted">${NS.dateLong(n.date)}</div><p>${esc(n.text)}</p></article>`).join('') || '<div class="none">Duyuru yok</div>'}</div></section>`;
+      store.lset(readKey(f), list.map((n) => n.id));
+      $$('.dot').forEach((d) => { if (d.closest('a[href="#/duyuru"]')) d.remove(); });
+    },
+
+    anket(el, f) {
+      const draw = () => {
+        db.load();
+        const polls = db.all('polls').sort((a, b) => (b.active - a.active) || b.at.localeCompare(a.at));
+        const total = db.all('flats').length;
+        el.innerHTML = head('Anketler', 'Her daire bir oy kullanır. Anket kapanana kadar oyunuzu değiştirebilirsiniz.') + polls.map((p) => {
+          const open = p.active && p.until >= today(); const my = p.votes[f.id]; const n = Object.keys(p.votes).length;
+          const show = my !== undefined || !open;
+          return `<section class="panel"><header><h3>${esc(p.title)}</h3><span class="badge ${open ? 'ok' : ''}">${open ? `${NS.date(p.until)} tarihine kadar` : 'Kapandı'}</span></header><div class="b" style="padding-top:14px">
+            ${p.options.map((o, i) => { const c = Object.values(p.votes).filter((v) => v === i).length; const pc = n ? Math.round((c / n) * 100) : 0; return `<button class="opt ${my === i ? 'sel' : ''}" ${open ? `data-vote="${p.id}|${i}"` : 'disabled'} aria-pressed="${my === i}"><i class="bar" style="width:${show ? pc : 0}%"></i><span>${my === i ? icon('check') : ''}${esc(o)}${show ? `<em>%${pc}</em>` : ''}</span></button>`; }).join('')}
+            <div class="small muted">${n} / ${total} daire oy kullandı · katılım %${Math.round((n / total) * 100)}${show ? '' : ' · sonuçlar oy verdikten sonra görünür'}</div></div></section>`;
+        }).join('') || '<section class="panel"><div class="none">Aktif anket yok</div></section>';
+      };
+      on(el, 'click', '[data-vote]', (e, b) => { const [id, i] = b.dataset.vote.split('|'); db.load(); const p = db.get('polls', id); p.votes[f.id] = Number(i); db.save(); toast('Oyunuz kaydedildi', 'ok'); render(); });
+      draw();
+    },
+  };
+
+  window.addEventListener('hashchange', render);
+  render();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Teklif</title>
+<link rel="stylesheet" href="../../core/core.css">
+<link rel="stylesheet" href="../../core/track.css">
+<style>
+  :root { --app-accent: #db2777; --app-accent-soft: #fce7f3; --app-accent-soft-dark: #3b1528; }
+  .sheet { border: 1px solid var(--border); border-radius: 16px; background: var(--surface); padding: 28px; margin-bottom: 16px; }
+  .sheet header { display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; border-bottom: 1px solid var(--border); padding-bottom: 18px; margin-bottom: 18px; }
+  .sheet h1 { margin: 0; font-size: 26px; letter-spacing: -.01em; }
+  .meta { text-align: right; font-size: 13px; color: var(--text-2); }
+  .meta b { color: var(--text); font-family: ui-monospace, Menlo, monospace; }
+  .to { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; font-size: 14px; margin-bottom: 18px; }
+  .to small { display: block; color: var(--text-3); font-size: 12px; margin-bottom: 2px; }
+  .lines { width: 100%; border-collapse: collapse; font-size: 14px; }
+  .lines th { text-align: left; font-size: 12px; color: var(--text-3); font-weight: 600; padding: 8px 0; border-bottom: 1px solid var(--border); }
+  .lines td { padding: 12px 0; border-bottom: 1px solid var(--border); vertical-align: top; }
+  .lines .n { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; padding-left: 12px; }
+  .sum { margin-left: auto; max-width: 320px; margin-top: 14px; font-size: 14px; }
+  .sum div { display: flex; justify-content: space-between; padding: 4px 0; font-variant-numeric: tabular-nums; }
+  .sum .g { border-top: 2px solid var(--text); margin-top: 6px; padding-top: 10px; font-size: 20px; font-weight: 800; }
+  .decide { position: sticky; bottom: 0; border: 1px solid var(--border); border-radius: 16px; background: var(--surface); padding: 18px 20px; box-shadow: var(--shadow-lg); }
+  .left { color: var(--warn); font-weight: 600; }
+  .qx { display: none; }
+  @media (max-width: 760px) { .sheet { padding: 18px; } .to { grid-template-columns: 1fr; } .meta { text-align: left; } .lines .hide-sm { display: none; } .qx { display: block; } .decide { padding: 14px; } }
+  @media print { .tk-bar, .decide, .noprint { display: none !important; } .sheet { border: 0; padding: 0; } }
+</style>
+</head>
+<body>
+<header class="tk-bar"><div class="in" id="bar"></div></header>
+<main class="tk-wrap" id="root" style="max-width:820px"></main>
+<script src="../../core/core.js"></script>
+<script src="quote.js"></script>
+<script>
+(function () {
+  const { esc, $, icon, money, toast } = NS;
+  const Q = window.CRMQ;
+  const db = new NS.DB('crm');
+  const s = db.settings({});
+  $('#bar').innerHTML = `<div class="tk-mark">${icon('file')}</div><div class="grow"><b>${esc(s.bizName || 'Teklif')}</b><span>Teklif onayı</span></div><button class="btn ghost icon" id="th" data-theme-ico aria-label="Tema">${icon(NS.getTheme() === 'dark' ? 'sun' : 'moon')}</button>`;
+  $('#th').onclick = NS.toggleTheme;
+  const token = new URLSearchParams(location.search).get('t');
+
+  function render() {
+    if (!token || db.lookup({ t: token }) === null) db.load();
+    const q = token && db.find('quotes', (x) => x.token === token);
+    if (!q) { $('#root').innerHTML = `<div class="tk-panel"><div class="b empty">${icon('file')}<div>Teklif bulunamadı veya bağlantı geçersiz.</div><div class="small muted mt">Bağlantının tamamını kopyaladığınızdan emin olun ya da satış temsilcinizle iletişime geçin.</div></div></div>`; return; }
+    // İlk açılış satış ekibine "görüntülendi" olarak düşer
+    if (!q.viewedAt) { q.viewedAt = new Date().toISOString(); db.insert('activities', { deal: q.deal, type: 'not', date: q.viewedAt, text: `Müşteri teklif ${q.no} bağlantısını açtı`, done: true }, true); db.save(); }
+    const d = db.get('deals', q.deal) || {}; const c = db.get('companies', d.company) || {}; const ct = db.get('contacts', d.contact) || {}; const rep = db.get('users', d.owner) || {};
+    const k = Q.calc(q); const st = Q.status(q);
+    const daysLeft = Math.ceil((new Date(q.valid + 'T23:59') - new Date()) / 864e5);
+    let decide = '';
+    if (st === 'gonderildi') decide = `<div class="decide noprint"><div class="row between" style="gap:12px;flex-wrap:wrap"><div><b>Bu teklifi onaylıyor musunuz?</b><div class="small ${daysLeft <= 3 ? 'left' : 'muted'}">${daysLeft <= 0 ? 'Bugün son gün' : `Geçerlilik: ${daysLeft} gün (${NS.date(q.valid)})`}</div></div><div class="tk-acts" style="flex:0 1 auto"><button class="btn lg" id="no">Reddet</button><button class="btn primary lg" id="ok">${icon('check')} Kabul ediyorum</button></div></div></div>`;
+    else decide = `<div class="tk-call noprint" style="--c:${st === 'kabul' ? 'var(--ok)' : st === 'red' ? 'var(--err)' : 'var(--text-3)'}"><h3>${icon(st === 'kabul' ? 'check' : st === 'red' ? 'x' : 'clock')} ${esc(Q.STATUS[st][0])}</h3><p class="small" style="margin:0">${st === 'kabul' ? `${esc(q.signer || '')} tarafından ${NS.dt(q.respondedAt)} tarihinde onaylandı. Satış temsilciniz sipariş süreci için sizinle iletişime geçecek.` : st === 'red' ? `Geri bildiriminiz için teşekkürler${q.rejectReason ? ` (“${esc(q.rejectReason)}”)` : ''}. Revize teklif için temsilcinize ulaşabilirsiniz.` : st === 'revize' ? 'Bu teklifin yerine güncel bir sürüm gönderildi. Lütfen son bağlantıyı kullanın.' : 'Teklifin geçerlilik süresi doldu. Güncel fiyat için temsilcinizle iletişime geçin.'}</p></div>`;
+    document.title = `${q.no} · ${s.bizName || 'Teklif'}`;
+    $('#root').innerHTML = `<div class="tk-view"><article class="sheet"><header><div><div class="small muted">${esc(s.bizName || '')}</div><h1>${esc(d.title || 'Teklif')}</h1></div><div class="meta">Teklif no <b>${esc(q.no)}</b><br>Tarih ${NS.date(q.date)}<br>Geçerlilik ${NS.date(q.valid)}</div></header>
+        <div class="to"><div><small>Sayın</small><b>${esc(ct.name || 'Yetkili')}</b>${ct.title ? `, ${esc(ct.title)}` : ''}<br>${esc(c.name || '')}</div><div><small>Hazırlayan</small><b>${esc(rep.name || '')}</b><br>${esc(s.bizPhone || '')}</div></div>
+        <table class="lines"><thead><tr><th>Açıklama</th><th class="n hide-sm">Miktar</th><th class="n hide-sm">Birim fiyat</th><th class="n">Tutar</th></tr></thead><tbody>${q.lines.map((l) => `<tr><td>${esc(l.name)}<div class="small muted qx">${l.qty} × ${money(l.price)}</div></td><td class="n hide-sm">${l.qty}</td><td class="n hide-sm">${money(l.price)}</td><td class="n">${money(l.qty * l.price)}</td></tr>`).join('')}</tbody></table>
+        <div class="sum"><div><span>Ara toplam</span><span>${money(k.gross)}</span></div>${k.disc ? `<div><span>İskonto %${q.disc}</span><span>−${money(k.disc)}</span></div>` : ''}<div><span>KDV %${k.vat}</span><span>${money(k.vatAmt)}</span></div><div class="g"><span>Genel toplam</span><span>${money(k.grand)}</span></div></div>
+        ${q.payment ? `<p class="small mt"><b>Ödeme koşulu:</b> ${esc(q.payment)}</p>` : ''}${q.note ? `<p class="small muted">${esc(q.note)}</p>` : ''}
+        <div class="tk-acts noprint mt"><button class="btn" id="pr">${icon('print')} PDF olarak kaydet / yazdır</button>${s.bizPhone ? `<a class="btn" href="tel:${esc(String(s.bizPhone).replace(/\s/g, ''))}">${icon('phone')} Temsilciyi ara</a>` : ''}</div></article>${decide}</div>`;
+    $('#pr').onclick = () => print();
+    if ($('#ok')) $('#ok').onclick = () => NS.modal({ title: 'Teklifi kabul et', body: `<p class="small muted">${esc(q.no)} · ${money(k.grand)} (KDV dahil)</p><div class="field"><label for="sg">Adınız soyadınız</label><input class="input" id="sg" value="${esc(ct.name || '')}" autocomplete="name"></div><div class="field mt"><label for="sgt">Ünvanınız</label><input class="input" id="sgt" value="${esc(ct.title || '')}"></div><label class="check small mt"><input type="checkbox" id="sga"> Teklifteki ürün/hizmetleri, fiyatları ve ödeme koşulunu ${esc(c.name || 'firmamız')} adına onaylıyorum.</label>`,
+      actions: [{ label: 'Vazgeç' }, { label: 'Onayla', cls: 'primary', icon: 'check', onClick: (close, b) => {
+        const nm = $('#sg', b).value.trim(); if (nm.length < 3) return toast('Adınızı yazın', 'err'); if (!$('#sga', b).checked) return toast('Onay kutusunu işaretleyin', 'err');
+        db.load(); const x = db.find('quotes', (y) => y.token === token); if (Q.status(x) !== 'gonderildi') { close(); return render(); }
+        x.status = 'kabul'; x.signer = nm + ($('#sgt', b).value.trim() ? ', ' + $('#sgt', b).value.trim() : ''); x.respondedAt = new Date().toISOString();
+        const dd = db.get('deals', x.deal); if (dd) { if (!['kazanildi', 'kaybedildi'].includes(dd.stage)) { dd.stage = 'kazanildi'; dd.closedAt = x.respondedAt.slice(0, 10); dd.value = x.total; } dd.lastActivity = x.respondedAt; }
+        db.insert('activities', { deal: x.deal, type: 'not', date: x.respondedAt, text: `Teklif ${x.no} müşteri tarafından online kabul edildi (${x.signer})`, done: true }, true);
+        db.save(); close(); toast('Teşekkürler, onayınız alındı', 'ok'); render();
+      } }] });
+    if ($('#no')) $('#no').onclick = async () => {
+      const v = await NS.formModal({ title: 'Teklifi reddet', fields: [{ name: 'why', label: 'Nedeniniz', type: 'select', options: ['Fiyat yüksek', 'Bütçe ertelendi', 'Başka bir firmayla çalışacağız', 'Kapsam ihtiyacımızı karşılamıyor', 'Diğer'] }, { name: 'note', label: 'Eklemek istedikleriniz', type: 'textarea', full: true }] });
+      if (!v) return; db.load(); const x = db.find('quotes', (y) => y.token === token); if (Q.status(x) !== 'gonderildi') return render();
+      x.status = 'red'; x.rejectReason = v.why + (v.note ? ' — ' + v.note : ''); x.respondedAt = new Date().toISOString();
+      const dd = db.get('deals', x.deal); if (dd) { if (dd.stage === 'teklif') dd.stage = 'pazarlik'; dd.lastActivity = x.respondedAt; }
+      db.insert('activities', { deal: x.deal, type: 'not', date: x.respondedAt, text: `Teklif ${x.no} müşteri tarafından reddedildi: ${x.rejectReason}`, done: true }, true);
+      db.save(); render();
+    };
+  }
+  render();
+})();
+</script>
+</body>
+</html>

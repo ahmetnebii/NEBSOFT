@@ -1,0 +1,7 @@
+{
+  "_aciklama": "NEBSOFT masaüstü ve Android uygulamasının varsayılan sunucu adresleri. Sırayla denenir: ilki açılmazsa sıradaki kullanılır. Alan adını aldığınızda en üste yazın, ardından exe (desktop: npm run dist) ve APK (bash android/build.sh) yeniden derleyin.",
+  "adresler": [
+    "http://45.133.36.99:5050",
+    "https://www.nebsoftapp.com"
+  ]
+}

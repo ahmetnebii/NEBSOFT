@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'unsafe-inline'; script-src 'unsafe-inline'">
+<title>NEBSOFT · Sunucu adresi</title>
+<style>
+  :root { color-scheme: dark; }
+  html, body { margin: 0; height: 100%; background: #06060c; color: #ecedf7; font-family: 'Segoe UI', Inter, Arial, sans-serif; }
+  body { display: grid; place-items: center; overflow: hidden; }
+  .bg { position: fixed; inset: -30%; background: radial-gradient(38% 34% at 25% 25%, rgba(99, 102, 241, .5), transparent 70%), radial-gradient(32% 30% at 75% 75%, rgba(6, 182, 212, .35), transparent 70%); filter: blur(50px); }
+  .card { position: relative; width: min(460px, calc(100vw - 32px)); padding: 32px; border-radius: 24px; background: rgba(18, 18, 30, .82); border: 1px solid rgba(255, 255, 255, .1); box-shadow: 0 40px 100px -30px rgba(0, 0, 0, .9); }
+  h1 { margin: 0 0 6px; font-size: 24px; letter-spacing: -.02em; } p { margin: 0 0 20px; color: #a3a5c0; line-height: 1.55; font-size: 14px; }
+  label { display: block; font-size: 12px; font-weight: 600; color: #a5b4fc; margin-bottom: 6px; }
+  input { width: 100%; box-sizing: border-box; height: 52px; padding: 0 14px; border-radius: 14px; border: 1px solid rgba(255, 255, 255, .14); background: rgba(255, 255, 255, .05); color: #fff; font-size: 15px; outline: none; }
+  input:focus { border-color: #818cf8; box-shadow: 0 0 0 4px rgba(99, 102, 241, .22); }
+  button { width: 100%; height: 52px; margin-top: 14px; border: 0; border-radius: 14px; color: #fff; font: 700 15px inherit; font-family: inherit; cursor: pointer; background: linear-gradient(135deg, #6366f1, #4f46e5 50%, #7c3aed); }
+  button[disabled] { opacity: .6; cursor: progress; }
+  .msg { margin-top: 14px; padding: 12px 14px; border-radius: 12px; font-size: 13.5px; line-height: 1.5; display: none; }
+  .msg.err { display: block; background: rgba(239, 68, 68, .12); border: 1px solid rgba(239, 68, 68, .35); color: #fecaca; }
+  .msg.ok { display: block; background: rgba(16, 185, 129, .12); border: 1px solid rgba(16, 185, 129, .35); color: #a7f3d0; }
+  .hint { margin-top: 16px; font-size: 12px; color: #7f819c; line-height: 1.5; }
+  code { color: #c7d2fe; }
+</style>
+</head>
+<body>
+<div class="bg"></div>
+<form class="card" id="f">
+  <h1>Sunucu adresi</h1>
+  <p>NEBSOFT hesabınızın bulunduğu adresi girin. Bu adres yalnızca bir kez sorulur; sonra uygulama doğrudan giriş ekranıyla açılır.</p>
+  <label for="u">Adres</label>
+  <input id="u" type="url" placeholder="https://www.nebsoft.com.tr" autocomplete="url" required autofocus>
+  <button id="go" type="submit">Bağlantıyı test et ve kaydet</button>
+  <div class="msg" id="m" role="status"></div>
+  <div class="hint">Kendi sunucunuzu kurduysanız onun adresini yazın (ör. <code>https://panel.firmaniz.com</code>). Bilgisayarda deneme için <code>http://localhost:5050</code>.</div>
+</form>
+<script>
+  const D = window.nebsoftDesktop; const f = document.getElementById('f'), u = document.getElementById('u'), m = document.getElementById('m'), b = document.getElementById('go');
+  const params = new URLSearchParams(location.search); if (params.get('u')) u.value = params.get('u');
+  if (params.get('e')) { m.className = 'msg err'; m.textContent = params.get('e'); }
+  f.onsubmit = async (e) => {
+    e.preventDefault(); let v = u.value.trim(); if (!/^https?:\/\//i.test(v)) v = 'https://' + v; v = v.replace(/\/+$/, '');
+    b.disabled = true; b.textContent = 'Bağlanılıyor…'; m.className = 'msg';
+    const r = await D.testServer(v);
+    if (r.ok) { m.className = 'msg ok'; m.textContent = 'Bağlantı başarılı. Açılıyor…'; await D.setServer(v); }
+    else { m.className = 'msg err'; m.textContent = r.error; b.disabled = false; b.textContent = 'Bağlantıyı test et ve kaydet'; }
+  };
+</script>
+</body>
+</html>

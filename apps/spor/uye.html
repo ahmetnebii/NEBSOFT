@@ -1,0 +1,195 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#14532d">
+<title>Üye Portalı</title>
+<link rel="stylesheet" href="../../core/core.css">
+<link rel="stylesheet" href="../../core/track.css">
+<style>
+  :root { --app-accent: #16a34a; --app-accent-soft: #dcfce7; --app-accent-soft-dark: #10301c; }
+  .card2 { border-radius: 20px; padding: 22px; color: #ecfdf5; background: #14532d; display: grid; grid-template-columns: 1fr auto; gap: 18px; align-items: center; margin-bottom: 16px; position: relative; overflow: hidden; }
+  .card2::after { content: ''; position: absolute; right: -60px; top: -60px; width: 220px; height: 220px; border-radius: 50%; border: 28px solid rgba(255,255,255,.06); }
+  .card2 h2 { color: #fff; margin: 4px 0 2px; font-size: 24px; }
+  .card2 .qr { background: #fff; border-radius: 12px; padding: 8px; position: relative; z-index: 1; }
+  .card2 small { color: #86efac; font-size: 12px; text-transform: uppercase; letter-spacing: .06em; font-weight: 700; }
+  .meter { height: 8px; border-radius: 4px; background: rgba(255,255,255,.15); margin: 14px 0 6px; overflow: hidden; }
+  .meter i { display: block; height: 100%; background: #86efac; border-radius: 4px; }
+  .stat3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 16px; }
+  .stat3 div { border: 1px solid var(--border); border-radius: 12px; background: var(--surface); padding: 12px 14px; }
+  .stat3 b { display: block; font-size: 22px; font-variant-numeric: tabular-nums; }
+  .stat3 span { font-size: 12px; color: var(--text-3); }
+  .days { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 4px; margin-bottom: 12px; }
+  .days button { flex: 0 0 auto; min-width: 58px; border: 1px solid var(--border); background: var(--surface); color: var(--text); border-radius: 10px; padding: 6px 8px; cursor: pointer; line-height: 1.2; }
+  .days button small { display: block; font-size: 11px; color: var(--text-3); }
+  .days button b { font-size: 17px; }
+  .days button[aria-pressed="true"] { border-color: var(--accent); background: var(--accent-soft); }
+  .cls { display: grid; grid-template-columns: 56px 1fr auto; gap: 12px; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--border); }
+  .cls:last-child { border-bottom: 0; }
+  .cls .tm { font-weight: 800; font-variant-numeric: tabular-nums; }
+  .cap { height: 4px; border-radius: 2px; background: var(--bg-2); margin-top: 6px; max-width: 160px; overflow: hidden; }
+  .cap i { display: block; height: 100%; background: var(--c, var(--accent)); }
+  .spark { width: 100%; height: 100px; }
+  .tabs2 { display: flex; gap: 6px; margin-bottom: 16px; overflow-x: auto; }
+  .tabs2 button { flex: none; border: 1px solid var(--border); background: var(--surface); color: var(--text-2); border-radius: 99px; padding: 8px 14px; font: 600 13px var(--font); cursor: pointer; }
+  .tabs2 button[aria-selected="true"] { background: var(--text); color: var(--surface); border-color: var(--text); }
+  .wk { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+  .wk div { text-align: center; font-size: 11px; color: var(--text-3); }
+  .wk i { display: block; height: 46px; border-radius: 6px; background: var(--bg-2); margin-bottom: 4px; position: relative; overflow: hidden; }
+  .wk i::after { content: ''; position: absolute; inset: auto 0 0; height: var(--h); background: var(--accent); }
+  .plans { display: grid; gap: 8px; }
+  .plans label { display: flex; gap: 10px; align-items: center; border: 1px solid var(--border); border-radius: 10px; padding: 12px; cursor: pointer; }
+  .plans label:has(input:checked) { border-color: var(--accent); background: var(--accent-soft); }
+  .plans b { margin-left: auto; }
+  @media (max-width: 760px) { .stat3 b { font-size: 17px; } .card2 { grid-template-columns: 1fr; } .card2 .qr { justify-self: start; } }
+</style>
+</head>
+<body>
+<header class="tk-bar"><div class="in" id="bar"></div></header>
+<main class="tk-wrap" id="root" style="max-width:860px"></main>
+<script src="../../core/core.js"></script>
+<script>
+(function () {
+  const { esc, $, $$, on, icon, money, toast, iso, today, addDays, daysBetween, sum } = NS;
+  const db = new NS.DB('spor');
+  const S = () => db.settings({ maxFreeze: 30 });
+  const KEY = 'nebsoft:spor:uye';
+  const sget = () => { try { return sessionStorage.getItem(KEY); } catch (e) { return null; } };
+  const sset = (v) => { try { v ? sessionStorage.setItem(KEY, v) : sessionStorage.removeItem(KEY); } catch (e) { /* yok */ } };
+  const digits = (x) => String(x || '').replace(/\D/g, '').slice(-10);
+  const plan = (id) => db.get('plans', id) || { name: '-', months: 1, price: 0 };
+  const trainer = (id) => db.get('trainers', id) || { name: '-', color: '#64748b' };
+  const status = (m) => (m.freezeUntil && m.freezeUntil >= today() ? 'donduruldu' : m.end < today() ? 'bitti' : daysBetween(new Date(), m.end) <= 7 ? 'bitiyor' : 'aktif');
+  const STS = { aktif: 'Aktif', bitiyor: 'Süresi bitiyor', bitti: 'Süresi doldu', donduruldu: 'Donduruldu' };
+  let tab = 'dersler', day = today();
+
+  $('#bar').innerHTML = `<div class="tk-mark">${icon('dumbbell')}</div><div class="grow"><b>${esc(S().bizName || 'Spor Salonu')}</b><span>Üye portalı</span></div><span id="out"></span><button class="btn ghost icon" id="th" data-theme-ico aria-label="Tema">${icon(NS.getTheme() === 'dark' ? 'sun' : 'moon')}</button>`;
+  $('#th').onclick = NS.toggleTheme;
+
+  function login() {
+    $('#out').innerHTML = '';
+    $('#root').innerHTML = `<div class="tk-view"><div class="tk-intro"><h1>Antrenmanın cebinde</h1><p>Telefon numaranla giriş yap; dijital üye kartın, ders rezervasyonların, ölçümlerin ve ödemelerin tek ekranda.</p></div>
+      <div class="tk-find"><input class="input" id="ph" type="tel" inputmode="tel" placeholder="05xx xxx xx xx" aria-label="Telefon" autocomplete="tel" style="text-transform:none;letter-spacing:.02em"><button class="btn primary lg" id="go">Giriş</button></div>
+      ${NS.pub ? '' : '<p class="small muted">Demo için <a href="#" id="hint">örnek üye numarası kullan</a>.</p>'}
+      <div class="tk-how"><div>${icon('qr')}<b>Turnikede QR</b>Kartını unutsan da telefonunla gir.</div><div>${icon('calendar')}<b>Ders rezervasyonu</b>Kontenjanı gör, yerini ayırt, 2 saat öncesine kadar iptal et.</div><div>${icon('trend')}<b>İlerlemen</b>Kilo, yağ ve kas ölçümlerinin grafiği.</div></div></div>`;
+    const go = () => { const d = digits($('#ph').value); if (d.length !== 10 || db.lookup({ phone: d }) === null) db.load(); const m = d.length === 10 && db.find('members', (x) => digits(x.phone) === d); if (!m) return toast('Bu numarayla kayıtlı üye bulunamadı', 'err'); sset(m.id); render(); };
+    $('#go').onclick = go; $('#ph').onkeydown = (e) => { if (e.key === 'Enter') go(); };
+    if ($('#hint')) $('#hint').onclick = (e) => { e.preventDefault(); const m = db.all('members').find((x) => x.end >= today() && !(x.freezeUntil >= today())); if (m) $('#ph').value = m.phone; };
+  }
+
+  const myBookings = (m) => db.all('bookings', (b) => b.member === m.id);
+  function classes(m) {
+    const st = status(m);
+    const days = Array.from({ length: 7 }, (_, i) => iso(addDays(new Date(), i)));
+    const dow = new Date(day + 'T12:00').getDay();
+    const list = db.all('classes', (c) => c.day === dow).sort((a, b) => a.time.localeCompare(b.time));
+    const nowHm = NS.pad(new Date().getHours()) + ':' + NS.pad(new Date().getMinutes());
+    const mine = myBookings(m).filter((b) => b.date >= today()).map((b) => ({ b, c: db.get('classes', b.cls) })).filter((x) => x.c).sort((a, b) => (a.b.date + a.c.time).localeCompare(b.b.date + b.c.time));
+    return `${mine.length ? `<section class="tk-panel"><h3>${icon('check')} Rezervasyonlarım</h3><div class="b">${mine.map(({ b, c }) => `<div class="cls"><span class="tm">${esc(c.time)}</span><div><b>${esc(c.name)}</b><div class="small muted">${NS.dateLong(b.date)} · ${esc(trainer(c.trainer).name)}</div></div><button class="btn sm" data-cx="${b.id}">İptal</button></div>`).join('')}</div></section>` : ''}
+      <section class="tk-panel"><h3>${icon('calendar')} Ders programı</h3><div class="b"><div class="days" role="group" aria-label="Gün">${days.map((d, i) => `<button data-day="${d}" aria-pressed="${d === day}"><small>${i === 0 ? 'Bugün' : NS.DAYS[new Date(d + 'T12:00').getDay()].slice(0, 3)}</small><b>${Number(d.slice(8))}</b></button>`).join('')}</div>
+        ${['bitti', 'donduruldu'].includes(st) ? `<p class="small" style="color:var(--err)">Üyeliğin ${st === 'bitti' ? 'sona erdi' : 'dondurulmuş'}; ders rezervasyonu yapılamaz.</p>` : ''}
+        ${list.map((c) => { const n = db.all('bookings', (b) => b.cls === c.id && b.date === day).length; const booked = myBookings(m).find((b) => b.cls === c.id && b.date === day); const past = day === today() && c.time <= nowHm; const full = n >= c.capacity; const t = trainer(c.trainer);
+          return `<div class="cls"><span class="tm">${esc(c.time)}</span><div><b>${esc(c.name)}</b><div class="small muted">${esc(t.name)} · ${c.dur} dk · ${c.capacity - n} yer kaldı</div><div class="cap" style="--c:${t.color}"><i style="width:${Math.min(100, (n / c.capacity) * 100)}%"></i></div></div>
+            ${booked ? `<span class="badge ok">Yerin ayrıldı</span>` : past ? '<span class="small muted">Geçti</span>' : full ? '<span class="badge">Dolu</span>' : `<button class="btn sm primary" data-bk="${c.id}" ${['bitti', 'donduruldu'].includes(st) ? 'disabled' : ''}>Yer ayırt</button>`}</div>`; }).join('') || '<div class="small muted">Bu gün grup dersi yok.</div>'}</div></section>`;
+  }
+  function spark(ms, key, unit) {
+    if (ms.length < 2) return '<div class="small muted">Grafik için en az 2 ölçüm gerekir.</div>';
+    const W = 300, H = 90, P = 8; const v = ms.map((x) => Number(x[key])); const mn = Math.min(...v), mx = Math.max(...v), rg = mx - mn || 1;
+    const pts = v.map((y, i) => [P + (i * (W - 2 * P)) / (v.length - 1), H - P - ((y - mn) / rg) * (H - 2 * P)]);
+    return `<svg class="spark" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img" aria-label="${key} grafiği"><polyline fill="none" stroke="var(--accent)" stroke-width="2.5" points="${pts.map((p) => p.join(',')).join(' ')}"/>${pts.map((p) => `<circle cx="${p[0]}" cy="${p[1]}" r="3.5" fill="var(--accent)"/>`).join('')}</svg><div class="row between small muted"><span>${NS.date(ms[0].date)} · ${v[0].toFixed(1)} ${unit}</span><span>${NS.date(ms[ms.length - 1].date)} · <b style="color:var(--text)">${v[v.length - 1].toFixed(1)} ${unit}</b></span></div>`;
+  }
+  function progress(m) {
+    const ms = (m.measurements || []).slice().sort((a, b) => a.date.localeCompare(b.date));
+    const first = ms[0], last = ms[ms.length - 1];
+    const d = (k) => (first && last ? last[k] - first[k] : 0);
+    const ent = db.all('entries', (e) => e.member === m.id);
+    const since = iso(addDays(new Date(), -55));
+    const wk = [1, 2, 3, 4, 5, 6, 0].map((w) => ({ w, n: ent.filter((e) => e.at.slice(0, 10) >= since && new Date(e.at).getDay() === w).length }));
+    const mx = Math.max(1, ...wk.map((x) => x.n));
+    return `<section class="tk-panel"><h3>${icon('trend')} Ölçümler</h3><div class="b">${last ? `<div class="stat3"><div><b>${Number(last.weight).toFixed(1)} kg</b><span>Kilo ${d('weight') ? `(${d('weight') > 0 ? '+' : ''}${d('weight').toFixed(1)})` : ''}</span></div><div><b>%${Number(last.fat).toFixed(1)}</b><span>Yağ ${d('fat') ? `(${d('fat') > 0 ? '+' : ''}${d('fat').toFixed(1)})` : ''}</span></div><div><b>%${Number(last.muscle).toFixed(1)}</b><span>Kas ${d('muscle') ? `(${d('muscle') > 0 ? '+' : ''}${d('muscle').toFixed(1)})` : ''}</span></div></div>${spark(ms, 'weight', 'kg')}` : '<div class="small muted">Henüz ölçüm yok; eğitmeninden ölçüm randevusu iste.</div>'}</div></section>
+      <section class="tk-panel"><h3>${icon('clock')} Son 8 hafta hangi günler geldin?</h3><div class="b"><div class="wk">${wk.map((x) => `<div><i style="--h:${(x.n / mx) * 100}%"></i>${NS.DAYS[x.w].slice(0, 3)}<br><b style="color:var(--text)">${x.n}</b></div>`).join('')}</div></div></section>`;
+  }
+  function payments(m) {
+    const ins = (m.installments || []).slice().sort((a, b) => a.due.localeCompare(b.due));
+    const pays = db.all('payments', (p) => p.member === m.id).sort((a, b) => b.at.localeCompare(a.at));
+    const debt = sum(ins.filter((i) => !i.paid && i.due <= today()), (i) => i.amount);
+    return `${debt ? `<div class="tk-call" style="--c:var(--err)"><h3>${icon('alert')} Vadesi geçen ödeme: ${money(debt)}</h3><button class="btn primary mt" data-pay="due">${icon('card')} ${NS.pub ? 'Nasıl öderim?' : 'Şimdi öde'}</button></div>` : ''}
+      <section class="tk-panel"><h3>${icon('calendar')} Taksitler</h3><div class="b">${ins.map((i, k) => `<div class="cls" style="grid-template-columns:1fr auto auto"><div><b>${k + 1}. taksit</b><div class="small muted">${NS.date(i.due)}</div></div><b>${money(i.amount)}</b>${i.paid ? '<span class="badge ok">Ödendi</span>' : i.due <= today() ? '<span class="badge err">Gecikti</span>' : '<span class="badge">Bekliyor</span>'}</div>`).join('') || '<div class="small muted">Taksit yok</div>'}</div></section>
+      <section class="tk-panel"><h3>${icon('receipt')} Ödeme geçmişi</h3><div class="b">${pays.map((p) => `<div class="row between small" style="padding:6px 0"><span>${NS.date(p.at)} · ${esc(p.desc || '')} · ${esc(p.type)}</span><b>${money(p.amount)}</b></div>`).join('') || '<div class="small muted">Kayıt yok</div>'}</div></section>`;
+  }
+  function membership(m) {
+    const left = Math.max(0, S().maxFreeze - (m.frozen || 0));
+    return `<section class="tk-panel"><h3>${icon('refresh')} Üyeliğimi yenile</h3><div class="b"><p class="small muted" style="margin-top:0">Yeni paket mevcut bitiş tarihinin (${NS.date(m.end)}) üzerine eklenir.</p><div class="plans">${db.all('plans').map((p, i) => `<label><input type="radio" name="pl" value="${p.id}" ${p.id === m.plan || (!i && !db.get('plans', m.plan)) ? 'checked' : ''}> ${esc(p.name)}<b>${money(p.price)}</b></label>`).join('')}</div><button class="btn primary block mt" data-pay="renew">${icon('card')} ${NS.pub ? 'Yenileme ve ödeme bilgisi' : 'Kartla öde ve yenile'}</button></div></section>
+      <section class="tk-panel"><h3>${icon('clock')} Üyeliğimi dondur</h3><div class="b">${m.freezeUntil >= today() ? `<p class="small" style="margin:0">Üyeliğin ${NS.date(m.freezeUntil)} tarihine kadar dondurulmuş.</p>` : left ? `<p class="small muted" style="margin-top:0">Yılda en fazla ${S().maxFreeze} gün; kalan hakkın <b>${left} gün</b>. Dondurulan süre bitiş tarihine eklenir.</p><div class="row nw"><select class="input" id="fz">${[7, 14, 21, 30].filter((d) => d <= left).map((d) => `<option value="${d}">${d} gün</option>`).join('') || `<option value="${left}">${left} gün</option>`}</select><button class="btn" id="fzb">Dondur</button></div>` : '<p class="small muted" style="margin:0">Dondurma hakkın kalmadı.</p>'}</div></section>`;
+  }
+
+  function render() {
+    db.load();
+    const m = db.get('members', sget()); if (!m) return login();
+    $('#out').innerHTML = `<button class="btn ghost" id="lo">${icon('logout')}<span class="hide-sm">Çıkış</span></button>`;
+    $('#lo').onclick = () => { sset(null); db.pubLogout(); login(); };
+    const st = status(m); const p = plan(m.plan);
+    const total = Math.max(1, daysBetween(m.start, m.end)); const used = Math.min(total, Math.max(0, daysBetween(m.start, new Date())));
+    const monthIn = db.all('entries', (e) => e.member === m.id && e.at.slice(0, 7) === today().slice(0, 7)).length;
+    const lastIn = db.all('entries', (e) => e.member === m.id).slice(-1)[0];
+    $('#root').innerHTML = `<div class="tk-view"><section class="card2"><div style="position:relative;z-index:1"><small>${esc(STS[st])} · Üye #${esc(m.no)}</small><h2>${esc(m.name)}</h2><div style="opacity:.85">${esc(p.name)}</div><div class="meter"><i style="width:${(used / total) * 100}%"></i></div><div class="small" style="opacity:.85">${st === 'bitti' ? `${NS.date(m.end)} tarihinde sona erdi` : `${Math.max(0, daysBetween(new Date(), m.end))} gün kaldı · bitiş ${NS.date(m.end)}`}${m.sessionsLeft !== null && m.sessionsLeft !== undefined ? ` · ${m.sessionsLeft} ders hakkı` : ''}</div></div><div class="qr" title="Turnikede okut">${NS.qrSvg('NEBSPOR:' + m.no, 112)}</div></section>
+      <div class="stat3"><div><b>${monthIn}</b><span>Bu ay giriş</span></div><div><b>${lastIn ? NS.ago(lastIn.at) : '—'}</b><span>Son giriş</span></div><div><b>${myBookings(m).filter((b) => b.date >= today()).length}</b><span>Yaklaşan ders</span></div></div>
+      <div class="tabs2" role="tablist">${[['dersler', 'Dersler'], ['ilerleme', 'İlerleme'], ['odemeler', 'Ödemeler'], ['uyelik', 'Üyelik']].map(([k, l]) => `<button role="tab" data-tab="${k}" aria-selected="${tab === k}">${l}</button>`).join('')}</div>
+      <div id="tb">${tab === 'dersler' ? classes(m) : tab === 'ilerleme' ? progress(m) : tab === 'odemeler' ? payments(m) : membership(m)}</div>
+      <p class="tk-help">${icon('phone')} ${esc(S().bizPhone || '')} · ${esc(S().bizAddress || '')}</p></div>`;
+  }
+  function cardPay(amount, title, done) {
+    const md = NS.modal({ title, body: `<div class="center mb"><div style="font-size:30px;font-weight:800">${money(amount)}</div></div><div class="form-grid"><div class="field full"><label>Kart numarası</label><input class="input mono" id="cc" inputmode="numeric" placeholder="0000 0000 0000 0000" autocomplete="cc-number"></div><div class="field"><label>Son kullanma</label><input class="input mono" id="ce" placeholder="AA/YY" autocomplete="cc-exp"></div><div class="field"><label>CVC</label><input class="input mono" id="cv" maxlength="4" placeholder="•••" autocomplete="cc-csc"></div></div><p class="small faint mt">Demo: gerçek ödeme alınmaz.</p>`,
+      actions: [{ label: 'Vazgeç' }, { label: 'Öde', cls: 'primary', icon: 'lock', onClick: (close, b) => { if ($('#cc', b).value.replace(/\D/g, '').length !== 16 || $('#cv', b).value.length < 3) return toast('Kart bilgilerini kontrol edin', 'err'); close(); done(); } }] });
+    $('#cc', md.root).oninput = (e) => { e.target.value = e.target.value.replace(/\D/g, '').slice(0, 16).replace(/(\d{4})(?=\d)/g, '$1 '); };
+  }
+  // Olay dinleyicileri bir kez bağlanır; her tıklamada güncel üye okunur
+  function bind() {
+    const root = $('#root');
+    const me = () => db.get('members', sget()) || {};
+    on(root, 'click', '[data-tab]', (e, b) => { tab = b.dataset.tab; render(); });
+    on(root, 'click', '[data-day]', (e, b) => { day = b.dataset.day; render(); });
+    on(root, 'click', '[data-bk]', (e, b) => {
+      db.load(); const x = me(); const c = db.get('classes', b.dataset.bk);
+      if (x.sessionsLeft === 0) return toast('Ders hakkın kalmadı; paketini yenile', 'err');
+      if (db.all('bookings', (y) => y.cls === c.id && y.date === day).length >= c.capacity) { toast('Ders az önce doldu', 'err'); return render(); }
+      db.insert('bookings', { cls: c.id, date: day, member: x.id, source: 'portal', at: new Date().toISOString() }, true);
+      if (typeof x.sessionsLeft === 'number') x.sessionsLeft -= 1;
+      db.save(); toast(`${c.name} için yerin ayrıldı`, 'ok'); render();
+    });
+    on(root, 'click', '[data-cx]', async (e, b) => {
+      db.load(); const bk = db.get('bookings', b.dataset.cx); const c = db.get('classes', bk.cls);
+      if (new Date(bk.date + 'T' + c.time) - new Date() < 2 * 3600e3) return toast('Derse 2 saatten az kaldı, iptal edilemez', 'err');
+      if (!(await NS.confirm('Rezervasyon iptal edilsin mi?', { ok: 'İptal et' }))) return;
+      db.remove('bookings', bk.id); const x = me(); if (typeof x.sessionsLeft === 'number') { x.sessionsLeft += 1; db.save(); } toast('İptal edildi'); render();
+    });
+    on(root, 'click', '[data-pay]', (e, b) => {
+      const m = me();
+      if (b.dataset.pay === 'due') {
+        const due = (m.installments || []).filter((i) => !i.paid && i.due <= today()); const amt = sum(due, (i) => i.amount);
+        if (NS.pub) return NS.payInfo({ amount: amt, title: 'Geciken taksit ödemesi', s: S() });
+        cardPay(amt, 'Geciken taksit ödemesi', () => { db.load(); const x = db.get('members', m.id); x.installments.forEach((i) => { if (!i.paid && i.due <= today()) i.paid = true; }); db.insert('payments', { member: x.id, amount: amt, at: new Date().toISOString(), type: 'online kart', desc: 'Taksit' }, true); db.save(); toast('Ödemen alındı, teşekkürler', 'ok'); render(); });
+      } else {
+        const p = plan(($('input[name=pl]:checked') || {}).value);
+        if (NS.pub) return NS.payInfo({ amount: p.price, title: `${p.name} — yenileme`, s: S(), note: 'Üyeliğinizi yenilemek için ödemenizi salonumuza elden veya havale ile yapabilirsiniz. Ödeme alındığında yeni paketiniz tanımlanır.' });
+        cardPay(p.price, `${p.name} — yenileme`, () => {
+          db.load(); const x = db.get('members', m.id); const base = x.end > today() ? x.end : today();
+          x.plan = p.id; x.start = x.end > today() ? x.start : today(); x.end = iso(addDays(base, p.months * 30)); if (p.sessions) x.sessionsLeft = (x.sessionsLeft || 0) + p.sessions;
+          x.installments.push({ id: NS.uid(), due: today(), amount: p.price, paid: true });
+          db.insert('payments', { member: x.id, amount: p.price, at: new Date().toISOString(), type: 'online kart', desc: p.name }, true);
+          db.log('Online yenileme', `${x.name} · ${p.name}`); db.save(); toast(`Üyeliğin ${NS.date(x.end)} tarihine uzatıldı`, 'ok'); render();
+        });
+      }
+    });
+    on(root, 'click', '#fzb', async () => {
+      const m = me(); const d = Number($('#fz').value); if (!(await NS.confirm(`Üyeliğin bugünden itibaren ${d} gün dondurulsun mu? Bu sürede salona giriş yapamazsın.`, { ok: 'Dondur', danger: false }))) return;
+      db.load(); const x = db.get('members', m.id); x.freezeUntil = iso(addDays(new Date(), d)); x.end = iso(addDays(x.end, d)); x.frozen = (x.frozen || 0) + d; db.log('Dondurma (portal)', `${x.name} · ${d} gün`); db.save(); toast(`Üyelik ${d} gün donduruldu`, 'ok'); render();
+    });
+  }
+  bind();
+  render();
+})();
+</script>
+</body>
+</html>

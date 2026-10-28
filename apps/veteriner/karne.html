@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pati Karnesi</title>
+<link rel="stylesheet" href="../../core/core.css">
+<link rel="stylesheet" href="../../core/track.css">
+<style>
+  :root { --app-accent: #b45309; --app-accent-soft: #fef3c7; --app-accent-soft-dark: #3a2a10; }
+  .pets { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
+  .pets button { display: flex; align-items: center; gap: 10px; border: 1px solid var(--border); background: var(--surface); color: var(--text); border-radius: 99px; padding: 6px 16px 6px 6px; font: 600 14px var(--font); cursor: pointer; }
+  .pets button[aria-pressed="true"] { border-color: var(--accent); background: var(--accent-soft); }
+  .pa { width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; font-weight: 800; color: #78350f; background: var(--c, #fde68a); flex: none; }
+  .pa.lg { width: 64px; height: 64px; font-size: 26px; }
+  .vx { width: 100%; border-collapse: collapse; font-size: 14px; }
+  .vx th { text-align: left; font-size: 12px; color: var(--text-3); font-weight: 600; padding: 8px 0; border-bottom: 1px solid var(--border); }
+  .vx td { padding: 10px 0; border-bottom: 1px solid var(--border); }
+  .vx tr:last-child td { border-bottom: 0; }
+  .spark { width: 100%; height: 90px; }
+  .facts { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-top: 16px; }
+  .facts div { border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; }
+  .facts small { display: block; font-size: 11px; color: var(--text-3); }
+  .facts b { font-size: 14px; }
+  @media (max-width: 760px) { .facts { grid-template-columns: 1fr 1fr; } .vx .hide-sm { display: none; } }
+  @media print { .tk-bar, .noprint { display: none !important; } }
+</style>
+</head>
+<body>
+<header class="tk-bar"><div class="in" id="bar"></div></header>
+<main class="tk-wrap" id="root"></main>
+<script src="../../core/core.js"></script>
+<script>
+(function () {
+  const { esc, $, $$, on, icon, money, toast, iso, today, addDays } = NS;
+  const db = new NS.DB('veteriner');
+  const s = () => db.settings({});
+  const KEY = 'nebsoft:vet:sahip';
+  const sget = () => { try { return sessionStorage.getItem(KEY); } catch (e) { return null; } };
+  const sset = (v) => { try { v ? sessionStorage.setItem(KEY, v) : sessionStorage.removeItem(KEY); } catch (e) { /* yok */ } };
+  const digits = (x) => String(x || '').replace(/\D/g, '').slice(-10);
+  const tint = (sp) => (sp === 'Kedi' ? '#fde68a' : sp === 'Köpek' ? '#bfdbfe' : '#bbf7d0');
+  const ageStr = (b) => { const m = Math.floor((new Date() - new Date(b)) / (30.4 * 864e5)); return m >= 12 ? `${Math.floor(m / 12)} yaş${m % 12 ? ' ' + (m % 12) + ' ay' : ''}` : `${m} aylık`; };
+  const tel = () => String(s().bizPhone || '').replace(/\D/g, '');
+  let cur = null;
+
+  $('#bar').innerHTML = `<div class="tk-mark">${icon('paw')}</div><div class="grow"><b>${esc(s().bizName || 'Veteriner')}</b><span>Pati karnesi</span></div><span id="out"></span><button class="btn ghost icon" id="th" data-theme-ico aria-label="Tema">${icon(NS.getTheme() === 'dark' ? 'sun' : 'moon')}</button>`;
+  $('#th').onclick = NS.toggleTheme;
+
+  function login() {
+    $('#out').innerHTML = '';
+    $('#root').innerHTML = `<div class="tk-view"><div class="tk-intro"><h1>Dostunuzun sağlık karnesi</h1><p>Kliniğimizde kayıtlı telefon numaranızla girin; aşı takvimini, son muayeneleri ve kilo geçmişini görün, randevu isteyin.</p></div>
+      <div class="tk-find"><input class="input" id="ph" type="tel" inputmode="tel" placeholder="05xx xxx xx xx" aria-label="Telefon numarası" autocomplete="tel" style="text-transform:none;letter-spacing:.02em"><button class="btn primary lg" id="go">Giriş</button></div>
+      ${NS.pub ? '' : '<p class="small muted">Demo için <a href="#" id="hint">örnek bir numara kullanın</a>.</p>'}
+      <div class="tk-how"><div>${icon('shield')}<b>Aşı takvimi</b>Hangi aşının ne zaman yapıldığı ve sıradaki aşı tarihi.</div><div>${icon('calendar')}<b>Randevu isteği</b>Uygun gün ve saati seçin, klinik onaylayınca SMS alın.</div><div>${icon('print')}<b>Yazdırılabilir karne</b>Seyahat ve pet otel için karneyi PDF olarak kaydedin.</div></div></div>`;
+    const go = () => {
+      const d = digits($('#ph').value); if (d.length !== 10 || db.lookup({ phone: d }) === null) db.load();
+      const o = d.length === 10 && db.find('owners', (x) => digits(x.phone) === d);
+      if (!o) return toast('Bu numarayla kayıtlı hayvan sahibi bulunamadı', 'err');
+      sset(o.id); render();
+    };
+    $('#go').onclick = go; $('#ph').onkeydown = (e) => { if (e.key === 'Enter') go(); };
+    if ($('#hint')) $('#hint').onclick = (e) => { e.preventDefault(); const o = db.all('owners').find((x) => db.all('pets', (p) => p.owner === x.id).length) || db.all('owners')[0]; if (o) { $('#ph').value = o.phone; } };
+  }
+
+  // Her aşı türünün son uygulaması ve sıradaki tarihi
+  function vaxRows(pid) {
+    const all = db.all('vaccines', (v) => v.pet === pid).sort((a, b) => b.date.localeCompare(a.date));
+    const last = {}; all.forEach((v) => { if (!last[v.type]) last[v.type] = v; });
+    return Object.values(last).sort((a, b) => a.next.localeCompare(b.next)).map((v) => {
+      const days = Math.ceil((new Date(v.next + 'T12:00') - new Date()) / 864e5);
+      const st = days < 0 ? ['Gecikti', 'err'] : days <= 14 ? ['Yaklaşıyor', 'warn'] : ['Güncel', 'ok'];
+      return { ...v, days, st };
+    });
+  }
+  function spark(ws) {
+    if (ws.length < 2) return '<div class="small muted">Kilo kaydı yetersiz</div>';
+    const W = 300, H = 80, P = 8; const ks = ws.map((w) => w.kg); const mn = Math.min(...ks), mx = Math.max(...ks); const rg = mx - mn || 1;
+    const pts = ws.map((w, i) => [P + (i * (W - 2 * P)) / (ws.length - 1), H - P - ((w.kg - mn) / rg) * (H - 2 * P)]);
+    return `<svg class="spark" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img" aria-label="Kilo geçmişi"><polyline fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linejoin="round" points="${pts.map((p) => p.join(',')).join(' ')}"/>${pts.map((p) => `<circle cx="${p[0]}" cy="${p[1]}" r="3.5" fill="var(--accent)"/>`).join('')}</svg><div class="row between small muted"><span>${NS.date(ws[0].date)} · ${ws[0].kg} kg</span><span>${NS.date(ws[ws.length - 1].date)} · <b style="color:var(--text)">${ws[ws.length - 1].kg} kg</b></span></div>`;
+  }
+
+  function render() {
+    db.load();
+    const o = db.get('owners', sget());
+    if (!o) return login();
+    const pets = db.all('pets', (p) => p.owner === o.id);
+    if (!pets.find((p) => p.id === cur)) cur = (pets[0] || {}).id;
+    $('#out').innerHTML = `<button class="btn ghost" id="lo">${icon('logout')}<span class="hide-sm">Çıkış</span></button>`;
+    $('#lo').onclick = () => { sset(null); cur = null; db.pubLogout(); login(); };
+    if (!pets.length) { $('#root').innerHTML = `<div class="tk-panel"><div class="b empty">${icon('paw')}<div>Kayıtlı hayvanınız bulunmuyor.</div></div></div>`; return; }
+    const p = db.get('pets', cur);
+    const vx = vaxRows(p.id);
+    const visits = db.all('visits', (v) => v.pet === p.id).sort((a, b) => b.date.localeCompare(a.date)).slice(0, 5);
+    const appts = db.all('appts', (a) => a.pet === p.id && a.date >= today() && a.status !== 'iptal').sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time));
+    const due = vx.filter((v) => v.days <= 14), late = vx.filter((v) => v.days < 0);
+    const ws = (p.weights || []).slice(-8);
+    $('#root').innerHTML = `<div class="tk-view"><p class="small muted noprint" style="margin:0 0 10px">Merhaba ${esc(o.name.split(' ')[0])}</p>
+      ${pets.length > 1 ? `<div class="pets noprint" role="group" aria-label="Hayvanlarınız">${pets.map((x) => `<button data-p="${x.id}" aria-pressed="${x.id === p.id}"><span class="pa" style="--c:${tint(x.species)}">${esc(x.name[0])}</span>${esc(x.name)}</button>`).join('')}</div>` : ''}
+      <section class="tk-head"><div class="top"><div class="row nw" style="gap:16px"><span class="pa lg" style="--c:${tint(p.species)}">${esc(p.name[0])}</span><div><h2 style="margin:0">${esc(p.name)}</h2><div class="small muted">${esc(p.species)} · ${esc(p.breed || '')} · ${esc(p.gender || '')} · ${ageStr(p.birth)}</div></div></div>
+        <div class="tk-eta">${due.length ? `<b style="color:${late.length ? 'var(--err)' : 'var(--warn)'}">${late.length ? `${late.length} aşı gecikti` : `${due.length} aşı yaklaşıyor`}</b><span>${esc(due[0].type)} · ${NS.date(due[0].next)}</span>` : `<b style="color:var(--ok)">Aşıları güncel</b><span>Sıradaki: ${vx[0] ? `${esc(vx[0].type)} · ${NS.date(vx[0].next)}` : '—'}</span>`}</div></div>
+        <div class="facts"><div><small>Mikroçip</small><b class="mono">${esc(p.chip || '—')}</b></div><div><small>Kısırlaştırma</small><b>${p.neutered ? 'Evet' : 'Hayır'}</b></div><div><small>Son kilo</small><b>${ws.length ? ws[ws.length - 1].kg + ' kg' : '—'}</b></div><div><small>Alerji</small><b style="${p.allergy ? 'color:var(--err)' : ''}">${esc(p.allergy || 'Yok')}</b></div></div></section>
+      <div class="tk-grid"><div>
+        <section class="tk-panel"><h3>${icon('shield')} Aşı karnesi</h3><div class="b">${vx.length ? `<table class="vx"><thead><tr><th>Aşı</th><th class="hide-sm">Son uygulama</th><th>Sıradaki</th><th></th></tr></thead><tbody>${vx.map((v) => `<tr><td><b>${esc(v.type)}</b><div class="small muted">${v.batch ? 'Seri ' + esc(v.batch) : ''}</div></td><td class="hide-sm">${NS.date(v.date)}</td><td>${NS.date(v.next)}<div class="small muted">${v.days < 0 ? `${-v.days} gün geçti` : v.days === 0 ? 'bugün' : `${v.days} gün kaldı`}</div></td><td style="text-align:right">${NS.badge(v.st[0], v.st[1])}</td></tr>`).join('')}</tbody></table>` : '<div class="small muted">Aşı kaydı yok</div>'}</div></section>
+        <section class="tk-panel"><h3>${icon('heart')} Son muayeneler</h3><div class="b"><ul class="tk-tl">${visits.map((v) => `<li><b>${esc(v.diagnosis || v.complaint || 'Muayene')}</b>${esc(v.treatment || '')}<br><span>${NS.date(v.date)}</span></li>`).join('') || '<li><b>Kayıt yok</b></li>'}</ul></div></section></div>
+        <div><section class="tk-panel noprint"><h3>${icon('calendar')} Randevular</h3><div class="b">${appts.map((a) => `<div class="row between small" style="padding:6px 0"><span><b>${NS.dateLong(a.date)} ${esc(a.time)}</b><br><span class="muted">${esc(a.reason)}</span></span>${a.status === 'talep' ? NS.badge('Onay bekliyor', 'warn') : NS.badge('Onaylandı', 'ok')}</div>`).join('') || '<p class="small muted" style="margin:0 0 10px">Yaklaşan randevu yok.</p>'}<button class="btn primary block mt" id="rq">${icon('plus')} Randevu iste</button></div></section>
+          <section class="tk-panel"><h3>${icon('trend')} Kilo geçmişi</h3><div class="b">${spark(ws)}</div></section>
+          <section class="tk-panel noprint"><h3>${icon('phone')} Klinik</h3><div class="b"><div class="tk-acts"><a class="btn" href="tel:${tel()}">${icon('phone')} Ara</a><button class="btn" id="pr">${icon('print')} Karneyi yazdır</button></div><p class="small muted" style="margin:10px 0 0">${esc(s().bizAddress || '')}</p></div></section></div></div></div>`;
+    on($('#root'), 'click', '[data-p]', (e, b) => { cur = b.dataset.p; render(); });
+    $('#pr').onclick = () => print();
+    $('#rq').onclick = async () => {
+      const days = []; for (let i = 1; days.length < 7; i++) { const d = addDays(new Date(), i); if (d.getDay() !== 0) days.push(iso(d)); }
+      const v = await NS.formModal({ title: `${p.name} için randevu iste`, fields: [{ name: 'reason', label: 'Neden', type: 'select', options: [...new Set([...(due.length ? due.map((x) => x.type + ' aşısı') : []), 'Genel kontrol', 'Muayene (rahatsızlık)', 'Tırnak / bakım', 'Kısırlaştırma görüşmesi'])] }, { name: 'date', label: 'Gün', type: 'select', options: days.map((d) => ({ value: d, label: NS.dateLong(d) })) }, { name: 'time', label: 'Saat aralığı', type: 'select', options: ['10:00', '11:00', '12:30', '14:00', '15:30', '17:00'] }, { name: 'note', label: 'Not (belirtiler vb.)', type: 'textarea', full: true }] });
+      if (!v) return;
+      db.load(); db.insert('appts', { pet: p.id, date: v.date, time: v.time, reason: v.reason + (v.note ? ' — ' + v.note : ''), vet: '', status: 'talep', source: 'online', at: new Date().toISOString() });
+      toast('Randevu isteğiniz kliniğe iletildi. Onaylanınca SMS alacaksınız.', 'ok'); render();
+    };
+  }
+  render();
+})();
+</script>
+</body>
+</html>

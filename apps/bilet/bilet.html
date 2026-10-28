@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Online Bilet</title>
+<link rel="stylesheet" href="../../core/core.css">
+<style>
+  :root { --app-accent: #db2777; --app-accent-soft: #fce7f3; }
+  .top { background: var(--surface); border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 10; }
+  .top .in { max-width: 1100px; margin: 0 auto; padding: 12px 16px; display: flex; align-items: center; gap: 12px; }
+  .top .in { max-width: 1200px; } .wrap { max-width: 1200px; margin: 0 auto; padding: 22px 16px 60px; }
+  .eg { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 20px; }
+  .ec { overflow: hidden; cursor: pointer; transition: .2s; border-radius: 16px; }
+  .ec:hover { transform: translateY(-4px); box-shadow: 0 20px 40px rgba(0,0,0,.18); }
+  .ec .poster { position: relative; aspect-ratio: 4/3; padding: 16px; color: #fff; display: flex; flex-direction: column; justify-content: flex-end; background-size: cover; background-position: center; }
+  .ec .poster::before { content: ''; position: absolute; inset: 0; background: linear-gradient(transparent 35%, rgba(0,0,0,.8)); } .ec .poster > * { position: relative; }
+  .ec .dt { position: absolute; top: 14px; right: 14px; background: #fff; color: #111; border-radius: 12px; text-align: center; padding: 6px 10px; line-height: 1.1; box-shadow: 0 6px 16px rgba(0,0,0,.25); } .ec .dt b { display: block; font-size: 20px; } .ec .dt span { font-size: 11px; font-weight: 700; text-transform: uppercase; color: var(--app-accent); }
+  .hero { position: relative; border-radius: 22px; padding: 34px; color: #fff; margin-bottom: 20px; background-size: cover; background-position: center; overflow: hidden; min-height: 260px; display: flex; flex-direction: column; justify-content: flex-end; }
+  .hero::before { content: ''; position: absolute; inset: 0; background: linear-gradient(90deg, rgba(0,0,0,.82), rgba(0,0,0,.25)); } .hero > * { position: relative; } .hero h1 { font-size: clamp(28px, 4vw, 46px); line-height: 1.05; }
+  .slider { position: relative; height: 380px; border-radius: 24px; overflow: hidden; margin-bottom: 26px; }
+  .slider .sl { position: absolute; inset: 0; opacity: 0; transition: opacity .8s; background-size: cover; background-position: center; display: flex; align-items: flex-end; padding: 36px; color: #fff; cursor: pointer; } .slider .sl.on { opacity: 1; z-index: 1; }
+  .slider .sl::before { content: ''; position: absolute; inset: 0; background: linear-gradient(90deg, rgba(0,0,0,.85), rgba(0,0,0,.15)); } .slider .sl > div { position: relative; max-width: 560px; } .slider h1 { color: #fff; font-size: clamp(30px, 4.5vw, 52px); line-height: 1; margin: 10px 0; }
+  .slider .dots { position: absolute; right: 24px; bottom: 24px; display: flex; gap: 6px; z-index: 2; } .slider .dots i { width: 26px; height: 4px; border-radius: 4px; background: rgba(255,255,255,.4); cursor: pointer; } .slider .dots i.on { background: #fff; }
+  .fbar { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-bottom: 18px; } .fbar .input { max-width: 300px; }
+  .pill { border: 1px solid var(--border); background: var(--surface); color: var(--text); border-radius: 99px; padding: 8px 14px; font: 600 13px var(--font); cursor: pointer; } .pill.on { background: var(--app-accent); border-color: var(--app-accent); color: #fff; }
+  .info { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-top: 18px; } .info .card { padding: 16px; } .info b { display: block; margin-bottom: 4px; }
+  @media (max-width: 760px) { .slider { height: 300px; } .slider .sl { padding: 22px; } .info { grid-template-columns: 1fr; } .hero { padding: 22px; min-height: 220px; } }
+  .ga-cat { display: flex; align-items: center; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--border); }
+  .timer { font-variant-numeric: tabular-nums; }
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script src="../../core/core.js"></script>
+<script src="data.js"></script>
+<script>
+(function () {
+  const { esc, $, $$, on, icon, money, toast, sum, iso, today } = NS;
+  const B = window.BILET;
+  const st = document.createElement('style'); st.textContent = B.CSS; document.head.appendChild(st);
+  const db = new NS.DB('bilet', B.seed);
+  const s = () => db.settings({ serviceFee: 15 });
+  // Her ziyaretçinin kendi kilit kimliği: seçtiği koltuklar başkasına "seçiliyor" görünür
+  let me; try { me = sessionStorage.getItem('nebsoft:bilet:me') || NS.uid(); sessionStorage.setItem('nebsoft:bilet:me', me); } catch (e) { me = NS.uid(); }
+  const ven = (id) => db.get('venues', id);
+  let timer = null;
+
+  function frame() {
+    $('#app').innerHTML = `<header class="top"><div class="in"><a href="#/" class="row nw" style="color:inherit;text-decoration:none"><div class="ns-logo">${icon('ticket')}</div><b style="font-size:18px">${esc(s().bizName)}</b></a><span class="grow"></span><a class="btn ghost" href="#/biletlerim">${icon('ticket')} Biletlerim</a><button class="btn ghost icon" id="th" data-theme-ico>${icon(NS.getTheme() === 'dark' ? 'sun' : 'moon')}</button></div></header><main class="wrap" id="pg"></main><p class="center small faint" style="padding-bottom:30px">NEBSOFT Bilet altyapısı ile</p>`;
+    $('#th').onclick = NS.toggleTheme;
+  }
+  const releaseMine = () => { db.load(); db.data.holds = db.all('holds', (h) => h.owner !== me && h.until > Date.now()); db.save(); };
+
+  const bg = (e, w, h) => `background-color:${e.color};background-image:url('${B.poster(e, w, h)}')`;
+  const leftOf = (e) => { const v = ven(e.venue); return Object.keys(v.cats).reduce((t, k) => t + B.catLeft(db, e, v, k), 0); };
+  const minPrice = (e) => Math.min(...Object.values(e.prices));
+  const evCard = (e) => { const v = ven(e.venue); const left = leftOf(e); const d = new Date(e.date + 'T12:00'); return `<div class="card ec" data-ev="${e.id}"><div class="poster" style="${bg(e, 600, 450)}"><div class="dt"><b>${d.getDate()}</b><span>${NS.MONTHS[d.getMonth()].slice(0, 3)}</span></div><span class="badge" style="background:rgba(255,255,255,.22);color:#fff;border:0;align-self:flex-start;backdrop-filter:blur(4px)">${esc(e.cat)}</span><h2 style="color:#fff;margin-top:8px">${esc(e.name)}</h2><div class="small">${esc(e.artist)}</div></div><div class="card-b"><div class="small muted">${icon('clock')} ${NS.DAYS[d.getDay()]} · ${esc(e.time)}<br>${icon('map')} ${esc(v.name)}, ${esc(v.city)}</div><div class="row between mt"><span class="small muted">Başlangıç <b style="color:var(--text);font-size:16px">${money(minPrice(e))}</b></span>${left <= 0 ? NS.badge('Tükendi', 'err') : left < 30 ? NS.badge('Son ' + left + ' bilet', 'warn') : ''}</div></div></div>`; };
+  function home(el) {
+    let c = '', when = '', q = '', cur = 0;
+    const up = db.all('events', (e) => e.date >= today() && e.status !== 'iptal').sort((a, b) => a.date.localeCompare(b.date));
+    const feat = up.filter((e) => leftOf(e) > 0).slice(0, 4);
+    const inRange = (e) => { if (!when) return true; const d = new Date(e.date + 'T12:00'), n = new Date(); const days = (d - new Date(today() + 'T12:00')) / 864e5; if (when === 'hafta') return days <= 7; if (when === 'ay') return d.getMonth() === n.getMonth() && d.getFullYear() === n.getFullYear(); if (when === 'hs') return [0, 5, 6].includes(d.getDay()); return true; };
+    el.innerHTML = `${feat.length ? `<div class="slider">${feat.map((e, i) => `<div class="sl ${i ? '' : 'on'}" data-ev="${e.id}" style="${bg(e, 1600, 700)}"><div><span class="badge" style="background:var(--app-accent);color:#fff;border:0">${esc(e.cat)}</span><h1>${esc(e.name)}</h1><div style="opacity:.9">${esc(e.artist)} · ${NS.dateLong(e.date)} ${esc(e.time)} · ${esc(ven(e.venue).name)}</div><div class="row mt"><span class="btn primary lg">${icon('ticket')} Bilet al · ${money(minPrice(e))}’den başlayan</span></div></div></div>`).join('')}<div class="dots">${feat.map((_, i) => `<i data-sl="${i}" class="${i ? '' : 'on'}"></i>`).join('')}</div></div>` : ''}
+      <div class="fbar"><input class="input" id="q" placeholder="Etkinlik, sanatçı veya mekan ara" aria-label="Ara"><span class="grow"></span>${[['', 'Tüm tarihler'], ['hafta', 'Bu hafta'], ['hs', 'Hafta sonu'], ['ay', 'Bu ay']].map(([k, l]) => `<button class="pill" data-w="${k}">${l}</button>`).join('')}</div>
+      <div class="fbar"><button class="pill" data-c="">Tümü (${up.length})</button>${B.CATS.map((x) => { const n = up.filter((e) => e.cat === x).length; return n ? `<button class="pill" data-c="${x}">${x} (${n})</button>` : ''; }).join('')}</div><div id="list"></div>`;
+    const draw = () => {
+      const evs = up.filter((e) => (!c || e.cat === c) && inRange(e) && (!q || NS.match(q, e.name, e.artist, e.cat, ven(e.venue).name)));
+      $$('[data-c]', el).forEach((b) => b.classList.toggle('on', b.dataset.c === c)); $$('[data-w]', el).forEach((b) => b.classList.toggle('on', b.dataset.w === when));
+      $('#list', el).innerHTML = `<div class="eg">${evs.map(evCard).join('') || '<div class="empty" style="grid-column:1/-1">Bu kriterlere uygun etkinlik yok</div>'}</div>`;
+    };
+    const go = (i) => { cur = i; $$('.sl', el).forEach((x, k) => x.classList.toggle('on', k === i)); $$('[data-sl]', el).forEach((x, k) => x.classList.toggle('on', k === i)); };
+    on(el, 'click', '[data-sl]', (e, b) => { e.stopPropagation(); go(Number(b.dataset.sl)); });
+    const t = setInterval(() => { if (!document.body.contains(el)) return clearInterval(t); if (feat.length > 1) go((cur + 1) % feat.length); }, 6000);
+    on(el, 'click', '[data-c]', (e, b) => { c = b.dataset.c; draw(); });
+    on(el, 'click', '[data-w]', (e, b) => { when = b.dataset.w; draw(); });
+    $('#q', el).oninput = (e) => { q = e.target.value.trim(); draw(); };
+    on(el, 'click', '[data-ev]', (e, b) => { location.hash = '#/etkinlik/' + b.dataset.ev; });
+    draw();
+  }
+
+  function eventPage(el, id) {
+    const e = db.get('events', id); if (!e) { el.innerHTML = '<div class="empty">Etkinlik bulunamadı</div>'; return; }
+    const v = ven(e.venue);
+    document.title = `${e.name} · ${s().bizName}`;
+    let sel = [], ga = {};
+    const hold = () => { db.load(); db.data.holds = db.all('holds', (h) => h.owner !== me && h.until > Date.now()); const until = Date.now() + B.HOLD_MIN * 60000; sel.forEach((seat) => db.data.holds.push({ id: NS.uid(), event: e.id, seat, owner: me, until })); db.save(); };
+    const draw = () => {
+      db.load();
+      const sold = B.sold(db, e.id), held = B.held(db, e.id, me);
+      const lost = sel.filter((x) => sold.has(x) || held.has(x)); if (lost.length) { sel = sel.filter((x) => !lost.includes(x)); toast(`${lost.join(', ')} başka biri tarafından alındı`, 'err'); }
+      const items = v.type === 'seated' ? sel.map((x) => { const c = B.seats(v).find((y) => y.id === x).cat; return { seat: x, cat: c, price: e.prices[c] }; }) : Object.entries(ga).flatMap(([c, n]) => Array.from({ length: n }, () => ({ seat: null, cat: c, price: e.prices[c] })));
+      if ($('#bf', el)) el._keep = NS.readForm($('#bf', el));
+      const sim = db.all('events', (x) => x.id !== e.id && x.date >= today() && x.status !== 'iptal' && (x.cat === e.cat || x.venue === e.venue)).sort((a, b) => a.date.localeCompare(b.date)).slice(0, 3);
+      const info = `<div class="info"><div class="card">${icon('clock')}<b>Kapı açılışı</b><span class="small muted">Etkinlikten 45 dk önce · süre yaklaşık 2 saat</span></div><div class="card">${icon('shield')}<b>Kurallar</b><span class="small muted">${esc(e.age || 'Genel izleyici')} · Profesyonel kamera ile çekim yapılamaz · Biletler kişiye özeldir</span></div><div class="card">${icon('refresh')}<b>İade</b><span class="small muted">Etkinlikten ${s().refundDays || 2} gün öncesine kadar iade talebi; etkinlik iptalinde tam iade</span></div></div>
+        <div class="card pad mt row"><div class="grow"><b>${esc(v.name)}</b><div class="small muted">${esc(v.city)} · ${B.capacity(v)} kişilik ${v.type === 'seated' ? 'numaralı oturma düzeni' : 'ayakta / loca'}</div></div><a class="btn" target="_blank" rel="noopener" href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(v.name + ' ' + v.city)}">${icon('map')} Yol tarifi</a></div>
+        ${sim.length ? `<h2 style="margin:28px 0 14px">Bunlar da ilginizi çekebilir</h2><div class="eg">${sim.map(evCard).join('')}</div>` : ''}`;
+      el.innerHTML = `<div class="hero" style="${bg(e, 1600, 600)}"><span class="badge" style="background:rgba(255,255,255,.2);color:#fff;border:0;align-self:flex-start">${esc(e.cat)} · ${esc(e.age || '')}</span><h1 style="color:#fff;margin-top:8px">${esc(e.name)}</h1><div style="font-size:17px">${esc(e.artist)}</div><div class="mt">${icon('calendar')} ${NS.dateLong(e.date)} · ${esc(e.time)} &nbsp; ${icon('map')} ${esc(v.name)}, ${esc(v.city)}</div><div class="row mt" style="gap:8px"><button class="btn sm" id="cal" style="background:rgba(255,255,255,.15);color:#fff;border-color:rgba(255,255,255,.3)">${icon('calendar')} Takvime ekle</button><button class="btn sm" id="shr" style="background:rgba(255,255,255,.15);color:#fff;border-color:rgba(255,255,255,.3)">${icon('send')} Paylaş</button>${(() => { const l = leftOf(e); return l > 0 && l < 40 ? `<span class="badge warn">Son ${l} bilet</span>` : ''; })()}</div></div>
+        ${e.status === 'iptal' ? '<div class="card pad empty">Bu etkinlik iptal edildi.</div>' : `<div class="grid g-21"><div class="card pad"><h3 class="mb">${v.type === 'seated' ? 'Koltuk seçin' : 'Bilet seçin'}</h3>${v.type === 'seated' ? B.seatMap(db, e, v, { selected: sel, mine: me }) : Object.entries(v.cats).map(([c, n]) => { const left = B.catLeft(db, e, v, c); return `<div class="ga-cat"><div class="grow"><b>${esc(n)}</b><div class="small muted">${money(e.prices[c])} · ${left > 0 ? left + ' kaldı' : 'Tükendi'}</div></div><button class="btn icon" data-ga="${c}|-1">${icon('minus')}</button><b style="min-width:22px;text-align:center">${ga[c] || 0}</b><button class="btn icon" data-ga="${c}|1" ${left > 0 ? '' : 'disabled'}>${icon('plus')}</button></div>`; }).join('')}<p class="small muted mt">${esc(e.desc || '')}</p></div>
+        <div><div class="card pad" style="position:sticky;top:80px"><h3 class="mb">Sepetiniz</h3>${items.map((i) => `<div class="list-item small"><span class="grow">${i.seat ? `<b>Koltuk ${esc(i.seat)}</b> · ` : ''}${esc(v.cats[i.cat])}</span><b>${money(i.price)}</b></div>`).join('') || '<div class="faint small">Henüz seçim yok (en fazla 8 bilet)</div>'}
+          ${items.length ? `<div class="small mt" style="color:var(--warn)">${icon('clock')} Koltuklarınız <b class="timer" id="tm"></b> boyunca sizin için ayrıldı</div>` : ''}
+          ${items.length ? `<div id="bf" class="mt">${NS.fieldsHtml([{ name: 'name', label: 'Ad soyad', required: true, full: true }, { name: 'phone', label: 'Telefon', required: true, type: 'tel' }, { name: 'email', label: 'E-posta', type: 'email' }, { name: 'code', label: 'İndirim kodu' }], el._keep || {})}</div>
+          <div class="row between small mt"><span>Biletler</span><span>${money(sum(items, (i) => i.price))}</span></div><div class="row between small"><span>Hizmet bedeli</span><span>${money(items.length * s().serviceFee)}</span></div>
+          <div class="row between mt"><b>Toplam</b><b style="font-size:22px">${money(sum(items, (i) => i.price) + items.length * s().serviceFee)}</b></div>
+          <label class="check small mt"><input type="checkbox" id="ag"> Satış koşullarını kabul ediyorum.</label><button class="btn primary lg block mt" id="buy">${icon(NS.pub ? 'ticket' : 'lock')} ${NS.pub ? 'Rezervasyonu tamamla' : 'Ödeme yap ve biletleri al'}</button><p class="small faint center mt">${NS.pub ? 'Ödemeyi gişede veya etkinlik girişinde yaparsınız; ödeme alınınca biletleriniz geçerli olur.' : 'Demo: gerçek ödeme alınmaz.'}</p>` : ''}</div></div></div>`}${info}`;
+      el._items = items;
+      $('#cal', el).onclick = () => { const d = e.date.replace(/-/g, ''), t = e.time.replace(':', '') + '00'; const ics = `BEGIN:VCALENDAR\r\nVERSION:2.0\r\nBEGIN:VEVENT\r\nDTSTART:${d}T${t}\r\nDURATION:PT2H\r\nSUMMARY:${e.name}\r\nLOCATION:${v.name}, ${v.city}\r\nEND:VEVENT\r\nEND:VCALENDAR`; const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([ics], { type: 'text/calendar' })); a.download = 'etkinlik.ics'; a.click(); };
+      $('#shr', el).onclick = async () => { const u = location.href; if (navigator.share) { try { await navigator.share({ title: e.name, url: u }); return; } catch (x) { /* iptal */ } } try { await navigator.clipboard.writeText(u); toast('Bağlantı kopyalandı', 'ok'); } catch (x) { NS.prompt('Etkinlik bağlantısı', u); } };
+      if ($('#tm', el)) { const h = db.find('holds', (x) => x.owner === me && x.event === e.id); const tick = () => { const left = h ? Math.max(0, h.until - Date.now()) : B.HOLD_MIN * 60000; const t = $('#tm', el); if (!t) return; t.textContent = `${Math.floor(left / 60000)}:${NS.pad(Math.floor((left % 60000) / 1000))}`; if (left <= 0) { sel = []; releaseMine(); toast('Süre doldu, koltuklar serbest bırakıldı', 'err'); draw(); } }; clearInterval(timer); timer = setInterval(tick, 1000); tick(); }
+    };
+    on(el, 'click', '[data-ev]', (x, b) => { location.hash = '#/etkinlik/' + b.dataset.ev; });
+    on(el, 'click', '[data-seat]', (x, b) => { const id2 = b.dataset.seat; if (!sel.includes(id2) && sel.length >= 8) return toast('En fazla 8 bilet', 'err'); sel = sel.includes(id2) ? sel.filter((y) => y !== id2) : [...sel, id2]; hold(); draw(); });
+    on(el, 'click', '[data-ga]', (x, b) => { const [c, d] = b.dataset.ga.split('|'); const total = sum(Object.values(ga)); if (Number(d) > 0 && total >= 8) return toast('En fazla 8 bilet', 'err'); ga[c] = NS.clamp((ga[c] || 0) + Number(d), 0, B.catLeft(db, e, v, c)); draw(); });
+    on(el, 'click', '#buy', () => {
+      const f = $('#bf', el); if (!NS.validate(f)) return; if (!$('#ag', el).checked) return toast('Satış koşullarını onaylayın', 'err');
+      db.load();
+      const items = el._items; const sold = B.sold(db, e.id);
+      if (items.some((i) => i.seat && sold.has(i.seat))) { toast('Koltuklardan biri satıldı, lütfen yeniden seçin', 'err'); sel = []; return draw(); }
+      const bf = NS.readForm(f); if (bf.code) db.pubQuery({ code: bf.code.toUpperCase() }); const k = bf.code && db.find('codes', (c) => c.code === bf.code.toUpperCase() && c.active);
+      if (bf.code && !k) return toast('Geçersiz indirim kodu', 'err');
+      if (k) k.uses = (k.uses || 0) + items.length;
+      const order = db.nextNo('orders', 'B');
+      const made = items.map((i) => db.insert('tickets', { code: B.code(), event: e.id, seat: i.seat, cat: i.cat, price: i.price, paid: k ? Math.round(i.price * (1 - k.pct / 100)) : i.price, discount: k ? k.code : null, buyer: { name: bf.name, phone: bf.phone, email: bf.email }, channel: 'online', pay: 'kart', at: new Date().toISOString(), status: 'valid', order }, true));
+      db.data.holds = db.all('holds', (h) => h.owner !== me); db.save(); clearInterval(timer);
+      try { localStorage.setItem('nebsoft:bilet:phone', bf.phone); } catch (x) { /* yok */ }
+      location.hash = '#/siparis/' + ((made[0] && made[0].order) || order);
+    });
+    draw();
+  }
+
+  const ticketCard = (t) => { const e = db.get('events', t.event), v = ven(e.venue); return `<div class="tix mb"><div class="l" style="background:linear-gradient(135deg,rgba(0,0,0,.55),rgba(0,0,0,.8)),${e.color} url(${B.poster(e, 700, 400)}) center/cover"><div class="small" style="opacity:.85">${esc(e.cat)}</div><h2 style="color:#fff">${esc(e.name)}</h2><div class="small">${NS.dateLong(e.date)} · ${esc(e.time)}</div><div class="small">${esc(v.name)}</div><div style="font-size:20px;font-weight:800;margin-top:10px">${t.seat ? 'Koltuk ' + esc(t.seat) : esc(v.cats[t.cat])}</div><div class="small">${esc(v.cats[t.cat])} · ${esc(t.buyer.name)}</div>${t.status !== 'valid' ? `<div class="mt">${NS.badge(t.status === 'used' ? 'Kullanıldı' : t.status === 'reserved' ? 'Ödeme bekliyor — gişede ödeyin' : 'İade edildi', t.status === 'reserved' ? 'warn' : 'err')}</div>` : ''}</div><div class="r"><div>${NS.qrSvg('TICKET:' + t.code, 110)}</div><b class="mono" style="letter-spacing:.15em">${esc(t.code)}</b></div></div>`; };
+  function orderPage(el, no) {
+    db.load(); const ts = db.all('tickets', (t) => t.order === no);
+    el.innerHTML = `<div style="max-width:640px;margin:0 auto"><div class="center mb"><div style="font-size:54px">🎟️</div><h1>${ts.some((t) => t.status === 'reserved') ? 'Rezervasyonunuz alındı!' : 'Biletleriniz hazır!'}</h1><p class="muted">Sipariş ${esc(no)} · ${ts.some((t) => t.status === 'reserved') ? '' : 'Girişte QR kodu göstermeniz yeterli. '}${NS.pub ? (ts.some((t) => t.status === 'reserved') ? 'Rezervasyonunuz alındı; ödemeyi gişede yaptığınızda biletleriniz geçerli olur. Sipariş numaranızı saklayın.' : '') : 'Biletleriniz SMS ile de gönderildi (demo).'}</p></div>${ts.map(ticketCard).join('')}<div class="row" style="justify-content:center"><button class="btn" id="pr">${icon('print')} Yazdır / PDF</button><a class="btn primary" href="#/">Diğer etkinlikler</a></div></div>`;
+    $('#pr', el).onclick = () => NS.printHtml(`<div class="doc">${ts.map((t) => { const e = db.get('events', t.event), v = ven(e.venue); return `<div style="border:2px solid #000;border-radius:12px;padding:14px;margin-bottom:12px;display:flex;gap:14px"><div style="flex:1"><h2>${esc(e.name)}</h2><div>${NS.dateLong(e.date)} · ${esc(e.time)} · ${esc(v.name)}</div><h3>${t.seat ? 'Koltuk ' + esc(t.seat) : esc(v.cats[t.cat])}</h3><div>${esc(t.buyer.name)}</div></div><div style="text-align:center">${NS.qrSvg('TICKET:' + t.code, 120)}<div style="font-family:monospace">${esc(t.code)}</div></div></div>`; }).join('')}</div>`, { title: no });
+  }
+  function myTickets(el) {
+    // Bulutta biletler sipariş no + telefonun son 4 hanesiyle görülür (bilet kodları kişiye özeldir)
+    if (NS.pub) {
+      const draw = (msg) => { const ts = db.pubIdent ? db.all('tickets', (t) => t.order === db.pubIdent.i) : []; el.innerHTML = `<div style="max-width:640px;margin:0 auto"><h1 class="mb">Biletlerim</h1><div class="card pad mb row nw" style="flex-wrap:wrap"><input class="input lg" id="on" placeholder="Sipariş no (ör. B1042)" style="max-width:220px"><input class="input lg" id="l4" inputmode="numeric" maxlength="4" placeholder="Tel. son 4 hane" style="max-width:170px"><button class="btn primary lg" id="go">Göster</button></div>${msg ? `<div class="card pad empty">${esc(msg)}</div>` : ''}${ts.map(ticketCard).join('')}</div>`;
+        $('#go', el).onclick = () => { const ok = db.lookup({ order: $('#on', el).value.trim().toUpperCase(), last4: $('#l4', el).value.replace(/\D/g, '') }); draw(ok ? '' : 'Sipariş numarası ve telefon eşleşmedi'); }; };
+      db.load(); return draw('');
+    }
+    let ph = ''; try { ph = localStorage.getItem('nebsoft:bilet:phone') || ''; } catch (e) { /* yok */ }
+    const draw = () => { db.load(); const ts = ph ? db.all('tickets', (t) => String(t.buyer.phone || '').replace(/\D/g, '') === ph.replace(/\D/g, '')).sort((a, b) => b.at.localeCompare(a.at)) : []; el.innerHTML = `<div style="max-width:640px;margin:0 auto"><h1 class="mb">Biletlerim</h1><div class="card pad mb row nw"><input class="input lg" id="ph" placeholder="Telefon numaranız" value="${esc(ph)}"><button class="btn primary lg" id="go">Göster</button></div>${ph && !ts.length ? '<div class="card pad empty">Bu numaraya ait bilet bulunamadı</div>' : ''}${ts.map(ticketCard).join('')}</div>`; $('#go', el).onclick = () => { ph = $('#ph', el).value.trim(); draw(); }; };
+    draw();
+  }
+  function route() {
+    clearInterval(timer);
+    const [, r = '', p] = location.hash.match(/^#\/?([^/]*)\/?(.*)$/) || [];
+    const old = $('#pg'); const el = old.cloneNode(false); old.replaceWith(el);
+    document.title = s().bizName;
+    ({ '': home, etkinlik: (x) => eventPage(x, decodeURIComponent(p)), siparis: (x) => orderPage(x, decodeURIComponent(p)), biletlerim: myTickets }[r] || home)(el);
+    window.scrollTo(0, 0);
+  }
+  frame();
+  window.addEventListener('hashchange', () => { releaseMine(); route(); });
+  window.addEventListener('beforeunload', releaseMine);
+  route();
+})();
+</script>
+</body>
+</html>

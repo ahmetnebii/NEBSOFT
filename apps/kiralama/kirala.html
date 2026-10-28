@@ -1,0 +1,188 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Online Araç Kiralama</title>
+<link rel="stylesheet" href="../../core/core.css">
+<style>
+  :root { --app-accent: #ea580c; --app-accent-soft: #fff1e6; --app-accent-soft-dark: #3a2213; --ink: #1c1917; }
+  body { background: var(--bg); }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .wrap { max-width: 1120px; margin: 0 auto; padding: 0 20px; }
+  .bar { background: var(--ink); color: #fafaf9; }
+  .bar .wrap { display: flex; align-items: center; gap: 12px; height: 60px; }
+  .bar a { color: inherit; text-decoration: none; }
+  .bar .btn { background: rgba(255,255,255,.08); border-color: rgba(255,255,255,.2); color: #fafaf9; }
+  .mk { width: 34px; height: 34px; border-radius: 8px; background: var(--accent); display: grid; place-items: center; color: #fff; }
+  .hero { background: var(--ink); color: #fafaf9; padding: 34px 0 40px; position: relative; overflow: hidden; }
+  .hero::after { content: ''; position: absolute; left: 0; right: 0; bottom: 18px; height: 2px; background: repeating-linear-gradient(90deg, #fbbf24 0 34px, transparent 34px 64px); opacity: .5; }
+  .hero h1 { color: #fff; font-size: clamp(30px, 4.5vw, 52px); line-height: 1.02; letter-spacing: -.02em; margin: 0 0 8px; max-width: 16ch; }
+  .hero p { margin: 0 0 24px; color: #d6d3d1; max-width: 52ch; }
+  .sbar { display: grid; grid-template-columns: 1.4fr 1fr .7fr 1fr .7fr auto; gap: 1px; background: #44403c; border-radius: 14px; overflow: hidden; }
+  .sbar > div { background: var(--surface); padding: 10px 14px; min-width: 0; }
+  .sbar label { display: block; font-size: 11px; font-weight: 700; color: var(--text-3); text-transform: uppercase; letter-spacing: .04em; }
+  .sbar input, .sbar select { display: block; width: 100%; border: 0 !important; background: transparent !important; box-shadow: none !important; color: var(--text); font: 600 15px var(--font); padding: 4px 0 0; height: auto; outline: none; }
+  .sbar .loc { font: 600 15px var(--font); color: var(--text); padding-top: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .sbar button { border: 0; background: var(--accent); color: #fff; font: 700 15px var(--font); padding: 0 24px; cursor: pointer; display: flex; gap: 8px; align-items: center; }
+  .main { padding: 26px 0 80px; }
+  .h2 { font-size: 22px; margin: 0 0 4px; letter-spacing: -.01em; }
+  .flt { display: flex; gap: 6px; flex-wrap: wrap; margin: 16px 0; }
+  .flt button { border: 1px solid var(--border); background: var(--surface); color: var(--text); border-radius: 99px; padding: 7px 14px; font: 600 13px var(--font); cursor: pointer; }
+  .flt button[aria-pressed="true"] { background: var(--text); border-color: var(--text); color: var(--surface); }
+  .grid3 { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 16px; }
+  .car { border: 1px solid var(--border); border-radius: 16px; background: var(--surface); overflow: hidden; display: flex; flex-direction: column; }
+  .car .art { background: var(--bg-2); height: 150px; display: grid; place-items: center; position: relative; }
+  .car .art svg { width: 82%; height: auto; }
+  .car .cls { position: absolute; left: 12px; top: 12px; font-size: 12px; font-weight: 700; background: var(--surface); border-radius: 99px; padding: 3px 10px; }
+  .car .bd { padding: 16px 18px; display: flex; flex-direction: column; gap: 10px; flex: 1; }
+  .car h3 { margin: 0; font-size: 18px; }
+  .specs { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 13px; color: var(--text-2); }
+  .specs span { display: inline-flex; align-items: center; gap: 5px; }
+  .pr { display: flex; align-items: flex-end; justify-content: space-between; gap: 10px; margin-top: auto; padding-top: 10px; border-top: 1px solid var(--border); }
+  .pr b { font-size: 24px; font-variant-numeric: tabular-nums; }
+  .pr small { display: block; color: var(--text-3); font-size: 12px; }
+  .book { display: grid; grid-template-columns: 1.3fr 1fr; gap: 20px; align-items: start; }
+  .panel { border: 1px solid var(--border); border-radius: 16px; background: var(--surface); padding: 22px; margin-bottom: 16px; }
+  .ex { display: grid; gap: 8px; }
+  .ex label { display: flex; gap: 10px; align-items: center; border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; cursor: pointer; font-size: 14px; }
+  .ex label:has(input:checked) { border-color: var(--accent); background: var(--accent-soft); }
+  .ex b { margin-left: auto; font-variant-numeric: tabular-nums; }
+  .sum .r { display: flex; justify-content: space-between; padding: 5px 0; font-size: 14px; }
+  .sum .g { border-top: 1px solid var(--border); margin-top: 8px; padding-top: 12px; font-size: 20px; font-weight: 800; }
+  .payopt { display: grid; gap: 8px; margin: 12px 0; }
+  .payopt label { display: flex; gap: 10px; border: 1px solid var(--border); border-radius: 10px; padding: 12px; cursor: pointer; }
+  .payopt label:has(input:checked) { border-color: var(--accent); background: var(--accent-soft); }
+  .payopt small { display: block; color: var(--text-3); }
+  .none { border: 1px dashed var(--border); border-radius: 16px; padding: 30px; text-align: center; color: var(--text-2); }
+  .view { animation: in .25s ease-out; } @keyframes in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+  @media (prefers-reduced-motion: reduce) { .view { animation: none; } }
+  @media (max-width: 860px) { .sbar { grid-template-columns: 1fr 1fr; } .sbar .full { grid-column: 1 / -1; } .sbar button { grid-column: 1 / -1; padding: 14px; justify-content: center; } .book { grid-template-columns: 1fr; } .hide-sm { display: none; } .grid3 { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<header class="bar"><div class="wrap" id="bar"></div></header>
+<div id="app"></div>
+<script src="../../core/core.js"></script>
+<script>
+(function () {
+  const { esc, $, $$, on, icon, money, toast, iso, today, addDays, daysBetween, sum } = NS;
+  const db = new NS.DB('kiralama');
+  const S = () => db.settings({ kmLimit: 300, extraKm: 6, fuelFee: 400, minAge: 21, minLicense: 2, longDays: 7, longPct: 10, freeCancelHours: 24 });
+  const EXTRAS = [{ id: 'bebek', name: 'Bebek koltuğu', daily: 150 }, { id: 'surucu', name: 'Ek sürücü', daily: 200 }, { id: 'sigorta', name: 'Mini hasar sigortası', daily: 350 }, { id: 'navi', name: 'Navigasyon', daily: 100 }, { id: 'zincir', name: 'Kar zinciri', daily: 80 }];
+  const st = { from: iso(addDays(new Date(), 2)), to: iso(addDays(new Date(), 5)), ft: '10:00', tt: '10:00', cls: '' };
+  try { Object.assign(st, JSON.parse(sessionStorage.getItem('nebsoft:rent:ara') || '{}')); } catch (e) { /* yok */ }
+  if (st.from < today()) { st.from = iso(addDays(new Date(), 1)); st.to = iso(addDays(new Date(), 4)); }
+  const keep = () => { try { sessionStorage.setItem('nebsoft:rent:ara', JSON.stringify(st)); } catch (e) { /* yok */ } };
+  const n = () => Math.max(1, daysBetween(st.from, st.to));
+  const busy = (c, a, b) => db.all('rents', (r) => r.car === c && r.status !== 'iptal' && r.from < b && a < r.to).length > 0;
+  const models = () => { const g = {}; db.all('cars', (c) => c.status !== 'bakim').forEach((c) => { const k = `${c.brand}|${c.model}`; (g[k] = g[k] || []).push(c); }); return Object.values(g); };
+  const price = (daily, ex = []) => { const d = n(); const base = daily * d; const disc = d >= S().longDays ? Math.round(base * S().longPct / 100) : 0; const extra = sum(EXTRAS.filter((x) => ex.includes(x.id)), (x) => x.daily) * d; return { d, base, disc, extra, total: base - disc + extra }; };
+  // Arabanın yandan silueti, aracın kendi renginde
+  const carSvg = (color, cls) => { const suv = cls === 'SUV'; return `<svg viewBox="0 0 300 120" aria-hidden="true"><path d="M20 ${suv ? 78 : 82} Q22 ${suv ? 58 : 66} 48 ${suv ? 56 : 62} L${suv ? 86 : 92} ${suv ? 54 : 60} Q${suv ? 110 : 116} ${suv ? 26 : 34} ${suv ? 150 : 152} ${suv ? 24 : 32} L${suv ? 206 : 196} ${suv ? 24 : 32} Q${suv ? 236 : 228} ${suv ? 28 : 38} ${suv ? 252 : 244} ${suv ? 54 : 60} L270 ${suv ? 60 : 64} Q284 66 282 ${suv ? 82 : 84} L282 90 L20 90 Z" fill="${color}"/><path d="M${suv ? 98 : 104} ${suv ? 54 : 60} Q${suv ? 118 : 124} ${suv ? 32 : 40} ${suv ? 150 : 152} ${suv ? 31 : 39} L${suv ? 172 : 170} ${suv ? 31 : 39} L${suv ? 172 : 170} ${suv ? 54 : 60} Z M${suv ? 180 : 178} ${suv ? 31 : 39} L${suv ? 204 : 194} ${suv ? 31 : 39} Q${suv ? 226 : 218} ${suv ? 35 : 43} ${suv ? 240 : 232} ${suv ? 54 : 60} L${suv ? 180 : 178} ${suv ? 54 : 60} Z" fill="#cbd5e1" opacity=".85"/><circle cx="76" cy="90" r="19" fill="#1c1917"/><circle cx="76" cy="90" r="8" fill="#a8a29e"/><circle cx="228" cy="90" r="19" fill="#1c1917"/><circle cx="228" cy="90" r="8" fill="#a8a29e"/><rect x="18" y="104" width="266" height="3" rx="1.5" fill="#000" opacity=".08"/></svg>`; };
+
+  $('#bar').innerHTML = `<a href="#/" class="row nw" style="gap:10px"><span class="mk">${icon('car')}</span><b>${esc(S().bizName || 'Rent a Car')}</b></a><span class="grow"></span><a class="btn hide-sm" href="tel:${esc(String(S().bizPhone || '').replace(/\s/g, ''))}">${icon('phone')} ${esc(S().bizPhone || '')}</a><a class="btn" href="#/yonet">${icon('ticket')} Rezervasyonum</a>`;
+
+  const search = () => `<section class="hero"><div class="wrap"><h1>Uçaktan in, anahtarını al.</h1><p>${esc(S().bizAddress || '')} · Günlük ${S().kmLimit} km dahil · ${S().longDays}+ gün kiralamada %${S().longPct} indirim · ${S().freeCancelHours} saat öncesine kadar ücretsiz iptal.</p>
+    <form class="sbar" id="sf"><div class="full"><label>Alış / iade yeri</label><div class="loc">${icon('map')} ${esc(S().bizAddress || 'Ofis')}</div></div><div><label for="fd">Alış</label><input type="date" id="fd" value="${st.from}" min="${today()}"></div><div><label for="fh">Saat</label><select id="fh">${['08:00', '10:00', '12:00', '14:00', '16:00', '18:00', '20:00'].map((t) => `<option ${t === st.ft ? 'selected' : ''}>${t}</option>`).join('')}</select></div><div><label for="td">İade</label><input type="date" id="td" value="${st.to}" min="${iso(addDays(st.from, 1))}"></div><div><label for="th2">Saat</label><select id="th2">${['08:00', '10:00', '12:00', '14:00', '16:00', '18:00', '20:00'].map((t) => `<option ${t === st.tt ? 'selected' : ''}>${t}</option>`).join('')}</select></div><button type="submit">${icon('search')} Araç bul</button></form></div></section>`;
+  const bindSearch = () => {
+    $('#fd').onchange = (e) => { if ($('#td').value <= e.target.value) $('#td').value = iso(addDays(e.target.value, 3)); $('#td').min = iso(addDays(e.target.value, 1)); };
+    $('#sf').onsubmit = (e) => { e.preventDefault(); st.from = $('#fd').value; st.to = $('#td').value; st.ft = $('#fh').value; st.tt = $('#th2').value; if (st.to <= st.from) return toast('İade tarihi alıştan sonra olmalı', 'err'); keep(); route(); };
+  };
+
+  function list(el) {
+    db.load();
+    const ms = models().map((cs) => ({ c: cs[0], free: cs.filter((c) => !busy(c.id, st.from, st.to)) })).sort((a, b) => a.c.daily - b.c.daily);
+    const classes = [...new Set(ms.map((m) => m.c.cls))];
+    const shown = ms.filter((m) => !st.cls || m.c.cls === st.cls);
+    el.innerHTML = search() + `<div class="wrap main view"><h2 class="h2">${NS.dateLong(st.from)} ${esc(st.ft)} → ${NS.dateLong(st.to)} ${esc(st.tt)}</h2><p class="muted" style="margin:0">${n()} gün${n() >= S().longDays ? ` · %${S().longPct} uzun dönem indirimi uygulandı` : ''}</p>
+      <div class="flt" role="group" aria-label="Sınıf"><button data-cls="" aria-pressed="${!st.cls}">Tümü</button>${classes.map((c) => `<button data-cls="${esc(c)}" aria-pressed="${st.cls === c}">${esc(c)}</button>`).join('')}</div>
+      <div class="grid3">${shown.map(({ c, free }) => { const q = price(c.daily); return `<article class="car"><div class="art"><span class="cls">${esc(c.cls)}</span>${carSvg(c.color, c.cls)}</div><div class="bd"><div><h3>${esc(c.brand)} ${esc(c.model)}</h3><div class="small muted">veya benzeri · ${free.length ? `${free.length} araç müsait` : 'seçilen tarihlerde dolu'}</div></div>
+        <div class="specs"><span>${icon('cog')}${esc(c.gear)}</span><span>${icon('drop')}${esc(c.fuel)}</span><span>${icon('users')}${c.cls === 'Minibüs' ? 9 : 5} kişi</span><span>${icon('gauge')}${S().kmLimit} km/gün</span></div>
+        <div class="pr"><div><b>${money(q.total)}</b><small>${money(c.daily)} / gün · ${q.d} gün toplam</small></div>${free.length ? `<button class="btn primary" data-pick="${c.brand}|${c.model}">Seç</button>` : '<button class="btn" disabled>Dolu</button>'}</div></div></article>`; }).join('') || '<div class="none">Bu sınıfta araç yok.</div>'}</div></div>`;
+    bindSearch();
+  }
+
+  function details(el) {
+    db.load();
+    const cs = models().find((x) => `${x[0].brand}|${x[0].model}` === st.model); if (!cs) { location.hash = '#/'; return; }
+    const c = cs[0]; st.ex = st.ex || [];
+    const draw = () => {
+      const q = price(c.daily, st.ex);
+      $('#sm').innerHTML = `<div class="r"><span>${q.d} gün × ${money(c.daily)}</span><span>${money(q.base)}</span></div>${q.disc ? `<div class="r" style="color:#047857"><span>Uzun dönem indirimi %${S().longPct}</span><span>−${money(q.disc)}</span></div>` : ''}${EXTRAS.filter((x) => st.ex.includes(x.id)).map((x) => `<div class="r"><span>${esc(x.name)}</span><span>${money(x.daily * q.d)}</span></div>`).join('')}<div class="r g"><span>Toplam</span><span>${money(q.total)}</span></div><p class="small muted">Depozito (kartta provizyon): ${money(c.daily * 3)} · Fazla km: ${money(S().extraKm)}/km</p>`;
+    };
+    el.innerHTML = `<div class="wrap main view"><a href="#/" class="small">${icon('back')} Araçlara dön</a><div class="book mt">
+      <form id="bf" novalidate><div class="panel"><h2 class="h2">Ekstralar</h2><div class="ex mt">${EXTRAS.map((x) => `<label><input type="checkbox" value="${x.id}" ${st.ex.includes(x.id) ? 'checked' : ''}> ${esc(x.name)}<b>${money(x.daily)}/gün</b></label>`).join('')}</div></div>
+        <div class="panel"><h2 class="h2">Sürücü bilgileri</h2><p class="small muted">En az ${S().minAge} yaş ve ${S().minLicense} yıllık ehliyet gerekir. Teslimde kimlik ve ehliyet aslı istenir.</p>${NS.fieldsHtml([{ name: 'name', label: 'Ad soyad', required: true }, { name: 'phone', label: 'Telefon', type: 'tel', required: true }, { name: 'tc', label: 'TC kimlik / pasaport no', required: true }, { name: 'birth', label: 'Doğum tarihi', type: 'date', required: true }, { name: 'licenseDate', label: 'Ehliyet veriliş tarihi', type: 'date', required: true }, { name: 'flight', label: 'Uçuş no (isteğe bağlı)', placeholder: 'TK2412' }])}
+          <h3 style="margin:18px 0 0">Ödeme</h3><div class="payopt"><label><input type="radio" name="pay" value="ofis" checked><span><b>Teslimde öde</b><small>Kart bilgisi şimdi gerekmez.</small></span></label>${NS.pub ? '' : `<label><input type="radio" name="pay" value="online"><span><b>Şimdi öde, sırada bekleme</b><small>Tutarın tamamı tahsil edilir; ${S().freeCancelHours} saat öncesine kadar iade.</small></span></label>`}</div>
+          <div id="card" hidden><div class="form-grid"><div class="field full"><label>Kart numarası</label><input class="input mono" id="cc" inputmode="numeric" placeholder="0000 0000 0000 0000" autocomplete="cc-number"></div><div class="field"><label>Son kullanma</label><input class="input mono" id="ce" placeholder="AA/YY" autocomplete="cc-exp"></div><div class="field"><label>CVC</label><input class="input mono" id="cv" maxlength="4" placeholder="•••" autocomplete="cc-csc"></div></div><p class="small faint">Demo: gerçek ödeme alınmaz.</p></div>
+          <label class="check small mt"><input type="checkbox" id="ag"> Kiralama koşullarını ve KVKK metnini okudum.</label><button class="btn primary lg block mt" type="submit">${icon('lock')} Rezervasyonu tamamla</button></div></form>
+      <aside class="panel sum" style="position:sticky;top:20px"><div class="car" style="border:0"><div class="art" style="border-radius:12px">${carSvg(c.color, c.cls)}</div></div><h3 style="margin:12px 0 2px">${esc(c.brand)} ${esc(c.model)} <span class="small muted">veya benzeri</span></h3><p class="small muted" style="margin:0 0 10px">${esc(c.gear)} · ${esc(c.fuel)} · ${esc(c.cls)}</p><div class="r"><span>Alış</span><b>${NS.date(st.from)} ${esc(st.ft)}</b></div><div class="r"><span>İade</span><b>${NS.date(st.to)} ${esc(st.tt)}</b></div><div id="sm"></div></aside></div></div>`;
+    draw(); el._draw = draw;
+    $('#cc').oninput = (e) => { e.target.value = e.target.value.replace(/\D/g, '').slice(0, 16).replace(/(\d{4})(?=\d)/g, '$1 '); };
+    $('#bf').onsubmit = (e) => {
+      e.preventDefault(); const f = $('#bf');
+      if (!NS.validate(f)) return; if (!$('#ag').checked) return toast('Koşulları onaylayın', 'err');
+      const v = NS.readForm(f);
+      const age = (new Date(st.from) - new Date(v.birth)) / (365.25 * 864e5), lic = (new Date(st.from) - new Date(v.licenseDate)) / (365.25 * 864e5);
+      if (age < S().minAge) return toast(`Sürücü en az ${S().minAge} yaşında olmalı`, 'err');
+      if (lic < S().minLicense) return toast(`Ehliyet en az ${S().minLicense} yıllık olmalı`, 'err');
+      const pay = $('input[name=pay]:checked').value;
+      if (pay === 'online' && ($('#cc').value.replace(/\D/g, '').length !== 16 || $('#cv').value.length < 3)) return toast('Kart bilgilerini kontrol edin', 'err');
+      db.load();
+      const free = cs.filter((x) => !busy(x.id, st.from, st.to)); if (!free.length) { toast('Bu model az önce doldu, başka araç seçin', 'err'); location.hash = '#/'; return; }
+      const dg = String(v.phone).replace(/\D/g, '').slice(-10);
+      let cu = db.find('customers', (x) => String(x.phone || '').replace(/\D/g, '').slice(-10) === dg || (v.tc && x.tc === v.tc));
+      if (cu && cu.blacklist) return toast('Rezervasyonunuz online alınamıyor, lütfen ofisi arayın', 'err');
+      if (!cu) cu = db.insert('customers', { name: v.name, phone: v.phone, tc: v.tc, birth: v.birth, licenseDate: v.licenseDate, license: '' }, true);
+      const q = price(c.daily, st.ex);
+      const no = db.nextNo('rents', 'K');
+      const rec = db.insert('rents', { no, car: free[0].id, customer: cu.id, from: st.from, to: st.to, fromTime: st.ft, toTime: st.tt, daily: Math.round((q.base - q.disc) / q.d), extras: st.ex, deposit: c.daily * 3, status: 'rezervasyon', source: 'online', flight: v.flight || '', prepaid: pay === 'online' ? q.total : 0, payments: pay === 'online' ? [{ amount: q.total, type: 'online kart', at: new Date().toISOString() }] : [], created: new Date().toISOString() }, true);
+      db.log('Online kiralama', `${no} · ${v.name}`); db.save();
+      try { sessionStorage.setItem('nebsoft:rent:son', JSON.stringify({ no: rec.no, phone: v.phone })); } catch (x) { /* yok */ }
+      location.hash = '#/tamam/' + rec.no;
+    };
+  }
+
+  function done(el, no) {
+    db.load(); const r = db.find('rents', (x) => x.no === no); if (!r) { location.hash = '#/'; return; }
+    const c = db.get('cars', r.car);
+    el.innerHTML = `<div class="wrap main view" style="max-width:640px"><div class="panel center"><div style="width:60px;height:60px;border-radius:50%;background:var(--ok-soft);color:var(--ok);display:grid;place-items:center;margin:0 auto 12px">${icon('check', 'ico-lg')}</div><h2 class="h2">Aracınız ayrıldı</h2><p class="muted">${NS.pub ? 'Rezervasyon numaranızı saklayın.' : 'Onay SMS ile gönderildi (demo).'} Teslimde kimlik ve ehliyetinizi getirin.</p><div style="font:800 30px ui-monospace,Menlo,monospace;letter-spacing:.08em">${esc(r.no)}</div>
+      <div class="sum" style="text-align:left;margin-top:18px"><div class="r"><span>Araç</span><b>${esc(c.brand)} ${esc(c.model)} veya benzeri</b></div><div class="r"><span>Alış</span><b>${NS.date(r.from)} ${esc(r.fromTime)}</b></div><div class="r"><span>İade</span><b>${NS.date(r.to)} ${esc(r.toTime)}</b></div><div class="r"><span>Ödeme</span><b>${r.prepaid ? `${money(r.prepaid)} ödendi` : 'Teslimde'}</b></div><div class="r"><span>Yer</span><b>${esc(S().bizAddress || '')}</b></div></div>
+      <div class="row mt" style="justify-content:center;gap:8px"><button class="btn" id="pr">${icon('print')} Yazdır</button><a class="btn" href="#/yonet">${icon('edit')} Rezervasyonu yönet</a></div></div></div>`;
+    $('#pr').onclick = () => print();
+  }
+  function manage(el) {
+    let last = {}; try { last = JSON.parse(sessionStorage.getItem('nebsoft:rent:son') || '{}'); } catch (e) { /* yok */ }
+    el.innerHTML = `<div class="wrap main view" style="max-width:640px"><h2 class="h2">Rezervasyonumu yönet</h2><p class="muted">Rezervasyon numarası ve telefonunuzla görüntüleyin veya iptal edin.</p><form class="panel" id="mf"><div class="form-grid"><div class="field"><label for="mn">Rezervasyon no</label><input class="input mono" id="mn" value="${esc(last.no || '')}" style="text-transform:uppercase" required></div><div class="field"><label for="mp">Telefon</label><input class="input" id="mp" type="tel" value="${esc(last.phone || '')}" required></div></div><button class="btn primary mt" type="submit">Göster</button></form><div id="mr"></div></div>`;
+    const show = () => {
+      const no = $('#mn').value.trim().toUpperCase(); const dg = $('#mp').value.replace(/\D/g, '').slice(-10);
+      if (db.lookup({ no, phone: dg }) === null) db.load();
+      const r = db.find('rents', (x) => x.no === no); const cu = r && db.get('customers', r.customer);
+      if (!r || !cu || String(cu.phone || '').replace(/\D/g, '').slice(-10) !== dg) { $('#mr').innerHTML = '<div class="none">Eşleşen rezervasyon bulunamadı.</div>'; return; }
+      const c = db.get('cars', r.car); const hrs = (new Date(r.from + 'T' + (r.fromTime || '10:00')) - new Date()) / 3600e3;
+      const can = r.status === 'rezervasyon' && hrs >= S().freeCancelHours;
+      $('#mr').innerHTML = `<div class="panel sum"><div class="r"><span>Durum</span><b>${{ rezervasyon: 'Onaylı', kirada: 'Kirada', tamamlandi: 'Tamamlandı', iptal: 'İptal edildi' }[r.status]}</b></div><div class="r"><span>Araç</span><b>${esc(c.brand)} ${esc(c.model)}</b></div><div class="r"><span>Tarih</span><b>${NS.date(r.from)} → ${NS.date(r.to)}</b></div>${can ? '<button class="btn danger mt" id="cx">Ücretsiz iptal et</button>' : r.status === 'rezervasyon' ? `<p class="small muted mt">Alışa ${S().freeCancelHours} saatten az kaldığı için online iptal yapılamıyor; ${esc(S().bizPhone || '')}</p>` : ''}</div>`;
+      if ($('#cx')) $('#cx').onclick = async () => { if (!(await NS.confirm('Rezervasyon iptal edilsin mi?', { ok: 'İptal et' }))) return; db.load(); const x = db.find('rents', (y) => y.no === no); x.status = 'iptal'; x.cancelNote = 'Müşteri online iptal etti' + (x.prepaid ? ` · ${money(x.prepaid)} iade edilecek` : ''); db.log('Online iptal', no); db.save(); toast('Rezervasyon iptal edildi', 'ok'); show(); };
+    };
+    $('#mf').onsubmit = (e) => { e.preventDefault(); show(); };
+    if (last.no) show();
+  }
+  function route() {
+    const [, pg, arg] = (location.hash || '#/').split('/'); const el = $('#app'); window.scrollTo(0, 0);
+    if (!db.all('cars').length) { el.innerHTML = '<div class="wrap main"><div class="none">Filo bilgisi yüklenemedi. Önce yönetim panelini bir kez açın.</div></div>'; return; }
+    document.title = `${S().bizName} · Online kiralama`;
+    if (pg === 'bilgiler') details(el); else if (pg === 'tamam') done(el, arg); else if (pg === 'yonet') manage(el); else list(el);
+  }
+  // Sayfa içi olaylar #app üzerinde bir kez bağlanır
+  const app = $('#app');
+  on(app, 'click', '[data-cls]', (e, b) => { st.cls = b.dataset.cls; keep(); route(); });
+  on(app, 'click', '[data-pick]', (e, b) => { st.model = b.dataset.pick; st.ex = []; keep(); location.hash = '#/bilgiler'; });
+  on(app, 'change', '.ex input', () => { st.ex = $$('.ex input:checked', app).map((x) => x.value); keep(); if (app._draw) app._draw(); });
+  on(app, 'change', 'input[name=pay]', () => { $('#card').hidden = $('input[name=pay]:checked').value !== 'online'; });
+  window.addEventListener('hashchange', route);
+  route();
+})();
+</script>
+</body>
+</html>

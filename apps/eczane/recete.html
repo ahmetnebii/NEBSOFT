@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Reçetemi Hazırla</title>
+<link rel="stylesheet" href="../../core/core.css">
+<link rel="stylesheet" href="../../core/track.css">
+<style>
+  :root { --app-accent: #be123c; --app-accent-soft: #ffe4e6; --app-accent-soft-dark: #3b1220; }
+  .tabs2 { display: flex; gap: 6px; margin-bottom: 18px; overflow-x: auto; }
+  .tabs2 button { flex: none; border: 1px solid var(--border); background: var(--surface); color: var(--text-2); border-radius: 99px; padding: 8px 14px; font: 600 13px var(--font); cursor: pointer; }
+  .tabs2 button[aria-selected="true"] { background: var(--text); color: var(--surface); border-color: var(--text); }
+  .duty { display: flex; gap: 14px; align-items: center; border-radius: 14px; padding: 14px 18px; margin-bottom: 16px; background: var(--accent-soft); }
+  .duty b { display: block; }
+  .res { display: grid; grid-template-columns: 1fr auto; gap: 10px; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--border); }
+  .res:last-child { border-bottom: 0; }
+  .lvl { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; }
+  .lvl::before { content: ''; width: 9px; height: 9px; border-radius: 50%; background: var(--c); }
+</style>
+</head>
+<body>
+<header class="tk-bar"><div class="in" id="bar"></div></header>
+<main class="tk-wrap" id="root" style="max-width:760px"></main>
+<script src="../../core/core.js"></script>
+<script>
+(function () {
+  const { esc, $, $$, on, icon, money, toast, iso, today, addDays } = NS;
+  const db = new NS.DB('eczane');
+  const S = () => db.settings({});
+  const ST = { yeni: ['Alındı', 'info'], hazirlaniyor: ['Hazırlanıyor', 'warn'], hazir: ['Hazır, gelebilirsiniz', 'ok'], eksik: ['Eksik ilaç var', 'err'], teslim: ['Teslim edildi', ''] };
+  const FLOW = ['yeni', 'hazirlaniyor', 'hazir', 'teslim'];
+  const digits = (x) => String(x || '').replace(/\D/g, '').slice(-10);
+  const stock = (id) => db.all('lots', (l) => l.drug === id && l.skt >= today()).reduce((t, l) => t + l.qty, 0);
+  const trl = (s) => String(s || '').toLocaleLowerCase('tr');
+  let tab = 'hazirla';
+  let phone = ''; try { phone = localStorage.getItem('nebsoft:ecz:tel') || ''; } catch (e) { /* yok */ }
+
+  $('#bar').innerHTML = `<div class="tk-mark">${icon('pill')}</div><div class="grow"><b>${esc(S().bizName || 'Eczane')}</b><span>${esc(S().pharmacist || '')}</span></div><a class="btn ghost icon" href="tel:${esc(String(S().bizPhone || '').replace(/\s/g, ''))}" aria-label="Ara">${icon('phone')}</a><button class="btn ghost icon" id="th" data-theme-ico aria-label="Tema">${icon(NS.getTheme() === 'dark' ? 'sun' : 'moon')}</button>`;
+  $('#th').onclick = NS.toggleTheme;
+
+  function dutyBox() {
+    const d = db.all('duty', (x) => x.date >= today()).sort((a, b) => a.date.localeCompare(b.date))[0];
+    const h = new Date().getHours(); const open = h >= 9 && h < 19;
+    return `<div class="duty">${icon('clock', 'ico-lg')}<div><b>${open ? 'Şu an açığız · 09:00–19:00' : 'Şu an kapalıyız · 09:00–19:00'}</b><span class="small">${d ? (d.date === today() ? 'Bu gece nöbetçiyiz: ' + esc(d.note) : `Sıradaki nöbetimiz: ${NS.dateLong(d.date)}`) : ''} · ${esc(S().bizAddress || '')}</span></div></div>`;
+  }
+  function hazirla() {
+    return `<section class="tk-panel"><h3>${icon('file')} Reçetemi hazırlayın</h3><div class="b"><p class="small muted" style="margin-top:0">E-reçete numaranızı gönderin; ilaçlarınızı biz hazırlayalım, hazır olunca SMS ile haber verelim. Teslimde kimliğinizi getirmeniz yeterli.</p>
+      <form id="rf" novalidate>${NS.fieldsHtml([{ name: 'rxNo', label: 'E-reçete numarası', required: true, placeholder: 'Ör. 3K7M2PQ' }, { name: 'name', label: 'Hasta adı soyadı', required: true }, { name: 'phone', label: 'Cep telefonu', type: 'tel', required: true, value: phone }, { name: 'pickup', label: 'Ne zaman alacaksınız?', type: 'select', options: ['Bugün', 'Yarın sabah', 'Yarın öğleden sonra', 'Hafta içinde'] }, { name: 'note', label: 'Not (isteğe bağlı)', type: 'textarea', full: true, placeholder: 'Ör. raporlu ilaç, muadil kabul ederim' }])}
+      <label class="check small mt"><input type="checkbox" id="kv"> Reçete bilgilerimin ilaç hazırlığı için işlenmesine onay veriyorum (KVKK).</label><button class="btn primary lg block mt" type="submit">${icon('send')} Gönder</button></form>
+      <p class="small faint" style="margin:12px 0 0">Reçeteli ilaçlar yalnızca eczanede, hastaya veya yakınına teslim edilir.</p></div></section>`;
+  }
+  function takip() {
+    const list = phone ? db.all('rxOrders', (o) => digits(o.phone) === digits(phone)).sort((a, b) => b.at.localeCompare(a.at)) : [];
+    const needCode = NS.pub && !list.length;
+    return `<div class="tk-find"><input class="input" id="tp" type="tel" placeholder="Cep telefonunuz" value="${esc(phone)}" style="text-transform:none;letter-spacing:.02em" aria-label="Telefon">${NS.pub ? '<input class="input" id="tc" placeholder="Takip kodu (ör. R7K2QA)" aria-label="Takip kodu" style="max-width:190px">' : ''}<button class="btn primary lg" id="tg">Göster</button></div><div class="tk-recent">${needCode ? '<span class="small muted">Reçetenizi gönderdiğinizde verilen takip koduyla sorgulayın.</span>' : ''}</div>
+      ${list.map((o) => { const cur = FLOW.indexOf(o.status === 'eksik' ? 'hazirlaniyor' : o.status); return `<section class="tk-head"><div class="top"><div><div class="small muted mono">${esc(o.code)} · e-reçete ${esc(o.rxNo)}</div><h2>${esc(ST[o.status][0])}</h2></div><div class="tk-eta"><b>${esc(o.pickup)}</b><span>${NS.dt(o.at)}</span></div></div>
+        ${o.status === 'eksik' ? `<div class="tk-call mt" style="--c:var(--err)"><h3>${icon('alert')} Eksik ilaç</h3><p class="small" style="margin:0">${esc(o.missing || 'Bir ilacınız depodan istendi.')} ${o.eta ? 'Tahmini geliş: ' + esc(o.eta) : ''}</p></div>` : ''}
+        <div class="tk-steps" style="--n:4">${FLOW.map((f, i) => `<div class="tk-step ${o.status === 'teslim' || i < cur ? 'done' : i === cur ? 'cur' : 'todo'}"><div class="d">${icon(o.status === 'teslim' || i < cur ? 'check' : ['file', 'pill', 'bag', 'user'][i])}</div><b>${['Alındı', 'Hazırlanıyor', 'Hazır', 'Teslim'][i]}</b><span></span></div>`).join('')}</div>
+        ${o.total ? `<div class="row between mt"><span class="small muted">Ödenecek katkı payı / fark</span><b>${money(o.total)}</b></div>` : ''}</section>`; }).join('') || (phone && !needCode ? '<div class="tk-panel"><div class="b empty">Bu numarayla gönderilmiş reçete yok.</div></div>' : '')}`;
+  }
+  function stok() {
+    return `<section class="tk-panel"><h3>${icon('search')} İlaç stokta mı?</h3><div class="b"><input class="input lg" id="sq" placeholder="İlaç adı veya etken madde (ör. parasetamol)" aria-label="İlaç ara" autocomplete="off"><div id="sr" class="mt"></div><p class="small faint" style="margin:10px 0 0">Bilgi amaçlıdır; ilaç kullanımı için hekiminize ve eczacınıza danışın. Reçeteli ilaçların fiyatı eczanede bildirilir.</p></div></section>`;
+  }
+  function results(q) {
+    const t = trl(q).trim(); if (t.length < 3) return '<div class="small muted">En az 3 harf yazın.</div>';
+    const ds = db.all('drugs', (d) => trl(d.name).includes(t) || trl(d.active).includes(t)).slice(0, 12);
+    if (!ds.length) return '<div class="small muted">Sonuç bulunamadı. Bizi arayın, depodan aynı gün temin edelim.</div>';
+    return ds.map((d) => { const n = stock(d.id); const alt = n ? null : db.all('drugs', (x) => x.id !== d.id && x.active === d.active && d.active !== '-' && stock(x.id) > 0)[0];
+      const lv = n > 5 ? ['Stokta var', 'var(--ok)'] : n > 0 ? ['Sınırlı stok', 'var(--warn)'] : ['Stokta yok', 'var(--err)'];
+      return `<div class="res"><div><b>${esc(d.name)}</b><div class="small muted">${esc(d.active)} · ${esc(d.form)}${d.rx !== 'yok' ? ' · reçeteli' : ''}</div>${alt ? `<div class="small" style="color:var(--accent)">Muadili mevcut (eczacınız bilgi verir)</div>` : !n ? '<div class="small muted">Depodan aynı gün istenebilir</div>' : ''}</div><div style="text-align:right"><span class="lvl" style="--c:${lv[1]}">${lv[0]}</span>${d.rx === 'yok' ? `<div class="small muted">${money(d.price)}</div>` : ''}</div></div>`; }).join('');
+  }
+  function render() {
+    db.load();
+    $('#root').innerHTML = `<div class="tk-view">${dutyBox()}<div class="tabs2" role="tablist">${[['hazirla', 'Reçetemi hazırla'], ['takip', 'Reçetem hazır mı?'], ['stok', 'Stok sorgula']].map(([k, l]) => `<button role="tab" data-tab="${k}" aria-selected="${tab === k}">${l}</button>`).join('')}</div>${tab === 'takip' ? takip() : tab === 'stok' ? stok() : hazirla()}</div>`;
+  }
+  const root = $('#root');
+  on(root, 'click', '[data-tab]', (e, b) => { tab = b.dataset.tab; render(); });
+  on(root, 'input', '#sq', (e, i) => { $('#sr').innerHTML = results(i.value); });
+  on(root, 'click', '#tg', () => { phone = $('#tp').value.trim(); if (NS.pub && $('#tc').value.trim() && !db.lookup({ phone, code: $('#tc').value.trim() })) return toast('Telefon ve takip kodu eşleşmedi', 'err'); try { localStorage.setItem('nebsoft:ecz:tel', phone); } catch (e) { /* yok */ } render(); });
+  on(root, 'submit', '#rf', (e) => {
+    e.preventDefault(); const f = $('#rf'); if (!NS.validate(f)) return; if (!$('#kv').checked) return toast('KVKK onayını işaretleyin', 'err');
+    const v = NS.readForm(f); if (!/^[A-Za-z0-9]{6,10}$/.test(v.rxNo.replace(/\s/g, ''))) return toast('E-reçete numarası 6-10 harf/rakam olmalı', 'err');
+    if (digits(v.phone).length !== 10) return toast('Geçerli bir cep telefonu girin', 'err');
+    db.load(); const code = 'R' + Math.random().toString(36).slice(2, 7).toUpperCase();
+    db.insert('rxOrders', { ...v, rxNo: v.rxNo.replace(/\s/g, '').toUpperCase(), code, status: 'yeni', at: new Date().toISOString() });
+    phone = v.phone; try { localStorage.setItem('nebsoft:ecz:tel', phone); } catch (x) { /* yok */ }
+    toast(`Reçeteniz alındı. Takip kodunuz: ${(db.find('rxOrders', (o) => o.rxNo === v.rxNo.replace(/\s/g, '').toUpperCase() && digits(o.phone) === digits(v.phone)) || {}).code || code}`, 'ok'); tab = 'takip'; render();
+  });
+  render();
+})();
+</script>
+</body>
+</html>

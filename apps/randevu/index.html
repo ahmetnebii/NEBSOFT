@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NEBSOFT Randevu</title>
+<link rel="stylesheet" href="../../core/core.css">
+<style>
+  .cal-wrap { overflow: auto; max-height: calc(100vh - 230px); border-radius: 0 0 var(--r) var(--r); }
+  .cal { display: grid; position: relative; min-width: 100%; }
+  .cal-head { position: sticky; top: 0; z-index: 6; display: grid; background: var(--surface); border-bottom: 1px solid var(--border); }
+  .cal-head > div { padding: 10px; display: flex; align-items: center; gap: 8px; border-left: 1px solid var(--border); min-width: 0; }
+  .cal-head > div:first-child { border-left: 0; }
+  .cal-head .nm { font-weight: 700; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .gutter { position: relative; border-right: 1px solid var(--border); }
+  .gutter span { position: absolute; right: 8px; font-size: 11px; color: var(--text-3); transform: translateY(-50%); }
+  .ccol { position: relative; border-left: 1px solid var(--border); cursor: crosshair;
+    background-image: linear-gradient(var(--border) 1px, transparent 1px), linear-gradient(color-mix(in srgb, var(--border) 45%, transparent) 1px, transparent 1px);
+    background-size: 100% var(--hour), 100% calc(var(--hour) / 4); }
+  .off { position: absolute; left: 0; right: 0; background: repeating-linear-gradient(135deg, var(--bg-2), var(--bg-2) 6px, transparent 6px, transparent 12px); pointer-events: none; }
+  .blk { position: absolute; left: 3px; right: 3px; background: repeating-linear-gradient(135deg, var(--err-soft), var(--err-soft) 6px, transparent 6px, transparent 12px); border: 1px dashed var(--err); border-radius: 8px; font-size: 11px; padding: 4px 6px; color: var(--err); z-index: 1; }
+  .appt { position: absolute; left: 4px; right: 4px; border-radius: 8px; padding: 4px 8px; font-size: 12px; overflow: hidden; cursor: grab; z-index: 2; color: #fff; box-shadow: 0 2px 6px rgba(0,0,0,.15); border-left: 4px solid rgba(0,0,0,.25); line-height: 1.3; }
+  .appt b { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .appt .t { opacity: .9; font-size: 11px; }
+  .appt.bekliyor { background-image: repeating-linear-gradient(135deg, rgba(255,255,255,.18), rgba(255,255,255,.18) 6px, transparent 6px, transparent 12px); outline: 2px dashed rgba(255,255,255,.8); outline-offset: -3px; }
+  .appt.tamam { opacity: .55; }
+  .appt.gelmedi { background: var(--err) !important; opacity: .6; }
+  .appt.iptal { display: none; }
+  .appt.dragging { opacity: .85; cursor: grabbing; z-index: 20; box-shadow: var(--shadow-lg); }
+  .now { position: absolute; left: 0; right: 0; height: 2px; background: var(--err); z-index: 5; pointer-events: none; }
+  .now::before { content: ''; position: absolute; left: -5px; top: -4px; width: 10px; height: 10px; border-radius: 50%; background: var(--err); }
+  .slots { display: grid; grid-template-columns: repeat(auto-fill, minmax(72px, 1fr)); gap: 6px; max-height: 200px; overflow: auto; }
+  .slots button { height: 34px; }
+  .slots button.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .tl { position: relative; padding-left: 18px; }
+  .tl::before { content: ''; position: absolute; left: 5px; top: 6px; bottom: 6px; width: 2px; background: var(--border); }
+  .tl-i { position: relative; padding: 8px 0 8px 10px; }
+  .tl-i::before { content: ''; position: absolute; left: -17px; top: 14px; width: 10px; height: 10px; border-radius: 50%; background: var(--c, var(--accent)); border: 2px solid var(--surface); }
+  .hours-row { display: grid; grid-template-columns: 110px 1fr 1fr 70px; gap: 8px; align-items: center; margin-bottom: 6px; }
+</style>
+</head>
+<body>
+<script src="../../core/core.js"></script>
+<script src="../../core/integrations.js"></script>
+<script src="data.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
