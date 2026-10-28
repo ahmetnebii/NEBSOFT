@@ -12,7 +12,7 @@ window.MUHBEYAN = (function () {
 
   // KDV: oran bazında matrah ve vergi; devreden KDV yılbaşından zincirleme hesaplanır
   function vatOf(ym) {
-    const by = (kind) => { const o = {}; invs(ym, kind).forEach((i) => { const t = X.invTotals(i); const rate = Number(i.rate) || 1; i.lines.forEach((l) => { const n = l.qty * l.price * (1 - (l.disc || 0) / 100) * rate; const k = String(l.vat || 0); o[k] = o[k] || { base: 0, vat: 0 }; o[k].base += n; o[k].vat += (n * (l.vat || 0)) / 100; }); }); Object.values(o).forEach((v) => { v.base = r2(v.base); v.vat = r2(v.vat); }); return o; };
+    const by = (kind) => { const o = {}; invs(ym, kind).forEach((i) => { const t = X.invTotals(i); const rate = Number(i.rate) || 1; i.lines.forEach((l) => { const c = window.MUHCALC.line(l); const k = String(l.vat || 0); o[k] = o[k] || { base: 0, vat: 0 }; o[k].base += c.net * rate; o[k].vat += c.vat * rate; }); }); Object.values(o).forEach((v) => { v.base = r2(v.base); v.vat = r2(v.vat); }); return o; };
     const out = by('satis'), inp = by('alis');
     return { out, inp, calc: r2(sum(Object.values(out), (v) => v.vat)), ded: r2(sum(Object.values(inp), (v) => v.vat)) };
   }
