@@ -1,22 +1,24 @@
 # E-ticaret — Ürün Spesifikasyonu
 
-> **Durum (29.10.2026):** Kullanıcı tüm programlar için dalgaları önceden onayladı ("atlama yok"). 1. dalga uygulanıyor (aşağıdaki tabloda sonuçlar).
+> **Durum (29.10.2026):** Kullanıcı tüm programlar için dalgaları önceden onayladı ("atlama yok"). **1. dalga tamamlandı.** 2. ve 3. dalga sırada.
 
 Tarih: 29.10.2026 · Dal: `claude/urun-eticaret-uretim-38c2a2` · Yöntem: `CLAUDE.md` §2 · Program: `apps/eticaret` (yönetim paneli `index.html`, vitrin `magaza.html`, pazaryeri merkezi `pazaryeri.js`)
 
 ## 1. dalga — yapılanlar
 | # | Konu | Sonuç | Kanıt |
 |---|---|---|---|
-| H1 | Sahte takip numarası | _uygulanıyor_ | |
-| H2 | Simülasyonda sahte başarı | _uygulanıyor_ | |
-| H3 | Vitrinde ödeme | _uygulanıyor_ | |
-| H4 | e-Arşiv faturası tutmuyor | _uygulanıyor_ | |
-| H5 | Hakediş "Ödendi" tahmini | _uygulanıyor_ | |
-| H6 | Pazaryeri API uyumu | _uygulanıyor_ | |
-| H7 | Varyant barkodu / SKU | _uygulanıyor_ | |
-| H8 | Eşleşmeyen pazaryeri ürünleri | _uygulanıyor_ | |
-| H9 | Kısmi iade | _uygulanıyor_ | |
-| H10 | Telefon, rapor dönemi, performans | _uygulanıyor_ | |
+| H1 | Sahte takip numarası | Alan boş ve zorunlu; kargo API'si simülasyondaysa gönderi oluşturulmuş sayılmaz; takip no olmadan etiket basılmaz | Tarayıcı |
+| H2 | Simülasyonda sahte başarı | Sipariş uydurulmuyor; ürün gönderimi ve stok senkronu durum değiştirmiyor, yalnızca eksikleri işaretliyor; soru yanıtı taslak kalıyor; SMS sonucu gerçek durumuyla yazılıyor; günlükte "TEST" | Tarayıcı: çekmeden önce/sonra 184 sipariş; listeleme sayıları değişmedi |
+| H3 | Vitrinde ödeme | Kart seçeneği "TEST", sipariş `payTest` ile "TEST — ödeme alınmadı"; havale "Ödeme bekleniyor" → "Ödeme alındı" düğmesi; ödemesiz sipariş hazırlanırken onay sorulur; kapıda ödeme teslimde alınmış sayılır; eski kayıtlar ödenmiş sayılır | Kod + tarayıcı |
+| H4 | e-Arşiv faturası | `NS.ebelge.create()`; ürün KDV oranı (ürün kartı / mağaza varsayılanı); kupon kalemlere dağıtılıyor, kargo ve kapıda ödeme bedeli ayrı kalem; kurumsal fatura istenmişse VKN ile; simülasyon "TEST — gönderilmedi"; Trendyol'a ürün KDV'si gidiyor | Tarayıcı: indirimli + kargolu + kapıda ödemeli siparişte fatura 1.158,29 ₺ = sipariş 1.158,29 ₺ |
+| H5 | Hakediş | "Ödendi" yalnızca Trendyol hakediş kaydı (canlı, "Hakedişleri çek") veya elle "Ödendi" işaretiyle; vade geçince "Vade geçti — ödemeyi kontrol edin" | Tarayıcı |
+| H6 | Pazaryeri API uyumu | Trendyol ürün oluşturma `/v2/products`, şemadışı alanlar çıkarıldı, liste fiyatı ≥ satış fiyatı, en çok 8 görsel; takip no bildirme çağrısı kapatıldı (kullanıcıya panelden girmesi söyleniyor); hakediş 15 gün sınırı; "tedarik edilemedi" işlemi eklendi; Hepsiburada canlı seçilemez ("API doğrulanamadı"); n11 canlı seçilebilir | `server/test/kanal.test.js` 12/12; resmî doküman §6 |
+| H7 | Barkod / SKU | Varyant başına stok kodu ve barkod alanı; tüm ürünlerde benzersizlik denetimi; SKU üründen türetiliyor | Kod |
+| H8 | Eşleşmeyen ürünler | "Eşleşmeyen Ürünler" sayfası (menü rozeti); eşleştirme stoğu düşüyor ve kodu varyanta bağlıyor; aynı kod sonraki siparişte otomatik tanınıyor; eşleşmeyen sipariş hazırlanamıyor | Tarayıcı: 2. siparişte otomatik eşleşme, stok 4 → 3 |
+| H9 | Kısmi iade | Ürün/adet seçimi, iade tutarı, "stoğa ekle" seçeneği; tümü dönünce "İade edildi", değilse "Kısmi iade"; panelden elle iade kaydı; raporlarda net ciro | Tarayıcı: 3 üründen 1'i iade → 333,33 ₺, stok +1 |
+| H10 | Telefon, rapor, performans | Telefonda sipariş kart listesi; rapor dönemi (bu ay, geçen ay, 30/90 gün, bu yıl, tümü, aralık); 45 günlük satış tek geçişte; Türkçe yüzde biçimi; durum değişiklikleri kim/ne zaman kaydıyla "İşlem geçmişi"nde | 375 px tarayıcı |
+
+**Kalite kapısı:** `npm test` → 6 test dosyası geçti (kanal, proto, takvim, UBL-TR, **XSD (.NET ile çalıştı)**, muhasebe); `cloud.test.js` bu daldan önce de başarısız (`'talep' == 'deneme'`, `CEKIRDEK-ISTEKLERI-eticaret-uretim.md` Ç5). 17 ekran konsol hatasız. `sw.js` sürümü çekirdek isteği (Ç1).
 
 ---
 
