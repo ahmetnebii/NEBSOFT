@@ -169,6 +169,43 @@
         draw();
       } });
   }
+  // ---------- Banka ekstresi: dosyadan (Excel / CSV) okuma + eşleştirme ----------
+  // Bankaların ekstre dosyaları farklı sütun adları kullanır; tarih, açıklama ve tutar (veya Borç / Alacak) sütunları bulunur
+  function parseStatement(rows) {
+    if (!rows.length) return []; const H = Object.keys(rows[0]); const n = (x) => NS.trLower(x).replace(/[^a-zçğıöşü0-9]/g, '');
+    const find = (...a) => H.find((h) => a.some((k) => n(h) === k)) || H.find((h) => a.some((k) => n(h).includes(k)));
+    const hd = find('tarih', 'işlemtarihi', 'islemtarihi', 'valör', 'valor', 'date'), hs = find('açıklama', 'aciklama', 'işlemaçıklaması', 'detay', 'description'), ht = find('tutar', 'işlemtutarı', 'islemtutari', 'amount'), hb = find('borç', 'borc', 'çıkış', 'cikis', 'debit'), ha = find('alacak', 'giriş', 'giris', 'credit'), hr = find('dekontno', 'referans', 'fişno', 'refno', 'işlemno');
+    const num = window.MUHAKTAR.numOf;
+    const dt = (v) => { v = String(v || '').trim(); let m = v.match(/^(\d{1,2})[./-](\d{1,2})[./-](\d{4})/); if (m) return `${m[3]}-${m[2].padStart(2, '0')}-${m[1].padStart(2, '0')}`; m = v.match(/^(\d{4})-(\d{2})-(\d{2})/); if (m) return m[0]; if (/^\d{5}(\.\d+)?$/.test(v)) return iso(new Date(Date.UTC(1899, 11, 30) + Number(v) * 864e5)); return ''; };
+    if (!hd || !(ht || hb || ha)) return [];
+    return rows.map((r) => { const date = dt(r[hd]); let amount = ht ? num(r[ht]) : (num(r[ha]) || 0) - (num(r[hb]) || 0); if (!date || !Number.isFinite(amount) || !amount) return null; const desc = String(hs ? r[hs] : '').trim(); return { id: 'F' + date + '|' + r2(amount) + '|' + (hr && r[hr] ? r[hr] : desc).slice(0, 80), date, amount: r2(amount), desc }; }).filter(Boolean);
+  }
+  // Öneri: açıklamada fatura no > VKN > cari adı; yoksa kalan tutarı aynı olan tek açık fatura
+  function bankMatch(t) {
+    const up = NS.trLower(t.desc); const kind = t.amount > 0 ? 'satis' : 'alis';
+    let inv = db.find('invoices', (i) => i.no && up.includes(NS.trLower(i.no)));
+    let c = inv ? cari(inv.cari) : db.find('caris', (x) => x.taxNo && String(x.taxNo).length >= 10 && up.includes(String(x.taxNo))) || db.find('caris', (x) => { const w = NS.trLower(x.name).split(/\s+/).filter((y) => y.length > 3); return w.length && w.slice(0, 2).every((y) => up.includes(y)); });
+    if (!inv) { const open = db.all('invoices', (i) => i.kind === kind && !i.iade && invStatus(i) !== 'odendi' && (!c || i.cari === c.id) && Math.abs(r2(invTotals(i).tl - paidOf(i)) - Math.abs(t.amount)) < 0.01); if (open.length === 1) { inv = open[0]; c = cari(inv.cari); } }
+    return { inv: inv ? inv.id : '', cari: c && c.id ? c.id : '', how: inv && up.includes(NS.trLower(inv.no)) ? 'fatura no' : c && c.taxNo && up.includes(String(c.taxNo)) ? 'VKN' : inv ? 'tutar' : c ? 'ad' : '' };
+  }
+  // Carisiz hareketlerde açıklamadan kategori tahmini (kullanıcı değiştirebilir)
+  const CATK = [[/ücret|ucret|masraf|komisyon|bsmv|kart aidat/, 'Banka masrafı'], [/vergi|gib|kdv|stopaj|muhtasar/, 'Vergi'], [/sgk|sigorta prim/, 'SGK'], [/maaş|maas|personel|ücret öd/, 'Personel maaş'], [/kira/, 'Kira'], [/elektrik|doğalgaz|dogalgaz|su |enerjisa|igdaş|aski/, 'Elektrik-su-doğalgaz'], [/akaryakıt|akaryakit|opet|shell|petrol|yakıt/, 'Yakıt'], [/faiz/, 'Faiz geliri']];
+  const catGuess = (t, list) => { const d = NS.trLower(t.desc); const hit = CATK.find(([re, c]) => re.test(d) && list.includes(c)); return hit ? hit[1] : (list.includes(t.amount > 0 ? 'Diğer gelir' : 'Diğer') ? (t.amount > 0 ? 'Diğer gelir' : 'Diğer') : list[0]); };
+  function bankReview(app, accId, txs, src) {
+    const seen = new Set(db.all('txns').map((t) => t.bankRef).filter(Boolean));
+    const rows = txs.filter((t) => !seen.has(t.id)).map((t) => ({ ...t, ...bankMatch(t) }));
+    if (!rows.length) return toast(`Yeni banka hareketi yok${txs.length ? ' (' + txs.length + ' hareket zaten işlenmiş)' : ''}`, '');
+    const cats = (sign) => (db.data.cats || {})[sign > 0 ? 'gelir' : 'gider'] || (sign > 0 ? ['Diğer gelir', 'Faiz geliri'] : ['Banka masrafı', 'Vergi', 'SGK', 'Kira', 'Personel maaş', 'Diğer']);
+    modal({ title: `${acc(accId).name} — ${rows.length} yeni hareket${src ? ' · ' + src : ''}`, size: 'xl', body: `<p class="small muted mb">Öneriler fatura no, VKN, cari adı ve açık fatura tutarından çıkarıldı; kontrol edip değiştirebilirsiniz. Aynı hareket ikinci kez yüklenirse atlanır.</p>` + table({ rows: rows.map((t, i) => ({ ...t, i })), columns: [{ label: 'Tarih', render: (t) => NS.date(t.date) }, { label: 'Açıklama', render: (t) => `<span class="small">${esc(t.desc)}</span>` }, { label: 'Tutar', cls: 'right', render: (t) => `<b style="color:${t.amount > 0 ? 'var(--ok)' : 'var(--err)'}">${money(t.amount)}</b>` },
+      { label: 'İşlem', render: (t) => `<select class="input" data-bm="${t.i}" style="width:250px"><option value="skip">— Atla —</option><optgroup label="${t.amount > 0 ? 'Gelir' : 'Gider'} (carisiz)">${cats(t.amount).map((c) => `<option value="cat:${esc(c)}" ${!t.cari && c === catGuess(t, cats(t.amount)) ? 'selected' : ''}>${esc(c)}</option>`).join('')}</optgroup><optgroup label="${t.amount > 0 ? 'Tahsilat' : 'Ödeme'} (cari)">${db.all('caris').map((c) => `<option value="${c.id}" ${c.id === t.cari ? 'selected' : ''}>${esc(c.name)}</option>`).join('')}</optgroup></select>${t.inv ? `<div class="small mt-xs">${badge((db.get('invoices', t.inv) || {}).no, 'info')} <span class="faint">${esc(t.how)} ile eşleşti</span></div>` : t.cari ? `<div class="small faint mt-xs">${esc(t.how)} ile eşleşti</div>` : ''}` }] }),
+      actions: [{ label: 'Vazgeç' }, { label: 'İşle', cls: 'primary', icon: 'check', onClick: (close, b) => {
+        let n = 0, sk = 0;
+        $$('[data-bm]', b).forEach((sel) => { const t = rows[Number(sel.dataset.bm)]; const v = sel.value; if (v === 'skip') { sk++; return; } const base = { date: t.date, account: accId, amount: Math.abs(t.amount), desc: t.desc, bankRef: t.id };
+          if (v.startsWith('cat:')) db.insert('txns', { ...base, type: t.amount > 0 ? 'gelir' : 'gider', cat: v.slice(4) }, true);
+          else { const inv = t.inv && (db.get('invoices', t.inv) || {}).cari === v ? t.inv : null; const type = t.amount > 0 ? 'tahsilat' : 'odeme'; const alloc = inv ? null : allocate(v, type, Math.abs(t.amount)); db.insert('txns', { ...base, type, cari: v, invoice: inv, ...(alloc && alloc.length ? { alloc } : {}) }, true); }
+          n++; });
+        db.saveSettings({ bankSince: today() }); db.log('Banka hareketleri işlendi', `${acc(accId).name} · ${n} işlendi, ${sk} atlandı${src ? ' · ' + src : ''}`); db.save(); close(); toast(`${n} banka hareketi işlendi${sk ? ', ' + sk + ' atlandı' : ''}`, 'ok'); app.refresh(); } }] });
+  }
   function startReturn(app, src) {
     const lines = src.lines.map((l) => ({ ...JSON.parse(JSON.stringify(l)) }));
     docEditor(app, src.kind === 'satis' ? 'alis' : 'satis', null, { cari: src.cari, currency: src.currency || 'TRY', rate: src.rate || 1, depot: src.depot, lines, iade: { of: src.kind === 'alis' ? (src.supplierNo || src.no) : ((src.ebelge && src.ebelge.no) || src.no), date: src.date, src: src.id }, note: `${src.no} numaralı faturanın iadesi` });
@@ -410,7 +447,7 @@
   }
   function accountsPage(el, p, app) {
     let accF = '';
-    el.innerHTML = pageHead('Kasa & Banka', 'Hesap bakiyeleri, gelir-gider ve virman', `<button class="btn" data-k="gelir">${icon('plus')} Gelir</button><button class="btn" data-k="gider">${icon('minus')} Gider</button><button class="btn" data-k="virman">${icon('refresh')} Virman</button>${NS.integ && NS.integ.isOn('banka') ? `<button class="btn" id="bnk">${icon('building')} Banka hareketlerini çek</button>` : ''}<button class="btn primary" data-k="hesap">${icon('plus')} Hesap ekle</button>`) +
+    el.innerHTML = pageHead('Kasa & Banka', 'Hesap bakiyeleri, gelir-gider ve virman', `<button class="btn" data-k="gelir">${icon('plus')} Gelir</button><button class="btn" data-k="gider">${icon('minus')} Gider</button><button class="btn" data-k="virman">${icon('refresh')} Virman</button><button class="btn" id="bxl">${icon('upload')} Ekstre yükle</button>${NS.integ && NS.integ.isOn('banka') ? `<button class="btn" id="bnk">${icon('building')} Banka hareketlerini çek</button>` : ''}<button class="btn primary" data-k="hesap">${icon('plus')} Hesap ekle</button>`) +
       `<div class="grid g4 mb">${db.all('accounts').map((a) => `<div class="acc-card" style="background:linear-gradient(135deg,${a.color},color-mix(in srgb,${a.color} 60%,#000));cursor:pointer" data-a="${a.id}"><div class="small" style="opacity:.85">${esc(a.name)}</div><div class="v">${money(accBalance(a.id))}</div><div class="small mono" style="opacity:.75">${esc(a.iban || a.type)}</div></div>`).join('')}</div>
       <div class="card"><div class="card-h"><h3 id="ah">Tüm hareketler</h3></div><div id="t"></div></div>`;
     const TY = { tahsilat: ['Tahsilat', 'ok'], odeme: ['Ödeme', 'err'], gelir: ['Gelir', 'ok'], gider: ['Gider', 'err'], virman: ['Virman', 'info'] };
@@ -421,17 +458,20 @@
     };
     on(el, 'click', '[data-a]', (e, b) => { accF = accF === b.dataset.a ? '' : b.dataset.a; draw(); });
     // Açık bankacılık: hareketler çekilir, açıklamadaki cari ünvanı / fatura no ile eşleştirilir
+    $('#bxl', el).onclick = async () => {
+      const banks = db.all('accounts', (a) => a.type === 'banka'); if (!banks.length) return toast('Önce bir banka hesabı ekleyin', 'err');
+      const accId = accF && acc(accF).type === 'banka' ? accF : await (async () => { if (banks.length === 1) return banks[0].id; const v = await formModal({ title: 'Ekstre hangi hesaba ait?', fields: [{ name: 'a', label: 'Banka hesabı', type: 'select', options: banks.map((x) => ({ value: x.id, label: x.name })) }] }); return v && v.a; })(); if (!accId) return;
+      let f; try { f = await NS.readSheet(); } catch (e) { return toast(e.message, 'err'); } if (!f) return;
+      const txs = parseStatement(f.rows); if (!txs.length) return toast('Dosyada tarih ve tutar sütunu bulunamadı (Tarih, Açıklama, Tutar veya Borç / Alacak)', 'err');
+      bankReview(app, accId, txs, f.name);
+    };
     if ($('#bnk', el)) $('#bnk', el).onclick = async () => {
       if (!NS.integ) return; const banks = db.all('accounts', (a) => a.type === 'banka'); if (!banks.length) return toast('Banka hesabı yok', 'err');
       const accId = accF && acc(accF).type === 'banka' ? accF : banks[0].id;
       const r = await NS.integ.call('banka', 'hareketler', { iban: acc(accId).iban, since: S().bankSince || iso(addDays(new Date(), -7)) }); if (!r || !r.ok) return;
       let txs = r.data && Array.isArray(r.data.transactions) ? r.data.transactions : [];
       if (r.simulated) { const open = db.all('invoices', (i) => ['acik', 'gecikti', 'kismi'].includes(invStatus(i))).slice(0, 3); txs = [...open.map((i, k) => ({ id: 'B' + Date.now() + k, date: today(), amount: (i.kind === 'satis' ? 1 : -1) * r2(invTotals(i).tl - paidOf(i)), desc: `${cari(i.cari).name.toLocaleUpperCase('tr-TR')} ${i.no}` })), { id: 'B' + Date.now() + 9, date: today(), amount: -385.5, desc: 'HESAP İŞLETİM ÜCRETİ' }]; }
-      const seen = new Set(db.all('txns').map((t) => t.bankRef).filter(Boolean));
-      const rows = txs.filter((t) => !seen.has(t.id)).map((t) => { const up = String(t.desc).toLocaleUpperCase('tr-TR'); const inv = db.find('invoices', (i) => up.includes(i.no)); const c = inv ? cari(inv.cari) : db.find('caris', (x) => up.includes(x.name.toLocaleUpperCase('tr-TR').split(' ')[0])); return { ...t, inv: inv ? inv.id : '', cari: c && c.id ? c.id : '' }; });
-      if (!rows.length) return toast('Yeni banka hareketi yok', '');
-      modal({ title: `${acc(accId).name} — ${rows.length} yeni hareket`, size: 'xl', body: table({ rows: rows.map((t, i) => ({ ...t, i })), columns: [{ label: 'Tarih', render: (t) => NS.date(t.date) }, { label: 'Açıklama', render: (t) => `<span class="small">${esc(t.desc)}</span>` }, { label: 'Tutar', cls: 'right', render: (t) => `<b style="color:${t.amount > 0 ? 'var(--ok)' : 'var(--err)'}">${money(t.amount)}</b>` }, { label: 'Eşleşme', render: (t) => `<select class="input" data-bm="${t.i}" style="width:240px"><option value="">${t.amount > 0 ? 'Diğer gelir' : 'Banka masrafı / gider'}</option>${db.all('caris').map((c) => `<option value="${c.id}" ${c.id === t.cari ? 'selected' : ''}>${esc(c.name)}</option>`).join('')}</select>${t.inv ? `<div class="small">${badge((db.get('invoices', t.inv) || {}).no, 'info')}</div>` : ''}` }] }),
-        actions: [{ label: 'Vazgeç' }, { label: 'Hepsini işle', cls: 'primary', onClick: (close, b) => { $$('[data-bm]', b).forEach((s) => { const t = rows[Number(s.dataset.bm)]; const base = { date: t.date, account: accId, amount: Math.abs(t.amount), desc: t.desc, bankRef: t.id }; if (s.value) db.insert('txns', { ...base, type: t.amount > 0 ? 'tahsilat' : 'odeme', cari: s.value, invoice: t.inv && (db.get('invoices', t.inv) || {}).cari === s.value ? t.inv : null }, true); else db.insert('txns', { ...base, type: t.amount > 0 ? 'gelir' : 'gider', cat: t.amount > 0 ? 'Diğer gelir' : 'Banka masrafı' }, true); }); db.saveSettings({ bankSince: today() }); db.log('Banka eşleştirme', `${rows.length} hareket`); db.save(); close(); toast(`${rows.length} banka hareketi işlendi`, 'ok'); app.refresh(); } }] });
+      bankReview(app, accId, txs);
     };
     on(el, 'click', '[data-act=del]', async (e, b) => { if (await confirm('Hareket silinsin mi?')) { db.remove('txns', b.dataset.id); app.refresh(); } });
     on(el, 'click', '[data-k]', async (e, b) => {
