@@ -182,7 +182,8 @@
   }
 
   // ---------- Takvim ----------
-  let calDate = today(), calView = 'day', weekStaff = null, showCancel = false;
+  // Telefonda varsayılan görünüm gündem listesi (sütunlu takvim dar ekranda okunmuyor)
+  let calDate = today(), calView = window.innerWidth < 700 ? 'list' : 'day', weekStaff = null, showCancel = false;
   function calendarPage(el, param, app) {
     const s = S();
     const openMin = R.toMin(s.open), closeMin = R.toMin(s.close);
@@ -190,16 +191,16 @@
     const staffs = visibleStaff();
     weekStaff = weekStaff && staffs.some((x) => x.id === weekStaff) ? weekStaff : (staffs[0] || {}).id;
     const weekStart = addDays(calDate, -((new Date(calDate + 'T12:00').getDay() + 6) % 7));
-    const columns = calView === 'day' ? staffs.map((st) => ({ key: st.id, staff: st, date: calDate, label: st.name, sub: st.title, color: st.color }))
+    const columns = calView !== 'week' ? staffs.map((st) => ({ key: st.id, staff: st, date: calDate, label: st.name, sub: st.title, color: st.color }))
       : Array.from({ length: 7 }, (_, i) => { const d = iso(addDays(weekStart, i)); return { key: d, staff: staff(weekStaff), date: d, label: NS.DAYS[new Date(d + 'T12:00').getDay()], sub: NS.date(d), color: d === today() ? 'var(--accent)' : '' }; });
     const dayApps = (col) => db.all('appointments', (a) => a.date === col.date && a.staff === col.staff.id && (showCancel || a.status !== 'iptal'));
     const allShown = columns.flatMap(dayApps);
     el.innerHTML = `<div class="row mb">
         <button class="btn icon" data-nav="-1">${icon('left')}</button><button class="btn" data-nav="0">Bugün</button><button class="btn icon" data-nav="1">${icon('right')}</button>
         <input type="date" class="input" id="cd" value="${calDate}" style="max-width:170px">
-        <h2 class="grow">${calView === 'day' ? NS.dateLong(calDate) : `${NS.date(weekStart)} – ${NS.date(addDays(weekStart, 6))}`}</h2>
+        <h2 class="grow">${calView !== 'week' ? NS.dateLong(calDate) : `${NS.date(weekStart)} – ${NS.date(addDays(weekStart, 6))}`}</h2>
         ${calView === 'week' ? `<select class="input" id="ws" style="max-width:200px">${staffs.map((x) => `<option value="${x.id}" ${x.id === weekStaff ? 'selected' : ''}>${esc(x.name)}</option>`).join('')}</select>` : ''}
-        <div class="seg"><button data-v="day" class="${calView === 'day' ? 'active' : ''}">Gün</button><button data-v="week" class="${calView === 'week' ? 'active' : ''}">Hafta</button></div>
+        <div class="seg"><button data-v="list" class="${calView === 'list' ? 'active' : ''}">Liste</button><button data-v="day" class="${calView === 'day' ? 'active' : ''}">Gün</button><button data-v="week" class="${calView === 'week' ? 'active' : ''}">Hafta</button></div>
         <label class="check small"><input type="checkbox" id="sc" ${showCancel ? 'checked' : ''}> İptaller</label>
         <button class="btn" id="blk">${icon('lock')} Saat kapat</button>
         <button class="btn" id="wl">${icon('users')} Bekleme listesi${waitFor(calDate).length ? ` (${waitFor(calDate).length})` : ''}</button>
@@ -223,6 +224,10 @@
     on(el, 'click', '[data-nav]', (e, t) => { const n = Number(t.dataset.nav); go(n === 0 ? today() : iso(addDays(calDate, n * (calView === 'week' ? 7 : 1)))); });
     $('#cd', el).onchange = (e) => go(e.target.value);
     on(el, 'click', '[data-v]', (e, t) => { calView = t.dataset.v; app.refresh(); });
+    if (calView === 'list') {
+      const L = allShown.slice().sort((a, b) => a.start.localeCompare(b.start));
+      $('.cal-wrap', el).closest('.card').outerHTML = `<div class="card">${L.map((a) => `<div class="list-item" data-ap="${a.id}" style="cursor:pointer;border-left:4px solid ${staff(a.staff).color};padding-left:10px;touch-action:auto"><b style="min-width:52px">${a.start}</b><div class="grow" style="min-width:0"><b>${esc(cust(a.customer).name)}</b><div class="small muted">${esc(svc(a.service).name)} · ${esc(staff(a.staff).name)} · ${a.duration} dk</div></div>${badge(ST[a.status][0], ST[a.status][1])}</div>`).join('') || '<div class="empty">Bu gün randevu yok</div>'}</div>`;
+    }
     if ($('#ws', el)) $('#ws', el).onchange = (e) => { weekStaff = e.target.value; app.refresh(); };
     $('#sc', el).onchange = (e) => { showCancel = e.target.checked; app.refresh(); };
     $('#na', el).onclick = () => apptForm(app, { date: calDate, staff: calView === 'week' ? weekStaff : undefined });
@@ -275,7 +280,7 @@
       apptForm(app, { date: col.date, staff: col.staff.id, start: R.toHM(openMin + min), service: (db.all('services', (x) => x.staff.includes(col.staff.id))[0] || {}).id });
     });
     const sc = $('.cal-wrap', el);
-    if (calDate === today()) sc.scrollTop = Math.max(0, (new Date().getHours() * 60 - openMin - 60) * PPM);
+    if (sc && calDate === today()) sc.scrollTop = Math.max(0, (new Date().getHours() * 60 - openMin - 60) * PPM);
   }
   function occupancy(columns) {
     let cap = 0, used = 0;
@@ -336,7 +341,7 @@
   }
 
   // ---------- Müşteriler ----------
-  const CUST_FIELDS = [{ name: 'name', label: 'Ad soyad', required: true }, { name: 'phone', label: 'Telefon', required: true, type: 'tel' }, { name: 'email', label: 'E-posta', type: 'email' }, { name: 'birthday', label: 'Doğum tarihi', type: 'date' }, { name: 'notes', label: 'Önemli not (alerji vb.)', full: true }];
+  const CUST_FIELDS = [{ name: 'name', label: 'Ad soyad', required: true }, { name: 'phone', label: 'Telefon', required: true, type: 'tel' }, { name: 'email', label: 'E-posta', type: 'email' }, { name: 'birthday', label: 'Doğum tarihi', type: 'date' }, { name: 'notes', label: 'Önemli not (alerji vb.)', full: true }, { name: 'iys', label: 'Kampanya / tanıtım mesajı almayı kabul etti (ticari ileti izni)', type: 'checkbox', full: true }];
   function customersPage(el, param, app) {
     if (param) return customerDetail(el, param, app);
     NS.crud(el, app, {
@@ -351,6 +356,28 @@
       ],
       extraActions: [{ icon: 'eye', act: 'detail', title: 'Detay' }],
       onAction: (act, c) => app.go('musteriler', c.id),
+    });
+    const hr = $('.page-h .row', el);
+    if (hr) { hr.insertAdjacentHTML('afterbegin', `<button class="btn" id="wb">${icon('heart')} Geri kazanma</button>`); $('#wb', el).onclick = () => winBack(app); }
+  }
+  // Kayıp müşteri: son ziyareti 60+ gün önce, ileri tarihli randevusu yok. Toplu SMS yalnızca ticari ileti izni olanlara gider.
+  function winBack(app) {
+    const lim = iso(addDays(new Date(), -60));
+    const L = db.all('customers', (c) => { const l = lastVisit(c.id); return l && l < lim && !db.find('appointments', (a) => a.customer === c.id && a.date >= today() && a.status !== 'iptal'); }).sort((a, b) => String(lastVisit(b.id)).localeCompare(String(lastVisit(a.id))));
+    const link = location.href.replace(/index\.html.*$/, '').replace(/#.*$/, '') + 'book.html';
+    const txt = (c, t) => t.replace('{musteri}', c.name.split(' ')[0]).replace('{isletme}', S().bizName || '').replace('{link}', link);
+    const ok = L.filter((c) => c.iys);
+    modal({
+      title: `Geri kazanma — ${L.length} müşteri`, size: 'wide',
+      body: `<div class="field"><label>Mesaj</label><textarea class="input" id="wt" rows="3">${esc(S().winbackText || 'Merhaba {musteri}, sizi özledik! {isletme} olarak yeniden görmek isteriz. Online randevu: {link}')}</textarea><div class="small faint">Değişkenler: {musteri} {isletme} {link}. Kampanya içeren mesaj ticari iletidir; yalnızca izin vermiş müşterilere SMS gönderilir (İYS).</div></div>
+        <div class="mt">${L.map((c) => `<div class="list-item small"><div class="grow"><b>${esc(c.name)}</b> ${c.iys ? badge('İzinli', 'ok') : badge('İzin yok', '')}${c.winback ? ' ' + badge('Son mesaj ' + NS.date(c.winback), 'info') : ''}<div class="faint">Son ziyaret ${NS.date(lastVisit(c.id))} · ${esc(c.phone)}</div></div><a class="btn sm" data-wbw="${c.id}" target="_blank" rel="noopener" href="#">${icon('message')} WhatsApp</a></div>`).join('') || '<div class="empty">Kayıp müşteri yok</div>'}</div>`,
+      onOpen: (b) => on(b, 'click', '[data-wbw]', (e, t) => { const c = db.get('customers', t.dataset.wbw); t.href = `https://wa.me/90${String(c.phone).replace(/\D/g, '').replace(/^0/, '')}?text=${encodeURIComponent(txt(c, $('#wt', b).value))}`; c.winback = today(); db.save(); }),
+      actions: [{ label: 'Kapat' }, { label: `İzinli ${ok.length} müşteriye SMS`, cls: 'primary', icon: 'send', onClick: async (close, b) => {
+        if (!ok.length) return toast('Ticari ileti izni olan kayıp müşteri yok', 'err');
+        const t = $('#wt', b).value; db.saveSettings({ winbackText: t }); const n = { ok: 0, test: 0, err: 0 };
+        for (const c of ok) { const r = NS.integ && NS.integ.sms ? await NS.integ.sms(c.phone, txt(c, t), { silent: true }) : { ok: false }; const k = r.simulated ? 'test' : r.ok ? 'ok' : 'err'; n[k]++; db.insert('sms', { to: c.phone, name: c.name, text: txt(c, t), at: new Date().toISOString(), status: k === 'ok' ? 'gönderildi' : k === 'test' ? 'TEST — gönderilmedi' : 'hata: ' + String(r.error || '').slice(0, 60) }, true); if (k === 'ok') c.winback = today(); }
+        db.save(); close(); toast([n.ok && `${n.ok} gönderildi`, n.test && `${n.test} TEST (gönderilmedi)`, n.err && `${n.err} hata`].filter(Boolean).join(' · '), n.err ? 'err' : n.ok ? 'ok' : ''); app.refresh();
+      } }],
     });
   }
   const lastVisit = (id) => db.all('appointments', (a) => a.customer === id && a.status === 'tamam').map((a) => a.date).sort().pop();

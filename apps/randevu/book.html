@@ -74,7 +74,7 @@
     const sv = svc(st.service);
     const list = st.staff ? [st.staff] : staffFor(st.service).map((x) => x.id);
     const map = {};
-    list.forEach((id) => R.freeSlots(db, id, date, sv.duration).forEach((t) => { if (!map[t]) map[t] = id; }));
+    list.forEach((id) => R.freeSlots(db, id, date, sv.duration, st.move).forEach((t) => { if (!map[t]) map[t] = id; }));
     // Bugün için geçmiş (ve 30 dk içindeki) saatleri gösterme
     if (date === today()) Object.keys(map).forEach((t) => { if (R.toMin(t) < cutoff()) delete map[t]; });
     return map;
@@ -126,7 +126,8 @@
         <div class="row" style="gap:8px"><button class="btn" id="ics">${icon('calendar')} Takvime ekle (.ics)</button><a class="btn" target="_blank" rel="noopener" href="${gcal}">${icon('calendar')} Google Takvim</a><a class="btn" target="_blank" rel="noopener" href="${mapUrl}">${icon('map')} Yol tarifi</a><span class="grow"></span><button class="btn primary" id="again">Yeni randevu</button></div>`;
     }
     const canNext = (st.step === 1 && st.service) || st.step === 2 || (st.step === 3 && st.time) || st.step === 4;
-    const nextLbl = st.step === 4 ? 'Randevuyu onayla' : 'Devam';
+    const nextLbl = st.move && st.step === 3 ? 'Randevuyu taşı' : st.step === 4 ? 'Randevuyu onayla' : 'Devam';
+    if (st.move && st.step === 3) body = `<div class="card pad mb small" style="background:var(--app-accent-soft);border:0">${icon('refresh')} Randevunuzu taşıyorsunuz. Yeni gün ve saati seçin. <a href="#" data-mvx>Vazgeç</a></div>` + body;
     $('#wiz').innerHTML = `${st.step < 5 ? `<div class="steps">${STEPS.map((l, i) => `<div class="${i + 1 <= st.step ? 'on' : ''}"><i></i>${i + 1}. ${l}</div>`).join('')}</div>` : ''}${body}
       ${st.step < 5 ? `<div class="row mt wiz-nav" style="margin-top:22px">${st.step > 1 ? `<button class="btn lg" data-back>${icon('back')} Geri</button>` : `<button class="btn lg ghost" data-my>${icon('search')} Randevumu sorgula</button>`}<span class="grow"></span><button class="btn lg primary" data-next ${canNext ? '' : 'disabled'}>${nextLbl} ${icon('right')}</button></div>` : ''}`;
     const stf = db.get('staff', st.assigned || st.staff);
@@ -145,8 +146,17 @@
   on(document.body, 'click', '[data-d]', (e, b) => { st.date = b.dataset.d; st.time = null; render(); });
   on(document.body, 'click', '[data-t]', (e, b) => { st.time = b.dataset.t; st.assigned = slotsFor(st.date)[st.time]; render(); });
   on(document.body, 'click', '[data-back]', () => { st.step--; render(); toTop(); });
-  on(document.body, 'click', '#again', () => { Object.assign(st, { step: 1, service: null, staff: null, date: null, time: null, assigned: null, done: null }); render(); toTop(); });
+  on(document.body, 'click', '[data-mvx]', (e) => { e.preventDefault(); Object.assign(st, { move: null, step: 1, service: null, staff: null, date: null, time: null }); render(); });
+  on(document.body, 'click', '#again', () => { Object.assign(st, { move: null, step: 1, service: null, staff: null, date: null, time: null, assigned: null, done: null }); render(); toTop(); });
   on(document.body, 'click', '[data-next]', () => {
+    if (st.move && st.step === 3) {
+      // Müşterinin kendi randevusunu taşıması: aynı uzman, iptal süresi kuralı geçerli; işletme onayı ayarına göre
+      db.load(); const a = db.get('appointments', st.move);
+      if (!a || ['iptal', 'tamam'].includes(a.status)) { st.move = null; toast('Randevu bulunamadı', 'err'); return render(); }
+      if (!R.freeSlots(db, a.staff, st.date, a.duration, a.id).includes(st.time)) { toast('Bu saat az önce doldu, lütfen başka saat seçin', 'err'); st.time = null; return render(); }
+      db.update('appointments', a.id, { date: st.date, start: st.time, status: s.autoConfirm ? a.status : 'bekliyor', note: [a.note, `Müşteri online taşıdı (eski: ${NS.date(a.date)} ${a.start})`].filter(Boolean).join(' · '), reminded: null, remindTried: null, remindTest: null });
+      st.done = db.get('appointments', a.id); st.assigned = a.staff; st.move = null; st.step = 5; render(); return toTop();
+    }
     if (st.step < 4) { st.step++; render(); return toTop(); }
     const f = $('#f');
     if (!NS.validate(f)) return;
@@ -179,11 +189,11 @@
     if (!p) return;
     if (db.lookup({ phone: p }) === null) db.load();
     const c = db.find('customers', (x) => String(x.phone).replace(/\D/g, '').slice(-10) === p.replace(/\D/g, '').slice(-10));
-    const list = c ? db.all('appointments', (a) => a.customer === c.id && a.date >= today() && !['iptal', 'tamam'].includes(a.status)).sort((a, b) => (a.date + a.start).localeCompare(b.date + b.start)) : [];
+    const list = c ? db.all('appointments', (a) => a.customer === c.id && new Date(`${a.date}T${a.start}`) > new Date() && !['iptal', 'tamam', 'gelmedi'].includes(a.status)).sort((a, b) => (a.date + a.start).localeCompare(b.date + b.start)) : [];
     NS.modal({
       title: 'Randevularınız',
-      body: list.length ? list.map((a) => { const canCancel = (new Date(`${a.date}T${a.start}`) - Date.now()) / 3600000 > (s.cancelHours || 0); return `<div class="list-item"><img src="${R.photo(svc(a.service), 100)}" style="width:48px;height:48px;border-radius:10px;object-fit:cover" alt=""><div class="grow"><b>${NS.date(a.date)} ${a.start}</b><div class="small muted">${esc(svc(a.service).name)} · ${esc((db.get('staff', a.staff) || {}).name)}</div><div class="small">${NS.badge(a.status === 'onay' ? 'Onaylandı' : 'Onay bekliyor', a.status === 'onay' ? 'ok' : 'warn')}</div></div>${canCancel ? `<button class="btn sm danger" data-cx="${a.id}">İptal et</button>` : `<span class="small faint">İptal süresi geçti<br><a href="tel:${esc(tel(s.bizPhone))}">Bizi arayın</a></span>`}</div>`; }).join('') : '<div class="empty">Yaklaşan randevu bulunamadı</div>',
-      onOpen: (b, close) => on(b, 'click', '[data-cx]', async (e, x) => { if (!(await NS.confirm('Randevunuz iptal edilsin mi?'))) return; db.update('appointments', x.dataset.cx, { status: 'iptal', note: 'Müşteri online iptal etti' }); close(); toast('Randevunuz iptal edildi', 'ok'); render(); }),
+      body: list.length ? list.map((a) => { const canCancel = (new Date(`${a.date}T${a.start}`) - Date.now()) / 3600000 > (s.cancelHours || 0); return `<div class="list-item"><img src="${R.photo(svc(a.service), 100)}" style="width:48px;height:48px;border-radius:10px;object-fit:cover" alt=""><div class="grow"><b>${NS.date(a.date)} ${a.start}</b><div class="small muted">${esc(svc(a.service).name)} · ${esc((db.get('staff', a.staff) || {}).name)}</div><div class="small">${NS.badge(a.status === 'onay' ? 'Onaylandı' : 'Onay bekliyor', a.status === 'onay' ? 'ok' : 'warn')}</div></div>${canCancel ? `<div class="col" style="gap:6px"><button class="btn sm" data-mv="${a.id}">Taşı</button><button class="btn sm danger" data-cx="${a.id}">İptal et</button></div>` : `<span class="small faint">İptal süresi geçti<br><a href="tel:${esc(tel(s.bizPhone))}">Bizi arayın</a></span>`}</div>`; }).join('') : '<div class="empty">Yaklaşan randevu bulunamadı</div>',
+      onOpen: (b, close) => (on(b, 'click', '[data-mv]', (e, x) => { const a = db.get('appointments', x.dataset.mv); close(); Object.assign(st, { move: a.id, service: a.service, staff: a.staff, date: null, time: null, step: 3 }); render(); $('#randevu').scrollIntoView({ behavior: 'smooth' }); }), on(b, 'click', '[data-cx]', async (e, x) => { if (!(await NS.confirm('Randevunuz iptal edilsin mi?'))) return; db.update('appointments', x.dataset.cx, { status: 'iptal', note: 'Müşteri online iptal etti' }); close(); toast('Randevunuz iptal edildi', 'ok'); render(); })),
     });
   });
   render();

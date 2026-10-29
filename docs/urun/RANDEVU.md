@@ -5,11 +5,14 @@
 Tarih: 29.10.2026 · Dal: `claude/urun-randevu-uyelik-cfb186` · Yöntem: `CLAUDE.md` §2
 
 ## 0. Uygulama durumu
-| Dalga | Durum |
-|---|---|
-| 1. dalga (H1–H7) | bkz. commit geçmişi ve aşağıdaki "Kanıt" sütunları |
-| 2. dalga (B1–B5) | bkz. commit geçmişi |
-| 3. dalga (F1–F3) | bkz. commit geçmişi |
+| Dalga | Durum | Kanıt (tarayıcı, 29.10.2026, masaüstü + 375 px) |
+|---|---|---|
+| 1. dalga (H1–H7) | **Tamam** | Toplu hatırlatma: "21 TEST (gönderilmedi) · 1 müşteri istemediği için atlandı", rozetler "TEST — gönderilmedi" / "Müşteri istemiyor"; süresi dolmuş pakette "+1 seans" yok; online sayfada pazar 11:00–18:00; aydınlatma metni penceresi |
+| 2. dalga (B1–B5) | **Tamam** | 4 haftalık tekrar → 3 randevu + "dolu olduğu için eklenmedi: 09.11.2026"; bekleme listesi → "Randevu ver" → kayıt `randevu` durumuna geçti; seans geçmişi + geri alma (used 2→1); hatırlatma zamanı/otomatik gönderim ayarı |
+| 3. dalga (F1–F3) | **Tamam** | Müşteri "Randevumu sorgula" > Taşı → yeni saat, not "Müşteri online taşıdı (eski: …)", onay bekliyor; telefonda takvim varsayılan "Liste", tıklayınca detay; Müşteriler > Geri kazanma (izinli müşteriye SMS, diğerlerine WhatsApp) |
+
+Ek düzeltme: "Randevumu sorgula" bugünün saati geçmiş randevularını da listeliyordu.
+Bilinmesi gerekenler: otomatik hatırlatma yalnızca panel açıkken çalışır (sunucu zamanlayıcısı çekirdek isteği Ç3). Bulut modunda müşteri sayfası yeni alanları (`noReminder`, taşıma notu) ancak `public-rules.js` izin verirse yazabilir (Ç4). `npm test`: 6 dosya geçti; `cloud.test.js` lisans akışında (`'talep' == 'deneme'`) bu dalın başlangıcında da başarısız — program dosyalarıyla ilgisi yok, `server/` sahibine bildirildi.
 
 ---
 
