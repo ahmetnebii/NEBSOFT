@@ -8,8 +8,8 @@ Tarih: 29.10.2026 · Dal: `claude/urun-servis-arac-a1f676` · Yöntem: `CLAUDE.m
 | Dalga | Durum |
 |---|---|
 | 1 — Temel ve güven (H1–H9) | **tamamlandı** — SMS sonucu bekleniyor (gönderildi / TEST / gönderilemedi + WhatsApp önerisi), onay sayfasındaki sahte ödeme kaldırıldı, satır indirimli tutar, satır satır yuvarlama ve satır bazında KDV (e-Arşiv ile aynı; 104 iş emrinde fark 0), cari bakiye kapora düzeltmesi, ciro teslim tarihine göre, doğrulanmamış tedarikçi/TRAMER bağlantıları kaldırıldı → sipariş listesi (CSV / kopyala / WhatsApp), iş emri no en büyük + 1, "İşlemsiz teslim". Kanıt: başsız Chrome ile kabul → tespit → kalem → onay → işlemsiz teslim akışı, konsol hatası yok |
-| 2 — Beklenenler | sırada |
-| 3 — Fark yaratanlar | sırada |
+| 2 — Beklenenler | **tamamlandı** — ek iş onayı (yeni kalem "onay bekliyor" gelir, "Ek işleri onaylat", müşteri sayfasında yalnızca bekleyenler seçilir, onaysız faturalamada uyarı), işçilik garantisi bitişi + kabulde "garanti dönüşü", hesap ekstresi (CSV / WhatsApp), sipariş listesi, geciken araç işareti ve özet sayfasında sayısı |
+| 3 — Fark yaratanlar | **tamamlandı** — araç servis karnesi (belge şablonuyla yazdırılır), ortalama km'den tahmini bakım tarihi (hatırlatmalarda "tahmini"), tespit fotoğrafları iş emrinde eklenir ve onay sayfasında görünür |
 
 ---
 
