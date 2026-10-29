@@ -11,7 +11,9 @@ window.PZR = {
     idefix: { name: 'İdefix', short: 'IDX', color: '#ffb300', commission: 17, fixedFee: 0, payoutDays: 10, shipDays: 2 },
   },
   // Canlı API adaptörü olan kanallar (server/connectors)
-  LIVE: ['trendyol', 'hepsiburada', 'n11'],
+  // Canlı mod yalnızca resmî dokümanla doğrulanan adaptörlerde (docs/urun/ETICARET.md §6, 29.10.2026)
+  LIVE: ['trendyol', 'n11'],
+  UNVERIFIED: { hepsiburada: 'Hepsiburada API dokümanı doğrulanamadı (developers.hepsiburada.com erişilemedi); canlı mod kapalı.' },
   ST: { yeni: ['Yeni', 'info'], toplaniyor: ['Toplanıyor', 'warn'], paketlendi: ['Paketlendi', 'acc'], kargoda: ['Kargoda', ''], teslim: ['Teslim edildi', 'ok'], iptal: ['İptal', 'err'], iade: ['İade', 'err'] },
   RST: { talep: ['İade talebi', 'warn'], yolda: ['Kargoda (geliyor)', 'info'], geldi: ['Depoya ulaştı', 'acc'], onay: ['Onaylandı', 'ok'], red: ['Reddedildi / itiraz', 'err'] },
   REASONS: ['Beden/ölçü uymadı', 'Beklediğim gibi değil', 'Kusurlu / hasarlı ürün', 'Yanlış ürün gönderildi', 'Vazgeçtim', 'Renk farklı'],
