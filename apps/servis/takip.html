@@ -73,16 +73,16 @@
 
     let call = '';
     if (t.status === 'onay') call = `<div class="tk-call" style="--c:var(--warn)"><h3>${icon('clock')} Onayınızı bekliyoruz</h3><p class="small" style="margin:0 0 12px">${esc(t.diagnosis || 'Arıza tespit edildi.')}</p>
-      ${t.parts.length ? lines + `<tr class="t"><td>Toplam (KDV dahil)</td><td>${money(t.estimate)}</td></tr></table>` : `<div style="font-size:30px;font-weight:800">${money(t.estimate)}</div>`}
+      ${t.parts.length && Math.abs(total(t) - t.estimate) < 0.01 ? lines + `<tr class="t"><td>Toplam (KDV dahil)</td><td>${money(t.estimate)}</td></tr></table>` : `<div class="small muted">Teklif tutarı (KDV dahil)</div><div style="font-size:30px;font-weight:800">${money(t.estimate)}</div>`}
       <label class="check small mt"><input type="checkbox" id="tc"> Onarım koşullarını okudum ve kabul ediyorum.</label>
       <div class="tk-acts mt"><button class="btn ok lg grow" id="ok">${icon('check')} Onaylıyorum, onarılsın</button><button class="btn lg" id="no">Onaylamıyorum</button></div></div>`;
     else if (t.status === 'hazir') call = `<div class="tk-call" style="--c:var(--ok)"><h3>${icon('check')} Cihazınız teslime hazır</h3><p class="small" style="margin:0 0 10px">Onarım tamamlandı ve test edildi. ${esc(s().bizAddress)} adresinden teslim alabilirsiniz.</p>
       <div class="row between"><span>${bal > 0 ? 'Ödenecek tutar' : 'Ödeme'}</span><b style="font-size:24px">${bal > 0 ? money(bal) : 'Tamamlandı'}</b></div>
-      <div class="tk-acts mt">${bal > 0 && !NS.pub ? `<button class="btn primary lg grow" id="pay">${icon('card')} Şimdi online öde</button>` : ''}<a class="btn lg" target="_blank" rel="noopener" href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(s().bizAddress)}">${icon('map')} Yol tarifi</a></div>
-      ${bal > 0 ? `<p class="small muted mt" style="margin-bottom:0">${NS.pub ? 'Ödemeyi cihazı teslim alırken yapabilirsiniz.' : 'Online öderseniz teslimde sırada beklemezsiniz.'}</p>` : ''}</div>`;
+      <div class="tk-acts mt"><a class="btn lg" target="_blank" rel="noopener" href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(s().bizAddress)}">${icon('map')} Yol tarifi</a></div>
+      ${bal > 0 ? `<p class="small muted mt" style="margin-bottom:0">Ödemeyi cihazı teslim alırken yapabilirsiniz.</p>` : ''}</div>`;
     else if (t.status === 'teslim') call = `<div class="tk-call" style="--c:var(--accent)"><h3>${icon('shield')} Garantiniz ${wEnd > new Date() ? `${NS.dateLong(NS.iso(wEnd))} tarihine kadar geçerli` : 'sona erdi'}</h3>
       ${t.review ? `<p class="small" style="margin:0">Değerlendirmeniz için teşekkürler: ${'★'.repeat(t.review.stars)}${'☆'.repeat(5 - t.review.stars)}${t.review.text ? ` — “${esc(t.review.text)}”` : ''}</p>` : `<p class="small" style="margin:0 0 8px">Hizmetimizi nasıl buldunuz?</p><div class="tk-stars" role="radiogroup" aria-label="Puan">${[1, 2, 3, 4, 5].map((n) => `<button data-star="${n}" aria-label="${n} yıldız">★</button>`).join('')}</div><textarea class="input mt" id="rv" rows="2" placeholder="Eklemek istedikleriniz (isteğe bağlı)"></textarea><button class="btn primary mt" id="rvs">Gönder</button>`}</div>`;
-    else if (t.status === 'iade') call = `<div class="tk-call" style="--c:var(--err)"><h3>${icon('x')} Cihaz onarılamadı</h3><p class="small" style="margin:0">${esc((t.log.filter((l) => l.status === 'iade').pop() || {}).note || 'Cihazınız teslim alınmayı bekliyor.')} Arıza tespit ücreti alınmaz.</p></div>`;
+    else if (t.status === 'iade') call = `<div class="tk-call" style="--c:var(--err)"><h3>${icon('x')} Cihaz onarılamadı</h3><p class="small" style="margin:0">${esc((t.log.filter((l) => l.status === 'iade').pop() || {}).note || 'Cihazınız teslim alınmayı bekliyor.')} ${Number(s().diagFee) > 0 ? `Arıza tespit ücreti: ${money(Number(s().diagFee))}.` : 'Arıza tespit ücreti alınmaz.'}</p></div>`;
     else if (t.status === 'parca') call = `<div class="tk-call" style="--c:${st.color}"><h3>${icon('truck')} Parça tedarik ediliyor</h3><p class="small" style="margin:0">Gerekli parça siparişi verildi. Parça ulaştığında onarım aynı gün tamamlanır.</p></div>`;
 
     $('#root').innerHTML = `<div class="tk-view">${finder(t.code)}
@@ -98,16 +98,6 @@
     if ($('#no')) $('#no').onclick = async () => {
       const v = await NS.formModal({ title: 'Teklifi onaylamıyorum', fields: [{ name: 'why', label: 'Nedeniniz', type: 'select', options: ['Fiyat yüksek', 'Cihazı yenilemeyi düşünüyorum', 'Başka serviste yaptıracağım', 'Diğer'] }, { name: 'note', label: 'Not (isteğe bağlı)', type: 'textarea', full: true }] });
       if (!v) return; db.load(); const x = db.find('tickets', (y) => y.id === t.id); x.status = 'iade'; log(x, 'iade', `Müşteri teklifi reddetti: ${v.why}${v.note ? ' — ' + v.note : ''}. Cihaz iade edilecek.`); db.save(); render(t.code);
-    };
-    if ($('#pay')) $('#pay').onclick = () => {
-      const m = NS.modal({ title: `Online ödeme · ${money(bal)}`, body: `<div class="form-grid"><div class="field full"><label>Kart numarası</label><input class="input mono" id="cc" inputmode="numeric" placeholder="0000 0000 0000 0000" autocomplete="cc-number"></div><div class="field"><label>Son kullanma</label><input class="input mono" id="ce" placeholder="AA/YY" inputmode="numeric" autocomplete="cc-exp"></div><div class="field"><label>CVC</label><input class="input mono" id="cv" placeholder="•••" inputmode="numeric" maxlength="4" autocomplete="cc-csc"></div></div><p class="small faint mt">${icon('lock')} 3D Secure ile korunur. Demo: gerçek ödeme alınmaz.</p>`,
-        actions: [{ label: 'Vazgeç' }, { label: `${money(bal)} öde`, cls: 'primary', icon: 'lock', onClick: (close, b) => {
-          if ($('#cc', b).value.replace(/\D/g, '').length !== 16) return toast('Kart numarası 16 hane olmalı', 'err');
-          if (!/^\d{2}\/\d{2}$/.test($('#ce', b).value) || $('#cv', b).value.length < 3) return toast('Kart bilgilerini kontrol edin', 'err');
-          db.load(); const x = db.find('tickets', (y) => y.id === t.id); x.payments.push({ type: 'online', amount: bal, at: new Date().toISOString() }); log(x, 'hazir', `Online ödeme alındı: ${money(bal)}`); db.save(); close(); toast('Ödemeniz alındı. Teslimde sadece kodunuzu söylemeniz yeterli.', 'ok'); render(t.code);
-        } }] });
-      $('#cc', m.root).oninput = (e) => { e.target.value = e.target.value.replace(/\D/g, '').slice(0, 16).replace(/(\d{4})(?=\d)/g, '$1 '); };
-      $('#ce', m.root).oninput = (e) => { const v = e.target.value.replace(/\D/g, '').slice(0, 4); e.target.value = v.length > 2 ? v.slice(0, 2) + '/' + v.slice(2) : v; };
     };
     let stars = 0;
     $$('[data-star]').forEach((b) => { b.onclick = () => { stars = Number(b.dataset.star); $$('[data-star]').forEach((x) => x.classList.toggle('on', Number(x.dataset.star) <= stars)); }; });
