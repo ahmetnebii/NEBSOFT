@@ -77,8 +77,9 @@
     $('#cam', el).onclick = async () => {
       if (!NS.integ) return; const r = await NS.integ.call('anpr', 'son-plaka', { lane: 'giris' }, { silent: true });
       if (!r || !r.ok) return toast(r && r.disabled ? 'Plaka tanıma kamerası bağlı değil — Entegrasyonlar sayfasından açın' : 'Kameradan plaka okunamadı', 'err');
-      const plate = (r.data && r.data.plate) || (r.simulated ? NS.pick(ins.length && Math.random() < 0.5 ? ins.map((x) => x.plate) : ['34 KLM 482', '06 BRT 19', '35 NB 7710']) : '');
-      if (!plate) return; $('#pl', el).value = plate; toast(`Kamera: ${plate}`, 'ok');
+      if (r.simulated) return toast('TEST: kamera simülasyonda — gerçek plaka okunmadı, plakayı elle yazın', 'err');
+      const plate = (r.data && r.data.plate) || '';
+      if (!plate) return toast('Kameradan plaka okunamadı', 'err'); $('#pl', el).value = plate; toast(`Kamera: ${plate}`, 'ok');
       const sub = subOf(norm(plate)); if (sub && sub.plan === 'otopark' && !db.find('parks', (x) => !x.out && norm(x.plate) === norm(plate))) { db.insert('parks', { plate: norm(plate), in: new Date().toISOString(), out: null, note: 'Kamera ile otomatik (abone)' }); openBarrier('giris', plate); toast(`Abone ${plate} — bariyer açıldı`, 'ok'); app.refresh(); } else run();
     };
     $('#bar', el).onclick = () => openBarrier('manuel', $('#pl', el).value || '-');
@@ -99,11 +100,14 @@
     const total = f + sum(jobs, (j) => j.price);
     const v = await formModal({ title: `Çıkış: ${p.plate}`, fields: [{ name: 'pay', label: 'Ödeme', type: 'select', options: [{ value: 'nakit', label: 'Nakit' }, { value: 'kart', label: 'Kart' }] }, { name: 'disc', label: 'İndirim (₺)', type: 'number', value: 0 }], submitLabel: `Tahsil et ${money(total)}`, extra: `<div class="card pad mt"><div class="list-item"><span class="grow">Otopark (${dur(p)})${subOf(p.plate) ? ' · abone' : ''}</span><b>${money(f)}</b></div>${jobs.map((j) => `<div class="list-item"><span class="grow">${esc(pkg(j.pkg).name)} ${j.status !== 'hazir' ? badge('Henüz hazır değil', 'warn') : ''}</span><b>${money(j.price)}</b></div>`).join('')}<div class="list-item"><b class="grow">Toplam</b><b style="font-size:20px">${money(total)}</b></div></div>` });
     if (!v) return;
-    const d = Math.min(total, v.disc || 0);
+    const unfinished = jobs.filter((j) => j.status !== 'hazir');
+    if (unfinished.length && !(await confirm(`${unfinished.map((j) => pkg(j.pkg).name).join(', ')} henüz hazır değil. Yıkama yapılmadıysa iptal edin; yine de teslim edilip ücret alınsın mı?`, { title: 'Bitmemiş yıkama', ok: 'Evet, teslim et' }))) return;
+    const d = Math.min(total, Number(v.disc) || 0);
     if (v.pay === 'kart' && total - d > 0 && NS.integ) { const r = await NS.integ.cardPayment(total - d); if (!r.ok) return toast('Kart ödemesi alınamadı: ' + (r.error || ''), 'err'); }
     if (v.pay === 'nakit' && NS.integ) NS.integ.openDrawer();
-    p.out = new Date().toISOString(); p.fee = Math.max(0, f - d); p.pay = v.pay;
-    jobs.forEach((j) => { j.status = 'teslim'; j.done = j.done || new Date().toISOString(); j.pay = v.pay; });
+    const dp = Math.min(f, d); let dr = d - dp;
+    p.out = new Date().toISOString(); p.fee = f - dp; p.pay = v.pay; if (dp) p.disc = dp;
+    jobs.forEach((j) => { const x = Math.min(j.price, dr); if (x) { j.listPrice = j.price; j.price -= x; j.disc = x; dr -= x; } j.status = 'teslim'; j.done = j.done || new Date().toISOString(); j.pay = v.pay; });
     db.log('Çıkış', `${p.plate} · ${money(total - d)}`); db.save(); NS.beep(900, 120);
     openBarrier('cikis', p.plate);
     if (total - d > 0 && NS.integ && NS.integ.isOn('okc')) NS.integ.call('okc', 'mali-fis', { no: p.plate, total: total - d, items: [{ name: `Otopark ${dur(p)}`, qty: 1, price: Math.max(0, f - d), vat: 20 }, ...jobs.map((j) => ({ name: pkg(j.pkg).name, qty: 1, price: j.price, vat: 20 }))], payments: [{ type: v.pay, amount: total - d }] }, { silent: true }); toast(`${p.plate} çıkış yaptı · ${money(total - d)}`, 'ok'); app.refresh();
@@ -115,11 +119,16 @@
     const jobs = db.all('jobs', (j) => j.status !== 'teslim' || iso(j.done || j.in) === today());
     el.innerHTML = pageHead('Yıkama Kuyruğu', 'Kartlardaki butonlarla işi ilerletin', `<button class="btn primary" id="nj">${icon('plus')} Yıkama ekle (otoparksız)</button>`) + `
       <div class="lanes">${lanes.map(([k, l, ic, c]) => { const js = jobs.filter((j) => j.status === k).sort((a, b) => a.in.localeCompare(b.in)); return `<div class="lane"><h4 style="color:${c}">${icon(ic)} ${l} <span class="badge">${js.length}</span></h4>${js.map((j) => { const pk = pkg(j.pkg); const wait = Math.round((Date.now() - new Date(j.in)) / 60000); return `<div class="job" style="border-left:4px solid ${pk.color}"><div class="row between nw">${plateHtml(j.plate)}<b>${money(j.price)}</b></div><div class="mt"><b>${esc(pk.name)}</b></div><div class="small muted">${k === 'teslim' ? 'Teslim ' + NS.time(j.done) : `${wait} dk önce · ~${pk.min} dk sürer`}${j.worker ? ' · ' + esc(wk(j.worker).name) : ''}</div>${j.note ? `<div class="small" style="color:var(--warn)">${esc(j.note)}</div>` : ''}
-        <div class="row mt">${k === 'bekliyor' ? `<button class="btn sm primary grow" data-j="${j.id}|yikaniyor">Başla</button>` : k === 'yikaniyor' ? `<button class="btn sm ok grow" data-j="${j.id}|hazir">Bitti</button>` : k === 'hazir' ? `<button class="btn sm grow" data-j="${j.id}|teslim">Teslim et</button>` : ''}</div></div>`; }).join('') || '<div class="faint small center">Boş</div>'}</div>`; }).join('')}</div>`;
+        <div class="row mt">${['bekliyor', 'yikaniyor'].includes(k) ? `<button class="btn sm ghost" data-j="${j.id}|iptal" title="İptal">${icon('x')}</button>` : ''}${k === 'bekliyor' ? `<button class="btn sm primary grow" data-j="${j.id}|yikaniyor">Başla</button>` : k === 'yikaniyor' ? `<button class="btn sm ok grow" data-j="${j.id}|hazir">Bitti</button>` : k === 'hazir' ? `<button class="btn sm grow" data-j="${j.id}|teslim">Teslim et</button>` : ''}</div></div>`; }).join('') || '<div class="faint small center">Boş</div>'}</div>`; }).join('')}</div>`;
     on(el, 'click', '[data-j]', async (e, b) => {
       const [id, st] = b.dataset.j.split('|'); const j = db.get('jobs', id);
+      if (st === 'iptal') { if (!(await confirm(`${j.plate} · ${pkg(j.pkg).name} iptal edilsin mi?`))) return; if (/abonelik/.test(j.note || '')) { const sb = subOf(j.plate); if (sb && sb.washesLeft != null) sb.washesLeft++; } db.remove('jobs', j.id); db.log('Yıkama iptal', `${j.plate} · ${pkg(j.pkg).name}`); return app.refresh(); }
       if (st === 'yikaniyor') { const v = await formModal({ title: 'Yıkamacı', fields: [{ name: 'w', label: 'Kim yıkıyor?', type: 'select', options: db.all('workers').map((x) => ({ value: x.id, label: x.name })) }] }); if (!v) return; j.worker = v.w; j.started = new Date().toISOString(); }
-      if (st === 'teslim') { const pk = db.find('parks', (x) => !x.out && x.plate === j.plate); if (pk) return checkout(app, pk); const v = await formModal({ title: `Tahsilat ${money(j.price)}`, fields: [{ name: 'pay', label: 'Ödeme', type: 'select', options: ['nakit', 'kart'] }] }); if (!v) return; j.pay = v.pay; j.done = new Date().toISOString(); }
+      if (st === 'teslim') { const pk = db.find('parks', (x) => !x.out && x.plate === j.plate); if (pk) return checkout(app, pk); const v = await formModal({ title: `Tahsilat ${money(j.price)}`, fields: [{ name: 'pay', label: 'Ödeme', type: 'select', options: ['nakit', 'kart'] }] }); if (!v) return;
+        if (v.pay === 'kart' && j.price > 0 && NS.integ) { const r = await NS.integ.cardPayment(j.price); if (!r.ok) return toast('Kart ödemesi alınamadı: ' + (r.error || ''), 'err'); }
+        if (v.pay === 'nakit' && NS.integ) NS.integ.openDrawer();
+        if (j.price > 0 && NS.integ && NS.integ.isOn('okc')) NS.integ.call('okc', 'mali-fis', { no: j.plate, total: j.price, items: [{ name: pkg(j.pkg).name, qty: 1, price: j.price, vat: 20 }], payments: [{ type: v.pay, amount: j.price }] }, { silent: true });
+        j.pay = v.pay; j.done = new Date().toISOString(); }
       j.status = st; if (st === 'hazir') { j.done = new Date().toISOString(); NS.beep(1300, 150); }
       db.save(); app.refresh();
     });
@@ -138,14 +147,22 @@
       <div class="grid g2 mb"><div class="card"><div class="card-h"><h3>14 günlük ciro</h3></div><div class="card-b">${chart.bars(ser.labels.map((l, i) => ({ label: l, value: ser.values[i] })), { format: money })}</div></div><div class="card"><div class="card-h"><h3>Saatlik ortalama giriş</h3></div><div class="card-b">${chart.bars(hours, { format: num })}</div></div></div>
       <div class="card"><div class="card-h"><h3>Hizmet dağılımı (30 gün)</h3></div><div class="card-b">${chart.donut(db.all('packages').map((x) => ({ label: x.name, value: db.all('jobs', (j) => j.pkg === x.id && j.in > addDays(new Date(), -30).toISOString()).length, color: x.color })).filter((x) => x.value), { size: 140 })}</div></div>`;
   }
+  // Abonelik tahsilatı: kasaya "abonelik" satırı olarak düşer
+  async function subPay(x, what) {
+    const v = await formModal({ title: `${what} — ${x.plate}`, fields: [{ name: 'amount', label: 'Tahsil edilen (₺)', type: 'number', step: '0.01' }, { name: 'pay', label: 'Ödeme', type: 'select', options: [{ value: 'nakit', label: 'Nakit' }, { value: 'kart', label: 'Kart' }, { value: 'havale', label: 'Havale' }] }], values: { amount: x.price, pay: 'nakit' }, submitLabel: 'Tahsil et' });
+    if (!v) return false; const amt = Number(v.amount) || 0;
+    if (v.pay === 'kart' && amt > 0 && NS.integ) { const r = await NS.integ.cardPayment(amt); if (!r.ok) { toast('Kart ödemesi alınamadı: ' + (r.error || ''), 'err'); return false; } }
+    if (amt > 0) db.insert('subPays', { sub: x.id, plate: x.plate, name: x.name, amount: amt, pay: v.pay, what, at: new Date().toISOString() }); db.save(); return true;
+  }
   function subsPage(el, p, app) {
     NS.crud(el, app, {
       col: 'subs', title: 'Abonelikler', sub: 'Aylık otopark ve yıkama paketi aboneleri', single: 'Abone', addLabel: 'Yeni abone', emptyIcon: 'key',
       fields: [{ name: 'plate', label: 'Plaka', required: true }, { name: 'name', label: 'Ad soyad', required: true }, { name: 'phone', label: 'Telefon' }, { name: 'plan', label: 'Plan', type: 'select', options: [{ value: 'otopark', label: 'Aylık otopark' }, { value: 'yikama4', label: 'Aylık 4 yıkama' }] }, { name: 'start', label: 'Başlangıç', type: 'date' }, { name: 'end', label: 'Bitiş', type: 'date' }, { name: 'price', label: 'Ücret', type: 'number' }, { name: 'washesLeft', label: 'Kalan yıkama', type: 'number' }],
       defaults: () => ({ start: today(), end: iso(addDays(new Date(), 30)), plan: 'otopark', price: 3500, washesLeft: 4 }), beforeSave: (v) => { v.plate = norm(v.plate); },
+      onSave: async (v, rec) => { if (rec || !(Number(v.price) > 0)) return; const x = db.all('subs', (s) => s.plate === v.plate).pop() || v; await subPay(x, 'Yeni abonelik'); },
       filters: [{ value: 'all', label: 'Tümü' }, { value: 'a', label: 'Aktif', test: (x) => x.end >= today() }, { value: 'b', label: 'Süresi biten', test: (x) => x.end < today() }],
       columns: [{ key: 'plate', label: 'Plaka', render: (x) => plateHtml(x.plate) }, { key: 'name', label: 'Abone', render: (x) => `<b>${esc(x.name)}</b><div class="small faint">${esc(x.phone || '')}</div>` }, { key: 'plan', label: 'Plan', render: (x) => (x.plan === 'otopark' ? badge('Aylık otopark', 'info') : badge(`Yıkama (${x.washesLeft} hak)`, 'acc')) }, { key: 'end', label: 'Bitiş', render: (x) => (x.end < today() ? badge('Bitti ' + NS.date(x.end), 'err') : NS.date(x.end)) }, { key: 'price', label: 'Ücret', cls: 'right', render: (x) => money(x.price) }],
-      extraActions: [{ icon: 'refresh', act: 'renew', title: '1 ay uzat' }], onAction: (a, x, draw) => { x.end = iso(addDays(x.end > today() ? x.end : today(), 30)); if (x.plan === 'yikama4') x.washesLeft = 4; db.save(); toast('Abonelik uzatıldı', 'ok'); draw(); },
+      extraActions: [{ icon: 'refresh', act: 'renew', title: '1 ay uzat + tahsil et' }], onAction: async (a, x, draw) => { if (!(await subPay(x, '1 ay uzatma'))) return; x.end = iso(addDays(x.end > today() ? x.end : today(), 30)); if (x.plan === 'yikama4') x.washesLeft = 4; db.save(); toast('Abonelik uzatıldı', 'ok'); draw(); },
     });
   }
   function historyPage(el, p, app) {
@@ -164,12 +181,13 @@
     let day = today();
     const draw = () => {
       const outs = db.all('parks', (x) => x.out && iso(x.out) === day), jobs = db.all('jobs', (j) => j.status === 'teslim' && iso(j.done || j.in) === day);
-      const rows = [...outs.map((x) => ({ id: x.id, t: x.out, d: `Otopark ${x.plate} (${dur(x)})`, pay: x.pay, v: x.fee })), ...jobs.map((j) => ({ id: j.id, t: j.done || j.in, d: `${pkg(j.pkg).name} ${j.plate}`, pay: j.pay, v: j.price }))].sort((a, b) => b.t.localeCompare(a.t));
+      const sp = db.all('subPays', (x) => iso(x.at) === day);
+      const rows = [...outs.map((x) => ({ id: x.id, t: x.out, d: `Otopark ${x.plate} (${dur(x)})${x.disc ? ' · indirim ' + money(x.disc) : ''}`, pay: x.pay, v: x.fee })), ...jobs.map((j) => ({ id: j.id, t: j.done || j.in, d: `${pkg(j.pkg).name} ${j.plate}${j.disc ? ' · indirim ' + money(j.disc) : ''}`, pay: j.pay, v: j.price })), ...sp.map((x) => ({ id: x.id, t: x.at, d: `Abonelik ${x.plate} · ${x.what}`, pay: x.pay, v: x.amount }))].sort((a, b) => b.t.localeCompare(a.t));
       el.innerHTML = pageHead('Kasa & Gün Sonu', NS.dateLong(day), `<input type="date" class="input" id="dd" value="${day}" style="max-width:170px"><button class="btn" id="z">${icon('print')} Gün sonu raporu</button>`) + `
         <div class="grid g4 mb">${kpi('Toplam', money(sum(rows, (r) => r.v)), 'wallet', 'ok')}${kpi('Nakit', money(sum(rows.filter((r) => r.pay === 'nakit'), (r) => r.v)), 'cash')}${kpi('Kart', money(sum(rows.filter((r) => r.pay === 'kart'), (r) => r.v)), 'card', 'info')}${kpi('İşlem', rows.length, 'receipt', 'warn')}</div>
         <div class="card">${table({ rows, columns: [{ label: 'Saat', render: (r) => NS.time(r.t) }, { label: 'Açıklama', key: 'd' }, { label: 'Ödeme', render: (r) => badge(r.pay || '-', r.pay === 'kart' ? 'info' : 'ok') }, { label: 'Tutar', cls: 'right', render: (r) => `<b>${money(r.v)}</b>` }] })}</div>`;
       $('#dd', el).onchange = (e) => { day = e.target.value; draw(); };
-      $('#z', el).onclick = () => (NS.integ ? NS.integ.printReceipt : NS.printHtml)(`<div class="c big">${esc(S().bizName)}</div><div class="c">GÜN SONU · ${NS.date(day)}</div><hr><div class="r"><span>Otopark (${outs.length})</span><span>${money(sum(outs, (x) => x.fee))}</span></div><div class="r"><span>Yıkama (${jobs.length})</span><span>${money(sum(jobs, (j) => j.price))}</span></div><hr><div class="r"><span>Nakit</span><span>${money(sum(rows.filter((r) => r.pay === 'nakit'), (r) => r.v))}</span></div><div class="r"><span>Kart</span><span>${money(sum(rows.filter((r) => r.pay === 'kart'), (r) => r.v))}</span></div><div class="r big"><span>TOPLAM</span><span>${money(sum(rows, (r) => r.v))}</span></div>`, { title: 'Gün sonu' });
+      $('#z', el).onclick = () => (NS.integ ? NS.integ.printReceipt : NS.printHtml)(`<div class="c big">${esc(S().bizName)}</div><div class="c">GÜN SONU · ${NS.date(day)}</div><hr><div class="r"><span>Otopark (${outs.length})</span><span>${money(sum(outs, (x) => x.fee))}</span></div><div class="r"><span>Yıkama (${jobs.length})</span><span>${money(sum(jobs, (j) => j.price))}</span></div><div class="r"><span>Abonelik (${sp.length})</span><span>${money(sum(sp, (x) => x.amount))}</span></div><div class="r"><span>Havale</span><span>${money(sum(rows.filter((r) => r.pay === 'havale'), (r) => r.v))}</span></div><hr><div class="r"><span>Nakit</span><span>${money(sum(rows.filter((r) => r.pay === 'nakit'), (r) => r.v))}</span></div><div class="r"><span>Kart</span><span>${money(sum(rows.filter((r) => r.pay === 'kart'), (r) => r.v))}</span></div><div class="r big"><span>TOPLAM</span><span>${money(sum(rows, (r) => r.v))}</span></div>`, { title: 'Gün sonu' });
     };
     draw();
   }

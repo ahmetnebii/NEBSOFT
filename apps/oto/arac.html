@@ -55,8 +55,8 @@
     if (!pl || db.lookup({ plate: pl }) === null) db.load();
     if (!pl) {
       let ex = ''; const j = db.all('jobs', (x) => ['bekliyor', 'yikaniyor', 'hazir'].includes(x.status))[0]; if (j) ex = j.plate;
-      $('#root').innerHTML = `<div class="tk-view"><div class="tk-intro"><h1>Aracın hazır mı?</h1><p>Plakanı yaz; yıkamadaki sıranı ve tahmini hazır olma saatini gör, ${NS.pub ? 'otopark ücretini anlık gör.' : 'otopark ücretini çıkmadan öde, sırada beklemeden geç.'}</p></div>${finder('')}${ex && !NS.pub ? `<p class="small muted">Demo için örnek: <a href="#" data-ex="${esc(ex)}">${esc(ex)}</a></p>` : ''}
-        <div class="tk-how"><div>${icon('drop')}<b>Yıkama sırası</b>Önünde kaç araç olduğunu ve tahmini süreyi gör.</div><div>${icon('card')}<b>${NS.pub ? 'Otopark ücreti' : 'Otoparkı önceden öde'}</b>${NS.pub ? 'Şu an çıkarsan ödeyeceğin tutarı anlık gör.' : 'Ödedikten sonra 15 dakika içinde bariyerden ücretsiz çık.'}</div><div>${icon('award')}<b>Abonelik</b>Kalan yıkama hakkın ve bitiş tarihin.</div></div></div>`;
+      $('#root').innerHTML = `<div class="tk-view"><div class="tk-intro"><h1>Aracın hazır mı?</h1><p>Plakanı yaz; yıkamadaki sıranı ve tahmini hazır olma saatini gör, otopark ücretini anlık gör.</p></div>${finder('')}${ex && !NS.pub ? `<p class="small muted">Demo için örnek: <a href="#" data-ex="${esc(ex)}">${esc(ex)}</a></p>` : ''}
+        <div class="tk-how"><div>${icon('drop')}<b>Yıkama sırası</b>Önünde kaç araç olduğunu ve tahmini süreyi gör.</div><div>${icon('card')}<b>Otopark ücreti</b>Şu an çıkarsan ödeyeceğin tutarı anlık gör.</div><div>${icon('award')}<b>Abonelik</b>Kalan yıkama hakkın ve bitiş tarihin.</div></div></div>`;
       return bind();
     }
     try { localStorage.setItem(RK, pl); } catch (e) { /* yok */ }
@@ -82,21 +82,12 @@
     }
     const parkHtml = park ? `<section class="tk-panel"><h3>${icon('car')} Otopark</h3><div class="b"><div class="row between"><span class="small muted">Giriş ${NS.time(park.in)} · <span id="du">${durTxt(Date.now() - new Date(park.in))}</span></span>${sub && sub.plan === 'otopark' ? NS.badge('Abone · ücretsiz', 'ok') : ''}</div>
         <div class="big mt" id="fe">${money(fee(park))}</div><div class="small muted">${park.paidAt ? (Date.now() - new Date(park.paidAt) <= 15 * 60000 ? `Ödendi · ${NS.time(new Date(new Date(park.paidAt).getTime() + 15 * 60000).toISOString())}'e kadar ücretsiz çıkış` : 'Ödeme sonrası süre aşıldı, fark çıkışta alınır') : 'Şu an çıkarsan ödenecek tutar'}</div>
-        ${fee(park) > 0 ? (NS.pub ? '<p class="small mt" style="margin-bottom:0">Ücreti çıkışta gişede ödeyebilirsin.</p>' : `<button class="btn primary lg block mt" id="pp">${icon('card')} Şimdi öde, beklemeden çık</button>`) : ''}
+        ${fee(park) > 0 ? '<p class="small mt" style="margin-bottom:0">Ücreti çıkışta gişede ödeyebilirsin.</p>' : ''}
         <p class="small muted" style="margin:10px 0 0">Tarife: ilk saat ${money(S().firstHour)}, sonraki her saat ${money(S().nextHour)}, günlük en fazla ${money(S().dailyMax)}. İlk ${S().graceMin} dk ücretsiz.</p></div></section>` : '';
     const subHtml = sub ? `<section class="tk-panel"><h3>${icon('award')} Aboneliğin</h3><div class="b"><div class="row between"><b>${sub.plan === 'otopark' ? 'Aylık otopark' : 'Aylık 4 yıkama'}</b><span class="small muted">bitiş ${NS.date(sub.end)}</span></div>${sub.washesLeft !== null && sub.washesLeft !== undefined ? `<div class="small mt">Kalan yıkama hakkı: <b>${sub.washesLeft}</b></div>` : ''}</div></section>` : '';
     $('#root').innerHTML = `<div class="tk-view">${finder(pl)}<p style="margin:0 0 16px"><span class="plate"><span>${esc(pl)}</span></span></p>${wash}${parkHtml}${subHtml}<p class="tk-help">${icon('phone')} ${esc(S().bizPhone || '')} · ${esc(S().bizAddress || '')}</p></div>`;
     bind();
     if (park) timer = setInterval(() => { if (!$('#fe')) return clearInterval(timer); db.load(); const p2 = db.get('parks', park.id); if (!p2 || p2.out) return render(pl); $('#fe').textContent = money(fee(p2)); $('#du').textContent = durTxt(Date.now() - new Date(p2.in)); }, 30000);
-    if ($('#pp')) $('#pp').onclick = () => {
-      const amt = fee(park);
-      const md = NS.modal({ title: `Otopark ödemesi · ${money(amt)}`, body: `<p class="small muted">Ödemeden sonra 15 dakika içinde bariyerden ücretsiz çıkabilirsin.</p><div class="form-grid"><div class="field full"><label>Kart numarası</label><input class="input mono" id="cc" inputmode="numeric" placeholder="0000 0000 0000 0000" autocomplete="cc-number"></div><div class="field"><label>Son kullanma</label><input class="input mono" id="ce" placeholder="AA/YY" autocomplete="cc-exp"></div><div class="field"><label>CVC</label><input class="input mono" id="cv" maxlength="4" placeholder="•••" autocomplete="cc-csc"></div></div><p class="small faint mt">Demo: gerçek ödeme alınmaz.</p>`,
-        actions: [{ label: 'Vazgeç' }, { label: 'Öde', cls: 'primary', icon: 'lock', onClick: (close, b) => {
-          if ($('#cc', b).value.replace(/\D/g, '').length !== 16 || $('#cv', b).value.length < 3) return toast('Kart bilgilerini kontrol edin', 'err');
-          db.load(); const p2 = db.get('parks', park.id); p2.paidAt = new Date().toISOString(); p2.paidAmount = (p2.paidAmount || 0) + amt; p2.prepay = 'online kart'; db.save(); close(); toast('Ödendi. 15 dakika içinde çıkışın ücretsiz.', 'ok'); render(pl);
-        } }] });
-      $('#cc', md.root).oninput = (e) => { e.target.value = e.target.value.replace(/\D/g, '').slice(0, 16).replace(/(\d{4})(?=\d)/g, '$1 '); };
-    };
   }
   const go = (k) => { const n = norm(k); history.replaceState(null, '', n ? '?plaka=' + encodeURIComponent(n) : location.pathname); render(n); };
   const bind = () => { $('#go').onclick = () => go($('#k').value); $('#k').onkeydown = (e) => { if (e.key === 'Enter') go($('#k').value); }; };
