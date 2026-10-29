@@ -129,7 +129,7 @@
       const v = await formModal({ title: m ? m.name : 'Yeni model', size: 'wide', fields: [{ name: 'name', label: 'Model adı', required: true, full: true }, { name: 'code', label: 'Model kodu', required: true }, { name: 'cat', label: 'Kategori', required: true }, { name: 'sizeType', label: 'Beden tipi', type: 'select', options: [{ value: 'harf', label: 'XS–XXL' }, { value: 'beden', label: '34–44' }, { value: 'numara', label: 'Ayakkabı 36–41' }, { value: 'tek', label: 'Tek beden' }] }, { name: 'season', label: 'Sezon', type: 'select', options: B.SEASONS }, { name: 'colorsStr', label: 'Renkler (virgülle)', full: true, placeholder: 'Siyah, Ekru, Bej' }, { name: 'cost', label: 'Alış (₺)', type: 'number', step: '0.01' }, { name: 'price', label: 'Satış (₺)', type: 'number', step: '0.01' }, { name: 'disc', label: 'İndirim %', type: 'number' }, { name: 'online', label: 'Online / pazaryerinde sat', type: 'checkbox' }], values: m ? { ...m, colorsStr: m.colors.map((c) => c.name).join(', ') } : { sizeType: 'harf', season: B.SEASONS[0], online: true, code: 'LB' + (2600 + db.all('models').length) } });
       if (!v) return;
       const names = v.colorsStr.split(',').map((x) => x.trim()).filter(Boolean); delete v.colorsStr;
-      const rec = m || db.insert('models', { ...v, colors: [], variants: [] }); Object.assign(rec, v);
+      const rec = m || db.insert('models', { ...v, colors: [], variants: [] }); const oldUnit = m ? unit(m) : null; Object.assign(rec, v); if (m && unit(rec) !== oldUnit) rec.priceAt = new Date().toISOString();
       const PAL = ['#111827', '#f1ead9', '#d6c3a5', '#6b705c', '#1e3a5f', '#7f1d1d', '#e8b4b8', '#5b8bd0'];
       rec.colors = names.map((n, i) => rec.colors.find((c) => c.name === n) || { name: n, hex: PAL[i % PAL.length] });
       // Yeni beden/renk kombinasyonları stok 0 ile eklenir, mevcutlar korunur
@@ -138,18 +138,98 @@
       rec.variants = rec.variants.filter((x) => names.includes(x.color) && B.SIZES[rec.sizeType].includes(x.size));
       db.save(); syncOnline([rec]); toast('Kaydedildi', 'ok'); draw(); if (!m) mx(rec);
     };
-    const mx = (m) => modal({ title: `${m.name} — stok`, size: 'wide', body: matrix(m, true) + '<p class="small muted mt">Sayım sonucunu girip kaydedin; değişiklik online kanallara da gönderilir.</p>', actions: [{ label: 'Etiket bas', icon: 'tag', onClick: () => labels(m.variants.filter((v) => v.stock > 0).flatMap((v) => Array(v.stock).fill({ m, v }))) }, { label: 'Kaydet', cls: 'primary', onClick: (c, b) => { $$('[data-bc]', b).forEach((i) => { const v = m.variants.find((x) => x.barcode === i.dataset.bc); v.stock = Math.max(0, Number(i.value) || 0); }); db.log('Stok sayımı', m.code); db.save(); syncOnline([m]); c(); draw(); toast('Stok güncellendi', 'ok'); } }] });
+    const mx = (m) => modal({ title: `${m.name} — stok`, size: 'wide', body: matrix(m, true) + '<p class="small muted mt">Sayım sonucunu girip kaydedin; değişiklik online kanallara da gönderilir.</p>', actions: [{ label: 'Etiket bas', icon: 'tag', onClick: (c) => { c(); goLabels(m.variants.filter((v) => v.stock > 0).map((v) => ({ v, n: v.stock }))); } }, { label: 'Kaydet', cls: 'primary', onClick: (c, b) => { $$('[data-bc]', b).forEach((i) => { const v = m.variants.find((x) => x.barcode === i.dataset.bc); v.stock = Math.max(0, Number(i.value) || 0); }); db.log('Stok sayımı', m.code); db.save(); syncOnline([m]); c(); draw(); toast('Stok güncellendi', 'ok'); } }] });
     $('#q', el).oninput = (e) => { q = e.target.value; draw(); };
     on(el, 'click', '[data-f]', (e, b) => { f = b.dataset.f; $$('[data-f]', el).forEach((x) => x.classList.toggle('active', x === b)); draw(); });
     on(el, 'click', '[data-act=ed]', (e, b) => edit(model(b.dataset.id)));
     on(el, 'click', '[data-act=mx]', (e, b) => mx(model(b.dataset.id)));
     $('#add', el).onclick = () => edit(null);
-    $('#lbl', el).onclick = () => labels(rows().flatMap((m) => m.variants.filter((v) => v.stock > 0).map((v) => ({ m, v }))));
+    $('#lbl', el).onclick = () => { const it = rows().flatMap((m) => m.variants.filter((v) => v.stock > 0).map((v) => ({ v, n: 1 }))); if (!it.length) return toast('Listede stoklu ürün yok', 'err'); goLabels(it); };
     draw();
   }
-  function labels(list) {
-    if (!list.length) return toast('Basılacak etiket yok', 'err');
-    NS.printHtml(`<div style="display:flex;flex-wrap:wrap;gap:6px">${list.slice(0, 400).map(({ m, v }) => `<div style="width:190px;border:1px dashed #999;padding:6px;font-family:Arial;font-size:11px"><b>${esc(S().bizName)}</b><div>${esc(m.name)}</div><div>${esc(v.color)} · <b style="font-size:14px">${esc(v.size)}</b></div>${NS.barcodeSvg(v.barcode, { height: 34 })}<div style="font-size:15px"><b>${money(unit(m))}</b>${m.disc ? ` <s>${money(m.price)}</s>` : ''}</div></div>`).join('')}</div>`, { title: 'Etiketler' });
+  // ---------- Etiket: çekirdek tasarımcı (NS.labels) + butik alanları (renk, beden, indirimli fiyat, logo) ----------
+  // Çekirdek alanlar butik anlamıyla adlandırılır: unit = beden, cat = renk (bağlam), biz = mağaza adı. Logo, zemini resim olan kutu öğesidir.
+  if (NS.labels) { const F = NS.labels.FIELDS; Object.assign(F, { name: 'Model adı', price: 'Satış fiyatı (indirimli)', old: 'Eski fiyat (yalnız indirimde)', unit: 'Beden', cat: 'Renk', biz: 'Mağaza adı', code: 'Barkod numarası' }); delete F.unitPrice; delete F.shelf; }
+  const LE = (f, x, y, w, h, o = {}) => ({ id: NS.uid(), f, x, y, w, h, size: 8, bold: false, align: 'left', color: '#000000', ...o });
+  const LB_PRESETS = () => [
+    { id: 'askili', name: 'Askı etiketi 40×60', w: 40, h: 60, els: [LE('box', 10, 2, 20, 8, { logo: true }), LE('biz', 2, 10.5, 36, 4, { size: 7, align: 'center' }), LE('name', 2, 15, 36, 5, { size: 8, bold: true, align: 'center' }), LE('cat', 2, 20.5, 36, 4, { size: 7.5, align: 'center' }), LE('unit', 2, 25, 36, 10, { size: 24, bold: true, align: 'center' }), LE('barcode', 3, 35.5, 34, 13), LE('old', 2, 50.5, 16, 5, { size: 8 }), LE('price', 14, 49.5, 24, 9, { size: 15, bold: true, align: 'right' })] },
+    { id: 'barkod', name: 'Barkod etiketi 50×30', w: 50, h: 30, els: [LE('name', 2, 1.5, 46, 5, { size: 8, bold: true }), LE('cat', 2, 6.5, 30, 4.5, { size: 7 }), LE('unit', 32, 6, 16, 5.5, { size: 13, bold: true, align: 'right' }), LE('barcode', 2, 11.5, 46, 12), LE('old', 2, 24.3, 20, 5, { size: 8 }), LE('price', 20, 24, 28, 5.5, { size: 12, bold: true, align: 'right' })] },
+    { id: 'indirim', name: 'İndirim etiketi 60×40', w: 60, h: 40, els: [LE('box', 0, 0, 60, 8, { bg: '#db2777' }), LE('text', 3, 1, 54, 6, { size: 11, bold: true, color: '#ffffff', text: 'İNDİRİM' }), LE('name', 3, 9.5, 54, 5, { size: 9, bold: true }), LE('cat', 3, 15, 36, 4.5, { size: 8 }), LE('unit', 40, 14, 17, 6, { size: 13, bold: true, align: 'right' }), LE('old', 3, 21, 30, 6, { size: 11 }), LE('price', 3, 26, 54, 12, { size: 26, bold: true, align: 'right', color: '#db2777' })] },
+    { id: 'mini', name: 'Mini 30×20', w: 30, h: 20, els: [LE('unit', 1.5, 1, 12, 5.5, { size: 11, bold: true }), LE('cat', 13, 1.5, 15.5, 4.5, { size: 6, align: 'right' }), LE('barcode', 2, 6.5, 26, 7), LE('price', 1.5, 14, 27, 5, { size: 9, bold: true, align: 'center' })] },
+  ];
+  const lbTpls = () => { if (!Array.isArray(db.data.labelTpls) || !db.data.labelTpls.length) { db.data.labelTpls = LB_PRESETS(); db.save(); } return NS.labels.tpls(db); };
+  const lbOpt = () => S().labelOpt || { tpl: '', roll: false };
+  const lbProd = (m, v) => ({ name: m.name, price: unit(m), oldPrice: m.disc ? m.price : 0, barcode: v.barcode, unit: v.size });
+  const lbCtx = (v) => ({ biz: S().bizName, cat: v.color });
+  const logoBg = () => (S().logo ? `url('${S().logo}') center/contain no-repeat` : 'transparent');
+  // İndirimsiz üründe "eski fiyat" basılmaz (çekirdek, eski fiyat yoksa fiyat×1,2 uydurur — gerçek olmayan indirim gösterilmemeli)
+  const lbFor = (t, m) => ({ ...t, els: t.els.filter((e) => e.f !== 'old' || m.disc > 0).map((e) => (e.logo ? { ...e, bg: logoBg() } : e)) });
+  const lbTpl = (id) => lbTpls().find((x) => x.id === id) || lbTpls()[0];
+  const lbSample = () => { const m = db.all('models').find((x) => x.disc > 0) || db.all('models')[0]; return m && m.variants[0] ? { m, v: m.variants[0] } : null; };
+  const lbPreview = (tplId, it) => { const t = lbTpl(tplId); it = it || lbSample(); const k = Math.min(2.2, 300 / (t.w * 3.78), 340 / (t.h * 3.78)); const p = it ? lbProd(it.m, it.v) : { name: 'Örnek model', price: 999, barcode: '8695500000001', unit: 'M' };
+    return `<div class="lbp" style="width:${t.w * 3.78 * k}px;height:${t.h * 3.78 * k}px"><div style="transform:scale(${k});transform-origin:0 0">${NS.labels.labelHtml(it ? lbFor(t, it.m) : t, p, it ? lbCtx(it.v) : { biz: S().bizName, cat: 'Siyah' })}</div></div><div class="small muted center mt">${esc(t.name)} · ${t.w}×${t.h} mm</div>`; };
+  const lbOptions = (sel) => lbTpls().map((t) => `<option value="${t.id}" ${t.id === sel ? 'selected' : ''}>${esc(t.name)}</option>`).join('');
+  // items: [{ m, v, n }] — A4'e dizilir ya da etiket yazıcısında (sürücüyle) her etiket bir sayfa
+  function lbPrint(items, tplId, roll) {
+    const t = lbTpl(tplId); const all = items.flatMap(({ m, v, n }) => Array.from({ length: Math.max(1, n | 0) }, () => NS.labels.labelHtml(lbFor(t, m), lbProd(m, v), lbCtx(v))));
+    if (!all.length) return toast('Basılacak etiket yok', 'err');
+    const body = roll ? all.map((h) => `<div class="pg">${h}</div>`).join('') : `<div class="sheet">${all.join('')}</div>`;
+    NS.printHtml(`<style>${NS.labels.CSS}@page{${roll ? `size:${t.w}mm ${t.h}mm;margin:0` : 'size:A4;margin:8mm'}}body{margin:0;padding:0}.pg{page-break-after:always}.sheet{display:flex;flex-wrap:wrap;gap:2mm}.sheet .lb{outline:.2mm dashed #bbb}</style>${body}`, { title: `${t.name} · ${all.length} etiket` });
+    const now = new Date().toISOString(); new Set(items.map((x) => x.m)).forEach((m) => { m.lblAt = now; }); db.save();
+  }
+  function lbDesigner(onDone) {
+    const it = lbSample(); const sample = it ? lbProd(it.m, it.v) : { name: 'Örnek model', price: 999, oldPrice: 1299, barcode: '8695500000001', unit: 'M' };
+    lbTpls().forEach((t) => t.els.forEach((e) => { if (e.logo) e.bg = logoBg(); }));
+    modal({ title: 'Etiket şablonları', size: 'xl', body: '<p class="small muted" style="margin:0 0 10px">Renk ve mağaza adı tasarım alanında boş görünür; etiket sayfasındaki önizlemede ve baskıda dolar. Logo, “Etiket Basımı” sayfasından yüklenir ve şablona eklenir.</p><div id="ldx"></div>', onOpen: (b) => NS.labels.designer($('#ldx', b), db, sample, (id) => { S().labelOpt = { ...lbOpt(), tpl: id }; db.save(); }), onClose: () => onDone && onDone() });
+  }
+  let lbPending = null; // Başka sayfadan gelen seçim: Map(barkod → adet)
+  const goLabels = (items) => { lbPending = new Map(items.map(({ v, n }) => [v.barcode, n])); location.hash = '#/etiket'; };
+  function labelsPage(el) {
+    const sel = lbPending || new Map(); lbPending = null; let q = '', f = sel.size ? 'sec' : ''; const o = lbOpt(); let tpl = lbTpls().some((t) => t.id === o.tpl) ? o.tpl : lbTpls()[0].id, roll = !!o.roll;
+    const changed = (m) => m.priceAt && (!m.lblAt || m.priceAt > m.lblAt);
+    const redraw = () => { lbPending = sel; labelsPage(el); };
+    el.innerHTML = pageHead('Etiket Basımı', 'Askı, barkod ve indirim etiketlerini kendi tasarımınızla tek tek veya toplu basın', `<button class="btn" id="cam">${icon('camera')} Kamerayla okut</button><button class="btn" id="ed">${icon('edit')} Şablonları düzenle</button>`) +
+      `<div class="lbw"><div class="card"><div class="card-h">${NS.searchBox('q', 'Model, kod, renk veya barkod...')}<div class="seg">${[['', 'Tümü'], ['fd', 'Fiyatı değişen'], ['ind', 'İndirimde'], ['sec', 'Seçilenler']].map(([v, l]) => `<button data-f="${v}" class="${v === f ? 'active' : ''}">${l}</button>`).join('')}</div></div>
+        <div class="pad" style="padding-top:0"><input class="input" id="gun" autocomplete="off" placeholder="Barkod okuyucuyla okutun — her okutma 1 etiket ekler"></div><div id="tbl"></div></div>
+        <aside class="card pad lbs"><h3>Önizleme</h3><div id="pv"></div>
+          <div class="field mt"><label>Şablon</label><select class="input" id="tp">${lbOptions(tpl)}</select></div>
+          <div class="field"><label>Çıktı</label><div class="seg" id="ro"><button data-r="0" class="${roll ? '' : 'active'}">A4 sayfa</button><button data-r="1" class="${roll ? 'active' : ''}">Etiket yazıcısı</button></div><p class="small muted" style="margin:6px 0 0">Etiket yazıcısında her etiket ayrı sayfa olarak, şablon ölçüsünde basılır. Yazdırma penceresinde etiket yazıcınızı seçin.</p></div>
+          <div class="field"><label>Logo</label><div class="row nw" style="gap:6px;flex-wrap:wrap"><label class="btn sm">${icon('upload')} ${S().logo ? 'Değiştir' : 'Yükle'}<input type="file" accept="image/*" id="lg" hidden></label>${S().logo ? `<button class="btn sm" id="lga">Şablona ekle</button><button class="btn sm ghost" id="lgx">Kaldır</button>` : ''}</div></div>
+          <div class="lbs-sum" id="sum"></div><button class="btn primary block" id="pr">${icon('print')} Seçilenleri yazdır</button><button class="btn ghost block" id="none">Seçimi temizle</button></aside></div>`;
+    const V = () => { const r = []; db.all('models').forEach((m) => m.variants.forEach((v) => { if (sel.has(v.barcode)) r.push({ m, v, n: sel.get(v.barcode) }); })); return r; };
+    const side = () => { const it = V(); $('#pv', el).innerHTML = lbPreview(tpl, it[0]); const n = sum(it, (x) => x.n); const nd = new Set(it.filter((x) => !(x.m.disc > 0)).map((x) => x.m)).size;
+      $('#sum', el).innerHTML = it.length ? `<b>${new Set(it.map((x) => x.m)).size}</b> model · <b>${it.length}</b> beden/renk · <b>${n}</b> etiket${nd && lbTpl(tpl).els.some((e) => e.f === 'old') ? `<div class="small mt">${nd} modelde indirim yok: eski fiyat basılmaz.</div>` : ''}` : 'Listeden model seçin, barkod okutun veya “Stok kadar” ile toplu ekleyin.'; };
+    const rows = () => db.all('models', (m) => (!q || NS.match(q, m.name, m.code, m.cat, ...m.colors.map((c) => c.name)) || m.variants.some((v) => v.barcode === q.trim())) && (!f || (f === 'fd' ? changed(m) : f === 'ind' ? m.disc > 0 : m.variants.some((v) => sel.has(v.barcode)))));
+    const draw = () => {
+      const all = rows(); const rs = all.slice(0, 150);
+      $('#tbl', el).innerHTML = table({ rows: rs, emptyIcon: 'tag', empty: f === 'fd' ? 'Son etiket basımından beri fiyatı değişen model yok' : f === 'sec' ? 'Henüz etiket seçilmedi' : 'Model bulunamadı', columns: [
+        { label: 'Model', render: (m) => `<b>${esc(m.name)}</b><div class="small faint"><span class="mono">${esc(m.code)}</span> · ${m.disc ? `<s>${money(m.price)}</s> <b>${money(unit(m))}</b>` : money(m.price)} · stok ${mStock(m)}${changed(m) ? ' · ' + badge('Fiyat değişti', 'warn') : ''}</div>` },
+        { label: 'Etiket', cls: 'right', render: (m) => { const n = sum(m.variants, (v) => sel.get(v.barcode) || 0); return `<div class="row" style="gap:4px;justify-content:flex-end;flex-wrap:wrap">${n ? `<b style="min-width:28px">${n}</b>` : ''}<button class="btn sm" data-act="pick" data-id="${m.id}" title="Beden/renk ve adet seç">${icon('grid')}</button><button class="btn sm" data-act="stk" data-id="${m.id}" title="Her beden/renkten stok adedi kadar">Stok kadar</button><button class="btn sm" data-act="one" data-id="${m.id}" title="Her beden/renkten 1 etiket">+1</button>${n ? `<button class="btn sm ghost" data-act="clr" data-id="${m.id}" title="Bu modeli çıkar">${icon('x')}</button>` : ''}</div>`; } },
+      ] }) + (all.length > rs.length ? `<p class="small muted center">${all.length - rs.length} model daha var — aramayı daraltın.</p>` : '');
+      side();
+    };
+    const pick = (m) => modal({ title: `${m.name} — etiket adedi`, size: 'wide', body: `<div class="tbl-wrap"><table class="tbl"><thead><tr><th>Renk</th>${B.SIZES[m.sizeType].map((s) => `<th class="center">${esc(s)}</th>`).join('')}</tr></thead><tbody>${m.colors.map((c) => `<tr><td>${sw(c.hex)} ${esc(c.name)}</td>${B.SIZES[m.sizeType].map((s) => { const v = m.variants.find((x) => x.size === s && x.color === c.name); return `<td class="center">${v ? `<input class="input" type="number" min="0" data-lb="${v.barcode}" value="${sel.get(v.barcode) || 0}" title="Stok: ${v.stock}" style="width:60px;height:32px;text-align:right">` : ''}</td>`; }).join('')}</tr>`).join('')}</tbody></table></div><p class="small muted">Her hücre o beden/renk için basılacak etiket adedidir.</p>`,
+      actions: [{ label: 'Stok kadar', onClick: (c, b) => { $$('[data-lb]', b).forEach((i) => { i.value = (m.variants.find((v) => v.barcode === i.dataset.lb) || {}).stock || 0; }); return false; } }, { label: 'Tamam', cls: 'primary', onClick: (c, b) => { $$('[data-lb]', b).forEach((i) => { const n = Math.max(0, Math.floor(Number(i.value) || 0)); if (n) sel.set(i.dataset.lb, n); else sel.delete(i.dataset.lb); }); c(); draw(); } }] });
+    const addCode = (code) => { const fv = findV(code); if (!fv) { NS.beep(220, 180); toast('Barkod kayıtlı değil: ' + code, 'err'); return; } sel.set(fv.v.barcode, (sel.get(fv.v.barcode) || 0) + 1); NS.beep(); toast(`${fv.m.name} ${fv.v.color}/${fv.v.size} · ${sel.get(fv.v.barcode)} etiket`, 'ok'); draw(); };
+    $('#q', el).oninput = (e) => { q = e.target.value; draw(); };
+    $('#gun', el).addEventListener('keydown', (e) => { if (e.key !== 'Enter' || !e.target.value.trim()) return; addCode(e.target.value.trim()); e.target.value = ''; });
+    on(el, 'click', '[data-f]', (e, b) => { f = b.dataset.f; $$('[data-f]', el).forEach((x) => x.classList.toggle('active', x === b)); draw(); });
+    on(el, 'click', '[data-act]', (e, b) => { const m = model(b.dataset.id); if (!m) return; const a = b.dataset.act;
+      if (a === 'pick') return pick(m);
+      if (a === 'stk') { const vs = m.variants.filter((v) => v.stock > 0); if (!vs.length) return toast('Bu modelin stoğu yok — “+1” ile her bedenden bir etiket ekleyin', 'err'); vs.forEach((v) => sel.set(v.barcode, v.stock)); }
+      if (a === 'one') m.variants.forEach((v) => sel.set(v.barcode, (sel.get(v.barcode) || 0) + 1));
+      if (a === 'clr') m.variants.forEach((v) => sel.delete(v.barcode));
+      draw(); });
+    $('#tp', el).onchange = (e) => { tpl = e.target.value; S().labelOpt = { tpl, roll }; db.save(); side(); };
+    on(el, 'click', '[data-r]', (e, t) => { roll = t.dataset.r === '1'; $$('[data-r]', el).forEach((x) => x.classList.toggle('active', x === t)); S().labelOpt = { tpl, roll }; db.save(); });
+    $('#none', el).onclick = () => { sel.clear(); draw(); };
+    $('#ed', el).onclick = () => lbDesigner(() => { if (!lbTpls().some((t) => t.id === tpl)) tpl = lbTpls()[0].id; $('#tp', el).innerHTML = lbOptions(tpl); side(); });
+    $('#cam', el).onclick = () => NS.scan({ title: 'Etiket için okut', hint: 'Okuttuğunuz her ürün 1 etiket olarak eklenir', continuous: true, onCode: addCode });
+    $('#lg', el).onchange = (e) => { const file = e.target.files[0]; if (!file) return; const rd = new FileReader(); rd.onload = () => { const im = new Image(); im.onload = () => { const k = Math.min(1, 360 / Math.max(im.width, im.height)); const cv = document.createElement('canvas'); cv.width = Math.round(im.width * k); cv.height = Math.round(im.height * k); cv.getContext('2d').drawImage(im, 0, 0, cv.width, cv.height); S().logo = cv.toDataURL('image/png'); db.save(); toast('Logo kaydedildi', 'ok'); redraw(); }; im.onerror = () => toast('Resim okunamadı', 'err'); im.src = rd.result; }; rd.readAsDataURL(file); };
+    on(el, 'click', '#lga', () => { const t = lbTpl(tpl); if (t.els.some((x) => x.logo)) return toast('Bu şablonda logo zaten var — yerini “Şablonları düzenle”den değiştirin'); const w = Math.min(20, t.w - 4); t.els.unshift(LE('box', (t.w - w) / 2, 1.5, w, Math.min(8, t.h / 4), { logo: true })); db.save(); toast('Logo şablonun üstüne eklendi', 'ok'); side(); });
+    on(el, 'click', '#lgx', async () => { if (!(await confirm('Logo kaldırılsın mı?'))) return; delete S().logo; db.save(); redraw(); });
+    $('#pr', el).onclick = () => { const it = V(); if (!it.length) return toast('Etiket seçin', 'err'); S().labelOpt = { tpl, roll }; lbPrint(it, tpl, roll); draw(); };
+    draw(); setTimeout(() => $('#gun', el).focus(), 50);
   }
 
   // ---------- Müşteriler ----------
@@ -169,7 +249,7 @@
     el.innerHTML = pageHead('Sezon & Kampanyalar', 'Sezon/kategori indirimi tek tıkla tüm etiketlere ve online kanallara yansır', `<button class="btn primary" id="bulk">${icon('percent')} Toplu indirim uygula</button>`) + `<div class="card"><div class="card-h"><h3>Aktif kampanyalar</h3></div><div id="t"></div></div>`;
     const draw = () => { $('#t', el).innerHTML = table({ rows: db.all('campaigns'), columns: [{ label: 'Kampanya', render: (c) => `<b>${esc(c.name)}</b>` }, { label: 'Kapsam', render: (c) => `${c.scope === 'sezon' ? 'Sezon' : 'Kategori'}: ${esc(c.target)}` }, { label: 'Tür', render: (c) => (c.type === 'ikinci' ? `2. üründe %${c.value}` : `%${c.value} indirim`) }, { label: 'Durum', render: (c) => (c.active ? badge('Aktif', 'ok') : badge('Pasif')) }], actions: [{ icon: 'refresh', act: 'tg', title: 'Aç / kapat' }, { icon: 'trash', act: 'del' }] }); };
     on(el, 'click', '[data-act]', async (e, b) => { const c = db.get('campaigns', b.dataset.id); if (b.dataset.act === 'del') { if (!(await confirm('Kampanya silinsin mi?'))) return; if (c.type === 'yuzde') apply(c, 0); db.remove('campaigns', c.id); } else { c.active = !c.active; if (c.type === 'yuzde') apply(c, c.active ? c.value : 0); } db.save(); draw(); });
-    const apply = (c, pct) => { const ms = db.all('models', (m) => (c.scope === 'sezon' ? m.season === c.target : m.cat === c.target)); ms.forEach((m) => { m.disc = pct; }); syncOnline(ms); toast(`${ms.length} modelde indirim %${pct}`, 'ok'); };
+    const apply = (c, pct) => { const ms = db.all('models', (m) => (c.scope === 'sezon' ? m.season === c.target : m.cat === c.target)); ms.forEach((m) => { if ((Number(m.disc) || 0) !== pct) m.priceAt = new Date().toISOString(); m.disc = pct; }); syncOnline(ms); toast(`${ms.length} modelde indirim %${pct}`, 'ok'); };
     $('#bulk', el).onclick = async () => {
       const cats = [...new Set(db.all('models').map((m) => m.cat))];
       const v = await formModal({ title: 'Toplu indirim / kampanya', fields: [{ name: 'name', label: 'Kampanya adı', required: true }, { name: 'type', label: 'Tür', type: 'select', options: [{ value: 'yuzde', label: 'Yüzde indirim (etikete yansır)' }, { value: 'ikinci', label: '2. üründe indirim (kasada)' }] }, { name: 'scope', label: 'Kapsam', type: 'select', options: [{ value: 'sezon', label: 'Sezon' }, { value: 'kategori', label: 'Kategori' }] }, { name: 'target', label: 'Sezon / kategori', type: 'select', options: [...B.SEASONS, ...cats] }, { name: 'value', label: 'Oran %', type: 'number', required: true }] });
@@ -212,8 +292,8 @@
   const ROLES = { admin: 'Mağaza sahibi', kasa: 'Satış danışmanı' };
   NS.shell({
     id: 'butik', integrations: ['pazaryeri', 'pos', 'printer', 'label', 'barcode', 'efatura', 'sms', 'whatsapp', 'webhook', 'backup'], name: 'Butik & Giyim', tagline: 'Beden-renk stok ve mağaza satış', icon: 'tag', accent: '#db2777', db, home: 'ozet', auth: { roles: ROLES },
-    nav: [{ sec: 'Mağaza' }, { id: 'ozet', label: 'Özet', icon: 'home', roles: ['kasa'] }, { id: 'satis', label: 'Satış', icon: 'barcode', roles: ['kasa'] }, { id: 'degisim', label: 'Değişim & İade', icon: 'refresh', roles: ['kasa'] }, { id: 'satislar', label: 'Satışlar', icon: 'receipt', roles: ['kasa'] }, { id: 'urunler', label: 'Ürünler & Stok', icon: 'tag', roles: ['kasa'] }, { id: 'musteriler', label: 'Müşteriler', icon: 'users', roles: ['kasa'] }, { sec: 'Yönetim' }, { id: 'kampanyalar', label: 'Sezon & Kampanya', icon: 'percent', roles: ['admin'] }, { id: 'raporlar', label: 'Raporlar', icon: 'chart', roles: ['admin'] }, { id: 'ayarlar', label: 'Ayarlar', icon: 'settings', roles: ['admin'] }],
-    routes: { ozet: dashboard, satis: posPage, degisim: exchangePage, satislar: salesPage, urunler: productsPage, musteriler: customersPage, kampanyalar: campaignsPage, raporlar: reportsPage,
+    nav: [{ sec: 'Mağaza' }, { id: 'ozet', label: 'Özet', icon: 'home', roles: ['kasa'] }, { id: 'satis', label: 'Satış', icon: 'barcode', roles: ['kasa'] }, { id: 'degisim', label: 'Değişim & İade', icon: 'refresh', roles: ['kasa'] }, { id: 'satislar', label: 'Satışlar', icon: 'receipt', roles: ['kasa'] }, { id: 'urunler', label: 'Ürünler & Stok', icon: 'tag', roles: ['kasa'] }, { id: 'etiket', label: 'Etiket Basımı', icon: 'print', roles: ['kasa'] }, { id: 'musteriler', label: 'Müşteriler', icon: 'users', roles: ['kasa'] }, { sec: 'Yönetim' }, { id: 'kampanyalar', label: 'Sezon & Kampanya', icon: 'percent', roles: ['admin'] }, { id: 'raporlar', label: 'Raporlar', icon: 'chart', roles: ['admin'] }, { id: 'ayarlar', label: 'Ayarlar', icon: 'settings', roles: ['admin'] }],
+    routes: { ozet: dashboard, satis: posPage, degisim: exchangePage, satislar: salesPage, urunler: productsPage, etiket: labelsPage, musteriler: customersPage, kampanyalar: campaignsPage, raporlar: reportsPage,
       ayarlar: (el, p, a) => NS.settingsPage(el, a, { roles: ROLES, fields: [{ type: 'section', label: 'Mağaza kuralları' }, { name: 'pointPct', label: 'Puan oranı %', type: 'number' }, { name: 'exchangeDays', label: 'Değişim süresi (gün)', type: 'number' }, { name: 'lowStock', label: 'Az kalan beden sınırı', type: 'number' }, { name: 'online', label: 'Stok değişince online kanallara gönder', type: 'checkbox' }] }) },
   });
 })();

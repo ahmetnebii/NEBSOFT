@@ -4,8 +4,19 @@
     {
       "name": "nebsoft",
       "runtimeExecutable": "node",
-      "runtimeArgs": ["server.js"],
+      "runtimeArgs": [
+        "server.js"
+      ],
       "port": 5050
+    },
+    {
+      "name": "perakende",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "-e",
+        "process.env.PORT='5062';require('./server.js')"
+      ],
+      "port": 5062
     }
   ]
 }
