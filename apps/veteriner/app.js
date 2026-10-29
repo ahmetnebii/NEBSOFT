@@ -31,7 +31,10 @@
   const usr = (id) => db.get('users', id) || { name: '-' };
   const av = (p, lg) => `<div class="pet-av ${lg ? 'lg' : ''}" style="background:${p.species === 'Kedi' ? '#fef3c7' : p.species === 'Köpek' ? '#dbeafe' : '#dcfce7'}">${SPECIES[p.species] || '🐾'}</div>`;
   const ageStr = (b) => { const m = Math.floor(daysBetween(b, new Date()) / 30.4); return m >= 12 ? `${Math.floor(m / 12)} yaş${m % 12 ? ' ' + (m % 12) + ' ay' : ''}` : `${m} aylık`; };
-  const dueVax = (days = 14) => db.all('vaccines').filter((v) => v.next <= iso(addDays(new Date(), days)) && !db.find('vaccines', (x) => x.pet === v.pet && x.type === v.type && x.date > v.date)).sort((a, b) => a.next.localeCompare(b.next));
+  // Vefat eden / kaybolan hayvana hatırlatma gitmez
+  const alive = (p) => !p.status;
+  const PST = { vefat: ['Vefat etti', ''], kayip: ['Kayıp', 'warn'] };
+  const dueVax = (days = 14) => db.all('vaccines').filter((v) => alive(pet(v.pet)) && v.next <= iso(addDays(new Date(), days)) && !db.find('vaccines', (x) => x.pet === v.pet && x.type === v.type && x.date > v.date)).sort((a, b) => a.next.localeCompare(b.next));
   // Resmî sistem / e-belge / SMS sonucu: yalnızca gerçek başarı kalıcı kayıt bırakır; simülasyon TEST olarak bildirilir
   const realOk = (r, what) => { if (r && r.ok && !r.simulated) return true; if (r && r.simulated) toast(`TEST: ${what} — gerçek gönderim yapılmadı, kayda işlenmedi`, ''); return false; };
   async function smsOne(to, name, text, kind) {
@@ -43,7 +46,7 @@
   const smsSummary = (n) => [n.ok && `${n.ok} SMS gönderildi`, n.test && `${n.test} TEST (gönderilmedi — SMS sağlayıcısı bağlı değil)`, n.err && `${n.err} gönderilemedi`].filter(Boolean).join(' · ') || 'Gönderilecek mesaj yok';
   const karneUrl = () => location.href.replace(/index\.html.*$/, '').replace(/#.*$/, '') + 'karne.html';
   const wa = (o, text) => `https://wa.me/90${String(o.phone).replace(/\D/g, '').replace(/^0/, '')}?text=${encodeURIComponent(text)}`;
-  const PF = () => [{ name: 'name', label: 'Hayvan adı', required: true }, { name: 'owner', label: 'Sahibi', type: 'select', options: db.all('owners').sort((a, b) => a.name.localeCompare(b.name, 'tr')).map((o) => ({ value: o.id, label: `${o.name} · ${o.phone}` })) }, { name: 'species', label: 'Tür', type: 'select', options: Object.keys(SPECIES) }, { name: 'breed', label: 'Irk' }, { name: 'gender', label: 'Cinsiyet', type: 'select', options: ['Dişi', 'Erkek'] }, { name: 'birth', label: 'Doğum tarihi', type: 'date' }, { name: 'chip', label: 'Mikroçip no' }, { name: 'allergy', label: 'Alerji / kronik', full: true }, { name: 'neutered', label: 'Kısırlaştırılmış', type: 'checkbox' }];
+  const PF = () => [{ name: 'name', label: 'Hayvan adı', required: true }, { name: 'owner', label: 'Sahibi', type: 'select', options: db.all('owners').sort((a, b) => a.name.localeCompare(b.name, 'tr')).map((o) => ({ value: o.id, label: `${o.name} · ${o.phone}` })) }, { name: 'species', label: 'Tür', type: 'select', options: Object.keys(SPECIES) }, { name: 'breed', label: 'Irk' }, { name: 'gender', label: 'Cinsiyet', type: 'select', options: ['Dişi', 'Erkek'] }, { name: 'birth', label: 'Doğum tarihi', type: 'date' }, { name: 'chip', label: 'Mikroçip no' }, { name: 'allergy', label: 'Alerji / kronik', full: true }, { name: 'neutered', label: 'Kısırlaştırılmış', type: 'checkbox' }, { name: 'status', label: 'Durum', type: 'select', options: [{ value: '', label: 'Aktif' }, { value: 'vefat', label: 'Vefat etti (hatırlatmalar durur)' }, { value: 'kayip', label: 'Kayıp (hatırlatmalar durur)' }] }];
 
   function dashboard(el, p, app) {
     const t = today();
@@ -52,12 +55,21 @@
     const v30 = db.all('visits', (v) => v.date > addDays(new Date(), -30).toISOString()), s30 = db.all('sales', (s) => s.at > addDays(new Date(), -30).toISOString());
     el.innerHTML = pageHead(S().bizName, NS.dateLong(new Date()), `<button class="btn" id="np">${icon('plus')} Yeni hasta</button><button class="btn primary" id="nv">${icon('heart')} Muayene kaydı</button>`) + `
       <div class="grid g4 mb">${kpi('Kayıtlı hasta', db.all('pets').length, 'paw')}${kpi('Bugün randevu', appts.length, 'calendar', 'info')}${kpi('Yaklaşan/geciken aşı (7 gün)', due.length, 'shield', 'warn')}${kpi('30 gün ciro', money(sum(v30, (v) => v.fee) + sum(s30, (s) => s.total)), 'wallet', 'ok')}</div>
-      <div class="grid g-21 mb"><div class="card"><div class="card-h"><h3>${icon('shield')} Aşı hatırlatmaları</h3></div>${table({ rows: due, empty: 'Yaklaşan aşı yok', columns: [{ label: 'Hasta', render: (v) => `<a href="#/hasta/${v.pet}" class="row nw" style="color:inherit">${av(pet(v.pet))}<div><b>${esc(pet(v.pet).name)}</b><div class="small faint">${esc(owner(pet(v.pet).owner).name)}</div></div></a>` }, { label: 'Aşı', key: 'type' }, { label: 'Tarih', render: (v) => (v.next < t ? badge(`${daysBetween(v.next, new Date())} gün gecikti`, 'err') : badge(NS.date(v.next), 'warn')) }], actions: [{ icon: 'message', act: 'wa', title: 'WhatsApp hatırlat' }, { label: 'Yapıldı', act: 'done' }] })}</div>
+      <div class="grid g-21 mb"><div class="card"><div class="card-h"><h3>${icon('shield')} Aşı hatırlatmaları</h3>${due.filter((v) => !v.reminded).length ? `<button class="btn sm" id="vxall">${icon('send')} Hepsine SMS (${due.filter((v) => !v.reminded).length})</button>` : ''}</div>${table({ rows: due, empty: 'Yaklaşan aşı yok', columns: [{ label: 'Hasta', render: (v) => `<a href="#/hasta/${v.pet}" class="row nw" style="color:inherit">${av(pet(v.pet))}<div><b>${esc(pet(v.pet).name)}</b> ${v.reminded ? badge('Hatırlatıldı ' + NS.date(v.reminded), 'ok') : v.remindTest ? badge('TEST — gönderilmedi', 'warn') : ''}<div class="small faint">${esc(owner(pet(v.pet).owner).name)}</div></div></a>` }, { label: 'Aşı', key: 'type' }, { label: 'Tarih', render: (v) => (v.next < t ? badge(`${daysBetween(v.next, new Date())} gün gecikti`, 'err') : badge(NS.date(v.next), 'warn')) }], actions: [{ icon: 'message', act: 'wa', title: 'WhatsApp hatırlat' }, { label: 'Yapıldı', act: 'done' }] })}</div>
       <div class="card"><div class="card-h"><h3>Bugünün randevuları</h3></div><div class="card-b">${appts.map((a) => `<div class="list-item"><b style="min-width:46px">${a.time}</b>${av(pet(a.pet))}<div class="grow"><b>${esc(pet(a.pet).name)}</b><div class="small faint">${esc(a.reason)} · ${esc(usr(a.vet).name.replace('Vet. Hekim ', ''))}</div></div></div>`).join('') || '<div class="faint small">Bugün randevu yok</div>'}</div></div></div>
       <div class="grid g2"><div class="card"><div class="card-h"><h3>Tür dağılımı</h3></div><div class="card-b">${chart.donut(Object.entries(NS.groupBy(db.all('pets'), (x) => x.species)).map(([label, v]) => ({ label: `${SPECIES[label]} ${label}`, value: v.length })), { size: 130 })}</div></div>
       <div class="card"><div class="card-h"><h3>Pet otel</h3><a class="btn sm" href="#/otel">Yönet</a></div><div class="card-b">${db.all('stays', (s) => s.status !== 'cikis').map((s) => `<div class="list-item">${av(pet(s.pet))}<div class="grow"><b>${esc(pet(s.pet).name)}</b><div class="small faint">${NS.date(s.from)} – ${NS.date(s.to)}</div></div>${badge(s.status === 'konakliyor' ? 'Konaklıyor' : 'Rezervasyon', s.status === 'konakliyor' ? 'ok' : 'info')}</div>`).join('') || '<div class="faint small">Konaklayan yok</div>'}</div></div></div>`;
     $('#np', el).onclick = () => newPet(app);
     $('#nv', el).onclick = () => visitForm(app);
+    if ($('#vxall', el)) $('#vxall', el).onclick = async (e) => {
+      e.target.disabled = true; const n = { ok: 0, test: 0, err: 0 };
+      for (const v of due.filter((x) => !x.reminded)) {
+        const pt = pet(v.pet), o = owner(pt.owner); if (!o.phone) continue;
+        const k = await smsOne(o.phone, o.name, `Merhaba ${o.name}, ${pt.name} için ${v.type} aşısı zamanı ${v.next < today() ? 'geçti' : 'geldi'} (${NS.date(v.next)}). Randevu için: ${S().bizPhone || ''} ${S().bizName}`, 'asi');
+        n[k]++; if (k === 'ok') { v.reminded = today(); delete v.remindTest; } else if (k === 'test') v.remindTest = true;
+      }
+      db.save(); toast(smsSummary(n), n.err ? 'err' : n.ok ? 'ok' : ''); app.refresh();
+    };
     on(el, 'click', '[data-act]', (e, b) => {
       const v = db.get('vaccines', b.dataset.id); const pt = pet(v.pet); const o = owner(pt.owner);
       if (b.dataset.act === 'wa') return window.open(wa(o, `Merhaba ${o.name}, ${pt.name} için ${v.type} aşısı zamanı geldi (${NS.date(v.next)}). Randevu için bize ulaşabilirsiniz. ${S().bizName}`), '_blank', 'noopener');
@@ -109,7 +121,7 @@
     const latest = {}; vax.forEach((v) => { if (!latest[v.type]) latest[v.type] = v; });
     const ws = (pt.weights || []).slice(-8);
     el.innerHTML = `<div class="row mb"><a class="btn" href="#/hastalar">${icon('back')} Hastalar</a></div>
-      <div class="card pad mb row">${av(pt, true)}<div class="grow"><h1>${esc(pt.name)}</h1><div class="muted">${esc(pt.species)} · ${esc(pt.breed)} · ${esc(pt.gender)} · ${ageStr(pt.birth)} ${pt.neutered ? '· kısırlaştırılmış' : ''}</div>${pt.chip ? `<div class="small mono">Çip: ${esc(pt.chip)} ${pt.petvet ? badge('PETVET kayıtlı', 'ok') : `<button class="btn sm" id="pv">${icon('send')} PETVET’e kaydet</button>`}</div>` : ''}${pt.allergy ? `<div class="mt">${badge(pt.allergy, 'err')}</div>` : ''}</div>
+      <div class="card pad mb row">${av(pt, true)}<div class="grow"><h1>${esc(pt.name)} ${pt.status ? badge(PST[pt.status][0], PST[pt.status][1]) : ''}</h1><div class="muted">${esc(pt.species)} · ${esc(pt.breed)} · ${esc(pt.gender)} · ${ageStr(pt.birth)} ${pt.neutered ? '· kısırlaştırılmış' : ''}</div>${pt.chip ? `<div class="small mono">Çip: ${esc(pt.chip)} ${pt.petvet ? badge('PETVET kayıtlı', 'ok') : `<button class="btn sm" id="pv">${icon('send')} PETVET’e kaydet</button>`}</div>` : ''}${pt.allergy ? `<div class="mt">${badge(pt.allergy, 'err')}</div>` : ''}</div>
         <div class="col"><button class="btn primary" id="nv">${icon('heart')} Muayene</button><button class="btn" id="vx">${icon('shield')} Aşı uygula</button><button class="btn" id="ed">${icon('edit')} Düzenle</button><a class="btn" target="_blank" rel="noopener" href="${wa(o, `Merhaba ${o.name}, ${pt.name} için dijital aşı karnesine buradan ulaşabilirsiniz (kayıtlı telefonunuzla giriş): ${location.href.replace(/index\.html.*$/, '').replace(/#.*$/, '')}karne.html — ${S().bizName}`)}">${icon('message')} Karneyi gönder</a></div></div>
       <div class="grid g-21"><div class="col" style="gap:16px">
         <div class="card"><div class="card-h"><h3>Muayene geçmişi</h3></div><div class="card-b">${visits.length ? `<div class="tl">${visits.map((v) => `<div class="it"><div class="row between"><b>${esc(v.diagnosis || v.complaint)}</b><span class="small faint">${NS.dt(v.date)} · ${esc(usr(v.vet).name.replace('Vet. Hekim ', 'Vhk. '))}</span></div><div class="small"><b>Şikâyet:</b> ${esc(v.complaint)}</div>${v.findings ? `<div class="small muted">${esc(v.findings)}</div>` : ''}${v.treatment ? `<div class="small" style="color:var(--accent)">${icon('pill')} ${esc(v.treatment)}</div>` : ''}<div class="small faint">${money(v.fee || 0)}</div></div>`).join('')}</div>` : '<div class="faint small">Kayıt yok</div>'}</div></div>
@@ -147,7 +159,17 @@
   function hotelPage(el, p, app) {
     const ST = { rezervasyon: ['Rezervasyon', 'info'], konakliyor: ['Konaklıyor', 'ok'], cikis: ['Çıkış yaptı', ''] };
     NS.crud(el, app, {
-      col: 'stays', title: 'Pet Otel', sub: 'Konaklama, beslenme notları ve ücretlendirme', single: 'Konaklama', addLabel: 'Yeni konaklama', emptyIcon: 'home',
+      col: 'stays', title: 'Pet Otel',
+      // Çıkışta konaklama ücreti tahsil edilir ve satışlara (ciro raporu) yazılır
+      onSave: async (v, rec) => {
+        const s = rec ? db.get('stays', rec.id) : db.all('stays').slice(-1)[0];
+        if (!s || s.status !== 'cikis' || s.paidAt) return;
+        const nights = Math.max(1, daysBetween(s.from, s.to)), total = nights * (Number(s.daily) || 0);
+        const pay = await formModal({ title: `Çıkış ödemesi — ${pet(s.pet).name}`, fields: [{ name: 'total', label: `Tutar (${nights} gece × ${money(s.daily)})`, type: 'number', value: total }, { name: 'pay', label: 'Ödeme', type: 'select', options: [{ value: 'nakit', label: 'Nakit' }, { value: 'kart', label: 'Kart' }, { value: 'havale', label: 'Havale' }] }], submitLabel: 'Tahsil et' });
+        if (!pay) return toast('Ödeme alınmadı — konaklama "ödenmedi" olarak kaldı', '');
+        db.insert('sales', { owner: pet(s.pet).owner, items: [{ name: `Pet otel ${nights} gece`, qty: 1, price: Number(pay.total) || 0 }], total: Number(pay.total) || 0, at: new Date().toISOString(), pay: pay.pay, stay: s.id });
+        s.paidAt = new Date().toISOString(); db.save(); toast('Konaklama ücreti tahsil edildi', 'ok'); app.refresh();
+      }, sub: 'Konaklama, beslenme notları ve ücretlendirme', single: 'Konaklama', addLabel: 'Yeni konaklama', emptyIcon: 'home',
       fields: () => [{ name: 'pet', label: 'Hasta', type: 'select', options: db.all('pets').map((x) => ({ value: x.id, label: `${SPECIES[x.species]} ${x.name} (${owner(x.owner).name})` })) }, { name: 'from', label: 'Giriş', type: 'date', required: true }, { name: 'to', label: 'Çıkış', type: 'date', required: true }, { name: 'daily', label: 'Günlük ücret', type: 'number' }, { name: 'status', label: 'Durum', type: 'select', options: Object.entries(ST).map(([value, v]) => ({ value, label: v[0] })) }, { name: 'note', label: 'Beslenme / ilaç notu', type: 'textarea', full: true }],
       defaults: () => ({ from: today(), to: iso(addDays(new Date(), 3)), daily: S().hotelDaily, status: 'rezervasyon' }), sort: (a, b) => a.from.localeCompare(b.from),
       columns: [{ label: 'Hasta', render: (s) => `<div class="row nw">${av(pet(s.pet))}<div><b>${esc(pet(s.pet).name)}</b><div class="small faint">${esc(owner(pet(s.pet).owner).name)}</div></div></div>` }, { label: 'Tarih', render: (s) => `${NS.date(s.from)} – ${NS.date(s.to)}<div class="small faint">${Math.max(1, daysBetween(s.from, s.to))} gece</div>` }, { key: 'note', label: 'Not', render: (s) => `<span class="small">${esc(s.note || '')}</span>` }, { label: 'Tutar', cls: 'right', render: (s) => money(Math.max(1, daysBetween(s.from, s.to)) * s.daily) }, { key: 'status', label: 'Durum', render: (s) => badge(ST[s.status][0], ST[s.status][1]) }],
