@@ -1,0 +1,13 @@
+# Çekirdek istekleri — Otel, Bilet/Etkinlik, Site Yönetimi, CRM oturumu
+
+Bu oturum `core/`, `server/` ve `sw.js`'e dokunmadı (kural: `core/`'u aynı anda tek oturum değiştirir). Aşağıdakiler çekirdek oturumunun işidir.
+Tarih: 29.10.2026 · Dal: `claude/urun-konaklama-etkinlik-8b3b84`
+
+| # | İstek | Gerekçe | Öncelik |
+|---|---|---|---|
+| Ç1 | **`sw.js` içindeki `V` sürümünü artır** (bu daldaki `apps/otel`, `apps/bilet`, `apps/site`, `apps/crm` değişiklikleriyle birlikte yayımlanırken) | `CLAUDE.md` §3: statik dosya değişti; artırılmazsa kullanıcılar eski dosyayı görür. Program oturumu `sw.js`'e dokunamıyor. | Yayından önce şart |
+| Ç2 | **`NS.integ.call` simülasyon bildirimi:** `provider === 'sim'` iken `toast('… (simülasyon) · REF…', 'ok')` yeşil "başarılı" bildirim gösteriyor ve sahte bir referans numarası üretiyor. "TEST — gönderilmedi" diye uyarı renginde gösterilmeli; sahte referans üretilmemeli. | `CLAUDE.md` §1 "Sahte başarı yasak". Otel bu bildirimi `silent` çağırıp kendi TEST uyarısını gösteriyor, ama diğer programlar hâlâ yeşil "başarılı" görüyor. | Yüksek |
+| Ç3 | **e-Belge'de konaklama vergisi:** `core/ubltr.js` yalnızca KDV (0015) yazıyor. Konaklama vergisi ayrı vergi türü olarak `TaxTotal` içinde gösterilmeli (GİB vergi kod listesindeki konaklama vergisi kodu — kod numarası hafızadan, doğrulanmadı; GİB kod listesinden alınmalı). Satır alanı önerisi: `{ otherTaxes: [{ code, name, rate }] }`. | Otel konaklama faturası; oran 11263 sayılı CB Kararı ile %1 (ikincil kaynak, `docs/urun/OTEL.md` §1). Desteklenene kadar Otel, konaklama vergisi ayarlıysa gerçek entegratöre fatura göndermiyor. | Yüksek (oteller için) |
+| Ç4 | **KBS bağlayıcısı (`kbs`) seçilebilir sağlayıcılar:** "Emniyet KBS / Jandarma KBS / Bulut KBS" seçenekleri genel bir JSON köprüsüne istek atıyor; resmî servis dokümanı yok (DOĞRULANAMADI). Canlıda seçilemez hâle getirilmeli ya da "doğrulanmadı" olarak işaretlenmeli. | `CLAUDE.md` §1 Kabul kuralı. | Yüksek |
+| Ç5 | **Kanal yöneticisi bağlayıcısı (`kanal`):** HotelRunner / SiteMinder / Booking / Expedia / Airbnb seçenekleri sağlayıcıların resmî API'lerine göre yazılmadı (genel köprü). Aynı şekilde işaretlenmeli. | `CLAUDE.md` §1. | Yüksek |
+| Ç6 | **`npm test` → `server/test/cloud.test.js` başarısız:** `'talep' == 'deneme'` (müşteri kaydında POS lisansı `talep` durumunda açılıyor, test `deneme` bekliyor; `server/cloud/routes.js:194`). Bu oturumun değişikliklerinden bağımsız. | Kalite kapısı geçemiyor. Ya test ya da kayıt akışı güncellenmeli. | Yüksek |

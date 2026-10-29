@@ -44,15 +44,32 @@
   }
   const db = new NS.DB('otel', seed);
   const S = () => db.settings({});
-  const ST = { opsiyon: ['Opsiyonlu', 'warn'], rezerve: ['Rezerve', 'info'], konaklama: ['Konaklıyor', 'ok'], cikis: ['Çıkış yaptı', ''], iptal: ['İptal', 'err'] };
+  const ST = { opsiyon: ['Opsiyonlu', 'warn'], rezerve: ['Rezerve', 'info'], konaklama: ['Konaklıyor', 'ok'], cikis: ['Çıkış yaptı', ''], iptal: ['İptal', 'err'], noshow: ['Gelmedi (no-show)', 'err'] };
   const HK = { temiz: ['Temiz', 'ok'], kirli: ['Kirli', 'warn'], arizali: ['Arızalı', 'err'] };
   const BOARD = { RO: 'Sadece oda', BB: 'Oda + kahvaltı', HB: 'Yarım pansiyon', FB: 'Tam pansiyon', AI: 'Her şey dahil' };
   const room = (id) => db.get('rooms', id) || { no: '-' };
   const type = (id) => db.get('types', id) || { name: '-', price: 0 };
   const guest = (id) => db.get('guests', id) || { name: '-' };
   const nights = (r) => Math.max(1, daysBetween(r.checkIn, r.checkOut));
-  const balance = (r) => sum(r.folio.filter((f) => f.type === 'charge'), (f) => f.amount) - sum(r.folio.filter((f) => f.type === 'payment'), (f) => f.amount);
-  const active = () => db.all('reservations', (r) => r.status !== 'iptal');
+  // Bakiye = borç + iade edilen − ödenen (iade: misafire geri verilen para)
+  const paid = (r) => sum(r.folio.filter((f) => f.type === 'payment'), (f) => f.amount) - sum(r.folio.filter((f) => f.type === 'refund'), (f) => f.amount);
+  const charges = (r) => sum(r.folio.filter((f) => f.type === 'charge'), (f) => f.amount);
+  const balance = (r) => charges(r) - paid(r);
+  const active = () => db.all('reservations', (r) => r.status !== 'iptal' && r.status !== 'noshow');
+  // Satılabilir oda: arızalı olmayan (doluluk her ekranda aynı tabana göre hesaplanır)
+  const sellable = () => Math.max(1, db.all('rooms', (r) => r.hk !== 'arizali').length);
+  // Giriş günü geçmiş ama giriş yapmamış rezervasyonlar
+  const overdue = () => db.all('reservations', (r) => ['rezerve', 'opsiyon'].includes(r.status) && r.checkIn < today());
+  // Folyodaki konaklama satırı, gece sayısı ve fiyatla eşitlenir (erken çıkış, uzatma, oda değişikliği)
+  const stayLine = (r) => r.folio.find((f) => f.stay) || r.folio.find((f) => f.type === 'charge' && /^Konaklama/.test(f.desc));
+  function syncStay(r) {
+    const f = stayLine(r); if (!f) return;
+    Object.assign(f, { stay: true, amount: r.price * nights(r), desc: `Konaklama ${nights(r)} gece × ${money(r.price)}`, vat: f.vat ?? vatStay() });
+  }
+  const vatStay = () => (S().vatStay === undefined || S().vatStay === '' ? 10 : Number(S().vatStay));
+  const vatExtra = () => (S().vatExtra === undefined || S().vatExtra === '' ? 20 : Number(S().vatExtra));
+  // Simülasyon sonucu kalıcı "yapıldı" kaydı bırakmaz; yalnızca TEST izi tutulur
+  const testMark = (r, key) => { r.test = r.test || {}; r.test[key] = new Date().toISOString(); };
   const occupiedOn = (d) => active().filter((r) => r.checkIn <= d && d < r.checkOut);
   const seasonPct = (d) => sum(db.all('seasons', (s) => s.from <= d && d <= s.to), (s) => s.pct);
   const suggestPrice = (typeId, ci, co) => { let t = 0; for (let d = ci; d < co; d = iso(addDays(d, 1))) t += type(typeId).price * (1 + seasonPct(d) / 100); return Math.round(t / Math.max(1, daysBetween(ci, co)) / 50) * 50; };
@@ -71,17 +88,22 @@
       <div class="tabs">${[['kanal', 'Kanal yönetimi'], ['kbs', 'KBS bildirimleri']].map(([k, l]) => `<a href="#/kanal/${k}"><button class="${k === tab ? 'active' : ''}">${l}</button></a>`).join('')}</div><div id="t"></div>`;
     if (tab === 'kanal') $('#t', el).innerHTML = `<div class="grid g3 mb">${Object.entries(srcs).sort((a, b) => b[1].length - a[1].length).slice(0, 6).map(([s, rs]) => kpi(s, `${rs.length} rez.`, 'globe', 'info', `<div class="small faint">${money(sum(rs, (r) => r.price * nights(r)))} · ort. ${r2(sum(rs, nights) / rs.length)} gece</div>`)).join('')}</div>
       <div class="card"><div class="card-h"><h3>14 günlük müsaitlik (OTA’ya gönderilecek)</h3><span class="small muted">${S().otaSync ? 'Son gönderim: ' + NS.dt(S().otaSync) : 'Henüz gönderilmedi'}</span></div><div class="tbl-wrap"><table class="tbl"><thead><tr><th>Oda tipi</th>${days.map((d) => `<th style="text-align:center">${NS.date(d).slice(0, 5)}</th>`).join('')}</tr></thead><tbody>${types.map((t) => `<tr><td><b>${esc(t.name)}</b><div class="small faint">${money(t.price)}</div></td>${days.map((d) => { const f = freeOf(t, d); return `<td style="text-align:center"><b style="color:${f ? 'var(--ok)' : 'var(--err)'}">${f}</b><div class="small faint">${money(Math.round(t.price * (1 + seasonPct(d) / 100) / 50) * 50)}</div></td>`; }).join('')}</tr>`).join('')}</tbody></table></div></div>`;
-    else $('#t', el).innerHTML = `<div class="card">${table({ rows: stays.sort((a, b) => b.checkIn.localeCompare(a.checkIn)), empty: 'Konaklayan yok', columns: [{ label: 'Oda', render: (r) => `<b>${room(r.room).no}</b>` }, { label: 'Misafir', render: (r) => `${esc(guest(r.guest).name)}<div class="small faint">${esc(guest(r.guest).idNo || 'Kimlik no yok')} · ${esc(guest(r.guest).nat || '')}${(r.companions || []).length ? ' · +' + r.companions.length + ' kişi' : ''}</div>` }, { label: 'Giriş', render: (r) => NS.date(r.checkIn) }, { label: 'Çıkış', render: (r) => NS.date(r.checkOut) }, { label: 'KBS giriş', render: (r) => (r.kbs && r.kbs.giris ? badge(r.kbs.giris, r.kbs.giris === 'hata' ? 'err' : 'ok') : badge('Bildirilmedi', 'warn')) }, { label: 'KBS çıkış', render: (r) => (r.status !== 'cikis' ? '-' : r.kbs && r.kbs.cikis ? badge(r.kbs.cikis, r.kbs.cikis === 'hata' ? 'err' : 'ok') : badge('Bildirilmedi', 'warn')) }], actions: [{ label: 'Bildir', act: 'kb', show: (r) => !(r.kbs && r.kbs[r.status === 'cikis' ? 'cikis' : 'giris']) || r.kbs[r.status === 'cikis' ? 'cikis' : 'giris'] === 'hata' }] })}<div class="pad"><button class="btn" id="kball">${icon('send')} Bekleyenlerin tümünü bildir</button></div></div>`;
-    $('#push', el).onclick = async () => { const payload = types.map((t) => ({ type: t.name, days: days.map((d) => ({ date: d, free: freeOf(t, d), price: Math.round(t.price * (1 + seasonPct(d) / 100) / 50) * 50 })) })); const r = await NS.integ.call('kanal', 'musaitlik-fiyat', { rooms: payload }); if (r && r.ok) { db.saveSettings({ otaSync: new Date().toISOString() }); app.refresh(); } };
+    else $('#t', el).innerHTML = `<div class="card">${table({ rows: stays.sort((a, b) => b.checkIn.localeCompare(a.checkIn)), empty: 'Konaklayan yok', columns: [{ label: 'Oda', render: (r) => `<b>${room(r.room).no}</b>` }, { label: 'Misafir', render: (r) => `${esc(guest(r.guest).name)}<div class="small faint">${esc(guest(r.guest).idNo || 'Kimlik no yok')} · ${esc(guest(r.guest).nat || '')}${(r.companions || []).length ? ' · +' + r.companions.length + ' kişi' : ''}</div>` }, { label: 'Giriş', render: (r) => NS.date(r.checkIn) }, { label: 'Çıkış', render: (r) => NS.date(r.checkOut) }, { label: 'KBS giriş', render: (r) => kbsBadge(r, 'giris') }, { label: 'KBS çıkış', render: (r) => (r.status !== 'cikis' ? '-' : kbsBadge(r, 'cikis')) }], actions: [{ label: 'Bildir', act: 'kb', show: (r) => !(r.kbs && r.kbs[r.status === 'cikis' ? 'cikis' : 'giris']) || r.kbs[r.status === 'cikis' ? 'cikis' : 'giris'] === 'hata' }] })}<div class="pad"><button class="btn" id="kball">${icon('send')} Bekleyenlerin tümünü bildir</button></div></div>`;
+    $('#push', el).onclick = async () => { const payload = types.map((t) => ({ type: t.name, days: days.map((d) => ({ date: d, free: freeOf(t, d), price: Math.round(t.price * (1 + seasonPct(d) / 100) / 50) * 50 })) })); const r = await NS.integ.call('kanal', 'musaitlik-fiyat', { rooms: payload }, { silent: true }); if (r && r.simulated) return toast('TEST: kanal yöneticisi simülasyonda — müsaitlik ve fiyat hiçbir kanala gönderilmedi', 'warn'); if (r && r.ok) { db.saveSettings({ otaSync: new Date().toISOString() }); toast('Müsaitlik ve fiyat gönderildi', 'ok'); app.refresh(); } else toast('Gönderilemedi: ' + ((r && r.error) || 'Kanal bağlantısı kapalı — Entegrasyonlar sayfasından açın'), 'err'); };
     $('#pull', el).onclick = async () => {
-      const r = await NS.integ.call('kanal', 'rezervasyon-cek', { since: S().otaPull || iso(addDays(new Date(), -1)) }); if (!r || !r.ok) return;
-      let list = r.data && Array.isArray(r.data.reservations) ? r.data.reservations : [];
-      if (r.simulated) { const t = pick(types); const ci = iso(addDays(new Date(), rand(3, 20))); const co = iso(addDays(ci, rand(1, 4))); const rm = db.all('rooms', (x) => x.type === t.id).find((x) => !clash(x.id, ci, co)); list = rm ? [{ ota: pick(['Booking.com', 'Expedia', 'Airbnb']), otaNo: String(rand(1e9, 9e9)), guest: pick(['Anna Müller', 'John Smith', 'Elif Kara', 'Marco Rossi']), roomType: t.name, checkIn: ci, checkOut: co, adults: 2, price: Math.round(t.price * 1.1), roomId: rm.id }] : []; }
-      let n = 0; list.forEach((x) => { if (db.find('reservations', (y) => y.ota === x.otaNo)) return; let g = db.find('guests', (y) => y.name === x.guest); if (!g) g = db.insert('guests', { name: x.guest, phone: '', nat: '' }, true); const rmId = x.roomId || (db.all('rooms', (y) => type(y.type).name === x.roomType).find((y) => !clash(y.id, x.checkIn, x.checkOut)) || {}).id; if (!rmId) return; db.insert('reservations', { no: 'R' + db.nextNo('res'), room: rmId, guest: g.id, checkIn: x.checkIn, checkOut: x.checkOut, adults: x.adults || 2, children: 0, board: 'BB', source: x.ota, price: x.price, status: 'rezerve', deposit: 0, folio: [], ota: x.otaNo, created: new Date().toISOString() }, true); n++; });
-      db.saveSettings({ otaPull: new Date().toISOString() }); db.save(); toast(`${n} yeni OTA rezervasyonu alındı`, n ? 'ok' : ''); app.refresh();
+      const r = await NS.integ.call('kanal', 'rezervasyon-cek', { since: S().otaPull || iso(addDays(new Date(), -1)) }, { silent: true });
+      if (r && r.simulated) return toast('TEST: kanal yöneticisi simülasyonda — gerçek rezervasyon çekilmedi, takvime bir şey eklenmedi', 'warn');
+      if (!r || !r.ok) return toast('Rezervasyonlar çekilemedi: ' + ((r && r.error) || 'Kanal bağlantısı kapalı — Entegrasyonlar sayfasından açın'), 'err');
+      const list = r.data && Array.isArray(r.data.reservations) ? r.data.reservations : [];
+      const skipped = [];
+      let n = 0; list.forEach((x) => { if (db.find('reservations', (y) => y.ota === x.otaNo)) return; let g = db.find('guests', (y) => y.name === x.guest); if (!g) g = db.insert('guests', { name: x.guest, phone: '', nat: '' }, true); const rmId = x.roomId || (db.all('rooms', (y) => type(y.type).name === x.roomType).find((y) => !clash(y.id, x.checkIn, x.checkOut)) || {}).id; if (!rmId) { skipped.push(`${x.ota || 'OTA'} ${x.otaNo || ''} · ${x.guest} (${NS.date(x.checkIn)})`); return; } db.insert('reservations', { no: db.nextNo('res', 'R'), room: rmId, guest: g.id, checkIn: x.checkIn, checkOut: x.checkOut, adults: x.adults || 2, children: 0, board: 'BB', source: x.ota, price: x.price, status: 'rezerve', deposit: 0, folio: [], ota: x.otaNo, created: new Date().toISOString() }, true); n++; });
+      db.saveSettings({ otaPull: new Date().toISOString() }); db.save(); toast(`${n} yeni OTA rezervasyonu alındı`, n ? 'ok' : '');
+      // Odası bulunamayan rezervasyon sessizce düşmez: ekranda listelenir (fazla satış)
+      if (skipped.length) modal({ title: 'Yerleştirilemeyen OTA rezervasyonları', body: `<p class="small" style="color:var(--err)">Bu rezervasyonlar için boş oda bulunamadı (fazla satış). Takvimde yer açıp elle girin ve kanala müsaitliği yeniden gönderin.</p>${skipped.map((s) => `<div class="list-item small">${esc(s)}</div>`).join('')}` });
+      app.refresh();
     };
     on(el, 'click', '[data-act=kb]', async (e, b) => { const r = db.get('reservations', b.dataset.id); await kbsSend(r, r.status === 'cikis' ? 'cikis' : 'giris'); app.refresh(); });
-    const ka = $('#kball', el); if (ka) ka.onclick = async () => { const pend = stays.filter((r) => !(r.kbs && r.kbs[r.status === 'cikis' ? 'cikis' : 'giris'] && r.kbs[r.status === 'cikis' ? 'cikis' : 'giris'] !== 'hata')); for (const r of pend) await kbsSend(r, r.status === 'cikis' ? 'cikis' : 'giris'); toast(`${pend.length} bildirim gönderildi`, 'ok'); app.refresh(); };
+    const ka = $('#kball', el); if (ka) ka.onclick = async () => { const pend = stays.filter((r) => !(r.kbs && r.kbs[r.status === 'cikis' ? 'cikis' : 'giris'] && r.kbs[r.status === 'cikis' ? 'cikis' : 'giris'] !== 'hata')); let ok = 0, test = 0; for (const r of pend) { const x = await kbsSend(r, r.status === 'cikis' ? 'cikis' : 'giris', true); if (x && x.simulated) test++; else if (x && x.ok) ok++; } toast(test ? `TEST: KBS simülasyonda — ${test} kayıt bildirilmedi` : `${ok} / ${pend.length} bildirim yapıldı`, test || ok < pend.length ? 'warn' : 'ok'); app.refresh(); };
   }
 
   // ---------- Rezervasyon formu ----------
@@ -91,14 +113,14 @@
     modal({
       title: isNew ? 'Yeni Rezervasyon' : `Rezervasyon ${rec.no}`, size: 'wide',
       body: `<div class="form-grid">
-        <div class="field full"><label>Misafir *</label><div class="row nw"><select class="input" id="fg"><option value="">Seçin...</option>${db.all('guests').sort((a, b) => a.name.localeCompare(b.name, 'tr')).map((g) => `<option value="${g.id}" ${g.id === v.guest ? 'selected' : ''}>${esc(g.name)} · ${esc(g.phone)}</option>`).join('')}</select><button class="btn" id="fgn">${icon('plus')} Yeni misafir</button></div></div>
+        <div class="field full"><label>Misafir *</label><input class="input mb" id="fgq" type="search" placeholder="Ad, telefon veya kimlik no ile ara..." autocomplete="off"><div class="row nw"><select class="input" id="fg"><option value="">Seçin...</option>${db.all('guests').sort((a, b) => a.name.localeCompare(b.name, 'tr')).map((g) => `<option value="${g.id}" ${g.id === v.guest ? 'selected' : ''}>${esc(g.name)} · ${esc(g.phone || '')}</option>`).join('')}</select><button class="btn" id="fgn">${icon('plus')} Yeni misafir</button></div></div>
         <div class="field"><label>Giriş *</label><input class="input" type="date" id="fci" value="${v.checkIn}"></div><div class="field"><label>Çıkış *</label><input class="input" type="date" id="fco" value="${v.checkOut}"></div>
         <div class="field"><label>Oda * <span class="faint" id="fav"></span></label><select class="input" id="fr"></select></div>
         <div class="field"><label>Gecelik fiyat (₺) <span class="faint" id="fsg"></span></label><input class="input" type="number" id="fp" value="${v.price || ''}"></div>
         <div class="field"><label>Yetişkin</label><input class="input" type="number" id="fa" value="${v.adults}"></div><div class="field"><label>Çocuk</label><input class="input" type="number" id="fch" value="${v.children}"></div>
         <div class="field"><label>Pansiyon</label><select class="input" id="fb">${Object.entries(BOARD).map(([k, x]) => `<option value="${k}" ${k === v.board ? 'selected' : ''}>${x}</option>`).join('')}</select></div>
         <div class="field"><label>Kaynak</label><select class="input" id="fs">${['Telefon', 'Web sitesi', 'Booking.com', 'Expedia', 'Airbnb', 'Kapıdan', 'Acente'].map((x) => `<option ${x === v.source ? 'selected' : ''}>${x}</option>`).join('')}</select></div>
-        <div class="field"><label>Durum</label><select class="input" id="fst">${['opsiyon', 'rezerve', 'konaklama'].map((k) => `<option value="${k}" ${k === v.status ? 'selected' : ''}>${ST[k][0]}</option>`).join('')}</select></div>
+        <div class="field"><label>Durum</label><select class="input" id="fst" ${v.status === 'konaklama' ? 'disabled' : ''}>${(v.status === 'konaklama' ? ['konaklama'] : ['opsiyon', 'rezerve']).map((k) => `<option value="${k}" ${k === v.status ? 'selected' : ''}>${ST[k][0]}</option>`).join('')}</select></div>
         <div class="field"><label>Kapora (₺)</label><input class="input" type="number" id="fd" value="${v.deposit || 0}"></div>
         <div class="field full"><label>Not</label><input class="input" id="fn" value="${esc(v.note || '')}"></div>
         <div class="full card pad" id="fsum" style="background:var(--surface-2)"></div></div>`,
@@ -122,7 +144,9 @@
         $('#fci', b).onchange = () => { if ($('#fco', b).value <= $('#fci', b).value) $('#fco', b).value = iso(addDays($('#fci', b).value, 1)); fill(); };
         $('#fco', b).onchange = fill; $('#fr', b).onchange = () => { $('#fp', b).dataset.auto = '1'; fill(); };
         $('#fp', b).oninput = () => { delete $('#fp', b).dataset.auto; summ(); };
-        $('#fgn', b).onclick = async () => { const g = await formModal({ title: 'Yeni misafir', fields: GUEST_FIELDS, values: { nat: 'TR' } }); if (g) { const n = db.insert('guests', g); $('#fg', b).insertAdjacentHTML('beforeend', `<option value="${n.id}">${esc(n.name)}</option>`); $('#fg', b).value = n.id; } };
+        // Yazdıkça liste daralır; tek eşleşme kalırsa seçilir
+        $('#fgq', b).oninput = (e) => { const q = e.target.value; let last = null, n = 0; $$('#fg option', b).forEach((o) => { if (!o.value) return; const g = db.get('guests', o.value) || {}; const ok = !q || NS.match(q, g.name, g.phone, g.idNo, g.email); o.hidden = !ok; if (ok) { n++; last = o; } }); if (n === 1) $('#fg', b).value = last.value; };
+        $('#fgn', b).onclick = async () => { const q = $('#fgq', b).value.trim(); const g = await formModal({ title: 'Yeni misafir', fields: GUEST_FIELDS, values: { nat: 'TR', ...(/\d{5,}/.test(q) ? { phone: q } : q ? { name: q } : {}) } }); if (g) { const n = db.insert('guests', g); $('#fg', b).insertAdjacentHTML('beforeend', `<option value="${n.id}">${esc(n.name)}</option>`); $('#fg', b).value = n.id; } };
         if (v.id) $('#fp', b).value = v.price; else $('#fp', b).dataset.auto = '1';
         fill();
       },
@@ -133,7 +157,7 @@
           if (d.checkOut <= d.checkIn) return toast('Çıkış tarihi girişten sonra olmalı', 'err');
           const c = clash(d.room, d.checkIn, d.checkOut, v.id); if (c) return toast(`Oda dolu: ${guest(c.guest).name} (${NS.date(c.checkIn)}-${NS.date(c.checkOut)})`, 'err');
           if (isNew) { const r = db.insert('reservations', { ...d, no: db.nextNo('res', 'R'), folio: [] }); if (d.deposit) r.folio.push({ id: NS.uid(), date: today(), desc: 'Kapora', amount: d.deposit, type: 'payment', method: 'havale' }); db.log('Rezervasyon', `${r.no} · ${guest(d.guest).name}`); db.save(); }
-          else db.update('reservations', v.id, d);
+          else { if (rec.status === 'konaklama') { delete d.deposit; d.status = 'konaklama'; } db.update('reservations', v.id, d); const r = db.get('reservations', v.id); if (r.status === 'konaklama') { syncStay(r); db.save(); } }
           close(); toast('Kaydedildi', 'ok'); app.refresh();
         },
       }],
@@ -152,12 +176,12 @@
           <div class="list-item"><span class="grow muted">Konaklama bedeli</span><b>${money(r.price * nights(r))}</b></div>
           <div class="list-item"><span class="grow muted">Misafir</span><span>${esc(g.phone)} · ${esc(g.nat || '')}</span></div>
           ${r.note ? `<div class="list-item"><span class="grow muted">Not</span><span>${esc(r.note)}</span></div>` : ''}
-        </div><div><h3 class="mb">Folyo</h3>${r.folio.length ? r.folio.map((f) => `<div class="list-item small"><span class="grow">${esc(f.desc)} <span class="faint">${NS.date(f.date)}</span></span><b style="color:${f.type === 'payment' ? 'var(--ok)' : 'inherit'}">${f.type === 'payment' ? '-' : ''}${money(f.amount)}</b></div>`).join('') : '<div class="faint small">Folyo boş (giriş yapılınca konaklama bedeli eklenir)</div>'}
+        </div><div><h3 class="mb">Folyo</h3>${r.folio.length ? r.folio.map((f) => `<div class="list-item small"><span class="grow">${esc(f.desc)} <span class="faint">${NS.date(f.date)}</span></span><b style="color:${f.type === 'payment' ? 'var(--ok)' : f.type === 'refund' ? 'var(--warn)' : 'inherit'}">${f.type === 'payment' ? '-' : f.type === 'refund' ? 'iade ' : ''}${money(f.amount)}</b></div>`).join('') : '<div class="faint small">Folyo boş (giriş yapılınca konaklama bedeli eklenir)</div>'}
           <div class="list-item"><b class="grow">Bakiye</b><b style="font-size:18px;color:${bal > 0 ? 'var(--err)' : 'var(--ok)'}">${money(bal)}</b></div>
-          ${r.status === 'konaklama' ? `<div class="row mt"><button class="btn sm" data-x="charge">${icon('plus')} Harcama ekle</button><button class="btn sm" data-x="pay">${icon('cash')} Ödeme al</button><button class="btn sm" data-x="pbx">${icon('phone')} Santral</button><button class="btn sm" data-x="card">${icon('key')} Kart</button></div>` : ''}
-          <div class="row mt small">${r.kbs ? Object.entries(r.kbs).map(([k, v]) => badge(`KBS ${k}: ${v}`, v === 'hata' ? 'err' : 'ok')).join(' ') : r.status === 'konaklama' ? badge('KBS bildirimi yok', 'warn') : ''} ${r.keycard ? badge('Kart ' + r.keycard, 'info') : ''} ${r.ebelge ? badge(r.ebelge.type + ' ' + r.ebelge.no, 'ok') : ''} ${r.ota ? badge('OTA ' + r.ota, 'acc') : ''}</div></div></div>`,
+          ${r.status === 'konaklama' ? `<div class="row mt"><button class="btn sm" data-x="charge">${icon('plus')} Harcama ekle</button><button class="btn sm" data-x="pay">${icon('cash')} Ödeme al</button><button class="btn sm" data-x="pbx">${icon('phone')} Santral</button><button class="btn sm" data-x="card">${icon('key')} Kart</button><button class="btn sm" data-x="move">${icon('refresh')} Oda değiştir</button></div>` : ['rezerve', 'opsiyon'].includes(r.status) ? `<div class="row mt"><button class="btn sm" data-x="move">${icon('refresh')} Oda değiştir</button>${r.checkIn < today() ? `<button class="btn sm danger" data-x="noshow">Gelmedi (no-show)</button>` : ''}</div>` : ''}
+          <div class="row mt small">${['konaklama', 'cikis'].includes(r.status) ? `KBS giriş ${kbsBadge(r, 'giris')}${r.status === 'cikis' ? ` çıkış ${kbsBadge(r, 'cikis')}` : ''}` : ''} ${r.keycard ? badge('Kart ' + r.keycard, 'info') : ''} ${r.ebelge ? (NS.ebelge && NS.ebelge.statusBadge(r.ebelge.no)) || badge(r.ebelge.type + ' ' + r.ebelge.no, r.ebelge.test ? 'warn' : 'ok') : ''} ${r.ota ? badge('OTA ' + r.ota, 'acc') : ''}${r.cancel ? `<div class="small muted mt">İptal: ${esc(r.cancel.reason || '')} · ${NS.dt(r.cancel.at)}</div>` : ''}${(r.moves || []).map((m) => `<div class="small faint">Oda değişti: ${esc(m.from)} → ${esc(m.to)} · ${NS.date(m.date)}</div>`).join('')}</div></div></div>`,
       actions: [
-        ...(['rezerve', 'opsiyon'].includes(r.status) ? [{ label: 'İptal et', cls: 'danger', onClick: async (c) => { c(); if (await confirm('Rezervasyon iptal edilsin mi?')) { r.status = 'iptal'; db.log('İptal', r.no); db.save(); app.refresh(); } } }, { label: 'Giriş yap (check-in)', cls: 'ok', icon: 'key', onClick: (c) => { c(); checkIn(app, r); } }] : []),
+        ...(['rezerve', 'opsiyon'].includes(r.status) ? [{ label: 'İptal et', cls: 'danger', onClick: (c) => { c(); cancelRes(app, r, 'iptal'); } }, { label: 'Giriş yap (check-in)', cls: 'ok', icon: 'key', onClick: (c) => { c(); checkIn(app, r); } }] : []),
         ...(r.status === 'konaklama' ? [{ label: 'Çıkış yap (check-out)', cls: 'primary', icon: 'logout', onClick: (c) => { c(); checkOut(app, r); } }] : []),
         { label: 'Folyo yazdır', icon: 'print', onClick: () => printFolio(r) },
         ...(r.status !== 'cikis' ? [{ label: 'Düzenle', icon: 'edit', onClick: (c) => { c(); resForm(app, r); } }] : []),
@@ -168,11 +192,13 @@
           const v = await formModal({ title: 'Harcama ekle', fields: [{ name: 'item', label: 'Kalem', type: 'select', options: db.all('extras').map((x) => ({ value: x.id, label: `${x.name} (${money(x.price)})` })).concat([{ value: '', label: 'Diğer' }]) }, { name: 'qty', label: 'Adet', type: 'number', value: 1 }, { name: 'desc', label: 'Açıklama (Diğer için)' }, { name: 'amount', label: 'Tutar (Diğer için)', type: 'number' }] });
           if (!v) return;
           const x = db.get('extras', v.item);
-          r.folio.push({ id: NS.uid(), date: today(), desc: x ? `${x.name}${v.qty > 1 ? ' ×' + v.qty : ''}` : v.desc || 'Ekstra', amount: x ? x.price * (v.qty || 1) : v.amount || 0, type: 'charge' });
+          r.folio.push({ id: NS.uid(), date: today(), desc: x ? `${x.name}${v.qty > 1 ? ' ×' + v.qty : ''}` : v.desc || 'Ekstra', amount: x ? x.price * (v.qty || 1) : v.amount || 0, type: 'charge', vat: x && x.vat !== undefined && x.vat !== '' ? Number(x.vat) : vatExtra() });
           db.save(); resDetail(app, r);
         } else if (t.dataset.x === 'pay') { await takePayment(r); resDetail(app, r); }
-        else if (t.dataset.x === 'pbx') { const x = NS.integ && (await NS.integ.call('santral', 'cagri-listesi', { room: room(r.room).no, from: r.checkedInAt })); if (x && x.ok) { const calls = x.data && Array.isArray(x.data.calls) ? x.data.calls : x.simulated ? [{ to: '0532 ••• 41 18', min: rand(2, 9) }] : []; const tariff = Number((NS.integ.cfg('santral') || {}).tariff) || 4; calls.forEach((cl) => r.folio.push({ id: NS.uid(), date: today(), desc: `Telefon ${cl.to} (${cl.min} dk)`, amount: r2(cl.min * tariff), type: 'charge' })); db.save(); toast(`${calls.length} görüşme folyoya aktarıldı`, 'ok'); } resDetail(app, r); }
-        else if (t.dataset.x === 'card') { const n = await NS.prompt('Kaç kart kodlansın?', '1', { title: 'Oda kartı', type: 'number' }); if (n && NS.integ) { const x = await NS.integ.call('kapikilit', 'kart-kodla', { room: room(r.room).no, to: r.checkOut, count: Number(n) }); if (x && x.ok) { r.keycard = x.ref; db.save(); } } resDetail(app, r); }
+        else if (t.dataset.x === 'pbx') { const x = NS.integ && (await NS.integ.call('santral', 'cagri-listesi', { room: room(r.room).no, from: r.checkedInAt })); if (x && x.ok) { if (x.simulated) { toast('TEST: santral simülasyonda — gerçek görüşme okunmadı, folyoya bir şey eklenmedi', 'warn'); return resDetail(app, r); } const calls = x.data && Array.isArray(x.data.calls) ? x.data.calls : []; const tariff = Number((NS.integ.cfg('santral') || {}).tariff) || 4; calls.forEach((cl) => r.folio.push({ id: NS.uid(), date: today(), desc: `Telefon ${cl.to} (${cl.min} dk)`, amount: r2(cl.min * tariff), type: 'charge' })); db.save(); toast(`${calls.length} görüşme folyoya aktarıldı`, 'ok'); } resDetail(app, r); }
+        else if (t.dataset.x === 'card') { const n = await NS.prompt('Kaç kart kodlansın?', '1', { title: 'Oda kartı', type: 'number' }); if (n && NS.integ) { const x = await NS.integ.call('kapikilit', 'kart-kodla', { room: room(r.room).no, to: r.checkOut, count: Number(n) }, { silent: true }); if (x && x.simulated) { testMark(r, 'kart'); toast('TEST: kapı kilidi simülasyonda — kart KODLANMADI', 'warn'); } else if (x && x.ok) { r.keycard = x.ref; toast('Kart kodlandı', 'ok'); } else toast('Kart kodlanamadı: ' + ((x && x.error) || 'Kapı kilidi bağlantısı kapalı'), 'err'); db.save(); } resDetail(app, r); }
+        else if (t.dataset.x === 'move') await moveRoom(app, r);
+        else if (t.dataset.x === 'noshow') cancelRes(app, r, 'noshow');
       }),
     });
   }
@@ -191,30 +217,86 @@
     Object.assign(g, { idNo: v.idNo, nat: v.nat, phone: v.phone, birth: v.birth });
     r.status = 'konaklama'; r.checkedInAt = new Date().toISOString(); r.plate = v.plate;
     r.companions = String(v.others || '').split('\n').map((x) => x.trim()).filter(Boolean).map((x) => { const [name, id] = x.split(';').map((y) => (y || '').trim()); return { name, id }; });
-    if (!r.folio.some((f) => f.desc.startsWith('Konaklama'))) r.folio.unshift({ id: NS.uid(), date: r.checkIn, desc: `Konaklama ${nights(r)} gece × ${money(r.price)}`, amount: r.price * nights(r), type: 'charge' });
+    if (!stayLine(r)) r.folio.unshift({ id: NS.uid(), date: r.checkIn, desc: '', amount: 0, type: 'charge', stay: true, vat: vatStay() });
+    syncStay(r);
     db.log('Check-in', `${rm.no} · ${g.name}`); db.save(); toast(`Oda ${rm.no} — hoş geldiniz ${g.name}`, 'ok');
     if (v.kbs) kbsSend(r, 'giris');
-    if (v.card && NS.integ) NS.integ.call('kapikilit', 'kart-kodla', { room: rm.no, from: r.checkIn + 'T' + (S().checkInTime || '14:00'), to: r.checkOut + 'T' + (S().checkOutTime || '12:00'), count: Number(v.cards) || 1, guest: g.name }).then((x) => { if (x && x.ok) { r.keycard = x.ref; db.save(); } });
+    if (v.card && NS.integ) NS.integ.call('kapikilit', 'kart-kodla', { room: rm.no, from: r.checkIn + 'T' + (S().checkInTime || '14:00'), to: r.checkOut + 'T' + (S().checkOutTime || '12:00'), count: Number(v.cards) || 1, guest: g.name }, { silent: true }).then((x) => { if (x && x.simulated) { testMark(r, 'kart'); toast('TEST: kapı kilidi simülasyonda — kart KODLANMADI', 'warn'); } else if (x && x.ok) r.keycard = x.ref; db.save(); });
     app.refresh();
   }
   // KBS (Emniyet / Jandarma) bildirimi: giriş, çıkış ve oda değişikliği
-  async function kbsSend(r, kind) {
+  const kbsBadge = (r, k) => (r.kbs && r.kbs[k] ? badge(r.kbs[k] === 'hata' ? 'Hata' : r.kbs[k], r.kbs[k] === 'hata' ? 'err' : 'ok') : r.test && r.test['kbs_' + k] ? badge('TEST — bildirilmedi', 'warn') : badge('Bildirilmedi', 'warn'));
+  async function kbsSend(r, kind, quiet) {
     if (!NS.integ) return;
     const g = guest(r.guest);
-    const res = await NS.integ.call('kbs', kind === 'giris' ? 'giris-bildirimi' : 'cikis-bildirimi', { no: r.no, room: room(r.room).no, guests: [{ name: g.name, id: g.idNo, nat: g.nat, birth: g.birth }, ...(r.companions || [])], checkIn: r.checkIn, checkOut: r.checkOut, plate: r.plate });
-    r.kbs = r.kbs || {}; r.kbs[kind] = res && res.ok ? res.ref : 'hata'; db.save();
+    const res = await NS.integ.call('kbs', { giris: 'giris-bildirimi', cikis: 'cikis-bildirimi', oda: 'oda-degisikligi' }[kind], { no: r.no, room: room(r.room).no, guests: [{ name: g.name, id: g.idNo, nat: g.nat, birth: g.birth }, ...(r.companions || [])], checkIn: r.checkIn, checkOut: r.checkOut, plate: r.plate }, { silent: true });
+    if (res && res.simulated) { testMark(r, 'kbs_' + kind); if (!quiet) toast('TEST: KBS simülasyonda — Emniyet/Jandarma’ya bildirim YAPILMADI', 'warn'); }
+    else { r.kbs = r.kbs || {}; r.kbs[kind] = res && res.ok ? res.ref : 'hata'; if (!quiet) toast(res && res.ok ? 'KBS bildirimi yapıldı' : 'KBS bildirimi yapılamadı: ' + ((res && res.error) || 'KBS bağlantısı kapalı'), res && res.ok ? 'ok' : 'err'); }
+    db.save();
     return res;
   }
   async function checkOut(app, r) {
+    // Erken çıkış: gece sayısı ve folyo birlikte güncellenir (istenirse planlanan tutar korunur)
+    if (r.checkOut > today() && today() > r.checkIn) {
+      const planned = nights(r), real = daysBetween(r.checkIn, today());
+      const ok = await confirm(`Misafir planlanandan erken çıkıyor: ${planned} gece yerine ${real} gece. Konaklama bedeli ${real} geceye göre güncellensin mi?`, { title: 'Erken çıkış', ok: `${real} gece hesapla`, danger: false });
+      if (ok) { r.checkOut = today(); syncStay(r); db.save(); } else r.earlyOut = today();
+    }
     if (balance(r) > 0) { toast(`Açık bakiye: ${money(balance(r))} — önce ödeme alın`, 'err'); await takePayment(r); if (balance(r) > 0) return; }
     r.status = 'cikis'; r.checkedOutAt = new Date().toISOString();
-    if (r.checkOut > today()) r.checkOut = today() > r.checkIn ? today() : r.checkOut;
     room(r.room).hk = 'kirli';
     db.log('Check-out', `${room(r.room).no} · ${guest(r.guest).name}`); db.save(); toast('Çıkış tamamlandı, oda temizliğe alındı', 'ok');
-    if (NS.integ && (NS.integ.isOn('kbs') || (r.kbs && r.kbs.giris))) kbsSend(r, 'cikis');
+    if (NS.integ && (NS.integ.isOn('kbs') || (r.kbs && r.kbs.giris))) await kbsSend(r, 'cikis');
     if (r.keycard && NS.integ) NS.integ.call('kapikilit', 'kart-iptal', { room: room(r.room).no, ref: r.keycard }, { silent: true });
-    if (NS.integ && (await confirm('Konaklama faturası e-Fatura / e-Arşiv olarak kesilsin mi?', { ok: 'Fatura kes', danger: false, title: 'Fatura' }))) { const g = guest(r.guest); const tot = sum(r.folio.filter((f) => f.type === 'charge'), (f) => f.amount); const x = await NS.integ.sendEInvoice({ buyer: g.name, buyerVkn: g.taxNo || g.idNo, no: r.no, total: tot, vat: r2(tot - tot / 1.1), lines: r.folio.filter((f) => f.type === 'charge').map((f) => ({ name: f.desc, total: f.amount })) }); if (x.ok) { r.ebelge = { type: x.type, no: x.no }; db.save(); } }
+    if (NS.integ && (await confirm('Konaklama faturası e-Fatura / e-Arşiv olarak kesilsin mi?', { ok: 'Fatura kes', danger: false, title: 'Fatura' }))) await invoice(r);
     printFolio(r); app.refresh();
+  }
+  // e-Fatura / e-Arşiv: her kalem kendi KDV oranıyla (KDV dahil tutardan) gönderilir
+  async function invoice(r) {
+    const tax = Number(S().tax) || 0; const prov = (NS.integ.cfg('efatura') || {}).provider;
+    // Çekirdek UBL üreticisi konaklama vergisini (ayrı vergi kodu) henüz desteklemiyor: eksik vergili fatura gerçek entegratöre gönderilmez
+    if (tax > 0 && prov && prov !== 'sim') return toast(`Fatura kesilmedi: konaklama vergisi (%${tax}) e-Fatura’da henüz gösterilemiyor. Faturayı entegratör panelinden kesin; bu özellik çekirdek güncellemesi bekliyor.`, 'err');
+    if (tax > 0 && !(await confirm(`TEST faturasında konaklama vergisi (%${tax}) yer almayacak; yalnızca KDV gösterilir. Devam edilsin mi?`, { ok: 'TEST faturası oluştur', danger: false, title: 'Konaklama vergisi' }))) return;
+    const g = guest(r.guest); const lines = r.folio.filter((f) => f.type === 'charge').map((f) => ({ name: f.desc, total: f.amount, vat: f.vat !== undefined ? f.vat : f.stay || /^Konaklama/.test(f.desc) ? vatStay() : vatExtra() }));
+    const b = r.billTo;
+    const x = await NS.integ.sendEInvoice({ buyer: b ? b.name : g.name, buyerVkn: b ? b.vkn : g.taxNo || g.idNo, buyerTaxOffice: b ? b.taxOffice : '', address: b ? b.address : '', district: b ? b.district : '', city: b ? b.city : '', buyerEmail: b ? b.email : g.email, no: r.no, total: sum(lines, (l) => l.total), lines });
+    if (x && x.ok) { r.ebelge = { type: x.type, no: x.no, test: !!x.simulated }; db.save(); }
+  }
+  // İptal veya no-show: alınan kapora ya misafire iade edilir ya da iptal/no-show geliri olarak kalır
+  async function cancelRes(app, r, kind) {
+    const got = paid(r); const ns = kind === 'noshow';
+    const v = await formModal({ title: ns ? `No-show · ${r.no}` : `Rezervasyonu iptal et · ${r.no}`, submitLabel: ns ? 'Gelmedi olarak işaretle' : 'İptal et', fields: [
+      ...(ns ? [] : [{ name: 'reason', label: 'İptal nedeni', type: 'select', options: ['Misafir iptal etti', 'Kanal (OTA) iptali', 'Ödeme alınamadı', 'Opsiyon süresi doldu', 'Çift kayıt', 'Diğer'] }]),
+      { name: 'note', label: 'Açıklama', full: true },
+      ...(got > 0 ? [{ name: 'dep', label: `Alınan kapora ${money(got)}`, type: 'select', full: true, options: [{ value: 'keep', label: ns ? 'No-show ücreti olarak tut' : 'İptal ücreti olarak tut' }, { value: 'refund', label: 'Misafire iade et' }] }] : [{ name: 'fee', label: ns ? 'No-show ücreti (₺, isteğe bağlı)' : 'İptal ücreti (₺, isteğe bağlı)', type: 'number' }]),
+    ] });
+    if (!v) return;
+    const stay = stayLine(r); if (stay) r.folio = r.folio.filter((f) => f !== stay);
+    const feeDesc = ns ? 'No-show ücreti' : 'İptal ücreti';
+    if (got > 0 && v.dep === 'refund') r.folio.push({ id: NS.uid(), date: today(), desc: 'Kapora iadesi', amount: got, type: 'refund' });
+    else if (got > 0) r.folio.push({ id: NS.uid(), date: today(), desc: feeDesc, amount: got, type: 'charge', vat: vatStay() });
+    else if (Number(v.fee) > 0) r.folio.push({ id: NS.uid(), date: today(), desc: feeDesc, amount: Number(v.fee), type: 'charge', vat: vatStay() });
+    r.status = kind; r.cancel = { reason: ns ? 'Gelmedi (no-show)' : v.reason, note: v.note, at: new Date().toISOString(), by: NS.currentUser ? NS.currentUser.name : '' };
+    db.log(ns ? 'No-show' : 'İptal', `${r.no} · ${r.cancel.reason}`); db.save();
+    toast(ns ? 'No-show işlendi, oda satışa açıldı' : 'Rezervasyon iptal edildi', 'ok');
+    if (balance(r) > 0) toast(`Açık bakiye: ${money(balance(r))} — tahsil edilmesi gerekiyor`, 'warn');
+    app.refresh();
+  }
+  // Oda değiştirme: kalan geceler için boş oda; konaklayan misafirin eski odası kirliye alınır
+  async function moveRoom(app, r) {
+    const from = r.status === 'konaklama' && today() > r.checkIn ? today() : r.checkIn;
+    // Takvimde konaklamanın tamamı yeni odada görünür; bu yüzden çakışma tüm konaklama aralığında aranır (aynı odada iki kayıt olmaz)
+    const free = db.all('rooms', (x) => x.id !== r.room && x.hk !== 'arizali' && !clash(x.id, r.checkIn, r.checkOut, r.id)).sort((a, b) => a.no.localeCompare(b.no));
+    if (!free.length) return toast('Bu tarihler için boş oda yok', 'err');
+    const v = await formModal({ title: `Oda değiştir · ${room(r.room).no}`, submitLabel: 'Odayı değiştir', fields: [{ name: 'to', label: `Yeni oda (${NS.date(from)} → ${NS.date(r.checkOut)})`, type: 'select', full: true, options: free.map((x) => ({ value: x.id, label: `${x.no} · ${type(x.type).name}${x.hk === 'kirli' ? ' (kirli)' : ''}` })) }, { name: 'price', label: 'Gecelik fiyat (₺)', type: 'number', value: r.price }, { name: 'reason', label: 'Neden', full: true }] });
+    if (!v) return;
+    const old = room(r.room);
+    if (r.status === 'konaklama') old.hk = 'kirli';
+    r.moves = r.moves || []; r.moves.push({ date: today(), from: old.no, to: room(v.to).no, reason: v.reason });
+    r.room = v.to; if (Number(v.price) > 0) r.price = Number(v.price); syncStay(r);
+    db.log('Oda değişikliği', `${r.no} · ${old.no} → ${room(v.to).no}`); db.save(); toast(`Misafir ${room(v.to).no} numaralı odaya alındı`, 'ok');
+    if (r.status === 'konaklama' && NS.integ && (NS.integ.isOn('kbs') || (r.kbs && r.kbs.giris))) await kbsSend(r, 'oda');
+    app.refresh();
   }
   function printFolio(r) {
     const s = S(), g = guest(r.guest);
@@ -229,8 +311,8 @@
     const arr = active().filter((r) => r.checkIn === t && ['rezerve', 'opsiyon'].includes(r.status));
     const dep = active().filter((r) => r.status === 'konaklama' && r.checkOut <= t);
     const inh = active().filter((r) => r.status === 'konaklama');
-    const total = db.all('rooms', (r) => r.hk !== 'arizali').length;
-    const occ = occupiedOn(t).length;
+    const total = sellable();
+    const occ = occupiedOn(t).length; const late = overdue();
     const next14 = Array.from({ length: 14 }, (_, i) => { const d = iso(addDays(new Date(), i)); return { label: d.slice(8) + '.' + d.slice(5, 7), value: Math.round((occupiedOn(d).length / total) * 100) }; });
     const adr = occ ? sum(occupiedOn(t), (r) => r.price) / occ : 0;
     el.innerHTML = pageHead('Ön Büro Özeti', NS.dateLong(new Date()), `<a class="btn" href="rezervasyon.html" target="_blank" rel="noopener">${icon('globe')} Rezervasyon motoru</a><button class="btn primary" id="nr">${icon('plus')} Yeni rezervasyon</button>`) + `
@@ -240,12 +322,14 @@
         <div class="card"><div class="card-h"><h3>${icon('logout')} Bugün ayrılacaklar</h3></div><div class="card-b">${dep.map((r) => `<div class="list-item"><div class="grow"><b>${esc(guest(r.guest).name)}</b><div class="small muted">Oda ${room(r.room).no} · bakiye ${money(balance(r))}</div></div><button class="btn sm primary" data-co="${r.id}">Çıkış</button></div>`).join('') || '<div class="faint small">Bugün çıkış yok</div>'}</div></div>
         <div class="card"><div class="card-h"><h3>${icon('sparkles')} Kat hizmetleri</h3></div><div class="card-b">${Object.entries(HK).map(([k, v]) => `<div class="list-item"><span class="grow">${badge(v[0], v[1])}</span><b>${db.all('rooms', (r) => r.hk === k).length} oda</b></div>`).join('')}<a class="btn sm block mt" href="#/odalar">Oda durumlarını aç</a></div></div>
       </div>
+      ${late.length ? `<div class="card mb" style="border-color:var(--err)"><div class="card-h"><h3>${icon('alert')} Gelmeyenler — giriş tarihi geçti (${late.length})</h3><span class="small muted">Oda bu misafir için kapalı duruyor; giriş yapın, iptal edin veya no-show işaretleyin</span></div><div class="card-b">${late.map((r) => `<div class="list-item"><div class="grow"><b>${esc(guest(r.guest).name)}</b><div class="small muted">${esc(r.no)} · Oda ${room(r.room).no} · giriş ${NS.date(r.checkIn)} · ${esc(r.source)}</div></div><button class="btn sm" data-r="${r.id}">Aç</button><button class="btn sm danger" data-ns="${r.id}">No-show</button></div>`).join('')}</div></div>` : ''}
       <div class="grid g-21"><div class="card"><div class="card-h"><h3>Önümüzdeki 14 gün doluluk (%)</h3></div><div class="card-b">${chart.bars(next14, { format: (v) => '%' + v })}</div></div>
       <div class="card"><div class="card-h"><h3>Konaklayanlar (${inh.length})</h3></div><div class="card-b" style="max-height:280px;overflow:auto">${inh.map((r) => `<div class="list-item small" data-r="${r.id}" style="cursor:pointer"><b style="min-width:36px">${room(r.room).no}</b><span class="grow">${esc(guest(r.guest).name)}</span><span class="faint">${NS.date(r.checkOut)}</span></div>`).join('')}</div></div></div>`;
     $('#nr', el).onclick = () => resForm(app);
     on(el, 'click', '[data-ci]', (e, t) => checkIn(app, db.get('reservations', t.dataset.ci)));
     on(el, 'click', '[data-co]', (e, t) => checkOut(app, db.get('reservations', t.dataset.co)));
     on(el, 'click', '[data-r]', (e, t) => resDetail(app, db.get('reservations', t.dataset.r)));
+    on(el, 'click', '[data-ns]', (e, t) => cancelRes(app, db.get('reservations', t.dataset.ns), 'noshow'));
   }
 
   // ---------- Rezervasyon takvimi (oda × gün) ----------
@@ -310,7 +394,7 @@
   // ---------- Listeler ----------
   function listPage(el, p, app) {
     let q = '', st = '';
-    el.innerHTML = pageHead('Rezervasyonlar', 'Tüm rezervasyonlar, kaynaklar ve bakiyeler', `<button class="btn" id="ex">${icon('download')} Dışa aktar</button><button class="btn primary" id="nr">${icon('plus')} Yeni</button>`) + `<div class="card"><div class="card-h">${NS.searchBox('q', 'Misafir, oda, rezervasyon no...')}<div class="seg">${[['', 'Tümü'], ['rezerve', 'Gelecek'], ['konaklama', 'Konaklayan'], ['cikis', 'Çıkış'], ['iptal', 'İptal']].map(([k, l]) => `<button data-s="${k}" class="${k === st ? 'active' : ''}">${l}</button>`).join('')}</div></div><div id="t"></div></div>`;
+    el.innerHTML = pageHead('Rezervasyonlar', 'Tüm rezervasyonlar, kaynaklar ve bakiyeler', `<button class="btn" id="ex">${icon('download')} Dışa aktar</button><button class="btn primary" id="nr">${icon('plus')} Yeni</button>`) + `<div class="card"><div class="card-h">${NS.searchBox('q', 'Misafir, oda, rezervasyon no...')}<div class="seg">${[['', 'Tümü'], ['rezerve', 'Gelecek'], ['konaklama', 'Konaklayan'], ['cikis', 'Çıkış'], ['iptal', 'İptal'], ['noshow', 'No-show']].map(([k, l]) => `<button data-s="${k}" class="${k === st ? 'active' : ''}">${l}</button>`).join('')}</div></div><div id="t"></div></div>`;
     const rows = () => db.all('reservations', (r) => (!st || r.status === st || (st === 'rezerve' && r.status === 'opsiyon')) && NS.match(q, r.no, guest(r.guest).name, room(r.room).no, r.source)).sort((a, b) => b.checkIn.localeCompare(a.checkIn));
     const draw = () => { const rs = rows(); $('#t', el).innerHTML = table({ rows: rs.slice(0, 300), columns: [{ label: 'No', render: (r) => `<b>${esc(r.no)}</b>` }, { label: 'Misafir', render: (r) => esc(guest(r.guest).name) }, { label: 'Oda', render: (r) => room(r.room).no }, { label: 'Giriş', render: (r) => NS.date(r.checkIn) }, { label: 'Çıkış', render: (r) => NS.date(r.checkOut) }, { label: 'Gece', cls: 'right', render: (r) => nights(r) }, { label: 'Kaynak', render: (r) => esc(r.source) }, { label: 'Durum', render: (r) => badge(ST[r.status][0], ST[r.status][1]) }, { label: 'Tutar', cls: 'right', render: (r) => money(r.price * nights(r)) }, { label: 'Bakiye', cls: 'right', render: (r) => (r.folio.length ? (balance(r) > 0 ? `<b style="color:var(--err)">${money(balance(r))}</b>` : badge('Kapalı', 'ok')) : '-') }], actions: [{ icon: 'eye', act: 'v' }], foot: `${rs.length} rezervasyon · ${num(sum(rs, nights))} gece · ${money(sum(rs.filter((r) => r.status !== 'iptal'), (r) => r.price * nights(r)))}` }); };
     $('#q', el).oninput = (e) => { q = e.target.value; draw(); };
@@ -333,7 +417,7 @@
     el.innerHTML = pageHead('Oda Tipleri & Fiyatlar', 'Baz fiyatlar, sezon artışları ve ekstra hizmetler') + `<div class="grid g2"><div id="a"></div><div id="b"></div></div><div id="c" class="mt"></div>`;
     NS.crud($('#a', el), app, { col: 'types', title: 'Oda tipleri', single: 'Oda tipi', addLabel: 'Yeni tip', fields: [{ name: 'name', label: 'Ad', required: true }, { name: 'capacity', label: 'Kapasite', type: 'number' }, { name: 'price', label: 'Gecelik baz fiyat', type: 'number', required: true }, { name: 'color', label: 'Renk', type: 'color' }], columns: [{ key: 'name', label: 'Tip', render: (t) => `<b>${esc(t.name)}</b>` }, { key: 'capacity', label: 'Kişi', cls: 'right' }, { key: 'price', label: 'Fiyat', cls: 'right', render: (t) => money(t.price) }, { label: 'Oda', cls: 'right', render: (t) => db.all('rooms', (r) => r.type === t.id).length }] });
     NS.crud($('#b', el), app, { col: 'seasons', title: 'Sezonlar', single: 'Sezon', addLabel: 'Yeni sezon', fields: [{ name: 'name', label: 'Ad', required: true }, { name: 'from', label: 'Başlangıç', type: 'date', required: true }, { name: 'to', label: 'Bitiş', type: 'date', required: true }, { name: 'pct', label: 'Fiyat artışı %', type: 'number', required: true }], columns: [{ key: 'name', label: 'Sezon', render: (s) => `<b>${esc(s.name)}</b>` }, { label: 'Tarih', render: (s) => `${NS.date(s.from)} – ${NS.date(s.to)}` }, { key: 'pct', label: 'Artış', cls: 'right', render: (s) => badge('+%' + s.pct, 'warn') }] });
-    NS.crud($('#c', el), app, { col: 'extras', title: 'Ekstra hizmetler', single: 'Hizmet', addLabel: 'Yeni hizmet', fields: [{ name: 'name', label: 'Ad', required: true }, { name: 'price', label: 'Fiyat', type: 'number', required: true }], columns: [{ key: 'name', label: 'Hizmet', render: (x) => `<b>${esc(x.name)}</b>` }, { key: 'price', label: 'Fiyat', cls: 'right', render: (x) => money(x.price) }] });
+    NS.crud($('#c', el), app, { col: 'extras', title: 'Ekstra hizmetler', single: 'Hizmet', addLabel: 'Yeni hizmet', fields: [{ name: 'name', label: 'Ad', required: true }, { name: 'price', label: 'Fiyat (KDV dahil)', type: 'number', required: true }, { name: 'vat', label: 'KDV %', type: 'select', options: [{ value: '', label: 'Ayarlardaki varsayılan' }, 0, 1, 10, 20] }], columns: [{ key: 'name', label: 'Hizmet', render: (x) => `<b>${esc(x.name)}</b>` }, { key: 'price', label: 'Fiyat', cls: 'right', render: (x) => money(x.price) }, { label: 'KDV', cls: 'right', render: (x) => '%' + (x.vat !== undefined && x.vat !== '' ? x.vat : vatExtra()) }] });
   }
 
   // ---------- Raporlar ----------
@@ -341,7 +425,7 @@
     let days = 30;
     const draw = () => {
       const from = iso(addDays(new Date(), -days)), to = today();
-      const total = db.all('rooms').length;
+      const total = sellable();
       let roomNights = 0, revenue = 0;
       const series = [];
       for (let d = from; d < to; d = iso(addDays(d, 1))) { const o = occupiedOn(d); roomNights += o.length; revenue += sum(o, (r) => r.price); series.push({ d, occ: Math.round((o.length / total) * 100), rev: sum(o, (r) => r.price) }); }
@@ -365,7 +449,7 @@
   const app = NS.shell({
     id: 'otel', integrations: ['printer', 'pos', 'efatura', 'payment', 'sms', 'whatsapp', 'email', 'webhook', 'backup'], name: 'Otel', tagline: 'Otel & Pansiyon Yönetimi', icon: 'bed', accent: '#0891b2', db, home: 'ozet', auth: { roles: ROLES },
     nav: [{ sec: 'Ön Büro' }, { id: 'ozet', label: 'Ön Büro Özeti', icon: 'home', roles: ['resepsiyon'] }, { id: 'takvim', label: 'Rezervasyon Takvimi', icon: 'calendar', roles: ['resepsiyon'] }, { id: 'rezervasyonlar', label: 'Rezervasyonlar', icon: 'list', roles: ['resepsiyon'] }, { id: 'misafirler', label: 'Misafirler', icon: 'users', roles: ['resepsiyon'] }, { id: 'odalar', label: 'Odalar & Housekeeping', icon: 'sparkles' }, { id: 'kanal', label: 'Kanal & KBS', icon: 'globe', roles: ['resepsiyon'] }, { sec: 'Yönetim' }, { id: 'fiyatlar', label: 'Oda Tipleri & Fiyatlar', icon: 'tag', roles: ['admin'] }, { id: 'raporlar', label: 'Raporlar', icon: 'chart', roles: ['admin'] }, { id: 'ayarlar', label: 'Ayarlar', icon: 'settings', roles: ['admin'] }],
-    routes: { kanal: channelPage, ozet: dashboard, takvim: ganttPage, rezervasyonlar: listPage, misafirler: guestsPage, odalar: roomsPage, fiyatlar: pricingPage, raporlar: reportsPage, ayarlar: (el, p, a) => NS.settingsPage(el, a, { roles: ROLES, fields: [{ type: 'section', label: 'Otel ayarları' }, { name: 'checkInTime', label: 'Giriş saati', type: 'time' }, { name: 'checkOutTime', label: 'Çıkış saati', type: 'time' }, { name: 'tax', label: 'Konaklama vergisi %', type: 'number' }, { type: 'section', label: 'Web sitesi rezervasyon motoru (rezervasyon.html)' }, { name: 'directDiscount', label: 'Doğrudan rezervasyon indirimi %', type: 'number' }, { name: 'otaMarkup', label: 'OTA fiyat farkı % (karşılaştırma için)', type: 'number' }, { name: 'hbPrice', label: 'Yarım pansiyon kişi/gece (₺)', type: 'number' }, { name: 'freeCancelDays', label: 'Ücretsiz iptal (gün önce)', type: 'number' }] }) },
+    routes: { kanal: channelPage, ozet: dashboard, takvim: ganttPage, rezervasyonlar: listPage, misafirler: guestsPage, odalar: roomsPage, fiyatlar: pricingPage, raporlar: reportsPage, ayarlar: (el, p, a) => NS.settingsPage(el, a, { roles: ROLES, fields: [{ type: 'section', label: 'Otel ayarları' }, { name: 'checkInTime', label: 'Giriş saati', type: 'time' }, { name: 'checkOutTime', label: 'Çıkış saati', type: 'time' }, { name: 'tax', label: 'Konaklama vergisi % (e-Fatura’da henüz gösterilemiyor — mali müşavirinize danışın)', type: 'number' }, { name: 'vatStay', label: 'Konaklama KDV % (boşsa 10)', type: 'number' }, { name: 'vatExtra', label: 'Ekstra hizmet KDV % (boşsa 20)', type: 'number' }, { type: 'section', label: 'Web sitesi rezervasyon motoru (rezervasyon.html)' }, { name: 'directDiscount', label: 'Doğrudan rezervasyon indirimi %', type: 'number' }, { name: 'otaMarkup', label: 'OTA fiyat farkı % (karşılaştırma için)', type: 'number' }, { name: 'hbPrice', label: 'Yarım pansiyon kişi/gece (₺)', type: 'number' }, { name: 'freeCancelDays', label: 'Ücretsiz iptal (gün önce)', type: 'number' }] }) },
   });
   if (NS.currentUser && NS.currentUser.role === 'kat' && !location.hash.includes('odalar')) app.go('odalar');
 })();

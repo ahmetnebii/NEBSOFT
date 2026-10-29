@@ -6,6 +6,12 @@
       "runtimeExecutable": "node",
       "runtimeArgs": ["server.js"],
       "port": 5050
+    },
+    {
+      "name": "konaklama-etkinlik",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["-e", "process.env.PORT='5065';require('./server.js')"],
+      "port": 5065
     }
   ]
 }
