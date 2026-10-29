@@ -6,6 +6,12 @@
       "runtimeExecutable": "node",
       "runtimeArgs": ["server.js"],
       "port": 5050
+    },
+    {
+      "name": "eticaret-uretim",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["-e", "process.env.PORT='5063';require('./server.js')"],
+      "port": 5063
     }
   ]
 }
