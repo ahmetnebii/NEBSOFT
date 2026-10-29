@@ -6,7 +6,7 @@ window.MUHANALIZ = (function () {
   const { esc, $, on, icon, money, num, table, badge, pageHead, kpi, chart, sum, iso, today, addDays, daysBetween } = NS;
   let X; // { db, cari, acc, invTotals, paidOf, invStatus, isSale, isBuy, accBalance, tlNet, stockOf, isStock, PERIODS }
   const r2 = (n) => Math.round((Number(n) || 0) * 100) / 100;
-  const TABS = [['nakit', 'Nakit akışı'], ['satis', 'Satış'], ['tahsil', 'Tahsilat & ödeme'], ['kasa', 'Kasa & banka'], ['stok', 'Stok'], ['karsi', 'Dönem karşılaştırma']];
+  const TABS = [['nakit', 'Nakit akışı'], ['takvim', 'Ödeme takvimi'], ['satis', 'Satış'], ['tahsil', 'Tahsilat & ödeme'], ['kasa', 'Kasa & banka'], ['stok', 'Stok'], ['karsi', 'Dönem karşılaştırma']];
   const rem = (i) => r2(X.invTotals(i).tl - X.paidOf(i));
 
   function cashflow() {
@@ -21,14 +21,32 @@ window.MUHANALIZ = (function () {
     return { start: r2(start), weeks, lateIn: r2(lateIn), lateOut: r2(lateOut) };
   }
 
+  // Beyan son günleri (beyan.js ile aynı kural: hafta sonu → ilk iş günü, VUK md. 18; bayramlar hesaplanmaz)
+  function taxDue(ym, day, ahead) { const y = Number(ym.slice(0, 4)), m = Number(ym.slice(5)) - 1 + ahead; const last = new Date(y, m + 1, 0).getDate(); const d = new Date(y, m, Math.min(day, last), 12); while (d.getDay() === 0 || d.getDay() === 6) d.setDate(d.getDate() + 1); return iso(d); }
+  function agenda(days = 60) {
+    const t = today(), end = iso(addDays(t, days)); const out = []; const add = (date, kind, title, amt, tone) => { if (date >= t && date <= end) out.push({ id: out.length, date, kind, title, amt, tone }); };
+    X.db.all('invoices', (i) => X.invStatus(i) !== 'odendi' && rem(i) > 0 && i.due).forEach((i) => { const inn = X.isSale(i) || (i.iade && i.kind === 'satis'); add(i.due < t ? t : i.due, inn ? 'Alacak' : 'Borç', `${i.no} · ${X.cari(i.cari).name}${i.due < t ? ' (gecikmiş)' : ''}`, (inn ? 1 : -1) * rem(i), inn ? 'ok' : 'err'); });
+    X.db.all('cheques', (c) => c.status === 'portfoy').forEach((c) => add(c.due < t ? t : c.due, c.dir === 'alinan' ? 'Alınan ' + (c.kind === 'senet' ? 'senet' : 'çek') : 'Verilen ' + (c.kind === 'senet' ? 'senet' : 'çek'), `${c.no} · ${X.cari(c.cari).name}`, (c.dir === 'alinan' ? 1 : -1) * Number(c.amount || 0), c.dir === 'alinan' ? 'ok' : 'err'));
+    X.db.all('recurring', (r) => r.active !== false).forEach((r) => { let d = r.next, g = 0; while (d && d <= end && g++ < 10) { add(d, 'Tekrarlayan fatura', X.cari(r.cari).name, window.MUHCALC.totals(r).payable * (Number(r.rate) || 1), 'info'); d = window.MUHTEKRAR.step(d, r.period, r.day); } });
+    const corp = (X.db.settings().taxpayerType || 'kurum') === 'kurum';
+    for (let k = -4; k <= 1; k++) { const d = new Date(t + 'T12:00:00'); d.setDate(1); d.setMonth(d.getMonth() + k); const ym = iso(d).slice(0, 7); const nm = `${NS.MONTHS[d.getMonth()]} ${d.getFullYear()}`;
+      if (k <= 0) { add(taxDue(ym, 26, 1), 'Beyan', `Muhtasar ve prim hizmet beyannamesi · ${nm}`, null, 'warn'); add(taxDue(ym, 28, 1), 'Beyan', `KDV beyannamesi · ${nm}`, null, 'warn'); add(taxDue(ym, 31, 1), 'Beyan', `Form Ba / Bs · ${nm}`, null, 'warn'); }
+      add(taxDue(ym, corp ? 14 : 10, 4), 'Beyan', `e-Defter beratı · ${nm}`, null, 'warn'); }
+    return out.sort((a, b) => a.date.localeCompare(b.date));
+  }
   function page(el, p, app) {
     let tab = TABS.some((x) => x[0] === p) ? p : 'nakit'; let per = 'yil'; let [from, to] = X.PERIODS()[per].slice(1);
     const draw = () => {
       const inR = (x) => x.date >= from && x.date <= to;
-      const head = pageHead('Analizler', tab === 'nakit' ? 'Önümüzdeki 13 hafta için beklenen nakit hareketi' : `${NS.date(from)} – ${NS.date(to)} · tutarlar TL`, tab === 'nakit' ? '' : `<div class="seg">${Object.entries(X.PERIODS()).map(([k, [l]]) => `<button data-p="${k}" class="${k === per ? 'active' : ''}">${l}</button>`).join('')}</div><input class="input" type="date" id="af" value="${from}" style="max-width:150px"><input class="input" type="date" id="at" value="${to}" style="max-width:150px">`)
+      const head = pageHead('Analizler', tab === 'nakit' ? 'Önümüzdeki 13 hafta için beklenen nakit hareketi' : tab === 'takvim' ? 'Önümüzdeki 60 gün: vadeler, çek / senet, tekrarlayan faturalar ve beyan son günleri' : `${NS.date(from)} – ${NS.date(to)} · tutarlar TL`, ['nakit', 'takvim'].includes(tab) ? '' : `<div class="seg">${Object.entries(X.PERIODS()).map(([k, [l]]) => `<button data-p="${k}" class="${k === per ? 'active' : ''}">${l}</button>`).join('')}</div><input class="input" type="date" id="af" value="${from}" style="max-width:150px"><input class="input" type="date" id="at" value="${to}" style="max-width:150px">`)
         + `<div class="tabs mb">${TABS.map(([k, l]) => `<a href="#/analiz/${k}"><button class="${k === tab ? 'active' : ''}">${l}</button></a>`).join('')}</div>`;
       let body = '';
-      if (tab === 'nakit') {
+      if (tab === 'takvim') {
+        const rows = agenda(60); const soon = rows.filter((r) => daysBetween(today(), r.date) <= 3);
+        body = `<div class="grid g4 mb">${kpi('3 gün içinde', soon.length, 'bell', soon.length ? 'warn' : '')}${kpi('60 gün alacak', money(sum(rows.filter((r) => r.amt > 0), (r) => r.amt)), 'trend', 'ok')}${kpi('60 gün borç', money(-sum(rows.filter((r) => r.amt < 0), (r) => r.amt)), 'minus', 'err')}${kpi('Beyan son günü', rows.filter((r) => r.kind === 'Beyan').length, 'percent', 'warn')}</div>
+          <div class="card">${table({ rows, empty: 'Önümüzdeki 60 günde kayıt yok', columns: [{ label: 'Tarih', render: (r) => `<b>${NS.date(r.date)}</b><div class="small ${daysBetween(today(), r.date) <= 3 ? '' : 'faint'}" style="${daysBetween(today(), r.date) <= 3 ? 'color:var(--warn)' : ''}">${r.date === today() ? 'bugün' : daysBetween(today(), r.date) + ' gün'}</div>` }, { label: 'Tür', render: (r) => badge(r.kind, r.tone) }, { label: 'Açıklama', render: (r) => esc(r.title) }, { label: 'Tutar', cls: 'right', render: (r) => (r.amt == null ? '—' : `<b style="color:${r.amt > 0 ? 'var(--ok)' : 'var(--err)'}">${money(Math.abs(r.amt))}</b>`) }] })}</div>
+          <p class="small muted mt">Beyan son günleri genel kuraldır (hafta sonu kayması dahil); resmî bayramlar ve süre uzatmaları için <a href="https://www.gib.gov.tr/vergi-takvimi" target="_blank" rel="noopener">GİB vergi takvimi</a>.</p>`;
+      } else if (tab === 'nakit') {
         const cf = cashflow(); const low = cf.weeks.find((w) => w.bal < 0);
         body = `<div class="grid g4 mb">${kpi('Bugünkü kasa + banka', money(cf.start), 'wallet')}${kpi('13 hafta giriş', money(sum(cf.weeks, (w) => w.inn)), 'trend', 'ok')}${kpi('13 hafta çıkış', money(sum(cf.weeks, (w) => w.out)), 'minus', 'err')}${kpi('13. hafta sonu', money(cf.weeks[12].bal), 'chart', cf.weeks[12].bal < 0 ? 'err' : 'ok')}</div>
           ${low ? `<div class="card pad mb" style="border-color:var(--err)">${icon('alert')} <b>${NS.date(low.from)} haftasında</b> nakit eksiye düşüyor (${money(low.bal)}). Tahsilatları hızlandırmayı veya ödemeleri ertelemeyi değerlendirin.</div>` : ''}
@@ -77,5 +95,5 @@ window.MUHANALIZ = (function () {
     on(el, 'click', '[data-p]', (e, b) => { per = b.dataset.p; [from, to] = X.PERIODS()[per].slice(1); draw(); });
     draw();
   }
-  return { init(ctx) { X = ctx; }, page, cashflow };
+  return { init(ctx) { X = ctx; }, page, cashflow, agenda };
 })();

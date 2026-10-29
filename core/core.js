@@ -949,7 +949,7 @@
           <main class="ns-main">
             <header class="ns-top">
               <button class="btn ghost icon ns-burger" data-burger title="Menüyü daralt / genişlet" aria-label="Menüyü daralt / genişlet">${icon('menu')}</button>
-              <div class="title" id="ttl"></div>
+              <div class="title" id="ttl"></div><button class="btn ghost icon sm" id="nshelp" title="Bu ekran ne işe yarar?" hidden>?</button>
               <div class="row nw" id="topact"></div>
               <button class="btn ghost icon" data-undo title="Geri al (Ctrl+Z)" hidden>${icon('back')}</button>
               <button class="btn ghost ns-cmdk-btn" data-cmdk title="Hızlı menü (Ctrl+K)">${icon('search')}<span class="small faint">Ara · Ctrl K</span></button>
@@ -1000,6 +1000,7 @@
       // Telefonda alt çubuk: yetkili ilk 4 bölüm + menü
       const tb = $('#nvtab'); if (tb) { const items = opts.nav.filter((n) => n.id && (!n.roles || app.can(...n.roles)) && app.navVisible(n)).slice(0, 4); tb.innerHTML = items.map((n) => `<a href="#/${n.id}" class="${n.id === route ? 'active' : ''}">${icon(n.icon || 'grid')}<span>${esc(n.label)}</span></a>`).join('') + `<a href="#" data-burger onclick="return false">${icon('menu')}<span>Menü</span></a>`; }
       $('#ttl').textContent = nav ? nav.label : (opts.titles && opts.titles[route]) || opts.name;
+      { const hb = $('#nshelp'); const h = opts.help && opts.help[route]; if (hb) { hb.hidden = !h; hb.onclick = () => h && modal({ title: h.title || (nav ? nav.label : opts.name), body: `<div class="col" style="gap:10px">${(Array.isArray(h.text) ? h.text : [h.text]).map((x) => `<p>${x}</p>`).join('')}</div>`, actions: [{ label: 'Tamam', cls: 'primary' }] }); } }
       $('#topact').innerHTML = opts.topActions ? opts.topActions(app) : '';
       const view = $('#view');
       const fresh = view.cloneNode(false);

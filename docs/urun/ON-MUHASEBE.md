@@ -1,6 +1,25 @@
 # Ön Muhasebe — Ürün Spesifikasyonu
 
-> **Durum (29.10.2026):** Kullanıcı onayladı. **1. dalga tamamlandı** (aşağıda). 2. ve 3. dalga sırada.
+> **Durum (29.10.2026):** Kullanıcı onayladı. **1. ve 2. dalga tamamlandı** (aşağıda). 3. dalga sırada.
+
+## 2. dalga — yapılanlar
+| Konu | Sonuç |
+|---|---|
+| Tekrarlayan fatura | Aylık / 3 aylık / 6 aylık / yıllık / haftalık; ay sonu korunur (31 Ocak → 28 Şubat → 31 Mart); program kapalıyken geçen dönemler sırayla oluşturulur; `{dönem}` notu; isteğe bağlı otomatik e-Belge (bilgi eksikse gönderilmez, bildirilir); duraklat / devam ettir |
+| Kopyalama, proforma | "Benzerini oluştur"; teklif ve siparişten şablonlu proforma fatura |
+| Toplu işlem | Çekirdekteki seçim çubuğu (Excel, yazdır, toplu e-Belge, sil) faturalarda çalışıyor |
+| **Hata düzeltmesi: ödeme dağıtma** | Fatura seçmeden yapılan tahsilat / ödeme önceden hiçbir faturaya işlenmiyordu (faturalar açık görünüyordu); artık en eski vadeli açık faturalardan başlayarak dağıtılıyor |
+| Tahsilat takibi | Yaklaşan / bugün dolan / geciken alacaklar; SMS / WhatsApp / e-posta hatırlatma; otomatik gönderim yalnızca gerçek gönderen kanal bağlıysa; her aşamada en çok bir hatırlatma, hepsi faturaya kayıtlı |
+| Cari | Etiketler ve etiket filtreleri, risk limiti (Satış rolü aşamaz, Muhasebe onayıyla), cari bazlı fiyat listesi |
+| Stok | Fiyat listeleri (yüzde kuralı + ürüne özel fiyat), çoklu birim (koli=12 → stoğa 12 adet, fiyat ×12) |
+| Banka ekstresi | Excel / CSV yükle; sütunlar otomatik bulunur; öneri: fatura no > VKN > cari adı > açık fatura tutarı; carisizlerde kategori tahmini; aynı hareket ikinci kez işlenmez |
+| Analizler | Nakit akışı tahmini (13 hafta, eksiye düşme uyarısı), ödeme takvimi (60 gün), satış (müşteri / ürün + brüt kâr / kullanıcı), tahsilat & ödeme (ortalama tahsil süresi), kasa & banka, stok (kaç gün yeter, hiç satılmayan), dönem karşılaştırma |
+| **Hata düzeltmesi: beyan takvimi** | e-Defter beratı "ertesi ayın son günü" gösteriliyordu; GİB vergi takvimine göre dönemden 4 ay sonraki ayın 10'u (gelir) / 14'ü (diğer). Hafta sonu → ilk iş günü (VUK md. 18). GİB takvimindeki 7 örnekle birebir aynı. Bayram kaymaları hesaplanmaz; ekranda GİB takvimi bağlantısı var |
+| Kurulum sihirbazı | İşletme → hesaplar ve açılış bakiyeleri → veri aktarımı → e-Fatura → kullanıcılar; demo dışında ilk açılışta önerilir, Ayarlar'dan tekrar açılır |
+| Ekran içi yardım | Başlığın yanında "?" (çekirdek: `opts.help`, tüm programlar kullanabilir); muhasebede 11 ekran için metin |
+
+Sağlayıcı gerektirdiği için bu dalgada yapılmayanlar: PDF'in e-postaya ek olarak gönderilmesi (ek destekli e-posta API'si gerekir; şu an e-Arşiv PDF'ini entegratör gönderir, programdan "Yazdır / PDF" ile alınır).
+
 
 ## 1. dalga — yapılanlar
 | # | Konu | Sonuç | Kanıt |
