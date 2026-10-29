@@ -1,7 +1,7 @@
 # Otel & Pansiyon — Ürün Spesifikasyonu
 
 > **Durum (29.10.2026):** Kullanıcı tüm programlar için eksiklerin giderilmesini ve ek özellikleri önceden onayladı ("atlama yok").
-> Dalgalar sırayla uygulanıyor; her dalganın sonucu aşağıdaki "Yapılanlar" bölümüne yazılır.
+> **1., 2. ve 3. dalga tamamlandı** (aşağıda "Yapılanlar"). Canlıya çıkmayı engelleyenler §6'da.
 
 Tarih: 29.10.2026 · Dal: `claude/urun-konaklama-etkinlik-8b3b84` · Yöntem: `CLAUDE.md` §2
 
@@ -164,5 +164,20 @@ Her dalga `CLAUDE.md` §3 kalite kapısından geçer.
 | Konaklayan listesi | Kanal & KBS > KBS > "Konaklayan listesi yazdır" (refakatçiler dahil, KBS durumuyla) | Tarayıcı |
 | Rezervasyon onayı | "Onay gönder": WhatsApp/e-posta, düzenlenebilir metin; bağlantı modu "link" ise "WhatsApp açıldı — oradan gönderin", simülasyonsa TEST, hata varsa nedeni | Tarayıcı |
 | İleriye dönük doluluk | Raporlar: 7/30/60/90 gün doluluk ve defterdeki gelir | Tarayıcı |
+
+### 3. dalga (29.10.2026)
+| Konu | Sonuç | Kanıt |
+|---|---|---|
+| Online ön check-in | Web motoru > "Rezervasyonumu yönet": girişe 14 gün kala kimlik, doğum tarihi, plaka, varış saati, refakatçiler. Ön büroda rozet; check-in formu bu bilgilerle dolu açılıyor. **Bulut (müşteri sitesi) modunda kapalı:** sunucu kuralı bu alanı henüz kabul etmiyor (Ç7) | Tarayıcı: W1001 |
+| Doluluğa göre fiyat önerisi | Fiyatlar ekranı: önümüzdeki 30 günde doluluğu eşiğin üstündeki/altındaki dönemler, "Uygula" ile sezon kaydı (geri alınabilir); eşikler ayarlardan | Tarayıcı: 31.10–03.11 "−%10 öneriliyor" |
+| Akıllı uyarılar | Özet > "Dikkat": notlu/VIP misafir geliyor, onaylanmamış opsiyon (3 gün), ödenmemiş kapora talebi, açık bakiyeyle çıkış, KBS'ye bildirilmemiş konaklayan (KBS açıkken), kirli odaya bugün misafir, arızalı odaya misafir; aynı türden 3'ten fazlası tek satırda | Tarayıcı |
+| İleriye dönük doluluk | 2. dalgada yapıldı | — |
+
+**Büyük veri:** 5.109 rezervasyonla ekran açılışları 31–111 ms (özet, takvim, liste, odalar, kanal, fiyatlar, raporlar).
+
+**Yapılmayan / doğrulanmayan:**
+- Kat rolüyle giriş yapılarak "Bana atananlar" denenmedi (yalnızca yönetici hesabıyla ve kodla).
+- Bulut modunda web motoru: sunucu fiyatı kendisi hesaplıyor ve hafta sonu farkını, satışa kapalı odaları, no-show'u, kapora talebini, ön check-in'i bilmiyor (Ç7). Tutarsızlık olmasın diye bulutta web motoru hafta sonu farkı uygulamıyor ve ön check-in göstermiyor.
+- KBS, kanal yöneticisi, kapı kilidi, santral gerçek sağlayıcıyla denenmedi (§6).
 
 Kalite kapısı: konsol hatası yok; 375 px'te özet, takvim ve rezervasyon formu denendi. `npm test`: kanal, proto, takvim, ubltr, **ubltr-xsd (9 belge XSD'ye uygun)**, muhasebe-calc geçti; `cloud.test.js` bu daldan bağımsız bir sunucu hatasıyla düşüyor (`CEKIRDEK-ISTEKLERI-konaklama-etkinlik.md` Ç6). `sw.js` sürümü bu oturumda artırılamadı (Ç1).
