@@ -9,7 +9,7 @@
   const model = (id) => db.get('models', id);
   const cust = (id) => db.get('customers', id);
   const findV = (code) => { const c = String(code || '').trim(); for (const m of db.all('models')) { const v = m.variants.find((x) => x.barcode === c); if (v) return { m, v }; } return null; };
-  const unit = (m) => Math.round(m.price * (1 - (Number(m.disc) || 0) / 100));
+  const unit = (m) => (Number(m.disc) ? Math.round(m.price * (1 - Number(m.disc) / 100)) : Number(m.price) || 0); // indirimli fiyat tam liraya yuvarlanır
   const mStock = (m) => sum(m.variants, (v) => v.stock);
   const sw = (hex) => `<span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:${hex};border:1px solid var(--border);vertical-align:-1px"></span>`;
   const colorHex = (m, name) => (m.colors.find((c) => c.name === name) || {}).hex || '#999';
@@ -48,35 +48,44 @@
   };
 
   // ---------- Satış ----------
-  let posKeep = { cart: [], customer: null, extra: 0 }; // Başka sayfaya geçince sepet kaybolmasın
+  let posKeep = { cart: [], customer: null, extra: 0, rep: '' }; // Başka sayfaya geçince sepet kaybolmasın
   function posPage(el, p, app) {
-    let { cart, customer, extra } = posKeep;
-    el.innerHTML = pageHead('Satış', 'Barkodu okutun veya modeli arayıp beden/renk seçin') + `
+    campTick(); let { cart, customer, extra, rep: srep } = posKeep; if (!srep) srep = (NS.currentUser || {}).name || '';
+    el.innerHTML = pageHead('Satış', 'Barkodu okutun veya modeli arayıp beden/renk seçin', `<button class="btn" id="held">${icon('clock')} Bekleyenler <span id="hn"></span></button><button class="btn" id="gift">${icon('gift')} Hediye çeki sat</button>`) + `
       <div class="grid g-21"><div class="col" style="gap:16px"><div class="card pad"><div class="row"><input class="input grow" id="scan" autocomplete="off" placeholder="Barkod okutun / model adı veya kodu yazın" style="height:52px;font-size:18px"></div><div id="sug" class="mt"></div></div><div class="card" id="cart"></div></div>
       <div class="col" style="gap:16px"><div class="card pad" id="cu"></div><div class="card pad" id="tot"></div></div></div>`;
     // İkinci üründe indirim kampanyası (kategori bazında)
     const calc = () => {
       const lines = cart.map((l) => ({ ...l, line: l.price * l.qty, camp: 0 }));
-      db.all('campaigns', (c) => c.active && c.type === 'ikinci').forEach((c) => { const ls = lines.filter((l) => (model(l.mid) || {}).cat === c.target); const units = ls.flatMap((l) => Array(l.qty).fill(l)).sort((a, b) => a.price - b.price); const n = Math.floor(units.length / 2); units.slice(0, n).forEach((l) => { l.camp += Math.round((l.price * c.value) / 100); }); });
+      db.all('campaigns', (c) => campOn(c) && c.type === 'ikinci').forEach((c) => { const ls = lines.filter((l) => (model(l.mid) || {}).cat === c.target); const units = ls.flatMap((l) => Array(l.qty).fill(l)).sort((a, b) => a.price - b.price); const n = Math.floor(units.length / 2); units.slice(0, n).forEach((l) => { l.camp += Math.round((l.price * c.value) / 100); }); });
       const sub = sum(lines, (l) => l.line); const camp = sum(lines, (l) => l.camp); const total = Math.max(0, sub - camp - extra);
       return { lines, sub, camp, total };
     };
     const draw = () => {
-      posKeep = { cart, customer, extra }; const c = calc();
+      posKeep = { cart, customer, extra, rep: srep }; const c = calc(); const hn = db.all('held').length; $('#hn', el).textContent = hn ? `(${hn})` : '';
       $('#cart', el).innerHTML = cart.length ? table({ rows: c.lines.map((l, i) => ({ ...l, id: i })), columns: [{ label: 'Ürün', render: (l) => `<b>${esc(l.name)}</b><div class="small faint">${sw(colorHex(model(l.mid), l.color))} ${esc(l.color)} · ${esc(l.size)} · <span class="mono">${esc(l.barcode)}</span></div>` }, { label: 'Adet', cls: 'right', render: (l) => `<div class="row" style="justify-content:flex-end;gap:4px"><button class="btn sm ghost icon" data-q="-1" data-i="${l.id}">${icon('minus')}</button><b>${l.qty}</b><button class="btn sm ghost icon" data-q="1" data-i="${l.id}">${icon('plus')}</button></div>` }, { label: 'Tutar', cls: 'right', render: (l) => `<b>${money(l.line - l.camp)}</b>${l.camp ? `<div class="small" style="color:var(--ok)">kampanya −${money(l.camp)}</div>` : ''}` }] }) : `<div class="empty">${icon('barcode')}<div>Sepet boş — barkod okutun</div></div>`;
       const cu = customer && cust(customer);
-      $('#cu', el).innerHTML = cu ? `<div class="row"><div class="grow"><b>${esc(cu.name)}</b><div class="small muted">${esc(cu.phone)} · ${cu.points} puan (${money(cu.points)})</div></div><button class="btn sm ghost icon" id="cux">${icon('x')}</button></div>` : `<button class="btn block" id="cus">${icon('user')} Müşteri seç / ekle</button><p class="small muted mt">Müşteri seçilirse alışverişten %${S().pointPct || 3} puan kazanır.</p>`;
+      $('#cu', el).innerHTML = (cu ? `<div class="row"><div class="grow"><b>${esc(cu.name)}</b><div class="small muted">${esc(cu.phone)} · ${cu.points} puan (${money(cu.points)})</div></div><button class="btn sm ghost icon" id="cux">${icon('x')}</button></div>` : `<button class="btn block" id="cus">${icon('user')} Müşteri seç / ekle</button><p class="small muted mt">Müşteri seçilirse alışverişten %${S().pointPct || 3} puan kazanır.</p>`) + `<div class="field mt"><label>Satış danışmanı</label><select class="input" id="rep">${[...new Set([...reps(), srep].filter(Boolean))].map((n) => `<option ${n === srep ? 'selected' : ''}>${esc(n)}</option>`).join('')}</select></div>`;
       $('#tot', el).innerHTML = `<div class="list-item small"><span class="grow muted">Ara toplam</span>${money(c.sub)}</div>${c.camp ? `<div class="list-item small"><span class="grow muted">Kampanya</span>−${money(c.camp)}</div>` : ''}<div class="list-item small"><span class="grow muted">Ek indirim</span><button class="btn sm ghost" id="dc">${extra ? '−' + money(extra) : 'Ekle'}</button></div><div class="list-item"><b class="grow" style="font-size:18px">Toplam</b><b style="font-size:26px">${money(c.total)}</b></div>
-        <div class="grid g2 mt">${Object.entries(B.PAY).filter(([k]) => ['nakit', 'kart', 'havale'].includes(k)).map(([k, l]) => `<button class="btn ${k === 'kart' ? 'primary' : ''}" data-pay="${k}" ${cart.length ? '' : 'disabled'}>${icon(k === 'nakit' ? 'cash' : k === 'kart' ? 'card' : 'building')} ${l}</button>`).join('')}${cu && cu.points ? `<button class="btn" data-pay="puan" ${cart.length ? '' : 'disabled'}>${icon('gift')} Puanla öde</button>` : ''}<button class="btn" data-pay="parcali" ${cart.length ? '' : 'disabled'}>${icon('layers')} Parçalı</button></div>`;
+        <div class="grid g2 mt">${Object.entries(B.PAY).filter(([k]) => ['nakit', 'kart', 'havale'].includes(k)).map(([k, l]) => `<button class="btn ${k === 'kart' ? 'primary' : ''}" data-pay="${k}" ${cart.length ? '' : 'disabled'}>${icon(k === 'nakit' ? 'cash' : k === 'kart' ? 'card' : 'building')} ${l}</button>`).join('')}${cu && cu.points ? `<button class="btn" data-pay="puan" ${cart.length ? '' : 'disabled'}>${icon('gift')} Puanla öde</button>` : ''}<button class="btn" data-pay="parcali" ${cart.length ? '' : 'disabled'}>${icon('layers')} Parçalı / çek</button><button class="btn ghost" id="hold" ${cart.length ? '' : 'disabled'}>${icon('clock')} Beklet</button></div>`;
     };
-    const add = (m, v) => { if (v.stock <= 0) toast(`${m.name} ${v.color}/${v.size} stokta görünmüyor — yine de eklendi`, 'err'); const l = cart.find((x) => x.barcode === v.barcode); if (l) l.qty++; else cart.push({ mid: m.id, barcode: v.barcode, name: m.name, size: v.size, color: v.color, qty: 1, price: unit(m), cost: m.cost }); NS.beep(); draw(); };
+    const add = (m, v) => { if (m.passive) { NS.beep(200, 250); return toast(`${m.name} satıştan kaldırılmış (pasif) — Ürünler sayfasından açın`, 'err'); } if (v.stock <= 0) toast(`${m.name} ${v.color}/${v.size} stokta görünmüyor — yine de eklendi`, 'err'); const l = cart.find((x) => x.barcode === v.barcode); if (l) l.qty++; else cart.push({ mid: m.id, barcode: v.barcode, name: m.name, size: v.size, color: v.color, qty: 1, price: unit(m), cost: m.cost }); NS.beep(); draw(); };
     const pickVariant = (m) => modal({ title: `${m.name} — beden/renk seçin`, size: 'wide', body: `<div class="tbl-wrap"><table class="tbl"><thead><tr><th>Renk</th>${B.SIZES[m.sizeType].map((s) => `<th class="center">${esc(s)}</th>`).join('')}</tr></thead><tbody>${m.colors.map((c) => `<tr><td>${sw(c.hex)} ${esc(c.name)}</td>${B.SIZES[m.sizeType].map((s) => { const v = m.variants.find((x) => x.size === s && x.color === c.name); return `<td class="center">${v ? `<button class="btn sm ${v.stock ? '' : 'ghost'}" data-pv="${v.barcode}" style="min-width:52px">${v.stock}</button>` : ''}</td>`; }).join('')}</tr>`).join('')}</tbody></table></div><p class="small muted">Rakamlar stok adedidir. Fiyat: <b>${money(unit(m))}</b>${oldRef(m) ? ` (<s>${money(oldRef(m))}</s> %${pctOff(m)})` : ''}</p>`, onOpen: (b, close) => on(b, 'click', '[data-pv]', (e, t) => { add(m, m.variants.find((v) => v.barcode === t.dataset.pv)); close(); }) });
     const inp = $('#scan', el);
-    inp.addEventListener('keydown', (e) => { if (e.key !== 'Enter') return; const f = findV(inp.value); if (f) { add(f.m, f.v); inp.value = ''; $('#sug', el).innerHTML = ''; return; } const ms = db.all('models', (m) => NS.match(inp.value, m.name, m.code)); if (ms.length === 1) { pickVariant(ms[0]); inp.value = ''; } else if (!ms.length) { NS.beep(200, 250); toast('Ürün bulunamadı', 'err'); } });
-    inp.addEventListener('input', () => { const q = inp.value.trim(); $('#sug', el).innerHTML = q.length < 2 ? '' : `<div class="row" style="flex-wrap:wrap;gap:6px">${db.all('models', (m) => NS.match(q, m.name, m.code)).slice(0, 8).map((m) => `<button class="btn sm" data-m="${m.id}">${esc(m.name)} · ${money(unit(m))}</button>`).join('')}</div>`; });
+    inp.addEventListener('keydown', (e) => { if (e.key !== 'Enter') return; const f = findV(inp.value); if (f) { add(f.m, f.v); inp.value = ''; $('#sug', el).innerHTML = ''; return; } const ms = db.all('models', (m) => !m.passive && NS.match(inp.value, m.name, m.code)); if (ms.length === 1) { pickVariant(ms[0]); inp.value = ''; } else if (!ms.length) { NS.beep(200, 250); toast('Ürün bulunamadı', 'err'); } });
+    inp.addEventListener('input', () => { const q = inp.value.trim(); $('#sug', el).innerHTML = q.length < 2 ? '' : `<div class="row" style="flex-wrap:wrap;gap:6px">${db.all('models', (m) => !m.passive && NS.match(q, m.name, m.code)).slice(0, 8).map((m) => `<button class="btn sm" data-m="${m.id}">${esc(m.name)} · ${money(unit(m))}</button>`).join('')}</div>`; });
     on(el, 'click', '[data-m]', (e, b) => pickVariant(model(b.dataset.m)));
     on(el, 'click', '[data-q]', (e, b) => { const l = cart[Number(b.dataset.i)]; l.qty += Number(b.dataset.q); if (l.qty <= 0) cart.splice(Number(b.dataset.i), 1); draw(); });
     on(el, 'click', '#cux', () => { customer = null; draw(); });
+    on(el, 'change', '#rep', (e, t) => { srep = t.value; draw(); });
+    // Satışı beklet (müşteri kabinde) / geri çağır
+    on(el, 'click', '#hold', async () => { const note = await NS.prompt('Bekleyen satış notu (ör. kabin 2, mavi ceketli müşteri)', ''); if (note === null) return; db.insert('held', { at: new Date().toISOString(), cart, customer, extra, rep: srep, note }); db.save(); cart = []; customer = null; extra = 0; draw(); toast('Satış bekletildi', 'ok'); inp.focus(); });
+    $('#held', el).onclick = () => { const hs = db.all('held').sort((a, b) => b.at.localeCompare(a.at)); if (!hs.length) return toast('Bekleyen satış yok');
+      modal({ title: 'Bekleyen satışlar', body: table({ rows: hs, columns: [{ label: 'Saat', render: (h) => NS.dt(h.at) }, { label: 'Not', render: (h) => `<b>${esc(h.note || '-')}</b><div class="small faint">${sum(h.cart, (l) => l.qty)} ürün · ${esc((cust(h.customer) || {}).name || '')}</div>` }], actions: [{ icon: 'check', act: 'take', title: 'Kasaya al' }, { icon: 'trash', act: 'drop', title: 'Sil' }] }),
+        onOpen: (b, close) => on(b, 'click', '[data-act]', async (e, t) => { const h = db.get('held', t.dataset.id); if (t.dataset.act === 'drop') { if (!(await confirm('Bekleyen satış silinsin mi?'))) return; db.remove('held', h.id); db.save(); close(); draw(); return; }
+          if (cart.length && !(await confirm('Kasadaki sepet bekletilip bu satış açılsın mı?'))) return; if (cart.length) db.insert('held', { at: new Date().toISOString(), cart, customer, extra, rep: srep, note: 'Otomatik bekletildi' });
+          ({ cart, customer, extra } = h); srep = h.rep || srep; db.remove('held', h.id); db.save(); close(); draw(); }) }); };
+    $('#gift', el).onclick = async () => { const v = await formModal({ title: 'Hediye çeki sat', fields: [{ name: 'amount', label: 'Tutar (₺)', type: 'number', required: true }, { name: 'pay', label: 'Ödeme', type: 'select', options: [{ value: 'nakit', label: 'Nakit' }, { value: 'kart', label: 'Kredi kartı' }, { value: 'havale', label: 'Havale/EFT' }] }] }); if (!v) return; const a = Math.round((Number(v.amount) || 0) * 100) / 100; if (a <= 0) return toast('Tutar girin', 'err'); const c = chqIssue(a, 'satis', customer, '', v.pay); db.log('Hediye çeki satıldı', `${c.code} · ${money(a)}`); toast(`Hediye çeki ${c.code} · ${money(a)}`, 'ok'); };
     on(el, 'click', '#dc', async () => { const v = await NS.prompt('Ek indirim (₺)', extra || ''); if (v !== null) { extra = Math.max(0, Number(v) || 0); draw(); } });
     on(el, 'click', '#cus', async () => {
       const q = await NS.prompt('Müşteri telefonu veya adı', ''); if (q === null) return;
@@ -87,7 +96,8 @@
     const finish = (pays) => {
       const c = calc(); const cu = customer && cust(customer); const used = sum(pays.filter((x) => x.type === 'puan'), (x) => x.amount);
       const pts = cu ? Math.round(((c.total - used) * (Number(S().pointPct) || 3)) / 100) : 0;
-      const s = db.insert('sales', { no: nextNo(), at: new Date().toISOString(), customer, lines: c.lines.map((l) => ({ mid: l.mid, barcode: l.barcode, name: l.name, size: l.size, color: l.color, qty: l.qty, price: Math.round((l.line - l.camp) / l.qty), cost: l.cost })), sub: c.sub, disc: c.camp + extra, total: c.total, pay: pays.length > 1 ? 'parcali' : pays[0].type, pays, pts, ptsUsed: used, user: (NS.currentUser || {}).name, channel: 'magaza' });
+      const s = db.insert('sales', { no: nextNo(), at: new Date().toISOString(), customer, lines: c.lines.map((l) => ({ mid: l.mid, barcode: l.barcode, name: l.name, size: l.size, color: l.color, qty: l.qty, price: Math.round((l.line - l.camp) / l.qty), cost: l.cost })), sub: c.sub, disc: c.camp + extra, total: c.total, pay: pays.length > 1 ? 'parcali' : pays[0].type, pays, pts, ptsUsed: used, user: (NS.currentUser || {}).name, rep: srep, channel: 'magaza' });
+      pays.filter((x) => x.type === 'cek').forEach((x) => { const q = chqFind(x.code); if (q) { q.balance = Math.round((q.balance - x.amount) * 100) / 100; q.uses.push({ at: s.at, no: s.no, amount: x.amount }); } });
       // Stok eksiye düşebilir: stokta görünmeyen ürünün satışı sayım farkı olarak izlenir
       const touched = new Set(); s.lines.forEach((l) => { const f = findV(l.barcode); if (f) { f.v.stock -= l.qty; move(f.m, f.v, -l.qty, 'satis', s.no); touched.add(f.m); } });
       if (cu) cu.points = (cu.points || 0) - used + pts;
@@ -95,13 +105,14 @@
       cart = []; customer = null; extra = 0; draw(); inp.focus();
     };
     const split = () => {
-      const c = calc(); const cu = customer && cust(customer); const ks = ['nakit', 'kart', 'havale', ...(cu && cu.points ? ['puan'] : [])];
-      modal({ title: `Parçalı ödeme · ${money(c.total)}`, body: `<div class="form-grid" style="grid-template-columns:1fr 1fr;gap:10px">${ks.map((k) => `<div class="field"><label>${esc(B.PAY[k])}${k === 'puan' ? ` (en çok ${cu.points})` : ''}</label><input class="input" type="number" min="0" step="0.01" data-sp="${k}" value="${k === 'kart' ? c.total : ''}"></div>`).join('')}</div><div class="lbs-sum mt" id="spr"></div>`,
-        onOpen: (b) => { const upd = () => { const t = sum($$('[data-sp]', b), (i) => Number(i.value) || 0); const r = Math.round((c.total - t) * 100) / 100; $('#spr', b).innerHTML = r === 0 ? 'Tutar tamam' : r > 0 ? `Kalan: <b>${money(r)}</b>` : `Fazla: <b>${money(-r)}</b>`; }; b.addEventListener('input', upd); upd(); },
+      const c = calc(); const cu = customer && cust(customer); const ks = ['nakit', 'kart', 'havale', ...(cu && cu.points ? ['puan'] : []), 'cek'];
+      modal({ title: `Parçalı ödeme · ${money(c.total)}`, body: `<div class="form-grid" style="grid-template-columns:1fr 1fr;gap:10px">${ks.map((k) => `<div class="field"><label>${esc(B.PAY[k])}${k === 'puan' ? ` (en çok ${cu.points})` : ''}</label><input class="input" type="number" min="0" step="0.01" data-sp="${k}" value="${k === 'kart' ? c.total : ''}"></div>${k === 'cek' ? `<div class="field"><label>Çek kodu</label><input class="input mono" id="spc" placeholder="Okutun veya yazın" autocomplete="off"></div>` : ''}`).join('')}</div><div class="lbs-sum mt" id="spr"></div>`,
+        onOpen: (b) => { $('#spc', b).addEventListener('change', (e) => { const q = chqFind(e.target.value); if (!q) return toast('Çek bulunamadı', 'err'); if (q.balance <= 0) return toast('Çekin bakiyesi yok', 'err'); const ci = $('[data-sp=cek]', b), ki = $('[data-sp=kart]', b); const a = Math.min(q.balance, c.total); ci.value = a; ki.value = Math.max(0, Math.round((c.total - a) * 100) / 100) || ''; toast(`Çek bakiyesi ${money(q.balance)}`, 'ok'); b.dispatchEvent(new Event('input')); }); const upd = () => { const t = sum($$('[data-sp]', b), (i) => Number(i.value) || 0); const r = Math.round((c.total - t) * 100) / 100; $('#spr', b).innerHTML = r === 0 ? 'Tutar tamam' : r > 0 ? `Kalan: <b>${money(r)}</b>` : `Fazla: <b>${money(-r)}</b>`; }; b.addEventListener('input', upd); upd(); },
         actions: [{ label: 'Vazgeç' }, { label: 'Satışı tamamla', cls: 'primary', onClick: (close, b) => {
           const pays = $$('[data-sp]', b).map((i) => ({ type: i.dataset.sp, amount: Math.round((Number(i.value) || 0) * 100) / 100 })).filter((x) => x.amount > 0);
           if (Math.round(sum(pays, (x) => x.amount) * 100) !== Math.round(c.total * 100)) return toast('Ödemelerin toplamı satış tutarına eşit olmalı', 'err');
           const pu = pays.find((x) => x.type === 'puan'); if (pu && pu.amount > cu.points) return toast(`Puan yetersiz (${cu.points} puan)`, 'err');
+          const ce = pays.find((x) => x.type === 'cek'); if (ce) { const q = chqFind($('#spc', b).value); if (!q) return toast('Çek kodunu girin', 'err'); if (ce.amount > q.balance) return toast(`Çek bakiyesi ${money(q.balance)}`, 'err'); ce.code = q.code; }
           close(); finish(pays); } }] });
     };
     on(el, 'click', '[data-pay]', async (e, b) => {
@@ -116,7 +127,7 @@
     const cu = s.customer && cust(s.customer);
     NS.printHtml(`<div style="width:280px;font-family:Arial;font-size:12px"><div style="text-align:center"><b style="font-size:16px">${esc(S().bizName)}</b><div>${esc(S().bizAddress || '')}</div><div>${esc(S().bizPhone || '')}</div></div><hr>
       <div>Fiş: ${esc(s.no)} · ${NS.dt(s.at)}</div>${cu ? `<div>Müşteri: ${esc(cu.name)}</div>` : ''}<hr>${s.lines.map((l) => `<div>${esc(l.name)}<br>${esc(l.color)} / ${esc(l.size)} <span style="float:right">${l.qty} × ${money(l.price)}</span></div>`).join('')}<hr>
-      ${s.disc ? `<div>İndirim <span style="float:right">−${money(s.disc)}</span></div>` : ''}<div style="font-size:15px"><b>TOPLAM <span style="float:right">${money(s.total)}</span></b></div>${(s.pays || [{ type: s.pay, amount: s.total }]).map((x) => `<div>${esc(B.PAY[x.type] || x.type)} <span style="float:right">${money(x.amount)}</span></div>`).join('')}${cu ? `<div>${s.pts ? `Kazanılan puan: ${s.pts} · ` : ''}Puan bakiyesi: ${cu.points}</div>` : ''}<hr>
+      ${s.disc ? `<div>İndirim <span style="float:right">−${money(s.disc)}</span></div>` : ''}<div style="font-size:15px"><b>TOPLAM <span style="float:right">${money(s.total)}</span></b></div>${(s.pays || [{ type: s.pay, amount: s.total }]).map((x) => `<div>${esc(B.PAY[x.type] || x.type)}${x.code ? ' ' + esc(x.code) : ''} <span style="float:right">${money(x.amount)}</span></div>`).join('')}${s.rep ? `<div>Danışman: ${esc(s.rep)}</div>` : ''}${cu ? `<div>${s.pts ? `Kazanılan puan: ${s.pts} · ` : ''}Puan bakiyesi: ${cu.points}</div>` : ''}<hr>
       <div style="text-align:center">${NS.barcodeSvg(s.no, { height: 36 })}<div>Etiketi sökülmemiş ürünlerde ${S().exchangeDays || 30} gün içinde bu fişle değişim yapılır.</div><div style="margin-top:6px;font-weight:700">BİLGİ FİŞİDİR — MALİ DEĞERİ YOKTUR</div></div></div>`, { title: s.no });
   }
 
@@ -126,6 +137,31 @@
     if (!(NS.integ && NS.integ.isOn && NS.integ.isOn('sms'))) { NS.smsLog(db, { to: c.phone, name: c.name, text }, true); return toast('SMS sağlayıcısı bağlı değil — mesaj gönderilmedi, TEST olarak kaydedildi (Entegrasyonlar > SMS)', 'err'); }
     const r = NS.smsLog(db, { to: c.phone, name: c.name, text }); toast('SMS gönderiliyor…');
     let n = 0; const t = setInterval(() => { const st = r.status; if (st !== 'gönderiliyor' || ++n > 40) { clearInterval(t); toast(st === 'gönderildi' ? 'SMS gönderildi' : st === 'gönderiliyor' ? 'SMS sonucu alınamadı — SMS kayıtlarından kontrol edin' : st === 'simülasyon' ? 'SMS gönderilmedi (TEST)' : 'SMS gönderilemedi: ' + st, st === 'gönderildi' ? 'ok' : 'err'); } }, 300);
+  }
+
+  // ---------- İade / hediye çeki: kodlu, bakiyeli; kasada "Parçalı" ödemede kullanılır ----------
+  const chqFind = (code) => db.find('cheques', (x) => x.code === String(code || '').trim().toUpperCase());
+  function chqPrint(c) {
+    NS.printHtml(`<div style="width:280px;font-family:Arial;font-size:12px;text-align:center"><b style="font-size:16px">${esc(S().bizName)}</b><div>${esc(S().bizPhone || '')}</div><hr><b style="font-size:15px">${c.source === 'iade' ? 'İADE ÇEKİ' : 'HEDİYE ÇEKİ'}</b><div style="font-size:24px;font-weight:800;margin:6px 0">${money(c.amount)}</div>${NS.barcodeSvg(c.code, { height: 40 })}<div>Kod: <b>${esc(c.code)}</b> · ${NS.date(c.at)}</div><div style="margin-top:6px">Kasada ödeme olarak kullanılır. Kalan bakiye bir sonraki alışverişe aktarılır.</div><hr><b>BİLGİ FİŞİDİR — MALİ DEĞERİ YOKTUR</b></div>`, { title: c.code });
+  }
+  function chqIssue(amount, source, customer, ref, pay) {
+    let code; do { code = 'C' + String(Math.floor(1e7 + Math.random() * 9e7)); } while (chqFind(code));
+    const c = db.insert('cheques', { code, amount, balance: amount, at: new Date().toISOString(), source, customer: customer || null, ref: ref || '', pay: pay || '', uses: [] }); db.save(); chqPrint(c); return c;
+  }
+  // Satış danışmanları (aktif kullanıcılar) ve kampanyanın bugün geçerli olup olmadığı
+  const reps = () => db.all('users', (u) => u.active !== false).map((u) => u.name);
+  const campOn = (c) => c.active && (!c.start || today() >= c.start) && (!c.end || today() <= c.end);
+  // Kampanya indirimi: modelin kendi indirimi saklanır, kampanya bitince geri yüklenir
+  function campApply(c, pct, quiet) {
+    const ms = db.all('models', (m) => (c.scope === 'sezon' ? m.season === c.target : m.cat === c.target)); let low = 0;
+    ms.forEach((m) => priceEdit(m, () => { if (pct > 0) { if (m.camp !== c.id) { m.ownDisc = Number(m.disc) || 0; m.camp = c.id; } m.disc = pct; } else if (m.camp === c.id) { m.disc = m.ownDisc || 0; delete m.camp; delete m.ownDisc; } }));
+    c.applied = pct > 0; ms.forEach((m) => { if (m.disc > 0 && oldRef(m) < m.price) low++; }); const none = ms.filter((m) => m.disc > 0 && !oldRef(m)).length;
+    syncOnline(ms); if (!quiet) toast(`${ms.length} modelde indirim ${pct ? '%' + pct : 'kaldırıldı'}${low ? ` · ${low} modelde son 10 günde daha düşük fiyat var, eski fiyat olarak o gösterilecek` : ''}${none ? ` (${none} modelde indirim gösterilemez: bu fiyat son 10 günde zaten uygulandı)` : ''}`, ms.length ? 'ok' : 'err');
+  }
+  // Tarihli kampanyalar kendiliğinden başlar/biter (eski kayıtlar: açıksa uygulanmış sayılır, veriye dokunulmaz)
+  function campTick() {
+    let ch = false; db.all('campaigns', (c) => c.type === 'yuzde').forEach((c) => { if (c.applied === undefined) { c.applied = !!c.active; ch = true; } const want = campOn(c); if (want !== c.applied) { campApply(c, want ? c.value : 0, true); ch = true; } });
+    if (ch) db.save();
   }
 
   // ---------- Stok hareketleri ve mal kabul ----------
@@ -149,10 +185,41 @@
       } }] });
   }
 
+  // ---------- Excel / CSV'den model aktarımı: her satır bir beden/renk; var olan model ve varyant ezilmez, eksik varyant eklenir ----------
+  function importModels(after) {
+    const norm = (k) => NS.trLower(String(k)).replace(/[^a-z0-9çğıöşü]/g, '');
+    const COLS = { code: ['modelkodu', 'kod', 'stokkodu'], name: ['modeladi', 'modeladı', 'urunadi', 'ürünadı', 'ad'], cat: ['kategori', 'grup'], season: ['sezon'], color: ['renk'], size: ['beden', 'numara'], barcode: ['barkod'], stock: ['stok', 'adet', 'miktar'], cost: ['alis', 'alış', 'alisfiyati', 'alışfiyatı'], price: ['satis', 'satış', 'satisfiyati', 'satışfiyatı', 'fiyat'] };
+    const typeOf = (sizes) => Object.keys(B.SIZES).find((t) => sizes.every((x) => B.SIZES[t].includes(x)));
+    NS.readSheet().then((sh) => {
+      const rows = sh.rows || []; if (!rows.length) return toast('Dosyada satır yok', 'err');
+      const keys = Object.keys(rows[0]); const col = {}; Object.entries(COLS).forEach(([k, al]) => { const h = keys.find((x) => al.includes(norm(x))); if (h) col[k] = h; });
+      if (!col.code || !col.color || !col.size) return toast('Gerekli sütunlar: Model kodu, Renk, Beden (bulunan: ' + keys.join(', ') + ')', 'err');
+      const num = (v) => Number(String(v == null ? '' : v).replace(/\./g, '').replace(',', '.')) || 0; const errs = []; const groups = new Map();
+      rows.forEach((r, i) => { const g = (k) => (col[k] ? String(r[col[k]] == null ? '' : r[col[k]]).trim() : ''); const code = g('code').toUpperCase(); if (!code) return errs.push(`Satır ${i + 2}: model kodu boş`); if (!groups.has(code)) groups.set(code, []); groups.get(code).push({ i: i + 2, name: g('name'), cat: g('cat'), season: g('season'), color: g('color'), size: g('size').toUpperCase(), barcode: g('barcode'), stock: Math.max(0, Math.floor(num(g('stock')))), cost: num(g('cost')), price: num(g('price')) }); });
+      const plan = []; const usedBc = new Set(db.all('models').flatMap((m) => m.variants.map((v) => v.barcode)));
+      groups.forEach((rs, code) => {
+        const ex = db.find('models', (m) => String(m.code).toUpperCase() === code); const sizes = [...new Set(rs.map((x) => x.size))]; const st = ex ? ex.sizeType : typeOf(sizes);
+        if (!st || (ex && !sizes.every((x) => B.SIZES[st].includes(x)))) return errs.push(`${code}: beden(ler) tanınmadı (${sizes.join(', ')}) — kullanılabilir: ${Object.values(B.SIZES).map((a) => a.join('/')).join(' · ')}`);
+        if (!ex && !rs[0].name) return errs.push(`${code}: yeni model için model adı gerekli`);
+        const add = rs.filter((x) => !(ex && ex.variants.some((v) => v.size === x.size && v.color === x.color))).filter((x) => { if (x.barcode && usedBc.has(x.barcode)) { errs.push(`Satır ${x.i}: barkod ${x.barcode} başka üründe kayıtlı`); return false; } if (x.barcode) usedBc.add(x.barcode); return true; });
+        plan.push({ code, ex, st, rs, add });
+      });
+      const nNew = plan.filter((x) => !x.ex).length, nVar = sum(plan, (x) => x.add.length);
+      modal({ title: 'Excel aktarımı — önizleme', size: 'wide', body: `<div class="grid g3 mb">${kpi('Yeni model', nNew, 'plus', 'ok')}${kpi('Eklenecek beden/renk', nVar, 'grid', 'info')}${kpi('Hata', errs.length, 'alert', errs.length ? 'err' : 'ok')}</div><p class="small muted">Var olan modellerin bilgisi ve var olan beden/renklerin stoğu değiştirilmez; yalnızca eksik beden/renk eklenir. Barkodu boş satırlara barkod üretilir.</p>${errs.length ? `<div class="lbs-sum" style="max-height:200px;overflow:auto">${errs.slice(0, 200).map((e) => `<div class="small">${esc(e)}</div>`).join('')}</div>` : ''}`,
+        actions: [{ label: 'Vazgeç' }, { label: `Aktar (${nVar} satır)`, cls: 'primary', onClick: (close) => {
+          if (!nVar) return toast('Aktarılacak satır yok', 'err'); let seq = Date.now() % 1e6; const PAL = ['#111827', '#f1ead9', '#d6c3a5', '#6b705c', '#1e3a5f', '#7f1d1d', '#e8b4b8', '#5b8bd0'];
+          plan.forEach(({ code, ex, st, rs, add }) => {
+            const f0 = rs[0]; const m = ex || db.insert('models', { code, name: f0.name, cat: f0.cat || 'Genel', sizeType: st, season: B.SEASONS.includes(f0.season) ? f0.season : B.SEASONS[B.SEASONS.length - 1], cost: f0.cost, price: f0.price, disc: 0, online: false, colors: [], variants: [] });
+            add.forEach((x) => { if (!m.colors.some((c) => c.name === x.color)) m.colors.push({ name: x.color, hex: PAL[m.colors.length % PAL.length] }); let bc = x.barcode; while (!bc || db.all('models').some((mm) => mm.variants.some((v) => v.barcode === bc))) bc = B.ean('86955' + String(seq++).padStart(7, '0')); const v = { size: x.size, color: x.color, barcode: bc, stock: x.stock }; m.variants.push(v); move(m, v, x.stock, 'kabul', 'Excel aktarımı'); });
+          });
+          db.log('Excel aktarımı', `${nNew} model, ${nVar} beden/renk`); db.save(); close(); toast(`${nNew} yeni model, ${nVar} beden/renk aktarıldı`, 'ok'); if (after) after(); } }] });
+    }).catch((e) => { if (e) toast('Dosya okunamadı: ' + (e.message || e), 'err'); });
+  }
+
   // ---------- Değişim / iade ----------
   function exchangePage(el, p, app) {
     el.innerHTML = pageHead('Değişim & İade', `Fiş barkodunu okutun · ${S().exchangeDays || 30} gün içinde değişim`) + `<div class="grid g-21"><div class="col" style="gap:16px"><div class="card pad"><input class="input" id="fs" placeholder="Fiş no (F5123) okutun" style="height:52px;font-size:18px" autocomplete="off"></div><div id="sale"></div></div><div class="card"><div class="card-h"><h3>Son işlemler</h3></div><div id="rl"></div></div></div>`;
-    const list = () => { $('#rl', el).innerHTML = table({ rows: db.all('returns').sort((a, b) => b.at.localeCompare(a.at)).slice(0, 12), empty: 'İşlem yok', columns: [{ label: 'Fiş', render: (r) => `<b class="mono">${esc(r.saleNo)}</b><div class="small faint">${NS.dt(r.at)}</div>` }, { label: 'İşlem', render: (r) => (r.type === 'iade' ? badge('İade ' + money(r.refund), 'err') : badge('Değişim', 'info')) }, { label: 'Ürün', render: (r) => `<span class="small">${(r.qty || 1) > 1 ? r.qty + ' × ' : ''}${esc(r.line.name)} ${esc(r.line.size)}${r.newLine ? ` → ${esc(r.newLine.size)} ${esc(r.newLine.color)}` : ''}</span>` }] }); };
+    const list = () => { $('#rl', el).innerHTML = table({ rows: db.all('returns').sort((a, b) => b.at.localeCompare(a.at)).slice(0, 12), empty: 'İşlem yok', columns: [{ label: 'Fiş', render: (r) => `<b class="mono">${esc(r.saleNo)}</b><div class="small faint">${NS.dt(r.at)}</div>` }, { label: 'İşlem', render: (r) => (r.type === 'iade' ? badge('İade ' + money(r.refund), 'err') : badge('Değişim', 'info')) }, { label: 'Ürün', render: (r) => `<span class="small">${(r.qty || 1) > 1 ? r.qty + ' × ' : ''}${esc(r.line.name)} ${esc(r.line.size)}${r.newLine ? ` → ${r.newLine.name && r.newLine.name !== r.line.name ? esc(r.newLine.name) + ' ' : ''}${esc(r.newLine.size)} ${esc(r.newLine.color)}` : ''}${r.cheque ? ' · çek ' + esc(r.cheque) : ''}</span>` }] }); };
     // Satırdan daha önce iade/değişim yapılan adet (eski kayıtlarda adet yoksa 1)
     const done = (s, i, l) => sum(db.all('returns', (r) => r.saleNo === s.no && (r.li !== undefined ? r.li === i : r.line.barcode === l.barcode)), (r) => r.qty || 1);
     const show = (s) => {
@@ -164,22 +231,30 @@
         if (late && !(await adminOk(`${s.no} fişinin değişim süresi geçmiş (${Math.floor(age)} gün)`))) return;
         const f = findV(l.barcode); const cu = s.customer && cust(s.customer);
         if (b.dataset.act === 'rf') {
-          const how = [{ value: 'nakit', label: 'Nakit iade' }, { value: 'kart', label: 'Karta iade' }, ...(cu ? [{ value: 'puan', label: 'Puan olarak' }] : [])];
+          const how = [{ value: 'nakit', label: 'Nakit iade' }, { value: 'kart', label: 'Karta iade' }, { value: 'cek', label: 'İade çeki ver (sonraki alışverişte)' }, ...(cu ? [{ value: 'puan', label: 'Puan olarak' }] : [])];
           const v = await formModal({ title: `İade — ${l.name}`, fields: [...(left > 1 ? [{ name: 'qty', label: `Adet (en çok ${left})`, type: 'number', required: true }] : []), { name: 'reason', label: 'Neden', type: 'select', options: ['Beden uymadı', 'Renk beğenilmedi', 'Kusurlu ürün', 'Vazgeçti'] }, { name: 'how', label: 'Ödeme', type: 'select', options: how }], values: { qty: left, how: (s.pays && s.pays.length === 1 && s.pays[0].type === 'puan') || s.pay === 'puan' ? 'puan' : s.pay === 'nakit' ? 'nakit' : 'kart' } }); if (!v) return;
           const qty = Math.min(left, Math.max(1, Math.floor(Number(v.qty) || 1))); const refund = l.price * qty;
           if (f) { f.v.stock += qty; move(f.m, f.v, qty, 'iade', s.no); }
           // Puan düzeltmesi: bu üründen kazanılan puan geri alınır; puanla iade seçildiyse tutar puan olarak yüklenir
           let ptsBack = 0; if (cu) { const earnedRate = s.total ? (s.pts !== undefined ? s.pts : s.pay === 'puan' ? 0 : Math.round((s.total * (Number(S().pointPct) || 3)) / 100)) / s.total : 0; ptsBack = Math.round(refund * earnedRate); cu.points = (cu.points || 0) - ptsBack + (v.how === 'puan' ? refund : 0); }
-          db.insert('returns', { saleNo: s.no, li: i, qty, at: new Date().toISOString(), type: 'iade', line: l, reason: v.reason, refund, how: v.how, ptsBack });
-          db.save(); syncOnline(f ? [f.m] : []); toast(`${money(refund)} iade edildi${v.how === 'puan' ? ' (puan olarak)' : ''}, ürün stoğa döndü${ptsBack ? ` · ${ptsBack} kazanılmış puan geri alındı` : ''}`, 'ok'); list(); show(s);
+          const chq = v.how === 'cek' ? chqIssue(refund, 'iade', s.customer, s.no) : null;
+          db.insert('returns', { saleNo: s.no, li: i, qty, at: new Date().toISOString(), type: 'iade', line: l, reason: v.reason, refund, how: v.how, ptsBack, cheque: chq ? chq.code : '' });
+          db.save(); syncOnline(f ? [f.m] : []); toast(`${money(refund)} iade edildi${v.how === 'puan' ? ' (puan olarak)' : v.how === 'cek' ? ` (iade çeki ${chq.code})` : ''}, ürün stoğa döndü${ptsBack ? ` · ${ptsBack} kazanılmış puan geri alındı` : ''}`, 'ok'); list(); show(s);
         } else {
           const m = model(l.mid); if (!m) return toast('Model artık kayıtlı değil', 'err');
-          modal({ title: `Değişim — ${m.name} (${l.color} ${l.size})`, size: 'wide', body: `${matrix(m)}<p class="small muted mt">Yeni beden/renk barkodunu okutun ya da seçin:</p><div class="row" style="flex-wrap:wrap;gap:6px">${m.variants.filter((x) => x.stock > 0 && x.barcode !== l.barcode).map((x) => `<button class="btn sm" data-nv="${x.barcode}">${esc(x.color)} ${esc(x.size)}</button>`).join('') || '<span class="small muted">Bu modelde başka beden/renk stokta yok.</span>'}</div>`, onOpen: (bx, close) => on(bx, 'click', '[data-nv]', (ev, t) => {
-            const nv = m.variants.find((x) => x.barcode === t.dataset.nv); nv.stock--; move(m, nv, -1, 'degisim', s.no); const ov = m.variants.find((x) => x.barcode === l.barcode); if (ov) { ov.stock++; move(m, ov, 1, 'degisim', s.no); }
-            db.insert('returns', { saleNo: s.no, li: i, qty: 1, at: new Date().toISOString(), type: 'degisim', line: l, newLine: { ...l, size: nv.size, color: nv.color, barcode: nv.barcode }, reason: 'Beden/renk değişimi', refund: 0 });
-            db.save(); syncOnline([m]); close(); toast('Değişim yapıldı, stoklar güncellendi', 'ok'); list(); show(s);
-            NS.printHtml(`<div style="width:280px;font-family:Arial;font-size:12px"><b>${esc(S().bizName)}</b><br>DEĞİŞİM FİŞİ · ${NS.dt(new Date())}<hr>Fiş: ${esc(s.no)}<br>Alınan: ${esc(l.name)} ${esc(l.color)}/${esc(l.size)}<br>Verilen: ${esc(nv.color)}/${esc(nv.size)}<hr>Fiyat farkı yok (aynı model)<hr><b>BİLGİ FİŞİDİR — MALİ DEĞERİ YOKTUR</b></div>`, { title: 'Değişim' });
-          }) });
+          // Aynı modelde fark alınmaz; başka modelde yeni fiyat − ödenen fiyat kadar fark alınır / iade edilir
+          const swap = async (m2, nv, close) => {
+            const diff = m2.id === m.id ? 0 : unit(m2) - l.price; let how = '';
+            if (diff) { const v = await formModal({ title: diff > 0 ? `Fark tahsilatı: ${money(diff)}` : `Fark iadesi: ${money(-diff)}`, fields: [{ name: 'how', label: diff > 0 ? 'Müşteri öder' : 'Müşteriye', type: 'select', options: diff > 0 ? [{ value: 'nakit', label: 'Nakit' }, { value: 'kart', label: 'Kredi kartı' }] : [{ value: 'nakit', label: 'Nakit iade' }, { value: 'kart', label: 'Karta iade' }, { value: 'cek', label: 'İade çeki' }] }] }); if (!v) return; how = v.how; }
+            nv.stock--; move(m2, nv, -1, 'degisim', s.no); const ov = m.variants.find((x) => x.barcode === l.barcode); if (ov) { ov.stock++; move(m, ov, 1, 'degisim', s.no); }
+            const chq = diff < 0 && how === 'cek' ? chqIssue(-diff, 'iade', s.customer, s.no) : null;
+            db.insert('returns', { saleNo: s.no, li: i, qty: 1, at: new Date().toISOString(), type: 'degisim', line: l, newLine: { mid: m2.id, name: m2.name, size: nv.size, color: nv.color, barcode: nv.barcode, qty: 1, price: m2.id === m.id ? l.price : unit(m2), cost: m2.cost }, reason: m2.id === m.id ? 'Beden/renk değişimi' : 'Başka modelle değişim', refund: diff < 0 ? -diff : 0, extra: diff > 0 ? diff : 0, how, cheque: chq ? chq.code : '' });
+            db.save(); syncOnline([...new Set([m, m2])]); close(); toast(`Değişim yapıldı${diff > 0 ? ` · ${money(diff)} fark alındı` : diff < 0 ? ` · ${money(-diff)} fark iade edildi` : ''}`, 'ok'); list(); show(s);
+            NS.printHtml(`<div style="width:280px;font-family:Arial;font-size:12px"><b>${esc(S().bizName)}</b><br>DEĞİŞİM FİŞİ · ${NS.dt(new Date())}<hr>Fiş: ${esc(s.no)}<br>Alınan: ${esc(l.name)} ${esc(l.color)}/${esc(l.size)} (${money(l.price)})<br>Verilen: ${esc(m2.name)} ${esc(nv.color)}/${esc(nv.size)}${diff ? ` (${money(unit(m2))})` : ''}<hr>${diff > 0 ? `Tahsil edilen fark: ${money(diff)} · ${esc(B.PAY[how])}` : diff < 0 ? `İade edilen fark: ${money(-diff)} · ${how === 'cek' ? 'İade çeki ' + esc(chq.code) : esc(B.PAY[how])}` : 'Fiyat farkı yok'}<hr><b>BİLGİ FİŞİDİR — MALİ DEĞERİ YOKTUR</b></div>`, { title: 'Değişim' });
+          };
+          modal({ title: `Değişim — ${m.name} (${l.color} ${l.size})`, size: 'wide', body: `${matrix(m)}<p class="small muted mt">Aynı modelden yeni beden/renk seçin:</p><div class="row" style="flex-wrap:wrap;gap:6px">${m.variants.filter((x) => x.stock > 0 && x.barcode !== l.barcode).map((x) => `<button class="btn sm" data-nv="${x.barcode}">${esc(x.color)} ${esc(x.size)}</button>`).join('') || '<span class="small muted">Bu modelde başka beden/renk stokta yok.</span>'}</div><div class="field mt"><label>ya da başka bir ürünün barkodunu okutun (fiyat farkı hesaplanır)</label><input class="input mono" id="xo" autocomplete="off" placeholder="Barkod"></div>`,
+            onOpen: (bx, close) => { on(bx, 'click', '[data-nv]', (ev, t) => swap(m, m.variants.find((x) => x.barcode === t.dataset.nv), close));
+              $('#xo', bx).addEventListener('keydown', (ev) => { if (ev.key !== 'Enter') return; const fv = findV(ev.target.value); if (!fv) return toast('Barkod kayıtlı değil', 'err'); if (fv.v.barcode === l.barcode) return toast('Aynı ürün', 'err'); if (fv.m.passive) return toast('Bu model satıştan kaldırılmış', 'err'); swap(fv.m, fv.v, close); }); setTimeout(() => $('#xo', bx).focus(), 50); } });
         }
       };
     };
@@ -190,11 +265,11 @@
   // ---------- Ürünler ----------
   function productsPage(el, p, app) {
     let q = '', f = p || '';
-    el.innerHTML = pageHead('Ürünler & Stok', 'Model bazında beden × renk stok matrisi', `<button class="btn" id="lbl">${icon('tag')} Etiket bas</button><button class="btn" id="kb">${icon('download')} Mal kabul</button><button class="btn primary" id="add">${icon('plus')} Yeni model</button>`) + `<div class="card"><div class="card-h">${NS.searchBox('q', 'Model, kod, kategori...')}<div class="seg">${[['', 'Tümü'], ['az', 'Azalan beden'], ['indirim', 'İndirimde'], ['online', 'Online satışta'], ['olu', 'Satmayan (60 gün)']].map(([v, l]) => `<button data-f="${v}" class="${v === f ? 'active' : ''}">${l}</button>`).join('')}</div></div><div id="t"></div></div>`;
+    el.innerHTML = pageHead('Ürünler & Stok', 'Model bazında beden × renk stok matrisi', `<button class="btn" id="lbl">${icon('tag')} Etiket bas</button><button class="btn" id="kb">${icon('download')} Mal kabul</button><button class="btn" id="xl">${icon('upload')} Excel'den aktar</button><button class="btn primary" id="add">${icon('plus')} Yeni model</button>`) + `<div class="card"><div class="card-h">${NS.searchBox('q', 'Model, kod, kategori...')}<div class="seg">${[['', 'Tümü'], ['az', 'Azalan beden'], ['indirim', 'İndirimde'], ['online', 'Online satışta'], ['olu', 'Satmayan (60 gün)'], ['pasif', 'Pasif']].map(([v, l]) => `<button data-f="${v}" class="${v === f ? 'active' : ''}">${l}</button>`).join('')}</div></div><div id="t"></div></div>`;
     // Satış adetleri bir kez hesaplanır (binlerce modelde her satır için tüm satışları taramamak için)
     const soldMap = (days) => { const from = addDays(new Date(), -days).toISOString(); const r = new Map(); db.all('sales', (x) => x.at > from).forEach((x) => x.lines.forEach((l) => r.set(l.mid, (r.get(l.mid) || 0) + l.qty))); return r; };
     let S30 = soldMap(30), S60 = soldMap(60); const sold = (m, days) => (days === 30 ? S30 : S60).get(m.id) || 0;
-    const rows = () => db.all('models', (m) => NS.match(q, m.name, m.code, m.cat) && (!f || (f === 'az' ? m.variants.some((v) => v.stock <= (Number(S().lowStock) || 2)) : f === 'indirim' ? m.disc > 0 : f === 'online' ? m.online : sold(m, 60) === 0)));
+    const rows = () => db.all('models', (m) => NS.match(q, m.name, m.code, m.cat) && (f === 'pasif' ? m.passive : !m.passive && (!f || (f === 'az' ? m.variants.some((v) => v.stock <= (Number(S().lowStock) || 2)) : f === 'indirim' ? m.disc > 0 : f === 'online' ? m.online : sold(m, 60) === 0))));
     const draw = () => { S30 = soldMap(30); S60 = soldMap(60); const all = rows(); const LIM = 200; $('#t', el).innerHTML = (all.length > LIM ? `<p class="small muted" style="padding:8px 16px;margin:0">${all.length} modelden ilk ${LIM} tanesi gösteriliyor — aramayı daraltın.</p>` : '') + table({ rows: all.slice(0, LIM), emptyIcon: 'tag', columns: [
       { label: 'Model', render: (m) => `<b>${esc(m.name)}</b><div class="small faint"><span class="mono">${esc(m.code)}</span> · ${esc(m.cat)} · ${esc(m.season)}</div>` },
       { label: 'Renkler', render: (m) => m.colors.map((c) => sw(c.hex)).join(' ') },
@@ -205,7 +280,7 @@
       { label: 'Online', render: (m) => (m.online ? badge('Satışta', 'ok') : '') },
     ], actions: [{ icon: 'grid', act: 'mx', title: 'Stok matrisi' }, { icon: 'edit', act: 'ed' }] }); };
     const edit = async (m) => {
-      const v = await formModal({ title: m ? m.name : 'Yeni model', size: 'wide', fields: [{ name: 'name', label: 'Model adı', required: true, full: true }, { name: 'code', label: 'Model kodu', required: true }, { name: 'cat', label: 'Kategori', required: true }, { name: 'sizeType', label: 'Beden tipi', type: 'select', options: [{ value: 'harf', label: 'XS–XXL' }, { value: 'beden', label: '34–44' }, { value: 'numara', label: 'Ayakkabı 36–41' }, { value: 'tek', label: 'Tek beden' }] }, { name: 'season', label: 'Sezon', type: 'select', options: B.SEASONS }, { name: 'colorsStr', label: 'Renkler (virgülle)', full: true, placeholder: 'Siyah, Ekru, Bej' }, { name: 'cost', label: 'Alış (₺)', type: 'number', step: '0.01' }, { name: 'price', label: 'Satış (₺)', type: 'number', step: '0.01' }, { name: 'disc', label: 'İndirim %', type: 'number' }, { name: 'online', label: 'Online / pazaryerinde sat', type: 'checkbox' }], values: m ? { ...m, colorsStr: m.colors.map((c) => c.name).join(', ') } : { sizeType: 'harf', season: B.SEASONS[0], online: true, code: 'LB' + (2600 + db.all('models').length) } });
+      const v = await formModal({ title: m ? m.name : 'Yeni model', size: 'wide', fields: [{ name: 'name', label: 'Model adı', required: true, full: true }, { name: 'code', label: 'Model kodu', required: true }, { name: 'cat', label: 'Kategori', required: true }, { name: 'sizeType', label: 'Beden tipi', type: 'select', options: [{ value: 'harf', label: 'XS–XXL' }, { value: 'beden', label: '34–44' }, { value: 'numara', label: 'Ayakkabı 36–41' }, { value: 'tek', label: 'Tek beden' }] }, { name: 'season', label: 'Sezon', type: 'select', options: B.SEASONS }, { name: 'colorsStr', label: 'Renkler (virgülle)', full: true, placeholder: 'Siyah, Ekru, Bej' }, { name: 'cost', label: 'Alış (₺)', type: 'number', step: '0.01' }, { name: 'price', label: 'Satış (₺)', type: 'number', step: '0.01' }, { name: 'disc', label: 'İndirim %', type: 'number' }, { name: 'online', label: 'Online / pazaryerinde sat', type: 'checkbox' }, ...(m ? [{ name: 'passive', label: 'Satıştan kaldır (pasif) — kasada ve etikette görünmez, geçmiş korunur', type: 'checkbox', full: true }] : [])], values: m ? { ...m, colorsStr: m.colors.map((c) => c.name).join(', ') } : { sizeType: 'harf', season: B.SEASONS[0], online: true, code: 'LB' + (2600 + db.all('models').length) } });
       if (!v) return;
       const names = v.colorsStr.split(',').map((x) => x.trim()).filter(Boolean); delete v.colorsStr;
       v.price = Number(v.price) || 0; v.cost = Number(v.cost) || 0; v.disc = Math.min(90, Math.max(0, Number(v.disc) || 0));
@@ -226,6 +301,7 @@
     on(el, 'click', '[data-act=mx]', (e, b) => mx(model(b.dataset.id)));
     $('#add', el).onclick = () => edit(null);
     $('#kb', el).onclick = () => receive(draw);
+    $('#xl', el).onclick = () => importModels(draw);
     $('#lbl', el).onclick = () => { const it = rows().flatMap((m) => m.variants.filter((v) => v.stock > 0).map((v) => ({ v, n: 1 }))); if (!it.length) return toast('Listede stoklu ürün yok', 'err'); goLabels(it); };
     draw();
   }
@@ -281,7 +357,7 @@
     const V = () => { const r = []; db.all('models').forEach((m) => m.variants.forEach((v) => { if (sel.has(v.barcode)) r.push({ m, v, n: sel.get(v.barcode) }); })); return r; };
     const side = () => { const it = V(); $('#pv', el).innerHTML = lbPreview(tpl, it[0]); const n = sum(it, (x) => x.n); const nd = new Set(it.filter((x) => !oldRef(x.m)).map((x) => x.m)).size;
       $('#sum', el).innerHTML = it.length ? `<b>${new Set(it.map((x) => x.m)).size}</b> model · <b>${it.length}</b> beden/renk · <b>${n}</b> etiket${nd && lbTpl(tpl).els.some((e) => e.f === 'old') ? `<div class="small mt">${nd} modelde gösterilebilir indirim yok: eski fiyat basılmaz.</div>` : ''}` : 'Listeden model seçin, barkod okutun veya “Stok kadar” ile toplu ekleyin.'; };
-    const rows = () => db.all('models', (m) => (!q || NS.match(q, m.name, m.code, m.cat, ...m.colors.map((c) => c.name)) || m.variants.some((v) => v.barcode === q.trim())) && (!f || (f === 'fd' ? changed(m) : f === 'ind' ? m.disc > 0 : m.variants.some((v) => sel.has(v.barcode)))));
+    const rows = () => db.all('models', (m) => (!m.passive || f === 'sec') && (!q || NS.match(q, m.name, m.code, m.cat, ...m.colors.map((c) => c.name)) || m.variants.some((v) => v.barcode === q.trim())) && (!f || (f === 'fd' ? changed(m) : f === 'ind' ? m.disc > 0 : m.variants.some((v) => sel.has(v.barcode)))));
     const draw = () => {
       const all = rows(); const rs = all.slice(0, 150);
       $('#tbl', el).innerHTML = table({ rows: rs, emptyIcon: 'tag', empty: f === 'fd' ? 'Son etiket basımından beri fiyatı değişen model yok' : f === 'sec' ? 'Henüz etiket seçilmedi' : 'Model bulunamadı', columns: [
@@ -321,35 +397,36 @@
       filters: [{ value: 'all', label: 'Tümü' }, { value: 'dg', label: 'Bu ay doğum günü', test: (c) => c.birthday && c.birthday.slice(5, 7) === today().slice(5, 7) }, { value: 'izin', label: 'SMS izni olan', test: (c) => c.kvkk }],
       searchFields: (c) => [c.name, c.phone],
       columns: [{ key: 'name', label: 'Müşteri', render: (c) => `<b>${esc(c.name)}</b><div class="small faint">${esc(c.phone)}${c.kvkk ? '' : ' · SMS izni yok'}</div>` }, { key: 'size', label: 'Beden', render: (c) => esc(c.size || '-') }, { label: 'Alışveriş', cls: 'right', render: (c) => { const ss = db.all('sales', (s) => s.customer === c.id); return `${ss.length}<div class="small faint">${money(sum(ss, (s) => s.total))}</div>`; } }, { key: 'points', label: 'Puan', cls: 'right', render: (c) => `<b>${c.points || 0}</b>` }, { label: 'Son ziyaret', render: (c) => { const s = db.all('sales', (x) => x.customer === c.id).sort((a, b) => b.at.localeCompare(a.at))[0]; return s ? NS.date(s.at) : '-'; } }],
-      extraActions: [{ icon: 'message', act: 'sms', title: 'SMS gönder' }],
-      onAction: async (a, c) => { const v = await NS.prompt(`${c.name} için SMS`, `Merhaba ${c.name.split(' ')[0]}, ${S().bizName}'de yeni sezon ürünleri geldi! ${c.points ? c.points + ' puanınız sizi bekliyor.' : ''}`); if (v) { if (!c.kvkk) return toast('Müşterinin SMS izni yok (KVKK)', 'err'); smsSend(c, v); } },
+      extraActions: [{ icon: 'clock', act: 'hist', title: 'Alışveriş geçmişi' }, { icon: 'message', act: 'sms', title: 'SMS gönder' }],
+      onAction: async (a, c) => { if (a === 'hist') return custHist(c); const v = await NS.prompt(`${c.name} için SMS`, `Merhaba ${c.name.split(' ')[0]}, ${S().bizName}'de yeni sezon ürünleri geldi! ${c.points ? c.points + ' puanınız sizi bekliyor.' : ''}`); if (v) { if (!c.kvkk) return toast('Müşterinin SMS izni yok (KVKK)', 'err'); smsSend(c, v); } },
     });
+  }
+
+  function custHist(c) {
+    const ss = db.all('sales', (s) => s.customer === c.id).sort((a, b) => b.at.localeCompare(a.at)); const nos = new Set(ss.map((s) => s.no)); const rs = db.all('returns', (r) => nos.has(r.saleNo));
+    const fav = Object.entries(NS.groupBy(ss.flatMap((s) => s.lines), (l) => l.size)).sort((a, b) => b[1].length - a[1].length)[0];
+    modal({ title: `${c.name} — alışveriş geçmişi`, size: 'wide', body: `<div class="grid g4 mb">${kpi('Alışveriş', ss.length, 'receipt')}${kpi('Toplam', money(sum(ss, (s) => s.total)), 'cash', 'ok')}${kpi('Puan', c.points || 0, 'gift', 'info')}${kpi('Çok aldığı beden', fav ? fav[0] : '-', 'tag')}</div>${table({ rows: ss.slice(0, 100), empty: 'Alışveriş yok', columns: [{ label: 'Fiş', render: (s) => `<b class="mono">${esc(s.no)}</b><div class="small faint">${NS.dt(s.at)}</div>` }, { label: 'Ürünler', render: (s) => s.lines.map((l) => `<div class="small">${esc(l.name)} · ${esc(l.color)} ${esc(l.size)}${rs.some((r) => r.saleNo === s.no && (r.line.barcode === l.barcode)) ? ' ' + badge('iade/değişim', 'warn') : ''}</div>`).join('') }, { label: 'Tutar', cls: 'right', render: (s) => `<b>${money(s.total)}</b>` }] })}` });
   }
 
   // ---------- Kampanyalar ----------
   function campaignsPage(el, p, app) {
-    el.innerHTML = pageHead('Sezon & Kampanyalar', 'Sezon/kategori indirimi tek tıkla tüm etiketlere ve online kanallara yansır', `<button class="btn primary" id="bulk">${icon('percent')} Toplu indirim uygula</button>`) + `<div class="card"><div class="card-h"><h3>Aktif kampanyalar</h3></div><div id="t"></div></div>`;
-    const draw = () => { $('#t', el).innerHTML = table({ rows: db.all('campaigns'), columns: [{ label: 'Kampanya', render: (c) => `<b>${esc(c.name)}</b>` }, { label: 'Kapsam', render: (c) => `${c.scope === 'sezon' ? 'Sezon' : 'Kategori'}: ${esc(c.target)}` }, { label: 'Tür', render: (c) => (c.type === 'ikinci' ? `2. üründe %${c.value}` : `%${c.value} indirim`) }, { label: 'Durum', render: (c) => (c.active ? badge('Aktif', 'ok') : badge('Pasif')) }], actions: [{ icon: 'refresh', act: 'tg', title: 'Aç / kapat' }, { icon: 'trash', act: 'del' }] }); };
-    on(el, 'click', '[data-act]', async (e, b) => { const c = db.get('campaigns', b.dataset.id); if (b.dataset.act === 'del') { if (!(await confirm('Kampanya silinsin mi?'))) return; if (c.type === 'yuzde') apply(c, 0); db.remove('campaigns', c.id); } else { c.active = !c.active; if (c.type === 'yuzde') apply(c, c.active ? c.value : 0); } db.save(); draw(); });
-    // Kampanya açılınca modelin kendi indirimi saklanır, kapanınca geri yüklenir
-    const apply = (c, pct) => {
-      const ms = db.all('models', (m) => (c.scope === 'sezon' ? m.season === c.target : m.cat === c.target)); let low = 0;
-      ms.forEach((m) => priceEdit(m, () => { if (pct > 0) { if (m.camp !== c.id) { m.ownDisc = Number(m.disc) || 0; m.camp = c.id; } m.disc = pct; } else if (m.camp === c.id) { m.disc = m.ownDisc || 0; delete m.camp; delete m.ownDisc; } }));
-      ms.forEach((m) => { if (m.disc > 0 && oldRef(m) < m.price) low++; }); const none = ms.filter((m) => m.disc > 0 && !oldRef(m)).length;
-      syncOnline(ms); toast(`${ms.length} modelde indirim ${pct ? '%' + pct : 'kaldırıldı'}${low ? ` · ${low} modelde son 10 günde daha düşük fiyat var, eski fiyat olarak o gösterilecek` : ''}${none ? ` (${none} modelde indirim gösterilemez: bu fiyat son 10 günde zaten uygulandı)` : ''}`, ms.length ? 'ok' : 'err');
-    };
+    campTick();
+    el.innerHTML = pageHead('Sezon & Kampanyalar', 'Sezon/kategori indirimi tek tıkla tüm etiketlere ve online kanallara yansır; tarih verilirse kendiliğinden başlar ve biter', `<button class="btn primary" id="bulk">${icon('percent')} Yeni kampanya</button>`) + `<div class="card"><div class="card-h"><h3>Kampanyalar</h3></div><div id="t"></div></div>`;
+    const st = (c) => (!c.active ? badge('Kapalı') : campOn(c) ? badge('Uygulanıyor', 'ok') : c.start && today() < c.start ? badge('Başlayacak', 'info') : badge('Süresi bitti', 'warn'));
+    const draw = () => { $('#t', el).innerHTML = table({ rows: db.all('campaigns'), columns: [{ label: 'Kampanya', render: (c) => `<b>${esc(c.name)}</b>${c.start || c.end ? `<div class="small faint">${c.start ? NS.date(c.start) : '…'} – ${c.end ? NS.date(c.end) : '…'}</div>` : ''}` }, { label: 'Kapsam', render: (c) => `${c.scope === 'sezon' ? 'Sezon' : 'Kategori'}: ${esc(c.target)}` }, { label: 'Tür', render: (c) => (c.type === 'ikinci' ? `2. üründe %${c.value}` : `%${c.value} indirim`) }, { label: 'Durum', render: st }], actions: [{ icon: 'refresh', act: 'tg', title: 'Aç / kapat' }, { icon: 'trash', act: 'del' }] }); };
+    on(el, 'click', '[data-act]', async (e, b) => { const c = db.get('campaigns', b.dataset.id); if (b.dataset.act === 'del') { if (!(await confirm('Kampanya silinsin mi?'))) return; if (c.type === 'yuzde' && c.applied) campApply(c, 0); db.remove('campaigns', c.id); } else { c.active = !c.active; if (c.type === 'yuzde' && campOn(c) !== !!c.applied) campApply(c, campOn(c) ? c.value : 0); } db.save(); draw(); });
     $('#bulk', el).onclick = async () => {
       const cats = [...new Set(db.all('models').map((m) => m.cat))];
-      const v = await formModal({ title: 'Toplu indirim / kampanya', fields: [{ name: 'name', label: 'Kampanya adı', required: true }, { name: 'type', label: 'Tür', type: 'select', options: [{ value: 'yuzde', label: 'Yüzde indirim (etikete yansır)' }, { value: 'ikinci', label: '2. üründe indirim (kasada)' }] }, { name: 'target', label: 'Kapsam', type: 'select', options: [...B.SEASONS.map((x) => ({ value: 'sezon|' + x, label: 'Sezon: ' + x })), ...cats.map((x) => ({ value: 'kategori|' + x, label: 'Kategori: ' + x }))] }, { name: 'value', label: 'Oran %', type: 'number', required: true }] });
-      if (!v) return; const pct = Number(v.value); if (!(pct > 0 && pct <= 90)) return toast('Oran 1 ile 90 arasında olmalı', 'err');
-      const [scope, target] = v.target.split('|'); const c = db.insert('campaigns', { ...v, scope, target, value: pct, active: true }); if (c.type === 'yuzde') apply(c, c.value); db.save(); draw();
+      const v = await formModal({ title: 'Yeni kampanya', fields: [{ name: 'name', label: 'Kampanya adı', required: true, full: true }, { name: 'type', label: 'Tür', type: 'select', options: [{ value: 'yuzde', label: 'Yüzde indirim (etikete yansır)' }, { value: 'ikinci', label: '2. üründe indirim (kasada)' }] }, { name: 'target', label: 'Kapsam', type: 'select', options: [...B.SEASONS.map((x) => ({ value: 'sezon|' + x, label: 'Sezon: ' + x })), ...cats.map((x) => ({ value: 'kategori|' + x, label: 'Kategori: ' + x }))] }, { name: 'value', label: 'Oran %', type: 'number', required: true }, { name: 'start', label: 'Başlangıç (boşsa hemen)', type: 'date' }, { name: 'end', label: 'Bitiş (boşsa süresiz)', type: 'date' }] });
+      if (!v) return; const pct = Number(v.value); if (!(pct > 0 && pct <= 90)) return toast('Oran 1 ile 90 arasında olmalı', 'err'); if (v.start && v.end && v.end < v.start) return toast('Bitiş, başlangıçtan önce olamaz', 'err');
+      const [scope, target] = v.target.split('|'); const c = db.insert('campaigns', { ...v, scope, target, value: pct, active: true, applied: false }); if (c.type === 'yuzde' && campOn(c)) campApply(c, c.value); else if (c.type === 'yuzde') toast(`Kampanya ${NS.date(c.start)} tarihinde başlayacak`, 'ok'); db.save(); draw();
     };
     draw();
   }
 
   // ---------- Özet ve raporlar ----------
   function dashboard(el, p, app) {
-    const all = db.all('sales'); const t = today(); const tod = all.filter((s) => iso(s.at) === t);
+    campTick(); const all = db.all('sales'); const t = today(); const tod = all.filter((s) => iso(s.at) === t);
     const m30 = all.filter((s) => s.at > addDays(new Date(), -30).toISOString());
     const kar = (ss) => sum(ss.flatMap((s) => s.lines), (l) => (l.price - (l.cost || 0)) * l.qty) - sum(ss, (s) => s.disc || 0);
     const low = db.all('models').flatMap((m) => m.variants.filter((v) => v.stock === 0 && sum(m.variants.filter((x) => x.color === v.color), (x) => x.stock) > 0).map((v) => ({ m, v })));
@@ -361,20 +438,41 @@
       <div class="grid g2"><div class="card"><div class="card-h"><h3>Biten bedenler — sipariş verin</h3></div>${table({ rows: low.slice(0, 10).map((x, i) => ({ ...x, id: i })), empty: 'Eksik beden yok', columns: [{ label: 'Model', render: (x) => `<b>${esc(x.m.name)}</b>` }, { label: 'Renk / beden', render: (x) => `${sw(colorHex(x.m, x.v.color))} ${esc(x.v.color)} · <b>${esc(x.v.size)}</b>` }] })}</div>
       <div class="card"><div class="card-h"><h3>En çok satan modeller (30 gün)</h3></div>${table({ rows: Object.entries(NS.groupBy(m30.flatMap((s) => s.lines), (l) => l.mid)).map(([id, v]) => ({ id, m: model(id), n: sum(v, (l) => l.qty), c: sum(v, (l) => l.qty * l.price) })).filter((x) => x.m).sort((a, b) => b.n - a.n).slice(0, 8), columns: [{ label: 'Model', render: (x) => `<b>${esc(x.m.name)}</b>` }, { label: 'Adet', cls: 'right', key: 'n' }, { label: 'Ciro', cls: 'right', render: (x) => money(x.c) }] })}</div></div>`;
   }
+  let rptRange = { k: '30' };
+  const rangeOf = (r) => { const t = today(); const d = (n) => iso(addDays(new Date(), n)); const ym = t.slice(0, 7); const pm = iso(new Date(new Date().getFullYear(), new Date().getMonth() - 1, 1)).slice(0, 7);
+    return r.k === 'bugun' ? [t, t] : r.k === '7' ? [d(-6), t] : r.k === '30' ? [d(-29), t] : r.k === 'ay' ? [ym + '-01', t] : r.k === 'gecen' ? [pm + '-01', iso(new Date(new Date().getFullYear(), new Date().getMonth(), 0))] : [r.from || t, r.to || t]; };
+  // Gün sonu kasa: ödeme türüne göre satış, iade, fark tahsilatı ve hediye çeki satışı
+  function cashTable(from, to) {
+    const inR = (x) => iso(x.at) >= from && iso(x.at) <= to; const T = {}; const add = (k, col, v) => { T[k] = T[k] || { satis: 0, iade: 0, cek: 0 }; T[k][col] += v; };
+    db.all('sales', inR).forEach((s) => (s.pays || [{ type: s.pay, amount: s.total }]).forEach((x) => add(x.type, 'satis', x.amount)));
+    db.all('returns', inR).forEach((r) => { if (r.refund && r.how && r.how !== 'puan') add(r.how === 'cek' ? 'cekver' : r.how, 'iade', r.refund); else if (r.refund && !r.how && r.type === 'iade') add('kart', 'iade', r.refund); if (r.extra) add(r.how || 'nakit', 'satis', r.extra); if (r.refund && r.how === 'puan') add('puan', 'iade', r.refund); });
+    db.all('cheques', (c) => inR(c) && c.source === 'satis').forEach((c) => add(c.pay || 'nakit', 'cek', c.amount));
+    const L = { ...B.PAY, cekver: 'Verilen iade çeki' };
+    return Object.entries(T).map(([k, v]) => ({ id: k, name: L[k] || k, ...v, cash: ['nakit', 'kart', 'havale'].includes(k), net: v.satis + v.cek - v.iade })).sort((a, b) => b.cash - a.cash);
+  }
   function reportsPage(el) {
-    const m30 = db.all('sales', (s) => s.at > addDays(new Date(), -30).toISOString()); const L = m30.flatMap((s) => s.lines);
-    const rets = db.all('returns', (r) => r.at > addDays(new Date(), -30).toISOString());
-    const sold60 = new Set(db.all('sales', (s) => s.at > addDays(new Date(), -60).toISOString()).flatMap((s) => s.lines.map((l) => l.mid))); const dead = db.all('models').filter((m) => !sold60.has(m.id) && mStock(m) > 0);
-    el.innerHTML = pageHead('Raporlar', 'Son 30 gün') + `<div class="grid g4 mb">${kpi('Ciro', money(sum(m30, (s) => s.total)), 'trend', 'ok')}${kpi('Ortalama fiş', money(m30.length ? sum(m30, (s) => s.total) / m30.length : 0), 'receipt', 'info')}${kpi('Fiş başı ürün', (m30.length ? L.length / m30.length : 0).toFixed(2), 'tag')}${kpi('Değişim / iade', rets.length, 'refresh', 'warn')}</div>
+    const [from, to] = rangeOf(rptRange); const inR = (x) => iso(x.at) >= from && iso(x.at) <= to;
+    const m30 = db.all('sales', inR); const L = m30.flatMap((s) => s.lines);
+    const rets = db.all('returns', inR); const cash = cashTable(from, to); const pct = Number(S().commPct) || 0;
+    const byRep = Object.entries(NS.groupBy(m30, (s) => s.rep || s.user || '-')).map(([id, ss]) => { const net = sum(ss, (s) => s.total) - sum(rets.filter((r) => ss.some((s) => s.no === r.saleNo)), (r) => r.refund || 0); return { id, n: ss.length, ciro: sum(ss, (s) => s.total), net, avg: ss.length ? sum(ss, (s) => s.total) / ss.length : 0, upt: ss.length ? sum(ss.flatMap((s) => s.lines), (l) => l.qty) / ss.length : 0, prim: (net * pct) / 100 }; }).sort((a, b) => b.ciro - a.ciro);
+    const sold60 = new Set(db.all('sales', (s) => s.at > addDays(new Date(), -60).toISOString()).flatMap((s) => s.lines.map((l) => l.mid))); const dead = db.all('models').filter((m) => !m.passive && !sold60.has(m.id) && mStock(m) > 0);
+    const R = [['bugun', 'Bugün'], ['7', '7 gün'], ['30', '30 gün'], ['ay', 'Bu ay'], ['gecen', 'Geçen ay'], ['ozel', 'Tarih seç']];
+    el.innerHTML = pageHead('Raporlar', `${NS.date(from)} – ${NS.date(to)}`, `<button class="btn" id="zp">${icon('print')} Gün sonu raporu yazdır</button>`) + `<div class="card pad mb"><div class="row" style="flex-wrap:wrap;gap:8px"><div class="seg">${R.map(([k, l]) => `<button data-rk="${k}" class="${rptRange.k === k ? 'active' : ''}">${l}</button>`).join('')}</div>${rptRange.k === 'ozel' ? `<input class="input" type="date" id="rf" value="${from}" style="width:auto"><input class="input" type="date" id="rt" value="${to}" style="width:auto">` : ''}</div></div>
+      <div class="grid g4 mb">${kpi('Ciro', money(sum(m30, (s) => s.total)), 'trend', 'ok', `<div class="small faint">${m30.length} fiş</div>`)}${kpi('Ortalama fiş', money(m30.length ? sum(m30, (s) => s.total) / m30.length : 0), 'receipt', 'info')}${kpi('Fiş başı ürün', (m30.length ? sum(L, (l) => l.qty) / m30.length : 0).toFixed(2), 'tag')}${kpi('Değişim / iade', rets.length, 'refresh', 'warn', `<div class="small faint">iade ${money(sum(rets, (r) => r.refund || 0))}</div>`)}</div>
+      <div class="grid g2 mb"><div class="card"><div class="card-h"><h3>Kasa (ödeme türüne göre)</h3></div>${table({ rows: cash, empty: 'Hareket yok', columns: [{ label: 'Ödeme', render: (x) => `<b>${esc(x.name)}</b>` }, { label: 'Satış', cls: 'right', render: (x) => money(x.satis) }, { label: 'Hediye çeki satışı', cls: 'right', render: (x) => (x.cek ? money(x.cek) : '-') }, { label: 'İade', cls: 'right', render: (x) => (x.iade ? '−' + money(x.iade) : '-') }, { label: 'Net', cls: 'right', render: (x) => (x.cash ? `<b>${money(x.net)}</b>` : '<span class="small faint">kasaya girmez</span>') }], foot: `<b>Kasa neti: ${money(sum(cash.filter((x) => x.cash), (x) => x.net))}</b>` })}</div>
+        <div class="card"><div class="card-h"><h3>Satış danışmanları</h3><span class="small muted">${pct ? `prim %${pct} (net satış üzerinden)` : 'Prim oranı Ayarlar’dan girilir'}</span></div>${table({ rows: byRep, empty: 'Satış yok', columns: [{ label: 'Danışman', render: (x) => `<b>${esc(x.id)}</b><div class="small faint">${x.n} fiş · fiş başı ${x.upt.toFixed(1)} ürün</div>` }, { label: 'Ciro', cls: 'right', render: (x) => money(x.ciro) }, { label: 'Net', cls: 'right', render: (x) => money(x.net) }, { label: 'Prim', cls: 'right', render: (x) => (pct ? `<b>${money(x.prim)}</b>` : '-') }] })}</div></div>
       <div class="grid g3 mb"><div class="card"><div class="card-h"><h3>Kategoriler</h3></div><div class="card-b">${chart.donut(Object.entries(NS.groupBy(L, (l) => (model(l.mid) || {}).cat || '-')).map(([label, v]) => ({ label, value: sum(v, (l) => l.price * l.qty) })), { size: 120 })}</div></div>
       <div class="card"><div class="card-h"><h3>Renkler</h3></div><div class="card-b">${chart.donut(Object.entries(NS.groupBy(L, (l) => l.color)).map(([label, v]) => ({ label, value: v.length })), { size: 120 })}</div></div>
       <div class="card"><div class="card-h"><h3>Mağaza / online</h3></div><div class="card-b">${chart.donut([{ label: 'Mağaza', value: m30.filter((s) => s.channel !== 'online').length }, { label: 'Online', value: m30.filter((s) => s.channel === 'online').length }], { size: 120 })}</div></div></div>
       <div class="card"><div class="card-h"><h3>Ölü stok — 60 gündür satılmayan</h3><span class="small muted">İndirime alın veya pazaryerine açın</span></div>${table({ rows: dead.sort((a, b) => mStock(b) * b.cost - mStock(a) * a.cost).slice(0, 100), empty: 'Yok', columns: [{ label: 'Model', render: (m) => `<b>${esc(m.name)}</b><div class="small faint">${esc(m.season)}</div>` }, { label: 'Stok', cls: 'right', render: mStock }, { label: 'Bağlı para', cls: 'right', render: (m) => money(mStock(m) * m.cost) }] })}</div>`;
+    on(el, 'click', '[data-rk]', (e, b) => { rptRange = { ...rptRange, k: b.dataset.rk }; reportsPage(el); });
+    on(el, 'change', '#rf, #rt', () => { rptRange = { k: 'ozel', from: $('#rf', el).value, to: $('#rt', el).value }; reportsPage(el); });
+    $('#zp', el).onclick = () => NS.printHtml(`<div style="width:280px;font-family:Arial;font-size:12px"><div style="text-align:center"><b style="font-size:15px">${esc(S().bizName)}</b><div>GÜN SONU KASA RAPORU</div><div>${NS.date(from)}${from !== to ? ' – ' + NS.date(to) : ''}</div></div><hr>${cash.filter((x) => x.cash).map((x) => `<div><b>${esc(x.name)}</b></div><div>Satış <span style="float:right">${money(x.satis + x.cek)}</span></div>${x.iade ? `<div>İade <span style="float:right">−${money(x.iade)}</span></div>` : ''}<div>Net <span style="float:right"><b>${money(x.net)}</b></span></div>`).join('<hr style="border-style:dotted">')}<hr><div style="font-size:14px"><b>KASA NETİ <span style="float:right">${money(sum(cash.filter((x) => x.cash), (x) => x.net))}</span></b></div>${cash.filter((x) => !x.cash).map((x) => `<div class="small">${esc(x.name)} (kasaya girmez) <span style="float:right">${x.satis ? money(x.satis) : ''}${x.iade ? ' −' + money(x.iade) : ''}</span></div>`).join('')}<hr><div>Fiş sayısı <span style="float:right">${m30.length}</span></div><div>İade/değişim <span style="float:right">${rets.length}</span></div><div style="font-size:14px"><b>Ciro <span style="float:right">${money(sum(m30, (s) => s.total))}</span></b></div><hr><div style="text-align:center">Yazdıran: ${esc((NS.currentUser || {}).name || '')} · ${NS.dt(new Date())}<br><b>BİLGİ FİŞİDİR — MALİ DEĞERİ YOKTUR</b></div></div>`, { title: 'Gün sonu' });
   }
   function salesPage(el, p, app) {
     NS.crud(el, app, { col: 'sales', title: 'Satışlar', sub: 'Fişler', readonly: true, emptyIcon: 'receipt', searchFields: (s) => [s.no, (cust(s.customer) || {}).name, ...s.lines.map((l) => l.name)], sort: (a, b) => b.at.localeCompare(a.at),
       filters: [{ value: 'all', label: 'Tümü' }, { value: 'bugun', label: 'Bugün', test: (s) => iso(s.at) === today() }, { value: 'online', label: 'Online', test: (s) => s.channel === 'online' }],
-      columns: [{ key: 'no', label: 'Fiş', render: (s) => `<b class="mono">${esc(s.no)}</b><div class="small faint">${NS.dt(s.at)}</div>` }, { label: 'Müşteri', render: (s) => esc((cust(s.customer) || {}).name || '-') }, { label: 'Ürünler', render: (s) => s.lines.map((l) => `<div class="small">${esc(l.name)} ${esc(l.size)}</div>`).join('') }, { label: 'Ödeme', render: (s) => esc(B.PAY[s.pay]) + (s.channel === 'online' ? ' ' + badge('Online', 'info') : '') }, { key: 'total', label: 'Tutar', cls: 'right', render: (s) => `<b>${money(s.total)}</b>` }],
+      columns: [{ key: 'no', label: 'Fiş', render: (s) => `<b class="mono">${esc(s.no)}</b><div class="small faint">${NS.dt(s.at)}</div>` }, { label: 'Müşteri', render: (s) => esc((cust(s.customer) || {}).name || '-') }, { label: 'Ürünler', render: (s) => s.lines.map((l) => `<div class="small">${esc(l.name)} ${esc(l.size)}</div>`).join('') }, { label: 'Ödeme', render: (s) => esc(B.PAY[s.pay] || s.pay) + (s.channel === 'online' ? ' ' + badge('Online', 'info') : '') + (s.rep ? `<div class="small faint">${esc(s.rep)}</div>` : '') }, { key: 'total', label: 'Tutar', cls: 'right', render: (s) => `<b>${money(s.total)}</b>` }],
       extraActions: [{ icon: 'print', act: 'pr' }], onAction: (a, s) => receipt(s) });
   }
 
@@ -383,6 +481,6 @@
     id: 'butik', integrations: ['pazaryeri', 'pos', 'printer', 'label', 'barcode', 'efatura', 'sms', 'whatsapp', 'webhook', 'backup'], name: 'Butik & Giyim', tagline: 'Beden-renk stok ve mağaza satış', icon: 'tag', accent: '#db2777', db, home: 'ozet', auth: { roles: ROLES },
     nav: [{ sec: 'Mağaza' }, { id: 'ozet', label: 'Özet', icon: 'home', roles: ['kasa'] }, { id: 'satis', label: 'Satış', icon: 'barcode', roles: ['kasa'] }, { id: 'degisim', label: 'Değişim & İade', icon: 'refresh', roles: ['kasa'] }, { id: 'satislar', label: 'Satışlar', icon: 'receipt', roles: ['kasa'] }, { id: 'urunler', label: 'Ürünler & Stok', icon: 'tag', roles: ['kasa'] }, { id: 'etiket', label: 'Etiket Basımı', icon: 'print', roles: ['kasa'] }, { id: 'musteriler', label: 'Müşteriler', icon: 'users', roles: ['kasa'] }, { sec: 'Yönetim' }, { id: 'kampanyalar', label: 'Sezon & Kampanya', icon: 'percent', roles: ['admin'] }, { id: 'raporlar', label: 'Raporlar', icon: 'chart', roles: ['admin'] }, { id: 'ayarlar', label: 'Ayarlar', icon: 'settings', roles: ['admin'] }],
     routes: { ozet: dashboard, satis: posPage, degisim: exchangePage, satislar: salesPage, urunler: productsPage, etiket: labelsPage, musteriler: customersPage, kampanyalar: campaignsPage, raporlar: reportsPage,
-      ayarlar: (el, p, a) => NS.settingsPage(el, a, { roles: ROLES, fields: [{ type: 'section', label: 'Mağaza kuralları' }, { name: 'pointPct', label: 'Puan oranı %', type: 'number' }, { name: 'exchangeDays', label: 'Değişim süresi (gün)', type: 'number' }, { name: 'lowStock', label: 'Az kalan beden sınırı', type: 'number' }, { name: 'online', label: 'Stok değişince online kanallara gönder', type: 'checkbox' }] }) },
+      ayarlar: (el, p, a) => NS.settingsPage(el, a, { roles: ROLES, fields: [{ type: 'section', label: 'Mağaza kuralları' }, { name: 'pointPct', label: 'Puan oranı %', type: 'number' }, { name: 'exchangeDays', label: 'Değişim süresi (gün)', type: 'number' }, { name: 'lowStock', label: 'Az kalan beden sınırı', type: 'number' }, { name: 'commPct', label: 'Satış danışmanı primi % (net satış)', type: 'number' }, { name: 'online', label: 'Stok değişince online kanallara gönder', type: 'checkbox' }] }) },
   });
 })();

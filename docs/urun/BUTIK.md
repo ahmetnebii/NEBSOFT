@@ -28,6 +28,24 @@ Yöntem: `CLAUDE.md` §2. Kullanıcı tüm dalgaları önceden onayladı ("atlam
 | + | Sepet korunuyor | Kasadan başka sayfaya geçip dönünce sepet kaybolmuyor | Tarayıcı |
 | + | Büyük veri | 3.016 modelde ürün listesi 2,2 sn → 40 ms (satış adetleri bir kez hesaplanıyor, ilk 200 satır); ölü stok raporu ilk 100 | Tarayıcı ölçümü |
 
+### 2. dalga — yapılanlar
+| Konu | Sonuç | Kanıt |
+|---|---|---|
+| İade / hediye çeki | Kodlu, bakiyeli çek (barkodlu fiş). İadede "iade çeki ver", kasada "Hediye çeki sat"; "Parçalı / çek" ödemede kod okutulunca bakiye kadar düşülür, kalan kart alanına geçer; kalan bakiye sonraki alışverişte kullanılır | Tarayıcı: 500 ₺ çek → 349 ₺ satış, fişte çek kodu |
+| Başka modelle değişim | Değişim penceresinde başka ürünün barkodu okutulur; fark müşteriden alınır (nakit/kart) ya da iade edilir (nakit/kart/iade çeki); fişte iki fiyat ve fark | Tarayıcı: 1.899 ₺ elbise → 349 ₺ tişört, 1.550 ₺ iade çeki |
+| Satışı beklet | "Beklet" (not ile) ve "Bekleyenler (n)" → kasaya al; dolu sepet varsa o da otomatik bekletilir | Tarayıcı |
+| Satış danışmanı | Kasada danışman seçimi (aktif kullanıcılar), fişte ve satış listesinde; raporda danışman başına fiş, ciro, net (iade düşülmüş), fiş başı ürün ve prim (Ayarlar > prim %) | Tarayıcı |
+| Müşteri geçmişi | Müşteriler > saat simgesi: alışveriş sayısı, toplam, puan, en çok aldığı beden, fişler ve iade/değişim işaretleri | Tarayıcı |
+| Pasif model | Model düzenlemede "Satıştan kaldır"; kasada aranmaz/okutulunca uyarır, etiket listesinde görünmez; Ürünler > "Pasif" filtresi | Tarayıcı |
+| Tarihli kampanya | Başlangıç/bitiş tarihi; tarihi gelince kendiliğinden uygulanır, bitince modelin kendi indirimi geri gelir; durum: Uygulanıyor / Başlayacak / Süresi bitti / Kapalı. Eski kampanyalar "açıksa uygulanmış" sayılır, veriye dokunulmaz | Tarayıcı (başlangıç dün → %15 uygulandı) |
+| Raporlarda dönem | Bugün, 7 gün, 30 gün, bu ay, geçen ay, tarih seç | Tarayıcı |
+| Gün sonu kasa raporu | Ödeme türüne göre satış, hediye çeki satışı, iade, net; çek ve puan "kasaya girmez" diye ayrı; kasa neti; 80 mm yazdırma | Tarayıcı |
+| Excel'den aktarım | .xlsx/CSV; sütunlar adla eşleşir (Model kodu, Model adı, Kategori, Sezon, Renk, Beden, Barkod, Stok, Alış, Satış); önizleme + hata listesi; var olan model ve beden/renk ezilmez; barkod çakışması reddedilir; boş barkoda barkod üretilir; açılış stoğu hareket olarak yazılır | Tarayıcı (2 satır aktarıldı, tanınmayan beden ve var olan varyant ayıklandı) |
+| Kuruş | İndirimsiz fiyat kuruşuyla korunuyor (önceden her fiyat tam liraya yuvarlanıyordu); indirimli fiyat tam liraya yuvarlanır | Tarayıcı (1.299,90) |
+
+Sınır: beden takımları sabit (XS–XXL, 34–44, 36–41, STD); farklı beden (ör. XXXL, 46) Excel'de reddedilir → 3. dalgada
+"özel beden takımı" eklenecek.
+
 Kalite kapısı: `npm test` — 6 test dosyası geçti (XSD: 9 belge uygun); `cloud.test.js` temel committe de aynı hatayla düşüyor
 (bizden bağımsız, `CEKIRDEK-ISTEKLERI-perakende.md`). Konsol hatası yok. 375 px'te yatay taşma yok. Koyu tema yalnızca çekirdek
 sınıflarıyla (ayrı denenmedi; etiket önizlemesi bilerek beyaz kâğıt). `sw.js` sürümü kök dosya olduğu için artırılmadı (Ç8).
@@ -150,7 +168,7 @@ Sınıf: **O** olmazsa olmaz · **E** beklenen · **F** fark yaratan.
 |---|---|
 | **1 — Kırık ve temel** | H1–H12; parçalı ödeme; bilgi fişi ibaresi; mal kabul (matrisle adet + otomatik etiket); stok hareket geçmişi |
 | **2 — Beklenenler** | İade/hediye çeki; başka modelle değişim + fark; satışı beklet; satış danışmanı + prim raporu; müşteri geçmişi; model pasife alma; kampanya tarihleri; rapor tarih aralığı + gün sonu kasa raporu; Excel'den model aktarımı |
-| **3 — Fark yaratanlar** | "Bedeni gelince haber ver" listesi + mal kabulde bildirim; bedene göre öneri; sell-through raporu; kasada "etiketi eski" uyarısı |
+| **3 — Fark yaratanlar** | "Bedeni gelince haber ver" listesi + mal kabulde bildirim; bedene göre öneri; sell-through raporu; kasada "etiketi eski" uyarısı; özel beden takımları |
 
 ---
 

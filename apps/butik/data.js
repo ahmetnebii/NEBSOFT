@@ -2,7 +2,7 @@
 window.BTK = {
   SIZES: { harf: ['XS', 'S', 'M', 'L', 'XL', 'XXL'], numara: ['36', '37', '38', '39', '40', '41'], beden: ['34', '36', '38', '40', '42', '44'], tek: ['STD'] },
   SEASONS: ['2026 İlkbahar-Yaz', '2026 Sonbahar-Kış', 'Sezonsuz (basic)'],
-  PAY: { nakit: 'Nakit', kart: 'Kredi kartı', havale: 'Havale/EFT', puan: 'Puan', parcali: 'Parçalı', cek: 'İade çeki' },
+  PAY: { nakit: 'Nakit', kart: 'Kredi kartı', havale: 'Havale/EFT', puan: 'Puan', parcali: 'Parçalı', cek: 'Çek (iade/hediye)' },
   // Varyant barkodu: model kodu + beden + renk sırası
   vcode: (m, size, ci) => `${m.code}-${size}-${String(ci + 1).padStart(2, '0')}`,
   ean: (n) => { const b = String(n).padStart(12, '0').slice(0, 12); const s = b.split('').reduce((a, d, i) => a + Number(d) * (i % 2 ? 3 : 1), 0); return b + ((10 - (s % 10)) % 10); },
