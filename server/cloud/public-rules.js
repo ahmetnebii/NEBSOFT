@@ -609,6 +609,29 @@ RULES.musavir = {
   },
 };
 
+// ---------- Ön muhasebe: cari hesap portalı (cari.html) — VKN / TCKN + giriş kodu ----------
+// Kod yalnızca işletmenin ürettiği rastgele portalCode'dur (VKN'den türetilmez). Cari yalnızca kendi faturalarını, tahsilat / ödemelerini
+// ve mutabakat isteklerini görür; tek yazma izni bekleyen mutabakata onay / itiraz vermektir.
+RULES.muhasebe = {
+  settings: ['bizName', 'bizPhone', 'bizAddress', 'bizDistrict', 'bizCity', 'taxNo', 'taxOffice', 'iban', 'invoiceNote', 'logo'],
+  pub: {},
+  login: (x, q) => { const code = norm(q.code); const t = String(q.vkn || '').replace(/\D/g, ''); const c = code && t.length >= 10 && x.col('caris').find((c) => c.portalCode && String(c.taxNo || '') === t && norm(c.portalCode) === code); return c ? { k: 'c', i: c.id } : null; },
+  loginError: 'VKN / TCKN veya giriş kodu hatalı',
+  view: (x) => {
+    const c = x.get('caris', me(x, 'c')); if (!c) return {};
+    const own = (r) => r.cari === c.id;
+    return {
+      caris: [strip(c, ['note', 'notes', 'internal', 'portalCode', 'riskLimit', 'priceList', 'tags'])],
+      invoices: x.col('invoices').filter(own).map((i) => strip(i, ['createdBy', 'internal', 'project', 'branch'])),
+      txns: x.col('txns').filter((t) => own(t) && (t.type === 'tahsilat' || t.type === 'odeme')).map((t) => ({ id: t.id, cari: t.cari, date: t.date, type: t.type, amount: t.amount, invoice: t.invoice, alloc: t.alloc, desc: t.desc })),
+      recons: x.col('recons').filter(own),
+    };
+  },
+  write: {
+    recons: { upd: U({ status: 'enum:onay|itiraz', note: 'str:1000?', name: 'str:80?' }, (cur, x) => cur.cari === me(x, 'c') && cur.status === 'bekliyor', () => ({ answered: nowIso() })) },
+  },
+};
+
 // ---------- Hukuk: müvekkil portalı (muvekkil.html) — TCKN/VKN + giriş kodu ----------
 const hkkCode = (c) => c.portalCode || String(c.idNo || '').slice(-4) + String(c.id).replace(/\W/g, '').slice(-2).toUpperCase();
 RULES.hukuk = {

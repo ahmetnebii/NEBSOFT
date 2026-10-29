@@ -22,5 +22,17 @@
     // tl: cari bakiyeye işlenen tutar (tevkifat varsa alıcının satıcıya ödeyeceği tutar)
     return { gross: r2(gross), disc: r2(disc), net: r2(net), vat: r2(vat), wht: r2(wht), total, payable, tl: r2(payable * rate), vatBy, lines, cur: inv.currency || 'TRY' };
   }
-  return { r2, line, totals };
+  // Cari hesap ekstresi (program ve cari portalı aynı hesabı kullanır): açılış + faturalar + tahsilat / ödemeler, tarih sırasıyla
+  // borç = cari bize borçlandı (satış faturası, bizim yaptığımız ödeme), alacak = cari alacaklandı (alış faturası, tahsilat)
+  const LBL = (i) => (i.iade ? (i.kind === 'satis' ? 'Alış iadesi' : 'Müşteri iadesi') : i.kind === 'satis' ? 'Satış faturası' : 'Alış faturası');
+  function statement(c, invoices, txns, accName) {
+    const op = Number(c.opening) || 0;
+    const mv = [...(op ? [{ id: 'acilis', date: String(c.created || '').slice(0, 10) || '0000-00-00', desc: 'Açılış bakiyesi (devir)', debit: op > 0 ? op : 0, credit: op < 0 ? -op : 0 }] : []),
+      ...invoices.filter((i) => i.cari === c.id).map((i) => ({ id: i.id, inv: i.id, date: i.date, desc: `${LBL(i)} ${i.no}`, debit: i.kind === 'satis' ? totals(i).tl : 0, credit: i.kind === 'alis' ? totals(i).tl : 0 })),
+      ...txns.filter((t) => t.cari === c.id && (t.type === 'tahsilat' || t.type === 'odeme')).map((t) => ({ id: t.id, date: t.date, desc: `${t.type === 'tahsilat' ? 'Tahsilat' : 'Ödeme'}${accName ? ' · ' + accName(t.account) : ''}${t.desc ? ' · ' + t.desc : ''}`, debit: t.type === 'odeme' ? Number(t.amount) || 0 : 0, credit: t.type === 'tahsilat' ? Number(t.amount) || 0 : 0 }))]
+      .sort((a, b) => a.date.localeCompare(b.date));
+    let run = 0; mv.forEach((m) => { run = r2(run + m.debit - m.credit); m.bal = run; });
+    return { rows: mv, balance: run };
+  }
+  return { r2, line, totals, statement };
 });
