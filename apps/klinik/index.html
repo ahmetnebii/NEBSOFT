@@ -21,7 +21,8 @@
   .slot .ap { flex: 1; border-radius: 8px; padding: 6px 10px; color: #fff; font-size: 12.5px; cursor: pointer; }
   .slot .free { flex: 1; color: var(--text-3); font-size: 12px; cursor: pointer; }
   .slot .free:hover { color: var(--accent); }
-  @media (max-width: 760px) { .jaw { grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 4px; } .tooth { min-width: 0; } }
+  @media (max-width: 760px) { .jaw { grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 4px; } .tooth { min-width: 0; }
+    .pt-head { flex-wrap: wrap; } .pt-head > .grow { min-width: 0; flex: 1 1 200px; } .pt-head > .col { flex: 1 1 100% !important; min-width: 0 !important; flex-direction: row; flex-wrap: wrap; } .pt-head > .col .btn { flex: 1 1 45%; } }
 </style>
 </head>
 <body>
