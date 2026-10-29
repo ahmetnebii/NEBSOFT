@@ -149,4 +149,20 @@ Her dalga `CLAUDE.md` §3 kalite kapısından geçer.
 | H9 | "Oda değiştir": boş odalar, yeni fiyat, neden; eski oda kirliye alınıyor; KBS açıksa oda değişikliği bildirimi; detayda değişiklik geçmişi. Not: takvimde konaklamanın tamamı yeni odada görünür (gün bazında bölme 2. dalgada) | Tarayıcı: 204 → 103 |
 | H10 | Rezervasyon formunda misafir araması (ad, telefon, kimlik); tek eşleşme otomatik seçiliyor; "Yeni misafir" aranan adı/telefonu doldurarak açılıyor. Yeni rezervasyonda "Konaklıyor" seçilemiyor (check-in'den geçmeli) | Tarayıcı, 375 px |
 
+### 2. dalga (29.10.2026)
+| Konu | Sonuç | Kanıt |
+|---|---|---|
+| Grup rezervasyonu | Özet > "Grup rezervasyonu": grup adı, tarih, pansiyon, grup indirimi, oda tipine göre adet; boş oda yetmezse eksik söyleniyor, onayla bulunanlar ayrılıyor; takvimde grup adı görünüyor | Tarayıcı: 3 Standart ayrıldı, Kral Dairesi "5 istendi, 0 boş" |
+| Takvimde sürükle-bırak | Rezervasyon çubuğu başka oda/tarihe sürükleniyor; çakışma ve satışa kapalı aralık engelliyor; onay soruluyor; oda tipi değişirse fiyat yeniden öneriliyor. Konaklayan misafir sürüklenince "Oda değiştir" açılıyor | Tarayıcı (çakışma mesajı + başarılı taşıma) |
+| Oda değişikliği gün bazında | Konaklama ortasında oda değişince geçen geceler eski odada kalıyor (takvimde soluk çubuk, oda durumu ve web motoru dikkate alıyor) | Kod |
+| Gün sonu | Gelmeyenler (geçmiş tarihliler işaretli gelir), çıkışı yapılmamış misafirler, konaklanan odaların kirliye alınması, gün sonu raporu (doluluk, giriş/çıkış, no-show/iptal, yönteme göre tahsilat, iade, açık bakiye), yazdırma | Tarayıcı |
+| Kat hizmetleri | Oda kartında kat görevlisi; "Görev dağıt" (kirli odalar); kat rolündeki kullanıcı "Bana atananlar"ı görür ve kirli odaya dokununca "Temizlendi" | Tarayıcı (yönetici); kat rolü yalnızca kodla kontrol edildi |
+| Satışa kapalı oda | Oda kartından tarih aralığı + neden; rezervasyonla çakışıyorsa engelleniyor; takvimde taralı çubuk (tıklayınca kaldırılır); kanal müsaitliği ve web motoru dikkate alıyor | Tarayıcı |
+| Fiyat kuralları | Oda tipinde hafta sonu farkı (cuma/cumartesi), en az gece, fiyata dahil kişi, ek yetişkin/çocuk ücreti; rezervasyon formu öneri fiyatına katıyor ve uyarıyor; web motoru aynı kuralı kullanıyor ("En az N gece") | Kod + tarayıcı |
+| Şirket/acente faturası | Rezervasyon detayı > "Fatura bilgisi" (ünvan, VKN/TCKN denetimi, vergi dairesi, adres); e-Fatura alıcısı bu bilgi oluyor | Kod |
+| Kasa raporu | Raporlar: ödeme yöntemine göre tahsilat, iadeler, net; CSV | Tarayıcı |
+| Konaklayan listesi | Kanal & KBS > KBS > "Konaklayan listesi yazdır" (refakatçiler dahil, KBS durumuyla) | Tarayıcı |
+| Rezervasyon onayı | "Onay gönder": WhatsApp/e-posta, düzenlenebilir metin; bağlantı modu "link" ise "WhatsApp açıldı — oradan gönderin", simülasyonsa TEST, hata varsa nedeni | Tarayıcı |
+| İleriye dönük doluluk | Raporlar: 7/30/60/90 gün doluluk ve defterdeki gelir | Tarayıcı |
+
 Kalite kapısı: konsol hatası yok; 375 px'te özet, takvim ve rezervasyon formu denendi. `npm test`: kanal, proto, takvim, ubltr, **ubltr-xsd (9 belge XSD'ye uygun)**, muhasebe-calc geçti; `cloud.test.js` bu daldan bağımsız bir sunucu hatasıyla düşüyor (`CEKIRDEK-ISTEKLERI-konaklama-etkinlik.md` Ç6). `sw.js` sürümü bu oturumda artırılamadı (Ç1).

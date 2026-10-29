@@ -82,11 +82,13 @@
   const FEAT = { t1: ['22 m²', 'Çift veya ikiz yatak', 'Duş', 'Klima'], t2: ['28 m²', 'Balkon ve deniz manzarası', 'Kahve makinesi', 'Klima'], t3: ['38 m²', '1 çift + 2 tek yatak', 'Oturma köşesi', 'Bahçe manzarası'], t4: ['55 m²', 'Ayrı salon', 'Jakuzi', 'Panoramik deniz manzarası'] };
   const BOARD = { RO: 'Sadece oda', BB: 'Oda + kahvaltı', HB: 'Yarım pansiyon (kahvaltı + akşam)' };
   const type = (id) => db.get('types', id) || { name: '-', price: 0, capacity: 2 };
-  const active = () => db.all('reservations', (r) => r.status !== 'iptal');
+  const active = () => db.all('reservations', (r) => r.status !== 'iptal' && r.status !== 'noshow');
   const seasonPct = (d) => sum(db.all('seasons', (x) => x.from <= d && d <= x.to), (x) => x.pct);
   // Doğrudan rezervasyon indirimi uygulanmış gecelik fiyatlar
-  const nightly = (t, ci, co) => { const out = []; for (let d = ci; d < co; d = iso(addDays(d, 1))) out.push(Math.round((t.price * (1 + seasonPct(d) / 100)) / 10) * 10); return out; };
-  const freeRooms = (tid, ci, co) => db.all('rooms', (r) => r.type === tid && r.hk !== 'arizali').filter((rm) => !active().some((r) => r.room === rm.id && r.checkIn < co && ci < r.checkOut));
+  // Hafta sonu farkı (cuma, cumartesi geceleri) ve sezon artışı — ön büroyla aynı kural
+  const nightly = (t, ci, co) => { const out = []; for (let d = ci; d < co; d = iso(addDays(d, 1))) { const we = [5, 6].includes(new Date(d + 'T12:00').getDay()) ? Number(t.weekendPct) || 0 : 0; out.push(Math.round((t.price * (1 + seasonPct(d) / 100) * (1 + we / 100)) / 10) * 10); } return out; };
+  // Satışa kapalı aralıklar ve oda değişikliği yapılmış konaklamalar da odayı kapatır; en az gece kuralı
+  const freeRooms = (tid, ci, co) => (Number(type(tid).minNights) > daysBetween(ci, co) ? [] : db.all('rooms', (r) => r.type === tid && r.hk !== 'arizali').filter((rm) => !active().some((r) => (r.room === rm.id || (r.segs || []).some((x) => x.room === rm.id && x.from < co && ci < x.to)) && r.checkIn < co && ci < r.checkOut) && !db.all('blocks', (b) => b.room === rm.id && b.from < co && ci < b.to).length));
   const st = { ci: iso(addDays(new Date(), 7)), co: iso(addDays(new Date(), 10)), ad: 2, ch: 0 };
   try { Object.assign(st, JSON.parse(sessionStorage.getItem('nebsoft:otel:ara') || '{}')); } catch (e) { /* yok */ }
   if (st.ci < today()) { st.ci = iso(addDays(new Date(), 1)); st.co = iso(addDays(new Date(), 3)); }
@@ -112,7 +114,7 @@
       <div class="rooms">${fit.map(({ t, i, free }) => { const q = quote(t, 'BB'); return `<article class="room" data-t="${t.id}"><div class="ph" style="background-image:url('${IMG(PHOTOS[i % PHOTOS.length])}')">${free.length && free.length <= 2 ? `<span class="left">Son ${free.length} oda</span>` : ''}</div>
         <div class="bd"><div><h3>${esc(t.name)}</h3><div class="small muted">En fazla ${t.capacity} kişi</div><div class="feat">${(FEAT[t.id] || []).map((f) => `<span>${icon('check')}${esc(f)}</span>`).join('')}</div>
           ${free.length ? `<div class="boards" role="radiogroup" aria-label="Pansiyon">${Object.entries(BOARD).map(([k, l]) => { const qq = quote(t, k); return `<label><input type="radio" name="b-${t.id}" value="${k}" ${k === 'BB' ? 'checked' : ''}> ${l}<b>${money(qq.total)}</b></label>`; }).join('')}</div>` : '<div class="small" style="color:var(--err);font-weight:600">Seçtiğiniz tarihlerde dolu</div>'}</div>
-          <div class="price">${free.length ? `<span class="save">Doğrudan rezervasyonda ${money(q.ota - q.total)} avantaj</span><span class="ota">Booking.com'da yaklaşık ${money(q.ota)}</span><span class="tot" data-tot>${money(q.total)}</span><small>${n} gece, vergiler dahil</small><button class="btn primary lg mt" data-sel="${t.id}">Seç</button>` : `<button class="btn lg" disabled>Dolu</button>`}</div></div></article>`; }).join('') || `<div class="none">${icon('bed')}<p>${st.ad + st.ch} kişiye uygun oda bulunamadı. Kişi sayısını azaltmayı veya bizi aramayı deneyin.</p></div>`}</div></div>`;
+          <div class="price">${free.length ? `<span class="save">Doğrudan rezervasyonda ${money(q.ota - q.total)} avantaj</span><span class="ota">Booking.com'da yaklaşık ${money(q.ota)}</span><span class="tot" data-tot>${money(q.total)}</span><small>${n} gece, vergiler dahil</small><button class="btn primary lg mt" data-sel="${t.id}">Seç</button>` : Number(t.minNights) > n ? `<button class="btn lg" disabled>En az ${t.minNights} gece</button>` : `<button class="btn lg" disabled>Dolu</button>`}</div></div></article>`; }).join('') || `<div class="none">${icon('bed')}<p>${st.ad + st.ch} kişiye uygun oda bulunamadı. Kişi sayısını azaltmayı veya bizi aramayı deneyin.</p></div>`}</div></div>`;
     bindSearch();
   }
 
