@@ -14,6 +14,14 @@
   const PPM = 1.5; // takvimde dakika başına piksel
   const myStaff = () => (NS.currentUser && NS.currentUser.role === 'personel' ? NS.currentUser.staff : null);
   const visibleStaff = () => db.all('staff', (s) => s.active !== false && (!myStaff() || s.id === myStaff()));
+  // Paket ancak hakkı kalmışsa ve süresi dolmamışsa kullanılır
+  const pkValid = (p) => p.used < p.total && (!p.expires || p.expires >= today());
+  const pkFor = (customer, service) => db.all('packages', (p) => p.customer === customer && (!service || p.service === service) && pkValid(p)).sort((a, b) => String(a.expires || '9').localeCompare(String(b.expires || '9')));
+  // Seans düşümü kim / ne zaman / hangi randevu olarak kaydedilir (geri alınabilsin diye)
+  const pkUse = (p, appt, note) => { p.used++; p.log = [...(p.log || []), { at: new Date().toISOString(), appt: appt || null, by: (NS.currentUser || {}).name || '', note: note || '' }]; };
+  // SMS kaydının durumu: yalnızca sağlayıcı kabul ettiyse "gönderildi"
+  const smsTone = (st) => (/^gönderildi/.test(st) ? 'ok' : /^TEST|simülasyon/.test(st) ? 'warn' : /^hata|kapalı|gönderilmedi/.test(st) ? 'err' : '');
+  const smsLabel = (st) => (st === 'simülasyon' ? 'TEST — gönderilmedi' : st);
 
   // ---------- Randevu formu ----------
   async function apptForm(app, rec = {}, done) {
@@ -53,7 +61,7 @@
         const custInfo = () => {
           const c = db.get('customers', $('#fc', b).value);
           if (!c) { $('#fci', b).innerHTML = ''; return; }
-          const pk = db.all('packages', (p) => p.customer === c.id && p.used < p.total);
+          const pk = pkFor(c.id);
           const past = db.all('appointments', (a) => a.customer === c.id && a.status === 'tamam').length;
           const nos = db.all('appointments', (a) => a.customer === c.id && a.status === 'gelmedi').length;
           $('#fci', b).innerHTML = `<span class="muted">${past} tamamlanan randevu</span>${nos ? ' · ' + badge(nos + ' kez gelmedi', 'err') : ''}${c.notes ? ' · ' + badge(c.notes, 'warn') : ''}${pk.map((p) => ' · ' + badge(`Paket: ${svc(p.service).name} ${p.total - p.used} seans`, 'ok')).join('')}`;
@@ -88,7 +96,7 @@
 
   function apptDetail(app, a) {
     const c = cust(a.customer), s = svc(a.service), st = staff(a.staff);
-    const pk = db.all('packages', (p) => p.customer === c.id && p.service === a.service && p.used < p.total);
+    const pk = pkFor(c.id, a.service);
     const wa = `https://wa.me/90${String(c.phone).replace(/\D/g, '').replace(/^0/, '')}?text=${encodeURIComponent(smsText(a))}`;
     modal({
       title: 'Randevu', size: 'wide',
@@ -121,13 +129,13 @@
         else if (x === 'iptal') { if (await confirm('Randevu iptal edilsin mi?')) { a.status = 'iptal'; db.log('Randevu iptal', c.name); db.save(); app.refresh(); } }
         else if (x === 'edit') apptForm(app, a);
         else if (x === 'again') apptForm(app, { customer: a.customer, service: a.service, staff: a.staff, date: iso(addDays(a.date, 28)), duration: a.duration, price: a.price });
-        else if (x === 'sms') { sendSms(a); app.refresh(); }
+        else if (x === 'sms') { if (a.noReminder && !(await confirm('Müşteri online randevuda hatırlatma istemediğini belirtti. Yine de gönderilsin mi?', { ok: 'Gönder', danger: false }))) return; await remindOne(a); app.refresh(); }
         else if (x === 'tamam') completeModal(app, a);
       }),
     });
   }
   function completeModal(app, a) {
-    const pk = db.all('packages', (p) => p.customer === a.customer && p.service === a.service && p.used < p.total);
+    const pk = pkFor(a.customer, a.service);
     formModal({
       title: 'Ödeme al', submitLabel: 'Tamamla',
       fields: [{ name: 'payType', label: 'Ödeme şekli', type: 'select', options: Object.entries(PAY).filter(([k]) => k !== 'paket' || pk.length).map(([value, label]) => ({ value, label })), value: pk.length ? 'paket' : 'kart' }, { name: 'price', label: 'Hizmet ücreti (₺)', type: 'number', value: a.price }, { name: 'discount', label: 'İndirim (₺)', type: 'number', value: 0 }, { name: 'tip', label: 'Bahşiş (₺)', type: 'number', value: 0, hint: 'Personele aktarılır' }, { name: 'product', label: 'Ürün satışı (₺)', type: 'number', value: 0, hint: 'Şampuan, bakım ürünü vb.' }, { name: 'doc', label: 'Belge', type: 'select', options: [{ value: '', label: 'Belge kesme' }, { value: 'okc', label: 'Yazarkasa fişi (ÖKC)' }, { value: 'efatura', label: 'e-Arşiv fatura' }, { value: 'esmm', label: 'e-SMM (serbest meslek)' }] }],
@@ -136,18 +144,29 @@
       if (v.payType === 'kart' && NS.integ) { const amt = Math.max(0, (v.price || 0) - (v.discount || 0)) + (v.product || 0) + (v.tip || 0); if (amt > 0) { const r = await NS.integ.cardPayment(amt); if (!r.ok) return toast('Kart ödemesi alınamadı: ' + (r.error || ''), 'err'); } }
       const amt2 = Math.max(0, (v.price || 0) - (v.discount || 0)) + (v.product || 0);
       if (v.doc && amt2 > 0 && NS.integ) { const c = cust(a.customer); const r = v.doc === 'efatura' ? await NS.integ.sendEInvoice({ buyer: c.name, no: a.id.slice(-8), total: amt2, lines: [{ name: svc(a.service).name, total: amt2, vat: 20 }] }) : await NS.integ.call(v.doc === 'okc' ? 'okc' : 'esmm', v.doc === 'okc' ? 'mali-fis' : 'makbuz', { name: c.name, total: amt2, amount: amt2, items: [{ name: svc(a.service).name, price: amt2, qty: 1 }] }); if (r && r.ok) a.ebelge = r.no || r.ref; }
-      if (v.payType === 'paket') { pk[0].used++; a.price = 0; a.package = pk[0].id; } else a.price = Math.max(0, (v.price || 0) - (v.discount || 0));
+      if (v.payType === 'paket') { pkUse(pk[0], a.id); a.price = 0; a.package = pk[0].id; } else a.price = Math.max(0, (v.price || 0) - (v.discount || 0));
       Object.assign(a, { status: 'tamam', paid: true, payType: v.payType, tip: v.tip || 0, productSale: v.product || 0, paidAt: new Date().toISOString() });
       db.log('Randevu tamamlandı', `${cust(a.customer).name} · ${money(a.price + (a.productSale || 0))}`);
       db.save(); toast('Randevu tamamlandı', 'ok'); app.refresh();
     });
   }
   const smsText = (a) => (S().smsTemplate || '').replace('{musteri}', cust(a.customer).name).replace('{tarih}', NS.date(a.date)).replace('{saat}', a.start).replace('{hizmet}', svc(a.service).name).replace('{isletme}', S().bizName || '').replace('{personel}', staff(a.staff).name);
-  function sendSms(a) {
-    NS.smsLog(db, { appt: a.id, to: cust(a.customer).phone, name: cust(a.customer).name, text: smsText(a), at: new Date().toISOString(), status: 'gönderildi' });
-    a.reminded = true; db.save();
-    if (NS.integ) NS.integ.emit('randevu_hatirlatma', { appt: a.id, date: a.date, start: a.start });
-    toast(`SMS gönderildi: ${cust(a.customer).name}`, 'ok');
+  // Sağlayıcının cevabı beklenir: yalnızca gerçekten kabul edilen mesaj randevuyu "hatırlatıldı" yapar; simülasyon TEST olarak kalır
+  async function sendSms(a) {
+    const c = cust(a.customer), text = smsText(a);
+    const rec = db.insert('sms', { appt: a.id, to: c.phone, name: c.name, text, at: new Date().toISOString(), status: 'gönderiliyor' }, true);
+    const res = NS.integ && NS.integ.sms ? await NS.integ.sms(c.phone, text, { silent: true }) : { ok: false, error: 'SMS bağlantısı yok' };
+    rec.status = res.simulated ? 'TEST — gönderilmedi' : res.ok ? 'gönderildi' : 'hata: ' + String(res.error || 'gönderilemedi').slice(0, 60);
+    if (res.ok && !res.simulated) { a.reminded = new Date().toISOString(); delete a.remindTest; if (NS.integ) NS.integ.emit('randevu_hatirlatma', { appt: a.id, date: a.date, start: a.start }); }
+    else if (res.simulated) a.remindTest = true;
+    db.save();
+    return res.simulated ? 'test' : res.ok ? 'ok' : 'err';
+  }
+  async function remindOne(a) {
+    const r = await sendSms(a);
+    if (r === 'ok') toast(`SMS gönderildi: ${cust(a.customer).name}`, 'ok');
+    else if (r === 'test') toast('TEST: SMS gönderilmedi — Entegrasyonlar > SMS’ten sağlayıcı bağlayın', '');
+    else toast('SMS gönderilemedi: ' + (db.all('sms').slice(-1)[0] || {}).status, 'err');
   }
 
   // ---------- Takvim ----------
@@ -356,9 +375,9 @@
   function packagesPage(el, param, app) {
     el.innerHTML = pageHead('Paketler & Seanslar', 'Çoklu seans satışı ve kullanım takibi', `<button class="btn primary" id="sp">${icon('plus')} Paket sat</button>`) + `<div class="card" id="tbl"></div>`;
     const rows = db.all('packages').sort((a, b) => (a.total - a.used) - (b.total - b.used));
-    $('#tbl', el).innerHTML = table({ rows, emptyIcon: 'gift', columns: [{ label: 'Müşteri', render: (p) => `<b>${esc(cust(p.customer).name)}</b>` }, { label: 'Hizmet', render: (p) => esc(svc(p.service).name) }, { label: 'Kullanım', render: (p) => `<div style="min-width:140px"><div class="small">${p.used} / ${p.total} seans</div><div class="progress"><i style="width:${(p.used / p.total) * 100}%"></i></div></div>` }, { label: 'Kalan', cls: 'right', render: (p) => badge(p.total - p.used + ' seans', p.total - p.used <= 1 ? 'warn' : 'ok') }, { label: 'Son kullanım', render: (p) => (p.expires < today() ? badge('Süresi doldu', 'err') : NS.date(p.expires)) }, { label: 'Tutar', cls: 'right', render: (p) => money(p.price) }], actions: [{ label: '+1 seans kullan', act: 'use', show: (p) => p.used < p.total }, { icon: 'trash', act: 'del' }] });
+    $('#tbl', el).innerHTML = table({ rows, emptyIcon: 'gift', columns: [{ label: 'Müşteri', render: (p) => `<b>${esc(cust(p.customer).name)}</b>` }, { label: 'Hizmet', render: (p) => esc(svc(p.service).name) }, { label: 'Kullanım', render: (p) => `<div style="min-width:140px"><div class="small">${p.used} / ${p.total} seans</div><div class="progress"><i style="width:${(p.used / p.total) * 100}%"></i></div></div>` }, { label: 'Kalan', cls: 'right', render: (p) => badge(p.total - p.used + ' seans', p.total - p.used <= 1 ? 'warn' : 'ok') }, { label: 'Son kullanım', render: (p) => (p.expires < today() ? badge('Süresi doldu', 'err') : NS.date(p.expires)) }, { label: 'Tutar', cls: 'right', render: (p) => money(p.price) }], actions: [{ label: '+1 seans kullan', act: 'use', show: pkValid }, { icon: 'trash', act: 'del' }] });
     $('#sp', el).onclick = () => sellPackage(app);
-    on(el, 'click', '[data-act]', async (e, t) => { const p = db.get('packages', t.dataset.id); if (t.dataset.act === 'use') { p.used++; db.save(); toast('Seans düşüldü', 'ok'); app.refresh(); } else if (await confirm('Paket silinsin mi?')) { db.remove('packages', p.id); app.refresh(); } });
+    on(el, 'click', '[data-act]', async (e, t) => { const p = db.get('packages', t.dataset.id); if (t.dataset.act === 'use') { if (!pkValid(p)) return toast('Paketin süresi dolmuş ya da hakkı bitmiş', 'err'); pkUse(p, null, 'Elle düşüldü'); db.log('Paket seansı düşüldü', `${cust(p.customer).name} · ${svc(p.service).name} · ${p.used}/${p.total}`); db.save(); toast('Seans düşüldü', 'ok'); app.refresh(); } else if (await confirm('Paket silinsin mi?')) { db.remove('packages', p.id); app.refresh(); } });
   }
 
   // ---------- Hizmetler / Personel ----------
@@ -401,16 +420,25 @@
   function remindersPage(el, param, app) {
     const tomorrow = iso(addDays(new Date(), 1));
     const list = db.all('appointments', (a) => (a.date === tomorrow || a.date === today()) && ['onay', 'bekliyor'].includes(a.status)).sort((a, b) => (a.date + a.start).localeCompare(b.date + b.start));
-    el.innerHTML = pageHead('SMS & WhatsApp Hatırlatmaları', 'Randevu hatırlatmaları ile gelmeme oranını düşürün', `<button class="btn primary" id="all">${icon('send')} Bekleyenlerin hepsine gönder (${list.filter((a) => !a.reminded).length})</button>`) + `
-      <div class="grid g-21 mb"><div class="card"><div class="card-h"><h3>Bugün ve yarın</h3></div>${table({ rows: list, empty: 'Hatırlatılacak randevu yok', columns: [{ label: 'Randevu', render: (a) => `<b>${NS.date(a.date)} ${a.start}</b>` }, { label: 'Müşteri', render: (a) => `${esc(cust(a.customer).name)}<div class="small faint">${esc(cust(a.customer).phone)}</div>` }, { label: 'Hizmet', render: (a) => esc(svc(a.service).name) }, { label: 'Durum', render: (a) => (a.reminded ? badge('Gönderildi', 'ok') : badge('Bekliyor', 'warn')) }], actions: [{ icon: 'send', act: 'sms', title: 'SMS gönder' }] })}</div>
+    el.innerHTML = pageHead('SMS & WhatsApp Hatırlatmaları', 'Randevu hatırlatmaları ile gelmeme oranını düşürün', `<button class="btn primary" id="all">${icon('send')} Bekleyenlerin hepsine gönder (${list.filter((a) => !a.reminded && !a.noReminder).length})</button>`) + `
+      ${smsReady() ? '' : `<div class="card pad mb small" style="background:var(--warn-soft);border:0">${icon('alert')} SMS sağlayıcısı bağlı değil: gönderimler <b>TEST</b> olarak kaydedilir, müşteriye mesaj gitmez. <a href="#/entegrasyonlar">Entegrasyonlar &gt; SMS</a></div>`}
+      <div class="grid g-21 mb"><div class="card"><div class="card-h"><h3>Bugün ve yarın</h3></div>${table({ rows: list, empty: 'Hatırlatılacak randevu yok', columns: [{ label: 'Randevu', render: (a) => `<b>${NS.date(a.date)} ${a.start}</b>` }, { label: 'Müşteri', render: (a) => `${esc(cust(a.customer).name)}<div class="small faint">${esc(cust(a.customer).phone)}</div>` }, { label: 'Hizmet', render: (a) => esc(svc(a.service).name) }, { label: 'Durum', render: (a) => remindBadge(a) }], actions: [{ icon: 'send', act: 'sms', title: 'SMS gönder' }] })}</div>
       <div class="card"><div class="card-h"><h3>Mesaj şablonu</h3></div><div class="card-b"><textarea class="input" id="tp" rows="5">${esc(S().smsTemplate)}</textarea><div class="small faint mt">Değişkenler: {musteri} {tarih} {saat} {hizmet} {personel} {isletme}</div><button class="btn sm mt" id="st">Kaydet</button>
         ${list[0] ? `<div class="card pad mt small" style="background:var(--surface-2)"><b>Önizleme:</b><br>${esc(smsText(list[0]))}</div>` : ''}</div></div></div>
-      <div class="card"><div class="card-h"><h3>Gönderim geçmişi</h3><span class="small muted">${db.all('sms').length} mesaj</span></div>${table({ rows: db.all('sms').slice().reverse().slice(0, 100), empty: 'Henüz mesaj gönderilmedi', columns: [{ label: 'Zaman', render: (s) => NS.dt(s.at) }, { label: 'Alıcı', render: (s) => `${esc(s.name)}<div class="small faint">${esc(s.to)}</div>` }, { label: 'Mesaj', render: (s) => `<span class="small">${esc(s.text)}</span>` }, { label: 'Durum', render: (s) => badge(s.status, 'ok') }] })}</div>
-      <p class="small faint mt">Not: Demo sürümde mesajlar simüle edilir. Canlı kullanımda Netgsm, İleti Merkezi veya WhatsApp Business API ile entegre edilir.</p>`;
-    $('#all', el).onclick = () => { const n = list.filter((a) => !a.reminded); n.forEach(sendSms); toast(`${n.length} hatırlatma gönderildi`, 'ok'); app.refresh(); };
+      <div class="card"><div class="card-h"><h3>Gönderim geçmişi</h3><span class="small muted">${db.all('sms').length} mesaj</span></div>${table({ rows: db.all('sms').slice().reverse().slice(0, 100), empty: 'Henüz mesaj gönderilmedi', columns: [{ label: 'Zaman', render: (s) => NS.dt(s.at) }, { label: 'Alıcı', render: (s) => `${esc(s.name)}<div class="small faint">${esc(s.to)}</div>` }, { label: 'Mesaj', render: (s) => `<span class="small">${esc(s.text)}</span>` }, { label: 'Durum', render: (s) => badge(smsLabel(s.status), smsTone(s.status)) }] })}</div>`;
+    $('#all', el).onclick = async (e) => {
+      const n = list.filter((a) => !a.reminded && !a.noReminder), skip = list.filter((a) => !a.reminded && a.noReminder).length;
+      if (!n.length) return toast(skip ? `${skip} müşteri hatırlatma istemiyor; gönderilecek başka randevu yok` : 'Gönderilecek hatırlatma yok', '');
+      e.target.disabled = true; const c = { ok: 0, test: 0, err: 0 };
+      for (const a of n) c[await sendSms(a)]++;
+      toast([c.ok && `${c.ok} gönderildi`, c.test && `${c.test} TEST (gönderilmedi)`, c.err && `${c.err} hata`, skip && `${skip} müşteri istemediği için atlandı`].filter(Boolean).join(' · '), c.err ? 'err' : c.ok ? 'ok' : '');
+      app.refresh();
+    };
     $('#st', el).onclick = () => { db.saveSettings({ smsTemplate: $('#tp', el).value }); toast('Şablon kaydedildi', 'ok'); app.refresh(); };
-    on(el, 'click', '[data-act=sms]', (e, t) => { sendSms(db.get('appointments', t.dataset.id)); app.refresh(); });
+    on(el, 'click', '[data-act=sms]', async (e, t) => { const a = db.get('appointments', t.dataset.id); if (a.noReminder && !(await confirm('Müşteri hatırlatma istemediğini belirtti. Yine de gönderilsin mi?', { ok: 'Gönder', danger: false }))) return; await remindOne(a); app.refresh(); });
   }
+  const smsReady = () => !!(NS.integ && NS.integ.isOn('sms') && (NS.integ.cfg('sms').provider || 'sim') !== 'sim');
+  const remindBadge = (a) => (a.reminded ? badge('Gönderildi', 'ok') : a.noReminder ? badge('Müşteri istemiyor', '') : a.remindTest ? badge('TEST — gönderilmedi', 'warn') : badge('Bekliyor', 'warn'));
 
   // ---------- Online randevu ----------
   function onlinePage(el, param, app) {
@@ -420,17 +448,14 @@
     el.innerHTML = pageHead('Online Randevu', 'Müşterileriniz 7/24 kendi randevusunu alsın', `<a class="btn primary" href="book.html" target="_blank">${icon('eye')} Sayfayı aç</a>`) + `
       <div class="grid g-21"><div class="col" style="gap:16px">
         <div class="card pad"><h3 class="mb">Randevu linkiniz</h3><div class="row nw"><input class="input mono" readonly value="${esc(url)}" id="u"><button class="btn" id="cp">${icon('copy')} Kopyala</button></div>
-          <p class="small muted mt">Bu linki Instagram profilinize, Google İşletme sayfanıza ve WhatsApp durumunuza ekleyin.</p>
-          <div class="row mt"><button class="btn sm" id="gb">${icon('globe')} Google İşletme’ye “Randevu al” bağla</button><button class="btn sm" id="ig">${icon('globe')} Instagram butonunu bağla</button></div>
+          <p class="small muted mt">Bu linki kopyalayıp Google İşletme Profilinizdeki randevu bağlantısı alanına, Instagram profilinize ve WhatsApp durumunuza kendiniz ekleyin. NEBSOFT bu platformlara otomatik bağlanmaz.</p>
           <div class="row mt">${NS.qrSvg(url, 130)}<div class="small muted grow">Vitrin camınıza ve kasaya bu QR kodu yapıştırarak müşterilerin anında randevu almasını sağlayın.</div></div></div>
-        <div class="card"><div class="card-h"><h3>Ayarlar</h3></div><div class="card-b" id="os">${NS.fieldsHtml([{ name: 'autoConfirm', label: 'Online randevuları otomatik onayla', type: 'checkbox', full: true }, { name: 'cancelHours', label: 'İptal için son saat (randevudan önce)', type: 'number' }, { name: 'open', label: 'Takvim açılış', type: 'time' }, { name: 'close', label: 'Takvim kapanış', type: 'time' }, { name: 'slot', label: 'Zaman aralığı (dk)', type: 'select', options: ['10', '15', '20', '30'], num: true }, { name: 'bookingNote', label: 'Randevu sayfası notu', full: true }], s)}<button class="btn primary mt" id="sv">Kaydet</button></div></div>
+        <div class="card"><div class="card-h"><h3>Ayarlar</h3></div><div class="card-b" id="os">${NS.fieldsHtml([{ name: 'autoConfirm', label: 'Online randevuları otomatik onayla', type: 'checkbox', full: true }, { name: 'cancelHours', label: 'İptal için son saat (randevudan önce)', type: 'number' }, { name: 'open', label: 'Takvim açılış', type: 'time' }, { name: 'close', label: 'Takvim kapanış', type: 'time' }, { name: 'slot', label: 'Zaman aralığı (dk)', type: 'select', options: ['10', '15', '20', '30'], num: true }, { name: 'bookingNote', label: 'Randevu sayfası notu', full: true }, { name: 'kvkkText', label: 'KVKK aydınlatma metni (online randevu formunda gösterilir)', type: 'textarea', full: true, hint: 'Metni işletmeniz hazırlar (veri sorumlusu, amaç, haklar). Boş bırakılırsa formda “metin henüz eklenmedi” yazar.' }], s)}${s.kvkkText ? '' : `<div class="small mt" style="color:var(--warn)">${icon('alert')} Aydınlatma metni girilmedi.</div>`}<button class="btn primary mt" id="sv">Kaydet</button></div></div>
       </div><div class="col" style="gap:16px">
         ${kpi('Online randevu (toplam)', num(online.length), 'globe', 'info')}${kpi('Online oranı', '%' + Math.round((online.length / Math.max(1, db.all('appointments').length)) * 100), 'percent', 'ok')}
         <div class="card"><div class="card-h"><h3>Son online randevular</h3></div><div class="card-b">${online.sort((a, b) => b.created.localeCompare(a.created)).slice(0, 8).map((a) => `<div class="list-item small"><div class="grow"><b>${esc(cust(a.customer).name)}</b><div class="faint">${NS.date(a.date)} ${a.start} · ${esc(svc(a.service).name)}</div></div>${badge(ST[a.status][0], ST[a.status][1])}</div>`).join('')}</div></div>
       </div></div>`;
     $('#cp', el).onclick = () => { navigator.clipboard && navigator.clipboard.writeText(url); toast('Link kopyalandı', 'ok'); };
-    const link = (which) => async () => { if (!NS.integ) return; const r = await NS.integ.call('googleisletme', 'randevu-baglantisi', { platform: which, url, services: db.all('services').map((x) => ({ name: x.name, price: x.price, duration: x.duration })) }); if (r && r.ok) { db.saveSettings({ ['link_' + which]: new Date().toISOString() }); toast(`${which === 'google' ? 'Google İşletme' : 'Instagram'} randevu butonu bağlandı`, 'ok'); } };
-    $('#gb', el).onclick = link('google'); $('#ig', el).onclick = link('instagram');
     $('#sv', el).onclick = () => { const v = NS.readForm($('#os', el)); v.slot = Number(v.slot); v.cancelHours = Number(v.cancelHours); db.saveSettings(v); toast('Kaydedildi', 'ok'); };
   }
 
