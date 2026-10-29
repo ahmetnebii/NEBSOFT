@@ -14,12 +14,26 @@
   const findVeh = (p) => db.find('vehicles', (v) => normPlate(v.plate) === normPlate(p));
   const linkOf = (j) => location.href.replace(/index\.html.*$/, '').replace(/#.*$/, '') + 'onay.html?k=' + O.token(j);
   const setSt = (j, st, note) => { j.status = st; j.history.push({ at: new Date().toISOString(), st, note: note || O.ST[st][0], user: (NS.currentUser || {}).name }); };
-  const sms = (j, text) => { const c = cus(j.customer); NS.smsLog(db, { to: c.phone, name: c.name, text }, true); };
+  // SMS: sonuç beklenir — gönderilmeyen mesaj "gönderildi" görünmez (simülasyon = TEST), olmazsa WhatsApp önerilir
+  const waLink = (phone, text) => `https://wa.me/90${String(phone || '').replace(/\D/g, '').slice(-10)}?text=${encodeURIComponent(text)}`;
+  async function smsSend(to, name, text) {
+    const r = db.insert('sms', { to, name, text, status: 'gönderiliyor' }, true);
+    const res = NS.integ ? await NS.integ.sms(to, text, { silent: true }) : { ok: false, error: 'SMS bağlantısı yok' };
+    r.status = res.simulated ? 'TEST — gönderilmedi' : res.ok ? 'gönderildi' : 'gönderilmedi: ' + String(res.error || '').slice(0, 60); db.save();
+    return { sent: !!res.ok && !res.simulated, test: !!res.simulated, error: res.simulated ? 'TEST modu — gerçek gönderim yapılmadı' : res.error || 'SMS gönderilemedi' };
+  }
+  async function tell(j, text, what) {
+    const c = cus(j.customer); const r = await smsSend(c.phone, c.name, text);
+    if (r.sent) { toast(`${what}: SMS gönderildi`, 'ok'); return r; }
+    if (await confirm(`${what} SMS ile gönderilemedi (${r.error}). WhatsApp ile göndermek ister misiniz?`, { title: 'Müşteriye bildirim', ok: 'WhatsApp ile gönder', danger: false })) window.open(waLink(c.phone, text), '_blank', 'noopener');
+    return r;
+  }
+  const nextNo = () => 'IE' + (Math.max(2399, ...db.all('jobs').map((x) => Number(String(x.no).replace(/\D/g, '')) || 0)) + 1);
   const myTech = () => (NS.currentUser && NS.currentUser.role === 'teknisyen' ? NS.currentUser.tech : null);
 
   // ---------- Kalem türleri, işçilik kataloğu ve bakım paketleri ----------
   const KT = { parca: ['Parça', 'info'], iscilik: ['İşçilik', 'acc'], dis: ['Dış hizmet', 'warn'], sarf: ['Sarf malzeme', ''] };
-  const lineTotal = (i) => Math.round((Number(i.qty) || 0) * (Number(i.price) || 0) * (1 - (Number(i.disc) || 0) / 100) * 100) / 100;
+  const lineTotal = (i) => O.lineNet(i);
   const CHK = ['Stepne', 'Kriko', 'Yangın tüpü', 'İlk yardım çantası', 'Reflektör', 'Ruhsat', 'Yedek anahtar', 'Multimedya / teyp', 'Paspas takımı', 'Araçta değerli eşya yok'];
   const COMPL = ['Periyodik bakım', 'Fren', 'Motor arıza lambası', 'Klima', 'Lastik / rot-balans', 'Elektrik / akü', 'Şanzıman / debriyaj', 'Alt takım / süspansiyon', 'Kaporta / boya', 'Muayene öncesi kontrol'];
   const FUEL = ['Boş', '1/8', '1/4', '3/8', '1/2', '5/8', '3/4', '7/8', 'Dolu'];
@@ -89,7 +103,7 @@
     on(el, 'click', '[data-new]', () => { const q = qi.value.trim(); st.v = null; st.c = null; st.newPlate = isPlate(q) ? q.toLocaleUpperCase('tr') : ''; st.newName = !isPlate(q) && !digits(q) ? q : ''; st.newPhone = digits(q).length >= 10 ? q : ''; $('#sug', el).innerHTML = ''; form(); });
     function form() {
       const v = st.v || {}, c = st.c || {}; const prev = v.id ? db.all('jobs', (j) => j.vehicle === v.id).sort((a, b) => b.at.localeCompare(a.at)) : [];
-      const open = prev.find((j) => j.status !== 'teslim');
+      const open = prev.find((j) => !O.closed(j));
       $('#f', el).innerHTML = `${open ? `<div class="card pad mb row" style="border-color:var(--warn);background:var(--warn-soft)">${icon('alert')}<span class="grow">Bu aracın açık iş emri var: <b>${esc(open.no)}</b> (${esc(O.ST[open.status][0])})</span><a class="btn sm" href="#/is/${open.id}">İş emrini aç</a></div>` : ''}
         <div class="grid g-21"><div class="col" style="gap:16px">
           <div class="card pad"><div>${NS.fieldsHtml([{ type: 'section', label: 'Araç' }, { name: 'plate', label: 'Plaka', required: true }, { name: 'km', label: 'Güncel km', type: 'number', required: true }, { name: 'brand', label: 'Marka', type: 'select', options: Object.keys(O.BRANDS) }, { name: 'model', label: 'Model' }, { name: 'year', label: 'Model yılı', type: 'number' }, { name: 'fuelType', label: 'Yakıt', type: 'select', options: ['Benzin', 'Dizel', 'LPG', 'Hibrit', 'Elektrik'] }, { name: 'vin', label: 'Şase no', full: true },
@@ -126,11 +140,11 @@
       if (!vv) vv = db.insert('vehicles', vdata, true); else Object.assign(vv, vdata);
       const now = new Date().toISOString(); const user = NS.currentUser || {};
       const note = [`Yakıt ${FUEL[st.fuel]}`, st.belongings.length ? `${st.belongings.length} eşya` : '', st.damage.length ? `${st.damage.length} hasar işareti` : '', st.signIn ? 'müşteri imzaladı' : ''].filter(Boolean).join(' · ');
-      const j = db.insert('jobs', { no: 'IE' + (2400 + db.all('jobs').length), vehicle: vv.id, customer: cc.id, at: now, km: Number(f.km), complaint, tech: f.tech, eta: f.eta || null, fuel: st.fuel, belongings: st.belongings, damage: st.damage, photos: st.photos, signIn: st.signIn, signInStaff: { name: user.name || '', at: now }, items: [], status: 'kabul', disc: 0, paid: 0, history: [{ at: now, st: 'kabul', note, user: user.name }] }, true);
-      sms(j, `${S().bizName}: ${vv.plate} aracınız ${j.no} numarasıyla teslim alındı. Durumu buradan izleyebilirsiniz: ${linkOf(j)}`);
+      const j = db.insert('jobs', { no: nextNo(), vehicle: vv.id, customer: cc.id, at: now, km: Number(f.km), complaint, tech: f.tech, eta: f.eta || null, fuel: st.fuel, belongings: st.belongings, damage: st.damage, photos: st.photos, signIn: st.signIn, signInStaff: { name: user.name || '', at: now }, items: [], status: 'kabul', disc: 0, paid: 0, history: [{ at: now, st: 'kabul', note, user: user.name }] }, true);
       db.save(); toast(`${j.no} açıldı`, 'ok');
       if ($('#pr', el).checked) printJob(j, 'isemri');
       app.go('is', j.id);
+      tell(j, `${S().bizName}: ${vv.plate} aracınız ${j.no} numarasıyla teslim alındı. Durumu buradan izleyebilirsiniz: ${linkOf(j)}`, 'Kabul bildirimi');
     }
     if (p) { qi.value = p; suggest(); }
     setTimeout(() => qi.focus(), 50);
@@ -142,7 +156,7 @@
     const j = db.get('jobs', id);
     if (!j) { el.innerHTML = `<div class="card pad empty">${icon('alert')}<div>İş emri bulunamadı</div><a class="btn mt" href="#/isemirleri">İş emirlerine dön</a></div>`; return; }
     j.items.forEach((i) => { if (!i.id) i.id = NS.uid(); });
-    const lock = () => j.status === 'teslim';
+    const lock = () => O.closed(j);
     const canPrice = () => !myTech();
     let saveT = null; const later = () => { clearTimeout(saveT); saveT = setTimeout(() => db.save(), 400); };
     const totalsHtml = () => { const t = O.totals(j); return `${[['Parça ve malzeme', t.parca], ['İşçilik ve hizmet', t.iscilik], ...(j.disc ? [['İndirim', -j.disc]] : []), ['KDV %20', t.kdv]].map(([l, x]) => `<div class="list-item small"><span class="grow muted">${l}</span>${money(x)}</div>`).join('')}<div class="list-item"><b class="grow">Genel toplam</b><b style="font-size:22px">${money(t.total)}</b></div>${j.paid ? `<div class="list-item small"><span class="grow muted">Tahsil edilen</span>${money(j.paid)}</div>` : ''}`; };
@@ -157,12 +171,12 @@
         <td><button class="btn sm ghost" data-ap="${i.id}" ${L ? 'disabled' : ''} title="Onay durumunu değiştir">${ap}</button></td>
         <td>${L ? '' : `<button class="btn sm icon ghost" data-rm="${i.id}" title="Kalemi sil">${icon('trash')}</button>`}</td></tr>`; };
     const FLOWBTN = () => ({
-      kabul: [['teshis', 'Arıza tespitine al', 'search', 'primary']],
-      teshis: [['onay', 'Müşteri onayına gönder (SMS)', 'send', 'primary'], ['islemde', 'Onaysız tamire al', 'wrench', '']],
-      onay: [['islemde', 'Telefonla onay alındı', 'phone', 'primary'], ['link', 'Onay linkini kopyala', 'link', '']],
+      kabul: [['teshis', 'Arıza tespitine al', 'search', 'primary'], ['iptal', 'İşlemsiz teslim', 'x', 'ghost']],
+      teshis: [['onay', 'Müşteri onayına gönder', 'send', 'primary'], ['islemde', 'Onaysız tamire al', 'wrench', ''], ['iptal', 'İşlemsiz teslim', 'x', 'ghost']],
+      onay: [['islemde', 'Telefonla onay alındı', 'phone', 'primary'], ['link', 'Onay linkini kopyala', 'link', ''], ['iptal', 'İşlemsiz teslim', 'x', 'ghost']],
       islemde: [['hazir', 'Tamir bitti — teslime hazır', 'check', 'primary']],
       hazir: [['teslim', 'Teslim et + tahsilat + imza', 'cash', 'primary']],
-      teslim: [],
+      teslim: [], iptal: [],
     }[j.status] || []);
     function draw() {
       const v = veh(j.vehicle), c = cus(j.customer); const L = lock(); const idx = O.FLOW.indexOf(j.status);
@@ -223,14 +237,15 @@
       if (b.dataset.flow) await flow(b.dataset.flow);
     });
     async function flow(k) {
-      const v = veh(j.vehicle);
+      const v = veh(j.vehicle); let msg = null;
       if (k === 'link') { try { await navigator.clipboard.writeText(linkOf(j)); toast('Onay linki kopyalandı', 'ok'); } catch (x) { NS.prompt('Onay linki', linkOf(j)); } return; }
       if (k === 'teshis') { const f = await NS.prompt('Tespit edilen arıza', j.finding || ''); if (f === null) return; j.finding = f; setSt(j, 'teshis', f); }
-      else if (k === 'onay') { if (!j.items.length) return toast('Önce işlem kalemlerini ekleyin', 'err'); j.items.forEach((i) => { if (i.approved !== true) i.approved = null; }); setSt(j, 'onay', 'Onay linki SMS ile gönderildi'); sms(j, `${S().bizName}: ${v.plate} aracınız için ${money(O.totals({ ...j, items: j.items.map((i) => ({ ...i, approved: true })) }).total)} tutarında teklif hazır. İnceleyip onaylamak için: ${linkOf(j)}`); toast('Onay linki gönderildi', 'ok'); }
+      else if (k === 'onay') { if (!j.items.length) return toast('Önce işlem kalemlerini ekleyin', 'err'); j.items.forEach((i) => { if (i.approved !== true) i.approved = null; }); setSt(j, 'onay', 'Müşteri onayına gönderildi'); msg = [`${S().bizName}: ${v.plate} aracınız için ${money(O.totals({ ...j, items: j.items.map((i) => ({ ...i, approved: true })) }).total)} tutarında teklif hazır. İnceleyip onaylamak için: ${linkOf(j)}`, 'Onay linki']; }
       else if (k === 'islemde') { j.items.forEach((i) => { if (i.approved == null) i.approved = true; }); setSt(j, 'islemde', j.status === 'onay' ? 'Müşteri telefonda onayladı' : 'Onaysız tamire alındı'); }
-      else if (k === 'hazir') { useParts(j); setSt(j, 'hazir'); sms(j, `${S().bizName}: ${v.plate} aracınız teslime hazır. Tutar: ${money(O.totals(j).total)}. Detay ve online ödeme: ${linkOf(j)}`); toast('Müşteriye "aracınız hazır" SMS gönderildi', 'ok'); }
+      else if (k === 'hazir') { useParts(j); setSt(j, 'hazir'); msg = [`${S().bizName}: ${v.plate} aracınız teslime hazır. Tutar: ${money(O.totals(j).total)}. Ayrıntı: ${linkOf(j)}`, '"Aracınız hazır" bildirimi']; }
+      else if (k === 'iptal') { const r = await NS.prompt('İşlemsiz teslim nedeni', 'Müşteri işlem yaptırmaktan vazgeçti'); if (r === null) return; j.items.forEach((i) => { if (i.approved !== true) i.approved = false; }); j.deliveredAt = new Date().toISOString(); setSt(j, 'iptal', r || 'İşlemsiz teslim'); }
       else if (k === 'teslim') { if (!(await deliver(j))) return; }
-      db.save(); draw();
+      db.save(); draw(); if (msg) tell(j, msg[0], msg[1]);
     }
     draw();
   }
@@ -241,12 +256,12 @@
     if (!v) return false;
     let sig = await NS.sign({ title: 'Teslim — müşteri imzası', label: 'Teslim alan adı soyadı', name: cus(j.customer).name, text: `<b>${esc(vv.plate)}</b> plakalı aracımı yapılan işlemlerin dökümünü görerek, <b>sağlam ve eksiksiz</b> teslim aldım. Toplam tutar: <b>${money(t.total)}</b>.` });
     if (!sig && !(await confirm('Müşteri imzası alınmadan teslim edilsin mi?'))) return false;
-    useParts(j); const got = v.method.startsWith('Cari') ? 0 : Number(v.amount) || 0; j.paid = (j.paid || 0) + got; j.nextKm = Number(v.nextKm) || null; j.deliveredAt = new Date().toISOString(); j.outKm = Number(v.km) || j.km;
+    useParts(j); const got = v.method.startsWith('Cari') ? 0 : Number(v.amount) || 0; j.paid = O.r2((j.paid || 0) + got); j.nextKm = Number(v.nextKm) || null; j.deliveredAt = new Date().toISOString(); j.outKm = Number(v.km) || j.km;
     if (vv.id) vv.km = j.outKm;
-    const c = cus(j.customer); if (c.id) c.balance = (c.balance || 0) + t.total - got;
+    const c = cus(j.customer); if (c.id) c.balance = O.r2((c.balance || 0) + t.total - j.paid); // önceden alınan ödeme (kapora) de düşülür
     if (got) db.insert('payments', { customer: j.customer, job: j.id, amount: got, method: v.method, at: new Date().toISOString() }, true);
     j.signOut = sig || null; j.signOutStaff = { name: (NS.currentUser || {}).name || '', at: j.deliveredAt };
-    if (v.efatura && NS.ebelge) { const r = await NS.ebelge.create({ docType: 'auto', buyer: c.name, no: j.no, lines: j.items.filter((i) => i.approved !== false).map((i) => ({ name: i.name, qty: i.qty, price: i.price * (1 - (Number(i.disc) || 0) / 100), vat: 20 })), note: `${vv.plate} · ${j.km} km`, disc: j.disc }); if (r && r.no) j.invoice = r.no; }
+    if (v.efatura && NS.ebelge) { const r = await NS.ebelge.create({ docType: 'auto', buyer: c.name, no: j.no, lines: j.items.filter((i) => i.approved !== false).map((i) => ({ name: i.name, qty: i.qty, unit: i.type === 'iscilik' ? 'saat' : 'adet', price: i.price, disc: Number(i.disc) || 0, vat: 20 })), note: `${vv.plate} · ${j.km} km` }); if (r && r.no) j.invoice = r.no + (r.simulated ? ' (TEST)' : ''); else if (r && r.error) toast('e-Arşiv kesilemedi: ' + r.error, 'err'); }
     setSt(j, 'teslim', `${v.method}${j.invoice ? ' · fatura ' + j.invoice : ''}${sig ? ' · müşteri imzaladı' : ' · imzasız'}`);
     db.save(); if (v.print) printJob(j, 'teslim');
     return true;
@@ -284,7 +299,7 @@
     const draw = () => {
       const all = db.all('jobs', (j) => (!mine || j.tech === mine) && NS.match(q, j.no, veh(j.vehicle).plate, cus(j.customer).name));
       $('#kb', el).innerHTML = O.FLOW.slice(0, 5).map((s) => { const L = all.filter((j) => j.status === s); return `<div><div class="row mb"><b class="grow">${esc(O.ST[s][0])}</b>${badge(L.length, O.ST[s][1])}</div>${L.map((j) => `<div class="card pad mb" data-j="${j.id}" style="cursor:pointer"><div class="row"><b class="grow mono">${esc(veh(j.vehicle).plate)}</b><span class="small faint">${esc(j.no)}</span></div><div class="small muted">${esc(veh(j.vehicle).brand)} ${esc(veh(j.vehicle).model)}</div><div class="small mt">${esc(j.complaint)}</div><div class="row small mt"><span class="grow faint">${esc(tech(j.tech).name.split(' ')[0])}</span>${j.items.length ? `<b>${money(O.totals(j).total)}</b>` : ''}</div></div>`).join('') || '<div class="small faint">—</div>'}</div>`; }).join('');
-      $('#done', el).innerHTML = table({ rows: all.filter((j) => j.status === 'teslim').sort((a, b) => b.at.localeCompare(a.at)).slice(0, 10), columns: [{ label: 'İş emri', render: (j) => `<b class="mono">${esc(veh(j.vehicle).plate)}</b> <span class="small faint">${esc(j.no)}</span>` }, { label: 'Müşteri', render: (j) => esc(cus(j.customer).name) }, { label: 'İşlem', render: (j) => `<span class="small">${esc(j.complaint)}</span>` }, { label: 'Tutar', cls: 'right', render: (j) => money(O.totals(j).total) }, { label: 'Ödeme', render: (j) => (j.paid >= O.totals(j).total - 0.01 ? badge('Ödendi', 'ok') : badge('Açık ' + money(O.totals(j).total - j.paid), 'warn')) }], actions: [{ icon: 'eye', act: 'v' }] });
+      $('#done', el).innerHTML = table({ rows: all.filter(O.closed).sort((a, b) => (b.deliveredAt || b.at).localeCompare(a.deliveredAt || a.at)).slice(0, 10), columns: [{ label: 'İş emri', render: (j) => `<b class="mono">${esc(veh(j.vehicle).plate)}</b> <span class="small faint">${esc(j.no)}</span>` }, { label: 'Müşteri', render: (j) => esc(cus(j.customer).name) }, { label: 'İşlem', render: (j) => `<span class="small">${esc(j.complaint)}</span>` }, { label: 'Tutar', cls: 'right', render: (j) => money(O.totals(j).total) }, { label: 'Ödeme', render: (j) => (j.status === 'iptal' ? badge('İşlemsiz', '') : j.paid >= O.totals(j).total - 0.01 ? badge('Ödendi', 'ok') : badge('Açık ' + money(O.totals(j).total - j.paid), 'warn')) }], actions: [{ icon: 'eye', act: 'v' }] });
     };
     $('#q', el).oninput = (e) => { q = e.target.value; draw(); };
     on(el, 'click', '[data-j]', (e, b) => app.go('is', b.dataset.j));
@@ -309,8 +324,22 @@
       filters: [{ value: 'all', label: 'Tümü' }, { value: 'az', label: 'Azalan', test: (x) => x.stock <= (x.min || 2) }],
       searchFields: (x) => [x.code, x.name, x.brand],
       columns: [{ key: 'code', label: 'Kod', render: (x) => `<span class="mono">${esc(x.code)}</span>` }, { key: 'name', label: 'Parça', render: (x) => `<b>${esc(x.name)}</b><div class="small faint">${esc(x.brand || '')}</div>` }, { key: 'stock', label: 'Stok', cls: 'right', render: (x) => `<b style="color:var(--${x.stock <= (x.min || 2) ? 'err' : 'text'})">${x.stock}</b>` }, { key: 'cost', label: 'Alış', cls: 'right', render: (x) => money(x.cost) }, { key: 'price', label: 'Satış', cls: 'right', render: (x) => money(x.price) }, { label: 'Kâr %', cls: 'right', render: (x) => '%' + Math.round(((x.price - x.cost) / (x.cost || 1)) * 100) }],
-      extraActions: [{ icon: 'truck', act: 'ord', title: 'Tedarikçiden sipariş' }],
-      onAction: async (a, x) => { if (NS.integ && NS.integ.isOn('parca')) { const r = await NS.integ.call('parca', 'siparis', { code: x.code, qty: Math.max(5, (x.min || 2) * 3) }); if (r && r.ok) toast('Sipariş tedarikçiye iletildi', 'ok'); } else toast('Entegrasyonlar > Yedek parça tedarikçileri bölümünden Martaş / Başbuğ / Dinamik bağlantısını açın', 'err'); } });
+      extraActions: [{ icon: 'truck', act: 'ord', title: 'Sipariş listesine al' }],
+      onAction: (a, x) => orderList([x]) });
+    const h = $('.page-h .row', el); if (h) h.insertAdjacentHTML('afterbegin', `<button class="btn" data-order>${icon('truck')} Kritik stok sipariş listesi</button>`);
+    on(el, 'click', '[data-order]', () => orderList(db.all('parts', (x) => x.stock <= (x.min || 2))));
+  }
+
+  function orderList(parts) {
+    if (!parts.length) return toast('Kritik stokta parça yok');
+    const rows = parts.map((x) => ({ x, qty: Math.max(1, (x.min || 2) * 3 - (x.stock || 0)) }));
+    const text = () => `${S().bizName} — parça siparişi (${NS.date(new Date())})\n` + rows.map((r) => `• ${r.x.code} · ${r.x.name}${r.x.brand ? ' (' + r.x.brand + ')' : ''} — ${r.qty} adet`).join('\n');
+    modal({ title: 'Tedarikçi sipariş listesi', size: 'lg',
+      body: `<p class="small muted mb">Yedek parça tedarikçilerinin (Martaş, Başbuğ, Dinamik…) resmî API dokümanı doğrulanamadığı için sipariş otomatik iletilmez. Listeyi kopyalayıp tedarikçinize gönderin.</p><div class="tbl-wrap"><table class="tbl"><thead><tr><th>Kod</th><th>Parça</th><th class="right">Stok</th><th class="right">Sipariş</th></tr></thead><tbody>${rows.map((r, i) => `<tr><td class="mono">${esc(r.x.code)}</td><td>${esc(r.x.name)} <span class="small faint">${esc(r.x.brand || '')}</span></td><td class="right">${r.x.stock}</td><td class="right"><input class="input os-n" type="number" min="1" value="${r.qty}" data-oq="${i}" style="width:80px"></td></tr>`).join('')}</tbody></table></div><div class="field mt"><label>Tedarikçi WhatsApp numarası (isteğe bağlı)</label><input class="input" id="sup" type="tel" placeholder="05…" value="${esc(S().supplierPhone || '')}"></div>`,
+      onOpen: (b) => b.addEventListener('input', (e) => { if (e.target.dataset.oq) rows[e.target.dataset.oq].qty = Number(e.target.value) || 1; }),
+      actions: [{ label: 'CSV indir', icon: 'download', onClick: () => NS.csv('siparis-listesi', rows.map((r) => ({ Kod: r.x.code, Parça: r.x.name, Marka: r.x.brand || '', Stok: r.x.stock, Sipariş: r.qty }))) },
+        { label: 'Kopyala', icon: 'copy', onClick: async () => { try { await navigator.clipboard.writeText(text()); toast('Liste kopyalandı', 'ok'); } catch (e) { NS.prompt('Sipariş listesi', text()); } } },
+        { label: 'WhatsApp ile gönder', icon: 'message', cls: 'primary', onClick: (close, b) => { const ph = $('#sup', b).value; if (ph) { db.settings({}).supplierPhone = ph; db.save(); } window.open(ph ? waLink(ph, text()) : 'https://wa.me/?text=' + encodeURIComponent(text()), '_blank', 'noopener'); close(); } }] });
   }
 
   // ---------- Hatırlatmalar ----------
@@ -326,10 +355,12 @@
     ];
     const sent = db.data.sentReminders = db.data.sentReminders || {};
     el.innerHTML = pageHead('Hatırlatmalar', 'Muayene, sigorta ve bakım zamanı gelen araçlar — müşteriyi geri getiren SMS', `<button class="btn primary" id="all">${icon('send')} Tümüne SMS gönder</button>`) + `<div class="card" id="t"></div>`;
-    const draw = () => { $('#t', el).innerHTML = table({ rows, empty: 'Hatırlatılacak araç yok', emptyIcon: 'bell', columns: [{ label: 'Tür', render: (r) => badge(r.type, r.type === 'Muayene' ? 'warn' : r.type === 'Sigorta' ? 'info' : 'acc') }, { label: 'Araç', render: (r) => `<b class="mono">${esc(r.v.plate)}</b><div class="small faint">${esc(cus(r.v.customer).name)}</div>` }, { label: 'Tarih', render: (r) => (r.date ? NS.date(r.date) : '-') }, { label: 'Mesaj', render: (r) => `<span class="small">${esc(r.text)}</span>` }, { label: '', render: (r) => (sent[r.id] ? badge('Gönderildi ' + NS.date(sent[r.id]), 'ok') : '') }], actions: [{ icon: 'send', act: 's', title: 'SMS', show: (r) => !sent[r.id] }] }); };
-    const send = (r) => { NS.smsLog(db, { to: cus(r.v.customer).phone, name: cus(r.v.customer).name, text: r.text }, true); sent[r.id] = today(); };
-    on(el, 'click', '[data-act=s]', (e, b) => { send(rows.find((r) => r.id === b.dataset.id)); db.save(); draw(); toast('SMS gönderildi', 'ok'); });
-    $('#all', el).onclick = async () => { const L = rows.filter((r) => !sent[r.id]); if (!L.length) return toast('Gönderilecek yok'); if (!(await confirm(`${L.length} müşteriye SMS gönderilsin mi?`))) return; L.forEach(send); db.save(); draw(); toast(`${L.length} SMS gönderildi`, 'ok'); };
+    const draw = () => { $('#t', el).innerHTML = table({ rows, empty: 'Hatırlatılacak araç yok', emptyIcon: 'bell', columns: [{ label: 'Tür', render: (r) => badge(r.type, r.type === 'Muayene' ? 'warn' : r.type === 'Sigorta' ? 'info' : 'acc') }, { label: 'Araç', render: (r) => `<b class="mono">${esc(r.v.plate)}</b><div class="small faint">${esc(cus(r.v.customer).name)}</div>` }, { label: 'Tarih', render: (r) => (r.date ? NS.date(r.date) : '-') }, { label: 'Mesaj', render: (r) => `<span class="small">${esc(r.text)}</span>` }, { label: '', render: (r) => (sent[r.id] ? badge('Gönderildi ' + NS.date(sent[r.id]), 'ok') : test[r.id] ? badge('TEST — gönderilmedi', 'warn') : fail[r.id] ? `<span class="small" style="color:var(--err)">${esc(fail[r.id])}</span>` : '') }], actions: [{ icon: 'send', act: 's', title: 'SMS gönder', show: (r) => !sent[r.id] }, { icon: 'message', act: 'w', title: 'WhatsApp ile gönder', show: (r) => !sent[r.id] }] }); };
+    const test = {}, fail = {};
+    const send = async (r) => { const c = cus(r.v.customer); const x = await smsSend(c.phone, c.name, r.text); if (x.sent) sent[r.id] = today(); else if (x.test) test[r.id] = 1; else fail[r.id] = x.error; return x; };
+    on(el, 'click', '[data-act=s]', async (e, b) => { const x = await send(rows.find((r) => r.id === b.dataset.id)); db.save(); draw(); toast(x.sent ? 'SMS gönderildi' : 'SMS gönderilmedi: ' + x.error, x.sent ? 'ok' : 'err'); });
+    on(el, 'click', '[data-act=w]', (e, b) => { const r = rows.find((y) => y.id === b.dataset.id); window.open(waLink(cus(r.v.customer).phone, r.text), '_blank', 'noopener'); });
+    $('#all', el).onclick = async () => { const L = rows.filter((r) => !sent[r.id]); if (!L.length) return toast('Gönderilecek yok'); if (!(await confirm(`${L.length} müşteriye SMS gönderilsin mi?`, { danger: false }))) return; const res = []; for (const r of L) res.push(await send(r)); db.save(); draw(); const n = res.filter((x) => x.sent).length, t = res.filter((x) => x.test).length; toast(`${n} SMS gönderildi${t ? ` · ${t} TEST (gönderilmedi)` : ''}${L.length - n - t ? ` · ${L.length - n - t} gönderilemedi` : ''}`, n === L.length ? 'ok' : 'err'); };
     draw();
   }
 
@@ -346,10 +377,10 @@
 
   // ---------- Özet ----------
   function dashboard(el, p, app) {
-    const all = db.all('jobs'); const open = all.filter((j) => j.status !== 'teslim');
-    const m30 = all.filter((j) => j.status === 'teslim' && j.at > addDays(new Date(), -30).toISOString());
+    const all = db.all('jobs'); const open = all.filter((j) => !O.closed(j)); const dAt = (j) => j.deliveredAt || j.at;
+    const m30 = all.filter((j) => j.status === 'teslim' && dAt(j) > addDays(new Date(), -30).toISOString());
     const T = m30.map(O.totals); const partProfit = sum(m30.flatMap((j) => j.items.filter((i) => i.type === 'parca' && i.approved !== false)), (i) => (i.price - (i.cost || 0)) * i.qty);
-    const ser = NS.dailySeries(all.filter((j) => j.status === 'teslim'), 14, 'at', (j) => O.totals(j).total);
+    const ser = NS.dailySeries(all.filter((j) => j.status === 'teslim').map((j) => ({ ...j, dAt: dAt(j) })), 14, 'dAt', (j) => O.totals(j).total);
     el.innerHTML = pageHead(S().bizName, NS.dateLong(new Date()), `<a class="btn primary" href="#/kabul">${icon('plus')} Araç kabul</a>`) + `
       <div class="grid g4 mb">${kpi('Servisteki araç', open.length, 'car', 'info', `<div class="small faint">${open.filter((j) => j.status === 'hazir').length} teslime hazır</div>`)}${kpi('Onay bekleyen', open.filter((j) => j.status === 'onay').length, 'clock', 'warn')}${kpi('30 gün ciro', money(sum(T, (t) => t.total)), 'trend', 'ok', `<div class="small faint">işçilik ${money(sum(T, (t) => t.iscilik))} · parça kârı ${money(partProfit)}</div>`)}${kpi('Açık hesap', money(sum(db.all('customers'), (c) => Math.max(0, c.balance || 0))), 'wallet', 'err')}</div>
       <div class="grid g-21 mb"><div class="card"><div class="card-h"><h3>Son 14 gün teslim cirosu</h3></div><div class="card-b">${chart.bars(ser.labels.map((l, i) => ({ label: l, value: ser.values[i] })))}</div></div>
@@ -360,7 +391,7 @@
 
   const ROLES = { admin: 'Servis sahibi', danisman: 'Servis danışmanı', teknisyen: 'Teknisyen' };
   const app = NS.shell({
-    id: 'otoservis', integrations: ['sms', 'whatsapp', 'efatura', 'parca', 'tramer', 'printer', 'payment', 'webhook', 'backup'], name: 'Oto Servis', tagline: 'Sanayi & servis yönetimi', icon: 'wrench', accent: '#0369a1', db, home: 'ozet', auth: { roles: ROLES },
+    id: 'otoservis', integrations: ['sms', 'whatsapp', 'efatura', 'printer', 'webhook', 'backup'], name: 'Oto Servis', tagline: 'Sanayi & servis yönetimi', icon: 'wrench', accent: '#0369a1', db, home: 'ozet', auth: { roles: ROLES },
     nav: [{ sec: 'Servis' }, { id: 'ozet', label: 'Özet', icon: 'home', roles: ['danisman'] }, { id: 'kabul', label: 'Servis Aç', icon: 'plus', roles: ['danisman'] }, { id: 'isemirleri', label: 'İş Emirleri', icon: 'kanban' }, { id: 'araclar', label: 'Araçlar', icon: 'car', roles: ['danisman'] }, { id: 'hatirlatma', label: 'Hatırlatmalar', icon: 'bell', roles: ['danisman'] }, { sec: 'Yönetim' }, { id: 'parcalar', label: 'Parça Stoğu', icon: 'box', roles: ['danisman'] }, { id: 'katalog', label: 'Hizmet Kataloğu', icon: 'book', roles: ['danisman'] }, { id: 'musteriler', label: 'Müşteriler & Cari', icon: 'users', roles: ['danisman'] }, { id: 'ayarlar', label: 'Ayarlar', icon: 'settings', roles: ['admin'] }],
     titles: { is: 'İş emri' },
     routes: { is: jobPage, katalog: catalogPage, ozet: dashboard, kabul: intakePage, isemirleri: jobsPage, araclar: vehiclesPage, hatirlatma: remindersPage, parcalar: partsPage, musteriler: customersPage,

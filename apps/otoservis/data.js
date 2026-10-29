@@ -1,16 +1,20 @@
 /* Oto Servis & Sanayi — iş emri durumları, demo verisi. Panel ve müşteri onay sayfası kullanır. */
 window.OTS = {
-  ST: { kabul: ['Araç kabul', 'info', 'car'], teshis: ['Arıza tespit', 'warn', 'search'], onay: ['Müşteri onayı bekliyor', 'warn', 'clock'], islemde: ['Tamirde', 'acc', 'wrench'], hazir: ['Teslime hazır', 'ok', 'check'], teslim: ['Teslim edildi', '', 'check'] },
+  ST: { kabul: ['Araç kabul', 'info', 'car'], teshis: ['Arıza tespit', 'warn', 'search'], onay: ['Müşteri onayı bekliyor', 'warn', 'clock'], islemde: ['Tamirde', 'acc', 'wrench'], hazir: ['Teslime hazır', 'ok', 'check'], teslim: ['Teslim edildi', '', 'check'], iptal: ['İşlemsiz teslim', '', 'x'] },
+  closed: (j) => j.status === 'teslim' || j.status === 'iptal',
   FLOW: ['kabul', 'teshis', 'onay', 'islemde', 'hazir', 'teslim'],
   BRANDS: { Renault: ['Clio', 'Megane', 'Taliant'], Fiat: ['Egea', 'Doblo', 'Fiorino'], Volkswagen: ['Passat', 'Golf', 'Polo', 'Caddy'], Ford: ['Focus', 'Fiesta', 'Courier', 'Transit'], Toyota: ['Corolla', 'C-HR', 'Yaris'], Hyundai: ['i20', 'Accent', 'Tucson'], Opel: ['Astra', 'Corsa'], Dacia: ['Duster', 'Sandero'] },
   token: (j) => (j.id.replace(/\W/g, '').slice(-6) + j.no.replace(/\D/g, '')).toUpperCase(),
+  // Satır satır yuvarlanır ve KDV satır bazında hesaplanır — e-Arşiv (UBL) ile kuruşu kuruşuna aynı
+  r2: (x) => Math.round((Number(x) || 0) * 100) / 100,
+  lineNet: (i) => OTS.r2((Number(i.qty) || 0) * (Number(i.price) || 0) * (1 - (Number(i.disc) || 0) / 100)),
   totals(j) {
-    const ls = (j.items || []).filter((i) => i.approved !== false);
-    const lt = (i) => i.qty * i.price * (1 - (Number(i.disc) || 0) / 100);
-    const parca = ls.filter((i) => i.type === 'parca' || i.type === 'sarf').reduce((s, i) => s + lt(i), 0);
-    const iscilik = ls.filter((i) => i.type === 'iscilik' || i.type === 'dis').reduce((s, i) => s + lt(i), 0);
-    const net = parca + iscilik - (Number(j.disc) || 0); const kdv = Math.round(net * 0.2 * 100) / 100;
-    return { parca, iscilik, net, kdv, total: Math.round((net + kdv) * 100) / 100 };
+    const r2 = OTS.r2; const ls = (j.items || []).filter((i) => i.approved !== false);
+    const parca = r2(ls.filter((i) => i.type === 'parca' || i.type === 'sarf').reduce((s, i) => s + OTS.lineNet(i), 0));
+    const iscilik = r2(ls.filter((i) => i.type === 'iscilik' || i.type === 'dis').reduce((s, i) => s + OTS.lineNet(i), 0));
+    const disc = Number(j.disc) || 0; const net = r2(parca + iscilik - disc);
+    const kdv = disc ? r2(net * 0.2) : r2(ls.reduce((s, i) => s + r2(OTS.lineNet(i) * 0.2), 0));
+    return { parca, iscilik, net, kdv, total: r2(net + kdv) };
   },
   seed(db) {
     const { rand, pick, addDays } = NS;
