@@ -74,7 +74,7 @@
   }
   async function readWeight(label) {
     // Araç kantarı bağlıysa (ağ indikatörü / seri port) kantar okuması, değilse kasa terazisi
-    if (label === 'Kantar' && NS.integ && NS.integ.isOn('kantar')) { const r = await NS.integ.call('kantar', 'oku', {}, { silent: true }); if (r && r.ok) { const kg = r.data && r.data.kg ? Number(r.data.kg) : r.simulated ? Math.round(14000 + Math.random() * 6000) : null; if (kg) return kg; } }
+    if (label === 'Kantar' && NS.integ && NS.integ.isOn('kantar')) { const r = await NS.integ.call('kantar', 'oku', {}, { silent: true }); if (r && r.ok) { const kg = r.data && r.data.kg && !r.simulated ? Number(r.data.kg) : null; if (kg) return kg; if (r.simulated) toast('TEST: kantar bağlantısı simülasyonda, ağırlık okunmadı — tartımı elle girin', 'warn'); } }
     try {
       if (NS.integ && NS.integ.cfg('scale').mode !== 'barcode') return await NS.integ.readScale({ ask: true });
     } catch (e) { toast(e.message, 'err'); }
@@ -385,7 +385,7 @@
         if (po) { recLines.forEach((l) => { const pl = po.lines.find((x) => x.mat === l.mat); if (pl) pl.received = r3((pl.received || 0) + l.qty); }); po.status = po.lines.every((l) => (l.received || 0) >= l.qty * 0.98) ? 'tamam' : 'kismi'; }
         db.log('Mal kabul', `${no} · ${sup(h.sup).name} · ${recLines.length} kalem`); db.save();
         // Üreticiden (çiftçi) alımda e-Müstahsil makbuzu: tedarikçi kartında "çiftçi / üretici" işaretliyse
-        if (sup(h.sup).farmer && NS.integ && NS.integ.isOn('emustahsil')) NS.integ.call('emustahsil', 'makbuz', { producer: sup(h.sup).name, tc: sup(h.sup).taxNo, lines: recLines.map((l) => ({ name: mat(l.mat).name, qty: l.qty, unit: mat(l.mat).unit, price: l.price })), stopaj: Number(NS.integ.cfg('emustahsil').stopaj) || 2 }).then((r) => { if (r && r.ok) { rec.emustahsil = r.ref; db.save(); } });
+        if (sup(h.sup).farmer && NS.integ && NS.integ.isOn('emustahsil')) NS.integ.call('emustahsil', 'makbuz', { producer: sup(h.sup).name, tc: sup(h.sup).taxNo, lines: recLines.map((l) => ({ name: mat(l.mat).name, qty: l.qty, unit: mat(l.mat).unit, price: l.price })), stopaj: Number(NS.integ.cfg('emustahsil').stopaj) || 2 }).then((r) => { if (r && r.ok && !r.simulated) { rec.emustahsil = r.ref; db.save(); } else if (r && r.simulated) { rec.emustahsilTest = true; db.save(); toast('e-Müstahsil makbuzu TEST: simülasyonda, gönderilmedi', 'warn'); } });
         if (NS.integ) NS.integ.emit('malkabul', { no, supplier: sup(h.sup).name, lines: recLines.map((l) => ({ code: mat(l.mat).code, qty: l.qty, lot: l.lot })) });
         close();
         toast(`${no} kaydedildi${rec.status === 'kalite' ? ' — kalite kontrole düştü (karantina)' : ''}`, 'ok');
@@ -497,7 +497,7 @@
     on(el, 'click', '[data-act]', async (e, b) => {
       const t = db.get('returns', b.dataset.id); const a = b.dataset.act;
       if (a === 'pr') return printReturn(t);
-      if (a === 'go') { const v = await formModal({ title: `${t.no} sevk`, fields: [{ name: 'plate', label: 'Araç plakası' }, { name: 'eirs', label: 'e-İrsaliye gönder', type: 'checkbox', value: NS.integ && NS.integ.isOn('eirsaliye') }] }); if (!v) return; t.lines.forEach((l) => { const r = rowsOf(l.mat).find((x) => x.lot === l.lot && x.wh === 'w5'); move({ mat: l.mat, wh: 'w5', loc: r ? r.loc : 'R-01', lot: l.lot, qty: -Math.min(l.qty, r ? r.qty : l.qty), cost: l.price, type: 'iade', ref: t.id, refNo: t.no }); }); t.status = 'gonderildi'; t.plate = v.plate; t.shipDate = today(); if (v.eirs && NS.integ) { const r = await NS.integ.call('eirsaliye', 'gonder', { docType: 'İade irsaliyesi', no: t.no, buyer: sup(t.sup).name, lines: t.lines }); if (r.ok) t.ebelge = r.ref; } db.save(); toast('İade sevk edildi, stoktan düşüldü', 'ok'); printReturn(t); app.refresh(); }
+      if (a === 'go') { const v = await formModal({ title: `${t.no} sevk`, fields: [{ name: 'plate', label: 'Araç plakası' }, { name: 'eirs', label: 'e-İrsaliye gönder', type: 'checkbox', value: NS.integ && NS.integ.isOn('eirsaliye') }] }); if (!v) return; t.lines.forEach((l) => { const r = rowsOf(l.mat).find((x) => x.lot === l.lot && x.wh === 'w5'); move({ mat: l.mat, wh: 'w5', loc: r ? r.loc : 'R-01', lot: l.lot, qty: -Math.min(l.qty, r ? r.qty : l.qty), cost: l.price, type: 'iade', ref: t.id, refNo: t.no }); }); t.status = 'gonderildi'; t.plate = v.plate; t.shipDate = today(); if (v.eirs && NS.ebelge) { const su = sup(t.sup); const r = await NS.ebelge.create({ docType: 'e-İrsaliye', no: t.no, buyer: su.name, buyerVkn: su.taxNo, buyerTaxOffice: su.taxOffice, address: su.address || su.city || '', plate: v.plate, date: today(), note: 'Tedarikçiye iade', lines: t.lines.map((l) => ({ code: mat(l.mat).code, name: `${mat(l.mat).name} (lot ${l.lot})`, qty: l.qty, unit: mat(l.mat).unit, price: l.price || 0 })) }); if (r && r.ok) { t.ebelge = r.no; t.ebelgeId = r.id; t.ebelgeTest = !!r.simulated; } } db.save(); toast('İade sevk edildi, stoktan düşüldü', 'ok'); printReturn(t); app.refresh(); }
       else if (a === 'cl') { const c = await NS.prompt('Tedarikçinin iade faturası / alacak dekont no', '', { title: 'İadeyi kapat' }); if (c === null) return; t.credit = c; t.status = 'kapandi'; db.save(); app.refresh(); }
       else if (await confirm('İade taslağı silinsin mi? (Malzeme red alanında kalır)')) { db.remove('returns', t.id); app.refresh(); }
     });
