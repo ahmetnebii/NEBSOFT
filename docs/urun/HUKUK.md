@@ -19,6 +19,18 @@ Tarih: 29.10.2026 · Dal: `claude/urun-profesyonel-5c5840` · Yöntem: `CLAUDE.m
 | H9 | Telefon | Süre hesaplayıcı sayfanın başında; bekleyen/tamamlanan filtresi | 375 px |
 | + | Ajanda .ics | Son günler de takvim dosyasına tüm gün etkinliği olarak ekleniyor | Kod |
 
+## 2. dalga — yapılanlar
+| Konu | Sonuç | Kanıt |
+|---|---|---|
+| Görevler | "Görevler" sayfası (benim / tüm açık / tamamlanan), dosyadan görev açma, menü rozeti, özet sayfasında hatırlatma | Tarayıcı |
+| Vekaletname | Müvekkil kartında tarih, noter, yevmiye, geçerlilik sonu, kapsam; "vekaleti biten / yok" filtresi; 30 gün kala özet uyarısı | Tarayıcı |
+| Aylık takvim | Ajanda > Ay: gün başına duruşma ve son gün sayısı, tatiller soluk, güne tıklayınca liste, önceki/sonraki ay | Tarayıcı |
+| Çakışma uyarısı | Aynı avukata aynı gün ve saatte ikinci duruşma eklenirken onay (1. dalgada eklendi) | Kod |
+| Danışmanlık → dava | Dosya ekranında "Davaya dönüştür"; kayıtlar korunur, nota iz düşer | Kod |
+| Müvekkil ekstresi | Avans/masraf dökümü ve bakiye, `NS.docs` şablonundan yazdırılır (Belge şablonları'nda düzenlenebilir) | Tarayıcı (yazdırma penceresi açıldı) |
+| Raporlar | Avukat bazında iş yükü, aylık ücret tahsilatı, ücret alacağı, dosya bazında çalışma süresi ve saatlik ücretle dökümü (yazdır) | Tarayıcı |
+| Toplu duruşma hatırlatması | Ajanda > Hatırlat: seçilen günün duruşmaları için müvekkile SMS; sonuç tek tek beklenir, simülasyon "TEST (gönderilmedi)" sayılır | Tarayıcı: "Gönderildi: 0 · TEST: 2" |
+
 Kalite kapısı: `npm test` — bulut testi (`cloud.test.js`) bu değişikliklerden **önceki** commit'te de aynı hatayla kırık (Ç7); diğer testler ve GİB XSD testi geçti. `sw.js` sürümü bu oturumun kapsamı dışında (Ç4).
 
 ---

@@ -92,6 +92,8 @@ window.HKK = {
     db.data.expenses = []; db.data.advances = [];
     db.data.files.forEach((f, i) => { const cl = f.client; const adv = rand(3, 15) * 1000; db.data.advances.push({ id: NS.uid(), client: cl, file: f.id, amount: adv, at: f.opened }); [['Başvuru / peşin harç', rand(800, 6000)], ['Tebligat gideri', rand(150, 700)], ...(i % 3 === 0 ? [['Bilirkişi ücreti', rand(3000, 9000)]] : [])].forEach(([t, a]) => db.data.expenses.push({ id: NS.uid(), file: f.id, client: cl, type: t, amount: a, at: f.opened })); });
     db.data.messages = [{ id: NS.uid(), client: 'k1', at: addDays(new Date(), -1).toISOString(), from: 'muvekkil', text: 'Duruşmaya benim de gelmem gerekiyor mu?' }];
+    db.data.tasks = [['İstinaf dilekçesi taslağı', 'Av. Kaan Uçar', 3], ['Bilirkişi raporunu incele, itiraz noktalarını çıkar', 'Stj. Av. Deniz Tekin', 1], ['Tebligat parçasını UYAP’tan kontrol et', 'Esra Sekreter', 0], ['Müvekkille uzlaşma görüşmesi', 'Av. Selin Erdem', 5]].map(([title, assignee, d], i) => ({ id: NS.uid(), title, assignee, file: db.data.files[i * 2].id, due: NS.iso(addDays(new Date(), d)), done: false, by: 'Av. Selin Erdem' }));
+    db.data.clients.forEach((c, i) => { if (i % 3 === 0) { const d = addDays(new Date(), -rand(100, 900)); Object.assign(c, { poaDate: NS.iso(d), poaNotary: 'Kadıköy ' + rand(1, 30) + '. Noterliği', poaNo: String(rand(10000, 99999)), poaEnd: i === 3 ? NS.iso(addDays(new Date(), 12)) : '' }); } });
     db.data.times = db.data.files.slice(0, 8).map((f, i) => ({ id: NS.uid(), file: f.id, at: NS.iso(addDays(new Date(), -i)), hours: [1, 1.5, 2, 0.5, 3][i % 5], desc: pick(['Dilekçe hazırlığı', 'Müvekkil görüşmesi', 'Duruşma', 'Dosya inceleme']), user: lawyers[i % 3] }));
   },
 };
