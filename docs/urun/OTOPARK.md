@@ -8,8 +8,8 @@ Tarih: 29.10.2026 · Dal: `claude/urun-servis-arac-a1f676` · Yöntem: `CLAUDE.m
 | Dalga | Durum |
 |---|---|
 | 1 — Temel ve güven (H1–H7) | **tamamlandı** — müşteri sayfasındaki kart formu ve sahte ön ödeme kaldırıldı; kamera simülasyonu plaka uydurmuyor (TEST uyarısı); indirim önce otoparktan sonra yıkamadan düşüyor ve kasada görünüyor; bitmemiş yıkamada çıkış uyarısı; abonelik tahsilatı (yeni + uzatma) kasada ve gün sonunda; yıkama iptali abonelik hakkını geri veriyor; otoparksız yıkamada kart cihazı ve mali fiş. Kanıt: başsız Chrome akış denemesi + tur, konsol hatası yok |
-| 2 — Beklenenler | sırada |
-| 3 — Fark yaratanlar | sırada |
+| 2 — Beklenenler | **tamamlandı** — kayıp fiş ücreti (ayar; girişte, fişte ve gişede yazar; çıkışta işaretlenir), 24 saat+ içeride kalan araç rozeti ve özet uyarısı, aboneliklerde "7 gün içinde bitecek" filtresi + bitiş hatırlatması (SMS sonucu bekleniyor, olmazsa WhatsApp), abone tahsilat geçmişi |
+| 3 — Fark yaratanlar | **tamamlandı** — girişte isteğe bağlı telefon → yıkama bitince "aracınız hazır" bildirimi; Özet'te yıkamacı performansı (iş, ciro, ort. yıkama süresi) |
 
 ---
 
