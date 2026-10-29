@@ -49,18 +49,20 @@
 
   function login() {
     $('#out').innerHTML = '';
-    $('#root').innerHTML = `<div class="tk-view"><div class="tk-intro"><h1>Dostunuzun sağlık karnesi</h1><p>Kliniğimizde kayıtlı telefon numaranızla girin; aşı takvimini, son muayeneleri ve kilo geçmişini görün, randevu isteyin.</p></div>
-      <div class="tk-find"><input class="input" id="ph" type="tel" inputmode="tel" placeholder="05xx xxx xx xx" aria-label="Telefon numarası" autocomplete="tel" style="text-transform:none;letter-spacing:.02em"><button class="btn primary lg" id="go">Giriş</button></div>
+    $('#root').innerHTML = `<div class="tk-view"><div class="tk-intro"><h1>Dostunuzun sağlık karnesi</h1><p>Kliniğimizde kayıtlı telefon numaranız ve klinikten aldığınız giriş koduyla girin; aşı takvimini, son muayeneleri ve kilo geçmişini görün, randevu isteyin.</p></div>
+      <div class="tk-find"><input class="input" id="ph" type="tel" inputmode="tel" placeholder="05xx xxx xx xx" aria-label="Telefon numarası" autocomplete="tel" style="text-transform:none;letter-spacing:.02em"><input class="input" id="cd" placeholder="Giriş kodu" aria-label="Giriş kodu" autocomplete="one-time-code" style="max-width:140px;text-transform:uppercase"><button class="btn primary lg" id="go">Giriş</button></div>
       ${NS.pub ? '' : '<p class="small muted">Demo için <a href="#" id="hint">örnek bir numara kullanın</a>.</p>'}
       <div class="tk-how"><div>${icon('shield')}<b>Aşı takvimi</b>Hangi aşının ne zaman yapıldığı ve sıradaki aşı tarihi.</div><div>${icon('calendar')}<b>Randevu isteği</b>Uygun gün ve saati seçin, klinik onaylayınca SMS alın.</div><div>${icon('print')}<b>Yazdırılabilir karne</b>Seyahat ve pet otel için karneyi PDF olarak kaydedin.</div></div></div>`;
     const go = () => {
-      const d = digits($('#ph').value); if (d.length !== 10 || db.lookup({ phone: d }) === null) db.load();
-      const o = d.length === 10 && db.find('owners', (x) => digits(x.phone) === d);
-      if (!o) return toast('Bu numarayla kayıtlı hayvan sahibi bulunamadı', 'err');
+      const d = digits($('#ph').value); const code = $('#cd').value.trim().toUpperCase(); if (!code) return toast('Klinikten aldığınız giriş kodunu yazın', 'err');
+      if (d.length !== 10 || db.lookup({ phone: d, code }) === null) db.load();
+      // Telefon + kod birlikte eşleşmeli (kodu olmayan sahip giremez; kod klinik panelinde hayvan kartından verilir)
+      const o = d.length === 10 && db.find('owners', (x) => digits(x.phone) === d && (NS.pub || (x.portalCode && x.portalCode === code)));
+      if (!o) return toast('Telefon veya giriş kodu hatalı', 'err');
       sset(o.id); render();
     };
     $('#go').onclick = go; $('#ph').onkeydown = (e) => { if (e.key === 'Enter') go(); };
-    if ($('#hint')) $('#hint').onclick = (e) => { e.preventDefault(); const o = db.all('owners').find((x) => db.all('pets', (p) => p.owner === x.id).length) || db.all('owners')[0]; if (o) { $('#ph').value = o.phone; } };
+    if ($('#hint')) $('#hint').onclick = (e) => { e.preventDefault(); const o = db.all('owners').find((x) => db.all('pets', (p) => p.owner === x.id).length) || db.all('owners')[0]; if (o) { $('#ph').value = o.phone; $('#cd').value = NS.portalCode(db, o); } };
   }
 
   // Her aşı türünün son uygulaması ve sıradaki tarihi
