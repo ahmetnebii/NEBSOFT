@@ -8,8 +8,8 @@ Tarih: 29.10.2026 · Dal: `claude/urun-servis-arac-a1f676` · Yöntem: `CLAUDE.m
 | Dalga | Durum |
 |---|---|
 | 1 — Temel ve güven (H1–H8) | **tamamlandı** — takip sayfasındaki kart formu ve sahte ödeme kaldırıldı; SMS sonucu bekleniyor (gönderildi / TEST / gönderilemedi + WhatsApp), bildirim sayfasında durum sütunu; simülasyon Caller ID artık arayan göstermiyor; iade tesliminde parçalar stoğa döner, yalnızca ayarlanan tespit ücreti (varsayılan 0) istenir; onay/iade sürükle-bırakla değil kayıttan; teslim belgesi tarihi düzeldi; teklif ekranında tutarsız toplam gösterilmiyor; kilit kodu maskeli ve teslimde siliniyor. Kanıt: başsız Chrome akış denemesi + 12 sayfa × 3 görünüm turu, konsol hatası yok |
-| 2 — Beklenenler | sırada |
-| 3 — Fark yaratanlar | sırada |
+| 2 — Beklenenler | **tamamlandı** — teslimde e-Arşiv/e-Fatura (e-Fatura bağlantısı açıksa; KDV dahil tutarla), kabulde telefonla müşteri bulma, aynı seri/IMEI garanti içindeyse uyarı ve "garanti dönüşü" kaydı, Özet'te teslim alınmayan cihazlar (3+ gün) ve hatırlatma, parça sipariş listesi (kritik stok + parça bekleyen kayıtlar; CSV / kopyala / WhatsApp) |
+| 3 — Fark yaratanlar | **tamamlandı** — kayıtta cihaz geçmişi (aynı seri/IMEI), teknisyen performansı (ort. süre, garanti dönüş oranı, puan), Özet'te memnuniyet ortalaması ve son yorumlar |
 
 ---
 
