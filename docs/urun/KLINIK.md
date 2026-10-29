@@ -8,7 +8,7 @@ Tarih: 29.10.2026 · Dal: `claude/urun-randevu-uyelik-cfb186` · Yöntem: `CLAUD
 | Dalga | Durum | Kanıt |
 |---|---|---|
 | 1. dalga (H1–H7) | **Tamam** | Simülasyonda KPS → "TEST: Kimlik doğrulama — gerçek gönderim yapılmadı", rozet yazılmadı; e-Reçete işaretliyken reçete numarasız basıldı, kayıt oluşmadı; vadesi geçen taksit SMS'i "2 TEST (gönderilmedi…)"; 375 px'te hasta kartı 375 px (önce 514); 10:15'lik randevu 30 dk aralıklı takvimde görünüyor; sekreter rolünde "Muayene notları yalnızca hekimlere açıktır"; kayıtlı hasta silinmek istenince "Pasif yap" önerildi ve kayıt korundu; KVKK onam düğmesi ve ayar metni |
-| 2. dalga (B1–B3) | sırada | |
+| 2. dalga (B1–B3) | **Tamam** | Özet: "Yarınki randevular" → Hatırlat: "15 TEST (gönderilmedi — SMS sağlayıcısı bağlı değil)", gerçek gönderimde randevu "Hatırlatıldı" olur; "Kontrol zamanı gelenler" (ayar: 6 ay) → WhatsApp / Randevu; randevuya süre alanı, 12:30 randevusuna 12:40 verilince "Hekimin bu saati dolu: 12:30 …" |
 | 3. dalga (F1–F2) | sırada | |
 
 ---
