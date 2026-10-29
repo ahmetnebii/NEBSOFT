@@ -8,6 +8,30 @@ Yöntem: `CLAUDE.md` §2. Kullanıcı tüm dalgaları önceden onayladı ("atlam
 |---|---|---|---|
 | E1 | Ürün etiketi | "Etiket Basımı" sayfası: kendi şablonun (askı 40×60, barkod 50×30, indirim 60×40, mini 30×20 hazır), beden, renk, indirimli + eski fiyat, barkod, logo; tek tek, beden/renk matrisiyle, "stok kadar", barkod okuyucu veya kamerayla seçim; A4 ya da etiket yazıcısı (sürücüyle, şablon ölçüsünde); "fiyatı değişenler" filtresi | Commit `c6d95aa`, tarayıcı (masaüstü + 375 px) |
 
+### 1. dalga — yapılanlar
+| # | Konu | Sonuç | Kanıt |
+|---|---|---|---|
+| H1, H12 | Çift iade | İade/değişim satır ve adet bazında sayılıyor; kalan adet kadar işlem yapılabiliyor, dolan satırda düğmeler kalkıyor ("İade/değişim yapıldı"). Çok adetli satırda adet soruluyor | Tarayıcı: F5010 ikinci kez iade edilemedi |
+| H2 | Süre kuralı | Süresi geçmiş fişte yönetici onayı: yönetici oturumdaysa onay, değilse yönetici PIN'i; onay işlem geçmişine yazılıyor | Tarayıcı (58 gün geçmiş fiş) |
+| H3 | Puan | Satışta kazanılan puan fişe yazılıyor; iadede bu üründen kazanılan puan geri alınıyor; "puan olarak iade" seçeneği; puanla ödenmiş eski satışlarda geri alma yok | Kod + tarayıcı |
+| H4 | SMS | Sağlayıcı bağlı değilse "gönderilmedi, TEST olarak kaydedildi"; bağlıysa sağlayıcı sonucu beklenip gösteriliyor | Kod |
+| H5 | Bilgi fişi | Satış ve değişim fişinde "BİLGİ FİŞİDİR — MALİ DEĞERİ YOKTUR"; parçalı ödemeler ve kazanılan puan fişte | Tarayıcı (fiş metni) |
+| H6 | 10 gün kuralı | Model başına fiyat geçmişi (fiyat/indirim değişince); eski fiyat = liste fiyatı ile indirimden önceki 10 günün en düşüğünden küçük olanı; indirimli fiyat 10 gün içinde zaten uygulandıysa eski fiyat hiç gösterilmiyor (etiket, kasa, ürün listesi); kampanya ve model kaydında uyarı | Tarayıcı: kampanya kapat/aç → "indirim gösterilemez" |
+| H7 | Kampanya | Kampanya modelin kendi indirimini saklıyor, kapanınca geri yüklüyor | Tarayıcı |
+| H8 | Kampanya formu | Tek "Kapsam" listesi ("Sezon: …" / "Kategori: …"); oran 1–90 kontrolü | Tarayıcı |
+| H9 | Eksi stok | Stok eksiye düşebiliyor, matriste kırmızı; online kanala 0 gönderiliyor | Kod |
+| H10 | Demo tarihleri | Demo iadeleri satıştan sonra ve bugünden önce | Kod |
+| H11 | Fiş no | En büyük numara + 1 | Tarayıcı (F5468) |
+| + | Parçalı ödeme | Nakit + kart + havale + puan; toplam eşit olmadan tamamlanmıyor, kalan/fazla canlı gösteriliyor | Tarayıcı |
+| + | Mal kabul | Ürünler > "Mal kabul": model, tedarikçi, irsaliye no, alış fiyatı, beden × renk adetleri → stok + hareket; isteğe bağlı gelen adet kadar etiket | Tarayıcı (5 adet → etiket sayfası) |
+| + | Stok hareketleri | Satış, iade, değişim, sayım, mal kabul kaydı; model stok penceresinde "Hareketler" | Tarayıcı |
+| + | Sepet korunuyor | Kasadan başka sayfaya geçip dönünce sepet kaybolmuyor | Tarayıcı |
+| + | Büyük veri | 3.016 modelde ürün listesi 2,2 sn → 40 ms (satış adetleri bir kez hesaplanıyor, ilk 200 satır); ölü stok raporu ilk 100 | Tarayıcı ölçümü |
+
+Kalite kapısı: `npm test` — 6 test dosyası geçti (XSD: 9 belge uygun); `cloud.test.js` temel committe de aynı hatayla düşüyor
+(bizden bağımsız, `CEKIRDEK-ISTEKLERI-perakende.md`). Konsol hatası yok. 375 px'te yatay taşma yok. Koyu tema yalnızca çekirdek
+sınıflarıyla (ayrı denenmedi; etiket önizlemesi bilerek beyaz kâğıt). `sw.js` sürümü kök dosya olduğu için artırılmadı (Ç8).
+
 Neden yoktu: butik çekirdekteki etiket tasarımcısını (`NS.labels`) hiç kullanmıyordu, sabit bir HTML basıyordu; ayrıca
 `core/integrations.js` → `USED.butik` listesinde etiket yazıcısı olmadığı için Entegrasyonlar sayfasında görünmüyordu
 (çekirdek isteği Ç7, `CEKIRDEK-ISTEKLERI-perakende.md`).

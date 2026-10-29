@@ -2,7 +2,7 @@
 window.BTK = {
   SIZES: { harf: ['XS', 'S', 'M', 'L', 'XL', 'XXL'], numara: ['36', '37', '38', '39', '40', '41'], beden: ['34', '36', '38', '40', '42', '44'], tek: ['STD'] },
   SEASONS: ['2026 İlkbahar-Yaz', '2026 Sonbahar-Kış', 'Sezonsuz (basic)'],
-  PAY: { nakit: 'Nakit', kart: 'Kredi kartı', havale: 'Havale/EFT', puan: 'Puan' },
+  PAY: { nakit: 'Nakit', kart: 'Kredi kartı', havale: 'Havale/EFT', puan: 'Puan', parcali: 'Parçalı', cek: 'İade çeki' },
   // Varyant barkodu: model kodu + beden + renk sırası
   vcode: (m, size, ci) => `${m.code}-${size}-${String(ci + 1).padStart(2, '0')}`,
   ean: (n) => { const b = String(n).padStart(12, '0').slice(0, 12); const s = b.split('').reduce((a, d, i) => a + Number(d) * (i % 2 ? 3 : 1), 0); return b + ((10 - (s % 10)) % 10); },
@@ -31,7 +31,7 @@ window.BTK = {
       sales.push(s);
     }
     db.data.sales = sales;
-    db.data.returns = sales.filter((s, i) => i % 29 === 7 && s.at > addDays(new Date(), -25).toISOString()).map((s) => ({ id: NS.uid(), saleNo: s.no, at: addDays(new Date(s.at), rand(1, 6)).toISOString(), type: pick(['degisim', 'degisim', 'iade']), line: s.lines[0], newLine: null, reason: pick(['Beden uymadı', 'Renk beğenilmedi', 'Vazgeçti']), refund: 0 }));
+    db.data.returns = sales.filter((s, i) => i % 29 === 7 && s.at > addDays(new Date(), -25).toISOString()).map((s) => ({ id: NS.uid(), saleNo: s.no, at: new Date(Math.max(new Date(s.at).getTime() + 6e5, Math.min(Date.now() - 6e5, addDays(new Date(s.at), rand(1, 6)).getTime()))).toISOString(), type: pick(['degisim', 'degisim', 'iade']), line: s.lines[0], newLine: null, reason: pick(['Beden uymadı', 'Renk beğenilmedi', 'Vazgeçti']), refund: 0 }));
     db.data.returns.forEach((r) => { if (r.type === 'iade') r.refund = r.line.price; else { const m = db.data.models.find((x) => x.id === r.line.mid); const v = m.variants.find((x) => x.color === r.line.color && x.size !== r.line.size) || m.variants[0]; r.newLine = { ...r.line, size: v.size, barcode: v.barcode }; } });
     db.data.campaigns = [{ id: NS.uid(), name: 'Sezon sonu %30', type: 'yuzde', value: 30, scope: 'sezon', target: BTK.SEASONS[1], active: true }, { id: NS.uid(), name: '2. üründe %50', type: 'ikinci', value: 50, scope: 'kategori', target: 'Tişört', active: true }];
   },
