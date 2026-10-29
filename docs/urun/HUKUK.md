@@ -1,7 +1,6 @@
 # Hukuk Bürosu — Ürün Spesifikasyonu
 
-> **Durum (29.10.2026):** Kullanıcı tüm programlar için eksiklerin giderilmesini ve ek özellikleri önceden onayladı ("atlama yok").
-> Dalgalar sırayla uygulanıyor; her dalganın sonucu aşağıdaki "Yapılanlar" bölümüne yazılır.
+> **Durum (29.10.2026):** Kullanıcı tüm programlar için eksiklerin giderilmesini ve ek özellikleri önceden onayladı ("atlama yok"). **1., 2. ve 3. dalga tamamlandı.** Canlıya çıkmayı engelleyenler §0'da.
 
 Tarih: 29.10.2026 · Dal: `claude/urun-profesyonel-5c5840` · Yöntem: `CLAUDE.md` §2 · Program: `apps/hukuk/`
 
@@ -30,6 +29,16 @@ Tarih: 29.10.2026 · Dal: `claude/urun-profesyonel-5c5840` · Yöntem: `CLAUDE.m
 | Müvekkil ekstresi | Avans/masraf dökümü ve bakiye, `NS.docs` şablonundan yazdırılır (Belge şablonları'nda düzenlenebilir) | Tarayıcı (yazdırma penceresi açıldı) |
 | Raporlar | Avukat bazında iş yükü, aylık ücret tahsilatı, ücret alacağı, dosya bazında çalışma süresi ve saatlik ücretle dökümü (yazdır) | Tarayıcı |
 | Toplu duruşma hatırlatması | Ajanda > Hatırlat: seçilen günün duruşmaları için müvekkile SMS; sonuç tek tek beklenir, simülasyon "TEST (gönderilmedi)" sayılır | Tarayıcı: "Gönderildi: 0 · TEST: 2" |
+
+## 3. dalga — yapılanlar
+| Konu | Sonuç | Kanıt |
+|---|---|---|
+| Çıkar çatışması kontrolü | Yeni/düzenlenen dosyada karşı taraf büronun müvekkiliyse veya başka dosyada müvekkilimizse onay istenir; yeni müvekkil başka dosyada karşı tarafsa uyarı; dosya ekranında kırmızı uyarı. Ad karşılaştırması büyük/küçük harf, nokta ve şirket eklerinden (A.Ş., Ltd. Şti.) bağımsız | Tarayıcı: "Kurt Lojistik AŞ" ↔ "Kurt Lojistik A.Ş." yakalandı |
+| "Neden bu tarih" | Süre sonucunda uygulanan her adım ve madde; kayıtlı süreler için "Nasıl hesaplandı?" (1. dalgada) | `sure.test.js` |
+| Safahat | Dosya ekranında açılış, duruşma ve kararlar, tebliğler, masraf, avans, ücret, görev ve notlar tek zaman çizelgesinde | Tarayıcı |
+| Portalda yeni yanıt | Müvekkil son ziyaretinden sonra gelen büro yanıtlarını üstte görür | Tarayıcı: "Avukatınızdan 1 yeni yanıt" |
+
+**Büyük veri:** 3.026 dosya, 3.000 duruşma, 3.000 süre, 3.000 masrafla sayfa çizim süreleri: Dosyalar 237 ms, Süre Takibi 309 ms, Ajanda 184 ms, Özet 41 ms, diğerleri < 20 ms.
 
 Kalite kapısı: `npm test` — bulut testi (`cloud.test.js`) bu değişikliklerden **önceki** commit'te de aynı hatayla kırık (Ç7); diğer testler ve GİB XSD testi geçti. `sw.js` sürümü bu oturumun kapsamı dışında (Ç4).
 
