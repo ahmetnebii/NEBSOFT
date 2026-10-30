@@ -41,7 +41,7 @@ Yazma yolları:
 | `market/`, `index.html` | Pazar yeri (hash yönlendirmeli tek sayfa), `market/catalog.js` ürün ve fiyat kaynağı |
 | `site/` | Üretilen statik SEO sayfaları. Elle düzenleme: `site/src/`, `site/tools/` |
 | `admin/` | Platform yönetim paneli |
-| `config/` | `destek-paketleri.json`, `toplu-indirim.json` (örnek fiyatlar) |
+| `config/` | `destek-paketleri.json`, `toplu-indirim.json` (örnek fiyatlar), `bayi.json` (komisyon oranı, boş) |
 | `content/sablonlar/` | Program şablonları |
 | `ic-araclar/nebsoftpazarlama/` | Özel araç, yayına çıkmaz |
 | `scripts/` | `hosting-paketi.js`, `belge-coz.js`, `totp-sifirla.js`, `katalog-off-al.js` |
@@ -69,6 +69,7 @@ Yazma yolları:
 | Dış istek köprüsü | `server/cloud/bridge.js`, `/api/istek` |
 | SEO | `site/tools/build-sites.js`, `site/src/products.js`, `server/cloud/seo.js`, `docs/SEO-KURALLARI.md` |
 | Rehber yazıları | `site/src/rehber/*.md` |
+| Bayilik, veri taşıma, sistem durumu, yenilikler, yol haritası, WhatsApp | `server/cloud/vitrin.js`, `site/tools/guven-sayfalari.js`, `admin/panel-guven.js`, `docs/GUVEN-SAYFALARI.md` |
 | Güvenlik durumu | `docs/GUVENLIK-RAPORU.md` |
 | Söylenebilir iddialar | `docs/IDDIA-LISTESI.md` |
 | Kurulum | `DEPLOY.md`, klasör ayrımı `docs/KLASOR-YAPISI.md` |

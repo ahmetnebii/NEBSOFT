@@ -11,6 +11,9 @@ Derleme sonrası: `node server/test/seo-sayfalar.test.js`. Yeni üst klasör ekl
 | Anahtar kelime adayları | `products.js` sonundaki `ANAHTAR` |
 | Yasal metin | `site/src/yasal/<ad>.md` (`kvkk`, `gizlilik`, `mesafeli-satis`, `iade`, `cerez`) |
 | Rehber yazısı | `site/src/rehber/<slug>.md` |
+| Yenilikler | `site/src/yenilikler.json` (her kayıt bir commit'e bağlı) |
+| Yol haritası | `site/src/yol-haritasi.json` (tarih verilmez) |
+| Bayilik, veri taşıma, sistem durumu | `site/tools/guven-sayfalari.js` |
 | Son değişiklik tarihi | `site/src/lastmod.json` (üretici yazar, elle değiştirmeyin) |
 
 Rehber dosyası biçimi:

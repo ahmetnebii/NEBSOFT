@@ -1,0 +1,19 @@
+{
+  "_aciklama": "Yenilikler sayfasının tek kaynağı. Her kayıt depodaki gerçek bir değişikliğe dayanır: commit alanı o değişikliğin özetidir, sayfada görünmez, test varlığını denetler. Elle kayıt eklerken yapılmayan işi yazmayın. Tarih commit tarihidir.",
+  "kayitlar": [
+    { "tarih": "2026-10-30", "baslik": "Personel rolleri kalan programlarda da sunucuda denetleniyor", "metin": "Hesap rolüne göre yetkiler artık yalnız ekranda değil, sunucuda da uygulanıyor. Yetkili onayı da onaylanan işlem türüne bağlandı.", "commit": "0348d81" },
+    { "tarih": "2026-10-30", "baslik": "Masaüstünde seçilen seri port hatırlanıyor", "metin": "Masaüstü sürümünde seçtiğiniz seri port, program yeniden açıldığında yeniden seçtirilmiyor.", "commit": "f168aa0" },
+    { "tarih": "2026-10-30", "baslik": "Fotoğraflar ayrı dosya deposuna taşındı", "metin": "E-ticaret, Galeri ve Araç Kiralama programlarında fotoğraflar artık işletme belgesinin içinde değil, ayrı depoda duruyor.", "program": "eticaret", "commit": "1365a55" },
+    { "tarih": "2026-10-30", "baslik": "Uydurma sayı ve sabit garanti metinleri kaldırıldı", "metin": "Kaynağı olmayan puan, kullanıcı sayısı ve sabit garanti ifadeleri siteden ve programlardan çıkarıldı.", "commit": "f16a9a9" },
+    { "tarih": "2026-10-30", "baslik": "Eczane programı yeni satışa kapatıldı", "metin": "Mevcut lisanslar çalışmaya ve yenilenmeye devam ediyor, yalnız yeni satış durduruldu.", "commit": "c28d032" },
+    { "tarih": "2026-10-30", "baslik": "Yönetici hesaplarına iki adımlı giriş", "metin": "Yönetim paneline telefon uygulamasından alınan kodla ikinci adım eklendi.", "commit": "d56860e" },
+    { "tarih": "2026-10-30", "baslik": "Hassas program belgeleri şifreli saklanıyor", "metin": "Hassas veri tutan programların belgeleri veritabanında şifreleniyor, personel PIN'i özet olarak saklanıyor.", "commit": "fbae3d1" },
+    { "tarih": "2026-10-30", "baslik": "31 program için 62 rehber yazısı", "metin": "Program seçerken ve işletmeyi düzene koyarken okunacak rehberler yayımlandı.", "commit": "cec719b" },
+    { "tarih": "2026-10-30", "baslik": "Destek paketi, toplu indirim ve kurumsal teklif", "metin": "Destek paketi ve toplu indirim satın alma akışına bağlandı. Çok lisanslı alımlar için teklif formu eklendi.", "commit": "f03d98c" },
+    { "tarih": "2026-10-30", "baslik": "25 ücretsiz araç", "metin": "Hesap açmadan kullanılabilen ücretsiz araçlar /araclar adresinde toplandı.", "commit": "05e6020" },
+    { "tarih": "2026-10-30", "baslik": "Kargo programında Excel'den toplu gönderi", "metin": "Gönderi listesi Excel veya CSV dosyasından alınabiliyor, aynı referans ikinci kez aktarılmıyor.", "program": "kargo", "commit": "0ed2936" },
+    { "tarih": "2026-10-30", "baslik": "Pazaryeri programında Excel aktarımı", "metin": "Ürünler Excel veya CSV dosyasından toplu olarak güncellenebiliyor.", "program": "pazaryeri", "commit": "519c023" },
+    { "tarih": "2026-10-30", "baslik": "Deneme kayıtta hemen başlıyor", "metin": "Ücretsiz deneme için yönetici onayı beklenmiyor.", "commit": "7943ec6" },
+    { "tarih": "2026-10-30", "baslik": "Gönderilmeyen işlem gönderildi görünmüyor", "metin": "Bağlantısı doğrulanmamış işlemler sahte başarı yerine TEST olarak gösteriliyor.", "commit": "6960549" }
+  ]
+}
