@@ -1,6 +1,6 @@
 // Entegrasyon kimlik bilgilerinin korunması (AES-256-GCM, anahtar: NEBSOFT_SECRET veya data/secret.key).
 // Kapsam (program → gizli alanların bulunduğu grup):
-//   entegrasyon → cfg.<tür>.<alan>      pazaryeri → channels.<kanal>.<alan>      pos → qcChannels.<kanal>.<alan>
+//   entegrasyon → cfg.<tür>.<alan>      pazaryeri → channels.<kanal>.<alan>      pos → qcChannels.<kanal>.<alan>      eticaret → mpChannels.<kanal>.<alan>
 // Akış:
 //  • Yazarken (PUT /api/data/:app): gizli alanlar "enc:v1:<base64>" olarak şifrelenir. Program yer tutucuyu (aşağıda) geri gönderirse
 //    mevcut şifreli değer korunur; yeni bir değer yazılmışsa o şifrelenir.
@@ -12,7 +12,7 @@
 const cfg = require('./config');
 const fs = require('fs');
 const path = require('path');
-const GROUPS = { entegrasyon: 'cfg', pazaryeri: 'channels', pos: 'qcChannels' };
+const GROUPS = { entegrasyon: 'cfg', pazaryeri: 'channels', pos: 'qcChannels', eticaret: 'mpChannels' };
 const SECRET = new Set(['pass', 'password', 'secret', 'token', 'apiSecret', 'apiKey', 'hash', 'key', 'clientSecret', 'clientId', 'merchantKey', 'merchantSalt', 'headers']);
 const PFX = 'enc:v1:';
 const TOKEN_RE = /__nsg_([a-z0-9]+)_([a-z0-9]+)_([A-Za-z0-9]+)__/g;

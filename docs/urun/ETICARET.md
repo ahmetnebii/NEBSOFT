@@ -7,11 +7,26 @@
 - **Trendyol iade çekme, durum çekme:** resmî dokümana göre yazıldı (aşağıda §6), satıcı test hesabıyla denenmedi. Dokümanda tarih aralığı sınırı yazmıyor, 14 gün istenir.
 - **Trendyol "tedarik edilemedi":** `reasonId` 500–506 değerlerinin anlamı resmî sayfada yok — DOĞRULANAMADI. Panelden çağrı yapılmaz; iptalde kullanıcıya pazaryeri panelini kullanması söylenir. Bağdaki kod silinmedi.
 - **Hepsiburada:** doküman doğrulanamadı, canlı seçilemez. **Amazon, Pazarama, Çiçeksepeti:** adaptör yok, yalnızca TEST.
-- **Pazaryeri API anahtarları şifresiz:** `mpChannels` içindeki `apiKey` ve `apiSecret`, `server/cloud/secrets.js` `GROUPS` listesinde yok. Tarayıcı denemesinde `app_data` içinde düz metin görüldü; `depo` rolünün okuduğu belgede de duruyor (rol kuralı kod incelendi). Gerçek anahtar girilmeden önce düzeltilmeli.
+- **Pazaryeri API anahtarları:** şifresiz saklama giderildi, ayrıntı aşağıda "Pazaryeri anahtarları şifreli". Kalan iki iş: gerçek n11 ve Trendyol hesabıyla canlı denenmedi; daha önce düz metin girilmiş anahtar, geçiş öncesi alınmış veritabanı yedeklerinde durur, o işletmede anahtar pazaryeri panelinden yenilenmeli.
 - **Kargo firması gönderi API'leri:** DOĞRULANAMADI; takip no elle girilir.
 - **Vitrindeki taksit oranları** (`instTable`): sabit örnek değerler, gerçek banka oranı değil. Kart ödemesi açılmadan önce sağlayıcıdan alınmalı.
 - **Kargo ve kapıda ödeme bedeli KDV oranı %20** (hafızadan, doğrulanmadı): mali müşavire sorulmalı.
 - **e-Arşiv ve iade faturası:** gerçek sağlayıcıyla denenmedi. Gerçek satış faturası olmayan siparişte iade faturası düğmesi çıkmaz; bu yüzden düğme tarayıcıda görülmedi.
+
+## Pazaryeri anahtarları şifreli (31.10.2026)
+
+**Sorun:** `mpChannels` içindeki `apiKey` ve `apiSecret`, `server/cloud/secrets.js` `GROUPS` listesinde yoktu. Bulut hesabında n11 bağlanınca `apiSecret` `app_data.data` içinde düz metin duruyor, API çıktısında dönüyordu.
+
+**Çözüm:**
+- `GROUPS` listesine `eticaret: 'mpChannels'` eklendi. Değer `enc:v1:` ile yazılır, istemciye `__nsg_eticaret_<kanal>_<alan>__` iner, yer tutucu geri gelince şifreli değer korunur. Eski düz kayıt okunur, açılış geçişi (`migrate`) `app_data` ve `app_data_history` satırlarını şifreler.
+- `/api/kanal`: `pazaryeri` ve `pos` ile aynı yol. `live()` yer tutucuyu gönderir, `secrets.resolve` sunucuda çözer, adaptör gerçek değerle gider. Tarayıcıda anahtar yoktur.
+- `depo` rolü: `apiKey` ve `apiSecret` alanları görünümden çıkar (`mpSuz`). Sevkiyat bildirimi, stok gönderimi ve sipariş çekme sürsün diye `live()` alan yoksa bulutta yer tutucu gönderir.
+- `mpChannels` depoya salt okunur, yalnız `lastPull` ve `lastStatusPull` yazılır, o da yalnız zaman damgası biçiminde. Bu kilit şarttır: `secrets.resolve` kanal kaydındaki adresi kayıtlı adres sayar, kilit olmadan depo kendi adresini yazıp anahtarı `/api/istek` ile oraya çözdürebilirdi. Aynı biçim denetimi `pazaryeri` rollerinin `lastStatusPull` alanına da uygulandı.
+- Kanal ayar penceresinde API anahtarı alanı parola alanı oldu; yer tutucu ekranda okunmaz.
+
+**Sınır:** yer tutucunun biçimi tahmin edilebilir, depo hesabı `/api/kanal` üzerinden kayıtlı anahtarla işlem yaptırabilir. Bu bilinçli: rol, değeri görmez ama sevkiyat işini yürütür. Anahtar yalnız adaptörün sabit adresine gider.
+
+**Kanıt:** `server/test/eticaret-anahtar.test.js`, `server/test/rol-kural.test.js` uçtan uca bölümü (gerçek MariaDB, ham satır okunur). Sahte `fetch` ile n11 adaptörünün çözülmüş anahtarla gittiği görüldü; gerçek n11 hesabıyla denenmedi.
 
 ## Pazaryeri tohumu bulut belgesine yazmıyor (30.10.2026)
 

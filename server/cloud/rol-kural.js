@@ -192,7 +192,8 @@ const RULES = {
   // apps/galeri/app.js: seeCost() alış, masraf, kâr ve konsinye ödemesini danışmandan gizler. Danışman takasla araç açabilir, alış değeri yeni kayıtta korunur.
   galeri: { satis: { ad: 'Satış danışmanı', gizle: { vehicles: ['buy', 'expenses', 'ownerPays'] }, yeniYazar: ['vehicles'], silemez: ['vehicles'] } },
   // apps/eticaret/app.js: isAdm() maliyet alanını, ürün silmeyi, iptal ve iade kararını depodan alır; kupon, kategori ve sepet ekranları yöneticide.
-  eticaret: { depo: { ad: 'Depo / sevkiyat', kapat: ['carts'], gizle: { products: ['cost'] }, saltOkunur: ['coupons', 'cats'], silemez: ['products'] } },
+  // Pazaryeri bağlantısı yöneticide: API anahtarı alanları depoya gitmez, kanal kaydını değiştiremez. Sevkiyat bildirimi ve stok gönderimi live() ile sunucudaki anahtarı kullanır, depo yalnız çekim zamanını yazar.
+  eticaret: { depo: { ad: 'Depo / sevkiyat', kapat: ['carts'], gizle: { products: ['cost'] }, saltOkunur: ['coupons', 'cats', 'mpChannels'], silemez: ['products'], suz: (o) => mpSuz(o), sonra: (o, s, b, g) => kanalYaz(o, s, g, 'mpChannels', ['lastPull', 'lastStatusPull']) } },
   // apps/fabrika: OFIS rollerinin ortak ekranları (kontrol paneli OEE'si, stok değeri, malzeme kartı) wo, downtime, moves.cost ve materials.cost kullanır, açık kalır. İzlenebilirlik sevkiyat ve müşteri adı gösterir: müşteri kartı adla sınırlanır.
   // Bakım (maint, plans) ve genel gider (overheads) yalnızca bakım ve maliyet ekranlarında. Teklif (offers) satınalmada. Mal kabul malzemenin ortalama maliyetini yazar (izinli). Operatör yalnızca kendi ekranını görür: ticari koleksiyon gitmez, maliyet gitmez, tüm yazma alan bazlıdır.
   fabrika: {
@@ -323,7 +324,10 @@ const RULES = {
 };
 // Pazaryeri kanal kaydı: bağlantı alanları gerekir, komisyon ve hizmet bedeli kâr hesabıdır
 const kanalSuz = (o) => { if (nesne(o.channels)) o.channels = Object.fromEntries(Object.entries(o.channels).map(([k, v]) => { if (!nesne(v)) return [k, v]; const { commission, fixedFee, payoutDays, ...r } = v; return [k, r]; })); };
-const kanalYaz = (o, s, gelen) => { const g = nesne(gelen.channels) ? gelen.channels : null; if (!g || !nesne(s.channels)) return; o.channels = Object.fromEntries(Object.entries(s.channels).map(([k, v]) => [k, nesne(v) && nesne(g[k]) && g[k].lastStatusPull ? { ...v, lastStatusPull: g[k].lastStatusPull } : v])); };
+const mpSuz = (o) => { if (nesne(o.mpChannels)) o.mpChannels = Object.fromEntries(Object.entries(o.mpChannels).map(([k, v]) => { if (!nesne(v)) return [k, v]; const { apiKey, apiSecret, ...r } = v; return [k, r]; })); };
+// Yalnız zaman damgası kabul edilir: kanal kaydındaki adres, gizli bilginin gönderilebileceği adres sayılır (secrets.js registered)
+const zamanMi = (v) => typeof v === 'string' && /^\d{4}-\d{2}-\d{2}T[\d:.]+Z$/.test(v);
+const kanalYaz = (o, s, gelen, alan = 'channels', izin = ['lastStatusPull']) => { const g = nesne(gelen[alan]) ? gelen[alan] : null; if (!g || !nesne(s[alan])) return; o[alan] = Object.fromEntries(Object.entries(s[alan]).map(([k, v]) => { if (!nesne(v) || !nesne(g[k])) return [k, v]; const n = { ...v }; izin.forEach((f) => { if (zamanMi(g[k][f])) n[f] = g[k][f]; }); return [k, n]; })); };
 // Programlar arası ortak veri: rolü olan hesapta entegrasyon ayarı değişmez, gönderim günlüğü (e-Nabız TEST yükü gibi sağlık verisi taşıyabilir) okunmaz, yalnızca eklenir
 const ORTAK = { entegrasyon: { saltOkunur: ['cfg'], ekle: ['log'] } };
 
