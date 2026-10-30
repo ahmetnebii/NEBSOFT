@@ -40,6 +40,19 @@ function fiyatKatalogDefault(id) { return cat.load().products.find((p) => p.id =
 { cat.setOverrides({ crm: { hidden: true } }); const m = paket.fiyat(pk('oto-sanayi')); assert.strictEqual(m.satista, false); assert.deepStrictEqual([...m.eksik], ['crm']); assert.deepStrictEqual(m.planlar, []); assert.ok(paket.dogrula().length); cat.setOverrides({}); ok('Program gizlenince paket satıştan düşer'); }
 assert.strictEqual(paket.yazi(2583), '2.583'); assert.strictEqual(paket.yazi(1347.3), '1.347,30'); ok('Tutar yazımı');
 
+// ---------- Öneri sihirbazı ----------
+{
+  const O = paket.oner({ sektor: 'guzellik', calisan: '3-10', ihtiyac: 'hepsi' }); assert.strictEqual(O.paket.id, 'guzellik'); assert.strictEqual(O.plan, 1); assert.deepStrictEqual(O.programlar.map((x) => x.id), ['randevu', 'pos', 'muhasebe']); assert.deepStrictEqual(O.aylik, paket.fiyat(pk('guzellik')).planlar[1].aylik); ok('Tüm işler: paketin tamamı ve sepetle aynı tutar');
+  const T = paket.oner({ sektor: 'oto-sanayi', calisan: '1-2', ihtiyac: 'is' }); assert.strictEqual(T.tek, true); assert.strictEqual(T.plan, 0); assert.deepStrictEqual(T.programlar.map((x) => x.id), ['otoservis']); assert.strictEqual(T.aylik.indirim, null); assert.strictEqual(T.aylik.net, cat.product('otoservis').prices[0]); ok('Günlük iş: yalnız ana program, indirim yok');
+  const E = paket.oner({ sektor: 'oto-sanayi', calisan: '11+', ihtiyac: 'personel' }); assert.strictEqual(E.eklenen, 'ik'); assert.strictEqual(E.plan, 2); assert.strictEqual(E.programlar.length, 4); ok('Pakette olmayan ihtiyaç programı eklenir');
+  const V = paket.oner({ sektor: 'oto-sanayi', calisan: '3-10', ihtiyac: 'para' }); assert.strictEqual(V.eklenen, null); assert.strictEqual(V.programlar.length, 3); ok('Pakette olan ihtiyaç tekrar eklenmez');
+  assert.deepStrictEqual(paket.oner({ sektor: 'diger', calisan: '1-2', ihtiyac: 'hepsi' }), { paket: null, satista: false }); ok('Listede olmayan sektöre paket uydurulmaz');
+  for (const b of [{ sektor: 'yok', calisan: '1-2', ihtiyac: 'hepsi' }, { sektor: 'spor', calisan: '5', ihtiyac: 'hepsi' }, { sektor: 'spor', calisan: '1-2', ihtiyac: 'toString' }, { sektor: 'spor', calisan: '__proto__', ihtiyac: 'hepsi' }]) assert.throws(() => paket.oner(b), (e) => e.status === 400); ok('Geçersiz seçim 400 döner');
+  assert.strictEqual(paket.oner({ sektor: 'kurumsal', calisan: '1-2', ihtiyac: 'hepsi', fiyat: 1 }).aylik.liste, paket.fiyat(pk('kurumsal')).planlar[0].aylik.liste); ok('Öneri tutarı istemciden etkilenmez');
+  assert.deepStrictEqual([...cat.load().plans].map((x) => x.users).slice(0, 2), ['2 kullanıcı', '10 kullanıcı']); ok('Çalışan aralıkları plan kullanıcı sayısına uyar');
+  cat.setOverrides({ crm: { hidden: true } }); const G = paket.oner({ sektor: 'oto-sanayi', calisan: '1-2', ihtiyac: 'hepsi' }); assert.strictEqual(G.satista, false); assert.strictEqual(G.aylik, undefined); cat.setOverrides({}); ok('Satışta olmayan paket önerilmez');
+}
+
 // ---------- Sayfa metni ----------
 const KELIME = (s) => s.toLocaleLowerCase('tr').match(/[\p{L}\d]+/gu) || [];
 const anaMetin = (h) => ((/<main[\s\S]*?<\/main>/.exec(h) || [''])[0]).replace(/<(script|style)[\s\S]*?<\/\1>/g, ' ').replace(/<[^>]+>/g, ' ').replace(/&[a-z#0-9]+;/gi, ' ');
@@ -77,6 +90,7 @@ const iste = (port, yol) => new Promise((tamam, no) => { http.get({ host: '127.0
     const r = await iste(port, '/api/paketler'); assert.strictEqual(r.s, 200); const j = JSON.parse(r.b); assert.strictEqual(j.paketler.length, 24); assert.deepStrictEqual(j.paketler.find((x) => x.id === 'oto-sanayi').planlar, paket.fiyat(pk('oto-sanayi')).planlar); ok('/api/paketler veritabanısız da fiyat döner');
     assert.strictEqual((await iste(port, '/paketler')).h.location, '/paketler/'); assert.strictEqual((await iste(port, '/paketler/oto-sanayi')).h.location, '/paketler/oto-sanayi/'); assert.strictEqual((await iste(port, '/site/paketler/oto-sanayi/')).h.location, '/paketler/oto-sanayi/'); ok('Kanonik olmayan adresler 301 ile yönlenir');
     const s = await iste(port, '/paketler/oto-sanayi/'); assert.strictEqual(s.s, 200); assert(s.b.includes(`data-pk="oto-sanayi:1:net">${paket.yazi(f.net)}<`)); assert((await iste(port, '/paketler/')).s === 200); ok('Sayfa sunucudan tutarıyla açılır');
+    const o = await iste(port, '/api/paketler/oner?sektor=guzellik&calisan=1-2&ihtiyac=hepsi'); assert.strictEqual(o.s, 200); assert.strictEqual(JSON.parse(o.b).paket.id, 'guzellik'); assert.strictEqual((await iste(port, '/api/paketler/oner?sektor=yok&calisan=1-2&ihtiyac=hepsi')).s, 400); assert.strictEqual((await iste(port, '/paketler/hangi-program')).h.location, '/paketler/hangi-program/'); const h = await iste(port, '/paketler/hangi-program/'); assert.strictEqual(h.s, 200); assert(!/noindex/.test(h.b)); ok('Sihirbaz sayfası ve öneri ucu çalışır');
     assert.strictEqual((await iste(port, '/market/paketler.js')).s, 200); assert((await iste(port, '/index.html')).b.includes('market/paket-ek.js')); ok('Pazar yeri paket dosyalarını yükler');
   } finally { ch.kill(); }
   console.log(`\n${n} kontrol geçti`);

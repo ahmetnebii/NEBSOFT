@@ -68,7 +68,7 @@ Gövde: başlık, liste, paragraf, tablo. Ham HTML kabul edilmez.
 | Hepsi | Organization, WebSite, BreadcrumbList |
 | Program | SoftwareApplication (AggregateOffer), FAQPage |
 | Rehber | BlogPosting, FAQPage (soru varsa) |
-| Hazır paket | ItemList, FAQPage. Fiyat şemaya yazılmaz |
+| Hazır paket (sektör sayfası da budur) | ItemList, FAQPage. Fiyat şemaya yazılmaz |
 | Fiyatlar | FAQPage |
 | Yasal | WebPage |
 

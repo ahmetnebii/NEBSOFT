@@ -28,6 +28,18 @@ Tasarım kararları:
 - **Sepette Hepsi Bir Arada varsa paket eklenmez.** Aynı programlar için iki kez ödeme yapılmasın diye.
 - **Plan seçimi pakette tektir.** Tüm programlar aynı planla eklenir, sepette program başına değiştirilebilir.
 
+## Öneri sihirbazı ve sektör sayfaları
+
+**Sihirbaz:** `/paketler/hangi-program/`. Üç soru sorar, karar ve tutar sunucudan gelir (`paket.oner`, `GET /api/paketler/oner`). Kişisel veri istemez, cevap kaydedilmez.
+
+- Sektör paketi seçer, çalışan sayısı planı seçer (1-2 Başlangıç, 3-10 Profesyonel, 11+ Kurumsal).
+- İhtiyaç "hepsi" ise paketin tamamı, "günlük iş" ise yalnız ana program önerilir. Fatura, müşteri veya personel ihtiyacı pakette yoksa ilgili program eklenir.
+- "Listede yok" seçilince paket uydurulmaz, programlara ve iletişime yönlendirilir.
+- Deneme `/#/kayit/<ana program>` ile başlar. **Deneme program başınadır**, bu yüzden ana programla başlar ve sonuç ekranı bunu yazar.
+- Sepete ekleme `#/paket-sepet/<paket>/<plan>/<programlar>` ile olur. Adres yalnız program listesi taşır, tutar yine sepette sunucudan gelir.
+
+**Sektör sayfaları ayrı adres olarak açılmadı.** Paket sayfası zaten sorun, çözüm, paket ve fiyatı tek sayfada anlatıyordu, ikinci adres kopya olurdu. `/paketler/<id>/` sayfalarının başlığı ve H1'i sektör aramasına göre değiştirildi (ör. "Kuaför yazılımı"). Terimler program sayfalarının hedefiyle çakışmayacak şekilde seçildi: bu yüzden "oto bakım yazılımı", "dağıtım yazılımı" gibi. Terimler adaydır, arama hacmi verisi yoktur.
+
 ## Üst menü düzeltmesi
 
 Giriş yapılmamış pazar yeri üst menüsü bu işten önce de 1.200 piksellik alana sığmıyor, sayfayı yana taşırıyordu (1.440 px pencerede "Paketler" ile 1.493 px ölçüldü, bağlantının kendi payı 90 px kadar; yani eklemeden önce de yaklaşık 1.400 px idi). "Paketler" bağlantısı bunu büyüttüğü için düzeltildi: menü alanı 1.320 px oldu, bağlantılar sıkılaştı, 1.320 px altında menü düğmesi görünür, "Ücretsiz araçlar" bağlantısı "Araçlar" oldu. Statik sayfa üst menüsü de 1.320 px altında sıkılaştı. 1.125, 1.325 ve 1.440 px genişlikte taşma kalmadı.
@@ -42,12 +54,14 @@ Giriş yapılmamış pazar yeri üst menüsü bu işten önce de 1.200 piksellik
 ## Doğrulama (2026-10-30)
 
 - `npm test`: geçti, GİB XSD testi dahil (atlanmadı).
-- `node server/test/paket.test.js`: 21 kontrol geçti. Sayfalar arası en yüksek üçlü kelime örtüşmesi %28.
+- `node server/test/paket.test.js`: 31 kontrol geçti. Sayfalar arası en yüksek üçlü kelime örtüşmesi %28.
 - `node server/test/seo-sayfalar.test.js`: geçti.
 - Tarayıcıda, gerçek bulut kipinde (MariaDB, ayrı veritabanı): paket ekranı → sepet → giriş → ödeme ekranı. Oto Sanayi, Profesyonel, aylık: 2.870 ₺, %10 indirim 287 ₺, KDV 516,60 ₺, toplam 3.099,60 ₺. Paket ekranı, sepet ve ödeme ekranı aynı tutarı gösterdi.
 - Sahte tutar: `/api/orders/quote` isteğine `price: 1`, `total: 1`, `discount: 999` eklendi, sunucu yok saydı.
 - Yönetim paneli ayarı: `crm` fiyatı değişince `/paketler/oto-sanayi/` yeni tutarı gösterdi. `crm` gizlenince satıştaki paket 24'ten 16'ya indi.
 - Telefon genişliği (375 px), koyu tema, boş arama, fiyat alınamama ve yeniden deneme durumları denendi, yatay taşma ve konsol hatası yok.
+- Sihirbaz tarayıcıda telefon genişliğinde denendi: geri, baştan başla, hata ve yeniden deneme, "Listede yok", tek program ve program ekleme sonuçları. Oto Sanayi + Personel, 3-10 kişi: 3.660 ₺, %10 ile 3.294 ₺/ay, KDV dahil 3.952,80 ₺. Sepet aynı tutarı gösterdi.
+- Bulut kipinde sihirbazdaki deneme bağlantısı kayıtlı hesabı Oto Servis deneme programına taşıdı.
 - Ödeme onayı denenmedi: test veritabanında banka hesabı tanımlı değildi, ödeme adımında durdu.
 
 ## Birleştirme notu

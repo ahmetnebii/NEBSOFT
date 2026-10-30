@@ -323,7 +323,7 @@ const pkUrun = (id) => PRODUCTS.find((x) => x.id === id);
 const pkKademe = () => indirim.load().programSayisi.slice().sort((a, b) => a.min - b.min).map((t) => `${t.min} programda %${t.yuzde}`).join(', ');
 const pkTutar = (p, i, alan) => { const t = p.f.planlar[i].aylik; return `<span data-pk="${p.id}:${i}:${alan}">${alan === 'yuzde' ? (t.indirim ? t.indirim.yuzde : 0) : paket.yazi(t[alan])}</span>`; };
 function paketDizin() {
-  const url = `${D}/paketler/`; const title = `Hazır Paketler — Sektörünüze Uygun Program Grupları | ${CFG.brand}`;
+  const url = `${D}/paketler/`; const title = `Sektör Yazılımları ve Hazır Paketler | ${CFG.brand}`;
   const desc = `Oto sanayiden restorana, kuaförden hukuk bürosuna ${PK.length} sektör için hazır program paketi. Tek tıkla sepete ekleyin, toplu indirim kendiliğinden uygulansın.`;
   const faq = [['Paket ile Hepsi Bir Arada arasındaki fark nedir?', 'Hazır paket, sektörünüze uygun birkaç programı içerir. Hepsi Bir Arada ise tüm programları tek abonelikte sunar. Birkaç programa ihtiyacınız varsa paket, çok sayıda programa ihtiyacınız varsa Hepsi Bir Arada daha uygun olabilir.'], ['Paketten program çıkarabilir miyim?', 'Evet. Paket sepete programları tek tek ekler. İstemediğinizi sepetten çıkarırsınız, indirim kalan program sayısına göre yeniden hesaplanır.'], ['Paketteki programlar birbirine veri aktarır mı?', 'Hayır. Her program kendi verisini tutar, otomatik aktarım yoktur. Hepsine aynı hesapla girersiniz.'], ['Toplu indirim nasıl hesaplanır?', `Sepetteki program sayısına göre: ${pkKademe()}. Şube veya lisans sayısından daha yüksek bir indirim doğarsa o geçerlidir, kuponla birleşmez.`]];
   const schema = [KIRINTI([[CFG.brand, D + '/'], ['Hazır paketler', url]]), { '@context': 'https://schema.org', '@type': 'ItemList', name: 'Hazır paketler', itemListElement: PK.map((p, i) => ({ '@type': 'ListItem', position: i + 1, url: `${url}${p.id}/`, name: `${p.ad} paketi` })) }, SSS(faq)];
@@ -334,9 +334,10 @@ ${SITEHEAD('')}
 <main id="ana">
 <section class="s"><div class="w">
   <nav class="crumb" aria-label="Konum"><a href="/">${CFG.brand}</a> / Hazır paketler</nav>
-  <h1 class="doc-h1">Sektörünüze göre hazır paketler</h1>
+  <h1 class="doc-h1">Sektörünüze göre yazılım paketleri</h1>
   <p class="lead">${esc(desc)}</p>
-  <div class="pkgrid">${PK.map((p) => `<a class="pkcard" href="/paketler/${p.id}/" style="--c:${p.accent}"><b>${esc(p.ad)} paketi</b><span class="pkkim">${esc(p.kim)}</span><span class="pkpr">${p.programlar.map((x) => `<i>${esc(pkAd(x))}</i>`).join('')}</span><em>${pkTutar(p, 1, 'net')} ₺/ay · %${pkTutar(p, 1, 'yuzde')} indirimli · İncele →</em></a>`).join('')}</div>
+  <p class="cta"><a class="btn p" href="/paketler/hangi-program/">Bana hangi program uygun? ${I.arrow}</a></p>
+  <div class="pkgrid">${PK.map((p) => `<a class="pkcard" href="/paketler/${p.id}/" style="--c:${p.accent}"><b>${esc(bas(p.m.kw))}</b><span class="pkkim">${esc(p.ad)} paketi · ${esc(p.kim)}</span><span class="pkpr">${p.programlar.map((x) => `<i>${esc(pkAd(x))}</i>`).join('')}</span><em>${pkTutar(p, 1, 'net')} ₺/ay · %${pkTutar(p, 1, 'yuzde')} indirimli · İncele →</em></a>`).join('')}</div>
   <p class="note">Tutarlar Profesyonel plan içindir, aylıktır, KDV hariçtir ve toplu indirim dahildir. Plan seçimi paket sayfasındadır, kesin tutar sepette hesaplanır. Toplu indirim: ${pkKademe()}.</p>
   <div class="final" style="margin-top:56px"><div><h2>Sektörünüz listede yok mu?</h2><p>Programları tek tek seçebilir ya da tüm programları Hepsi Bir Arada ile kullanabilirsiniz. Karar veremediyseniz bizi arayın.</p></div>
   <div class="cta" style="margin:0"><a class="btn p" href="/programlar">Programları inceleyin ${I.arrow}</a><a class="btn" href="${telHref}">${I.phone} ${esc(CFG.phone)}</a></div></div>
@@ -364,7 +365,7 @@ ${SITEHEAD('')}
 <section class="hero"><div class="w">
   <div>
     <nav class="crumb" aria-label="Konum"><a href="/">${CFG.brand}</a> / <a href="/paketler/">Hazır paketler</a> / ${esc(p.ad)}</nav>
-    <span class="eyebrow" style="margin-top:22px">${esc(ad)}</span>
+    <span class="eyebrow" style="margin-top:22px">${esc(ad)} · ${esc(p.kim)}</span>
     <h1>${esc(m.h1)}</h1>
     <p class="lead">${esc(m.lead)}</p>
     <div class="cta"><a class="btn p" href="${buy()}">Paketi sepete ekle ${I.arrow}</a><a class="btn" href="#fiyat">Fiyatları görün</a></div>
@@ -381,7 +382,7 @@ ${SITEHEAD('')}
 <section class="s" id="programlar"><div class="w">
   <div class="sh"><span class="eyebrow">Pakette neler var?</span><h2>${esc(ad)} içindeki ${p.programlar.length} program</h2></div>
   <div class="pkrol">${p.programlar.map((x) => `<a href="/${pkUrun(x).slug}" style="--c:${(CAT.products.find((y) => y.id === x) || {}).accent}"><b>${esc(pkAd(x))}</b><span>${esc(m.roller[x])}</span><em>Programı inceleyin →</em></a>`).join('')}</div>
-  <p class="note">Her program kendi verisini tutar, programlar arasında otomatik veri aktarımı yoktur. <a href="/paketler/#sss">Paketler nasıl çalışır?</a></p>
+  <p class="note">Her program kendi verisini tutar, programlar arasında otomatik veri aktarımı yoktur. <a href="/paketler/#sss">Paketler nasıl çalışır?</a> Emin değilseniz <a href="/paketler/hangi-program/">üç soruda size uygun programı bulun</a>.</p>
 </div></section>
 
 <section class="s alt" id="fiyat"><div class="w">
@@ -401,6 +402,75 @@ ${faqHtml(faq, `${ad} hakkında merak edilenler`, false)}
 </main>
 ${SITEFOOT()}
 <div class="sticky-cta"><a class="btn" href="#fiyat">Fiyatlar</a><a class="btn p" href="${buy()}">Sepete ekle</a></div>
+</body>
+</html>
+`;
+}
+
+// ---------- Öneri sihirbazı (/paketler/hangi-program/) ----------
+// Karar ve tutar sunucudadır (/api/paketler/oner). Sektör düğmeleri gerçek bağlantıdır: betik çalışmazsa ziyaretçi paket sayfasına gider.
+function sihirbazSayfa() {
+  const url = `${D}/paketler/hangi-program/`; const title = `Bana Hangi Program Uygun? Üç Soruda Öneri | ${CFG.brand}`;
+  const desc = `Sektörünüzü, çalışan sayınızı ve önceliğinizi seçin; işletmenize uygun programı ve güncel fiyatını üç soruda görün. Üyelik gerekmez.`;
+  const faq = [['Öneri nasıl belirleniyor?', 'Sektörünüz hazır paketi, çalışan sayınız planı, önceliğiniz ise pakete eklenecek veya pakette kalacak programları belirler. Kural sabittir, kişisel veri istenmez.'], ['Gördüğüm fiyat kesin mi?', 'Fiyat sepetle aynı kuraldan, o anki katalog ve toplu indirimden hesaplanır. Sepette kupon veya şube indirimi varsa son tutar değişebilir.'], ['Önerilen programı denemek için ödeme gerekir mi?', `Hayır. Hesap açmak ücretsizdir, her programı ${CFG.trialDays} gün ücretsiz deneyebilirsiniz.`], ['Cevaplarım kaydediliyor mu?', 'Cevaplar yalnızca öneriyi hesaplamak için sunucuya gönderilir, hesabınızla ilişkilendirilmez ve sonuç kaydedilmez.']];
+  const secenek = (ad, L) => `<div class="sb-sec">${L.map(([v, t, s]) => `<button type="button" data-${ad}="${v}"><b>${esc(t)}</b>${s ? `<small>${esc(s)}</small>` : ''}</button>`).join('')}</div>`;
+  const adim = (n, soru, ic, gizli) => `<section class="sb-adim" data-adim="${n}"${gizli ? ' hidden' : ''}><p class="sb-say">Soru ${n} / 3</p><h2 tabindex="-1">${esc(soru)}</h2>${ic}${n > 1 ? '<button type="button" class="btn sb-geri" data-geri>Geri</button>' : ''}</section>`;
+  const sektorler = `<div class="sb-sec sb-sektor">${PK.map((p) => `<a href="/paketler/${p.id}/" data-sektor="${p.id}"><b>${esc(p.ad)}</b><small>${esc(p.kim)}</small></a>`).join('')}<a href="/programlar" data-sektor="diger"><b>Listede yok</b><small>Programları birlikte seçelim</small></a></div>`;
+  return `${HEAD({ title, desc, url, schema: [KIRINTI([[CFG.brand, D + '/'], ['Hazır paketler', `${D}/paketler/`], ['Hangi program uygun?', url]]), SSS(faq)] })}
+<body>
+<a class="skip" href="#ana">İçeriğe geç</a>
+${SITEHEAD('')}
+<main id="ana">
+<section class="s"><div class="w sb-w">
+  <nav class="crumb" aria-label="Konum"><a href="/">${CFG.brand}</a> / <a href="/paketler/">Hazır paketler</a> / Hangi program uygun?</nav>
+  <h1 class="doc-h1">Bana hangi program uygun?</h1>
+  <p class="lead">Üç soruyu cevaplayın, işletmenize uygun programı ve güncel fiyatını görün. Üyelik veya iletişim bilgisi istemiyoruz.</p>
+  <div class="sb" id="sb">
+    ${adim(1, 'İşletmeniz hangi alanda çalışıyor?', sektorler)}
+    ${adim(2, 'Programı kaç kişi kullanacak?', secenek('calisan', [['1-2', '1-2 kişi', 'Küçük işletme'], ['3-10', '3-10 kişi', 'Büyüyen ekip'], ['11+', '11 ve üzeri', 'Çok kullanıcı veya çok şube']]), true)}
+    ${adim(3, 'Öncelikli ihtiyacınız ne?', secenek('ihtiyac', [['hepsi', 'İşletmemin tümünü düzene sokmak', 'Sektör paketinin tamamı'], ['is', 'Günlük işleri takip etmek', 'Yalnız ana program'], ['para', 'Fatura, cari ve kasa', 'Ön Muhasebe öne çıkar'], ['musteri', 'Müşteri ve teklif takibi', 'CRM öne çıkar'], ['personel', 'Puantaj ve bordro', 'Personel programı öne çıkar']]), true)}
+    <section class="sb-adim" id="sb-son" hidden aria-live="polite"></section>
+  </div>
+  <noscript><p class="note">Sihirbaz için JavaScript gerekir. Yukarıdaki sektör bağlantılarından paketinizi doğrudan açabilirsiniz.</p></noscript>
+</div></section>
+${faqHtml(faq, 'Öneri sihirbazı hakkında', true)}
+</main>
+${SITEFOOT()}
+<script>
+(function () {
+  var kok = document.getElementById('sb'), son = document.getElementById('sb-son'), adimlar = [].slice.call(kok.querySelectorAll('[data-adim]')), S = {}, simdi = 1;
+  var esc = function (s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); };
+  var tl = function (n) { return new Intl.NumberFormat('tr-TR', { minimumFractionDigits: n % 1 ? 2 : 0, maximumFractionDigits: 2 }).format(n) + ' ₺'; };
+  function goster(n) { simdi = n; son.hidden = true; adimlar.forEach(function (a) { var on = Number(a.dataset.adim) === n; a.hidden = !on; if (on) a.querySelector('h2').focus({ preventScroll: true }); }); }
+  function sonuc(html) { adimlar.forEach(function (a) { a.hidden = true; }); son.hidden = false; son.innerHTML = html; }
+  var bas = '<button type="button" class="btn sb-geri" data-bas>Baştan başla</button>';
+  function ciz(r) {
+    if (!r.paket) return sonuc('<h2>Size özel seçelim</h2><p>Sektörünüz hazır paketlerde yok. Programları inceleyebilir ya da bize yazabilirsiniz, işletmenize uygun olanı birlikte seçelim.</p><div class="cta"><a class="btn p" href="/programlar">Programları inceleyin</a><a class="btn" href="/#/iletisim">Bize yazın</a></div>' + bas);
+    if (!r.satista) return sonuc('<h2>' + esc(r.paket.ad) + ' paketi şu an satışta değil</h2><p>Paketteki programları tek tek inceleyebilirsiniz.</p><div class="cta"><a class="btn p" href="/programlar">Programları inceleyin</a></div>' + bas);
+    var t = r.aylik, ana = r.programlar[0], ids = r.programlar.map(function (x) { return x.id; }).join(',');
+    sonuc('<p class="sb-say">Size önerimiz</p><h2>' + (r.tek ? esc(ana.ad) : esc(r.paket.ad) + ' paketi' + (r.eklenen ? ' + ' + esc(r.programlar[r.programlar.length - 1].ad) : '')) + '</h2>'
+      + '<ul class="sb-neden">' + r.neden.map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ul>'
+      + '<div class="sb-pr">' + r.programlar.map(function (x) { return '<div><b>' + esc(x.ad) + '</b><span>' + esc(x.tanim) + '</span></div>'; }).join('') + '</div>'
+      + '<div class="sb-fiyat"><span>' + esc(r.planAd) + ' planı</span>' + (t.indirim ? '<s>' + tl(t.liste) + '</s>' : '') + '<b>' + tl(t.net) + ' <small>/ay, KDV hariç</small></b>' + (t.indirim ? '<em>%' + t.indirim.yuzde + ' toplu indirim dahil</em>' : '') + '<small>KDV dahil ' + tl(t.toplam) + '. Yıllık ödemede ' + tl(r.yillik.net) + ', KDV hariç.</small></div>'
+      + '<div class="cta"><a class="btn p" href="/#/kayit/' + encodeURIComponent(ana.id) + '">' + esc(ana.ad) + ' programını ${CFG.trialDays} gün ücretsiz deneyin</a><a class="btn" href="/#/paket-sepet/' + encodeURIComponent(r.paket.id) + '/' + r.plan + '/' + encodeURIComponent(ids) + '">Sepete ekle</a></div>'
+      + '<p class="note">Deneme ana programla başlar, diğerlerini hesabınızdan ayrıca deneyebilirsiniz. <a href="/paketler/' + encodeURIComponent(r.paket.id) + '/">' + esc(r.paket.ad) + ' paketini inceleyin</a>.</p>' + bas);
+    son.querySelector('h2').setAttribute('tabindex', '-1'); son.querySelector('h2').focus({ preventScroll: true });
+  }
+  function sor() {
+    sonuc('<p>Öneriniz hesaplanıyor...</p>');
+    fetch('/api/paketler/oner?' + new URLSearchParams(S)).then(function (r) { return r.json().then(function (j) { if (!r.ok || !j.ok) throw new Error(j.error); return j; }); }).then(ciz).catch(function () { sonuc('<h2>Öneri şu an hesaplanamadı</h2><p>Bağlantınızı kontrol edip yeniden deneyin ya da paketleri kendiniz inceleyin.</p><div class="cta"><button type="button" class="btn p" data-tekrar>Yeniden dene</button><a class="btn" href="/paketler/">Paketleri görün</a></div>' + bas); });
+  }
+  kok.addEventListener('click', function (e) {
+    var b = e.target.closest('[data-sektor],[data-calisan],[data-ihtiyac],[data-geri],[data-bas],[data-tekrar]'); if (!b) return;
+    if (b.dataset.sektor) { e.preventDefault(); S.sektor = b.dataset.sektor; if (S.sektor === 'diger') { S.calisan = '1-2'; S.ihtiyac = 'hepsi'; return sor(); } return goster(2); }
+    if (b.dataset.calisan) { S.calisan = b.dataset.calisan; return goster(3); }
+    if (b.dataset.ihtiyac) { S.ihtiyac = b.dataset.ihtiyac; return sor(); }
+    if (b.hasAttribute('data-geri')) return goster(simdi - 1);
+    if (b.hasAttribute('data-tekrar')) return sor();
+    S = {}; goster(1);
+  });
+})();
+</script>
 </body>
 </html>
 `;
@@ -450,8 +520,9 @@ yaz('/kayit/', 'kayit', kayitSayfa(), { noindex: true });
 const rehberCikti = path.join(SITE, 'rehber');
 if (fs.existsSync(rehberCikti)) for (const d of fs.readdirSync(rehberCikti)) if (fs.statSync(path.join(rehberCikti, d)).isDirectory() && !REHBER.some((r) => r.slug === d)) { fs.rmSync(path.join(rehberCikti, d), { recursive: true }); delete LM[`/rehber/${d}/`]; }
 // Silinen paketlerin eski çıktısı kalmasın
-{ const d = path.join(SITE, 'paketler'); if (fs.existsSync(d)) for (const x of fs.readdirSync(d)) if (fs.statSync(path.join(d, x)).isDirectory() && !PK.some((p) => p.id === x)) { fs.rmSync(path.join(d, x), { recursive: true }); delete LM[`/paketler/${x}/`]; } }
+{ const d = path.join(SITE, 'paketler'); if (fs.existsSync(d)) for (const x of fs.readdirSync(d)) if (fs.statSync(path.join(d, x)).isDirectory() && x !== 'hangi-program' && !PK.some((p) => p.id === x)) { fs.rmSync(path.join(d, x), { recursive: true }); delete LM[`/paketler/${x}/`]; } }
 yaz('/paketler/', 'paketler', paketDizin());
+yaz('/paketler/hangi-program/', path.join('paketler', 'hangi-program'), sihirbazSayfa());
 for (const p of PK) yaz(`/paketler/${p.id}/`, path.join('paketler', p.id), paketSayfa(p), { tur: 'paket' });
 yaz('/rehber/', 'rehber', rehberDizin());
 for (const r of REHBER) yaz(`/rehber/${r.slug}/`, path.join('rehber', r.slug), rehberSayfa(r), { tur: 'rehber', updated: r.updated });

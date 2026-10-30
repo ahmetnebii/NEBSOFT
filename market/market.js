@@ -433,7 +433,7 @@
   }
 
   // ---------- Hazır paketler (ekran: market/paket-ek.js) ----------
-  const paketCtx = () => ({ addPaket, prod, urunHref, plans: C.plans, bulut: () => !!CL, trial: TRIAL });
+  const paketCtx = () => ({ addPaket, addCart, prod, urunHref, plans: C.plans, bulut: () => !!CL, trial: TRIAL });
 
   // ---------- Fiyatlar ----------
   function pricingPage(el) {
@@ -1003,7 +1003,7 @@
   }
 
   // ---------- Yönlendirme ----------
-  const ROUTES = { kayit: (el) => noAccountSystem(el), '': home, programlarim: appsPage, sifre: forgotPage, indir: downloadPage, giris: (el) => (me() ? (location.hash = '#/programlarim') : loginPage(el)), urunler: catalogPage, urun: productPage, paketler: (el) => window.NB_PAKET.liste(el, paketCtx()), paket: (el, p) => window.NB_PAKET.detay(el, p, paketCtx()), fiyatlar: pricingPage, sektorler: sectorsPage, eklentiler: (el) => window.NB_EK.store(el, ekCtx()), websitem: (el) => (!CL || me() ? window.NB_EK.builder(el, ekCtx()) : (location.hash = '#/giris')), yardim: (el, p) => window.NB_YARDIM.sayfa(el, p), sepet: cartPage, odeme: checkoutPage, basarili: successPage, hesabim: accountPage, iletisim: contactPage, yasal: legalPage, yonetim: adminPage };
+  const ROUTES = { kayit: (el) => noAccountSystem(el), '': home, programlarim: appsPage, sifre: forgotPage, indir: downloadPage, giris: (el) => (me() ? (location.hash = '#/programlarim') : loginPage(el)), urunler: catalogPage, urun: productPage, paketler: (el) => window.NB_PAKET.liste(el, paketCtx()), paket: (el, p) => window.NB_PAKET.detay(el, p, paketCtx()), 'paket-sepet': (el, p) => window.NB_PAKET.sepet(p, paketCtx()), fiyatlar: pricingPage, sektorler: sectorsPage, eklentiler: (el) => window.NB_EK.store(el, ekCtx()), websitem: (el) => (!CL || me() ? window.NB_EK.builder(el, ekCtx()) : (location.hash = '#/giris')), yardim: (el, p) => window.NB_YARDIM.sayfa(el, p), sepet: cartPage, odeme: checkoutPage, basarili: successPage, hesabim: accountPage, iletisim: contactPage, yasal: legalPage, yonetim: adminPage };
   const ekCtx = () => ({ cloud: () => CL, addCart: (pid) => addCart(pid, 0, 'aylik'), me });
   const TITLES = { yardim: 'Yardım merkezi', eklentiler: 'Eklenti Mağazası', websitem: 'Web sitem', programlarim: 'Programlarım', sifre: 'Şifremi unuttum', indir: 'Masaüstü & Mobil', giris: 'Giriş yap', urunler: 'Ürünler', paketler: 'Hazır Paketler', paket: 'Hazır paket', fiyatlar: 'Fiyatlar', sektorler: 'Sektörler', sepet: 'Sepet', odeme: 'Ödeme', hesabim: 'Hesabım', iletisim: 'İletişim', yonetim: 'Yönetim' };
   function route() {

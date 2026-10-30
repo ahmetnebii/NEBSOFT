@@ -202,3 +202,26 @@ section.alt { background: var(--bg2); }
 .price .pkeski + .amt { font-size: clamp(30px, 3.4vw, 40px); }
 @media (max-width: 960px) { .pkgrid { grid-template-columns: repeat(2, 1fr); } }
 @media (max-width: 620px) { .pkgrid { grid-template-columns: 1fr; } }
+/* Öneri sihirbazı */
+.sb-w { max-width: 860px; }
+.sb { background: var(--card); border: 1px solid var(--line); border-radius: var(--r); padding: 28px; margin-top: 24px; }
+.sb-say { font: 700 13px var(--dis); letter-spacing: .06em; text-transform: uppercase; color: var(--c); margin: 0 0 8px; }
+.sb h2 { margin: 0 0 18px; outline: none; }
+.sb-sec { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; }
+.sb-sektor { grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); }
+.sb-sec a, .sb-sec button { display: flex; flex-direction: column; gap: 2px; text-align: left; text-decoration: none; font: inherit; color: var(--ink); background: var(--bg2); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; cursor: pointer; transition: border-color .15s; }
+.sb-sec a:hover, .sb-sec button:hover { border-color: var(--c); }
+.sb-sec small { color: var(--ink2); font-size: 13px; }
+.sb-geri { margin-top: 18px; }
+.sb-neden { margin: 0 0 18px; padding-left: 20px; color: var(--ink2); }
+.sb-pr { display: grid; gap: 8px; margin-bottom: 18px; }
+.sb-pr div { display: flex; flex-direction: column; background: var(--bg2); border: 1px solid var(--line); border-radius: 12px; padding: 10px 14px; }
+.sb-pr span { color: var(--ink2); font-size: 14px; }
+.sb-fiyat { display: flex; flex-direction: column; gap: 2px; margin-bottom: 18px; }
+.sb-fiyat span { color: var(--ink2); font-size: 14px; }
+.sb-fiyat s { color: var(--ink3); font-size: 14px; }
+.sb-fiyat b { font: 800 34px var(--dis); letter-spacing: -.02em; }
+.sb-fiyat b small { font-size: 15px; color: var(--ink3); font-weight: 600; letter-spacing: 0; }
+.sb-fiyat em { font-style: normal; font-weight: 600; color: var(--c); font-size: 14px; }
+.sb-fiyat > small { color: var(--ink3); font-size: 13px; }
+@media (max-width: 620px) { .sb { padding: 18px; } .sb .cta .btn { width: 100%; justify-content: center; } }

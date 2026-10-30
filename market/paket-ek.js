@@ -21,9 +21,18 @@ window.NB_PAKET = (function () {
   const vitrin = () => `<section class="sec" style="padding-top:0"><div class="mk-wrap">
       <div class="sec-h reveal"><span class="eyebrow">Hazır paketler</span><h2>İşinize uygun programlar bir arada</h2><p>Sektörünüzü seçin, gereken programlar tek tıkla sepete gelsin. Toplu indirim sepette kendiliğinden uygulanır.</p></div>
       <div class="pk-mini-l">${L().slice(0, 8).map((p) => `<a class="pk-mini reveal" href="/paketler/${esc(p.id)}/" style="--pc:${p.accent}"><span class="pk-ic">${icon(p.icon)}</span><span class="grow"><b>${esc(p.ad)}</b><small>${esc(p.kim)}</small></span>${icon('right')}</a>`).join('')}</div>
-      <div class="center mt reveal"><a class="btn lg" href="/paketler/">${L().length} paketin tümünü görün ${icon('right')}</a></div></div></section>`;
+      <div class="row mt reveal" style="justify-content:center"><a class="btn primary lg" href="/paketler/hangi-program/">${icon('sparkles')} Bana hangi program uygun?</a><a class="btn lg" href="/paketler/">${L().length} paketin tümünü görün ${icon('right')}</a></div></div></section>`;
   // Sepet satırındaki küçük etiket; paket listeden kaldırıldıysa görünmez
   const etiket = (id) => { const p = id && bul(id); return p ? ` <span class="badge acc">${esc(p.ad)} paketi</span>` : ''; };
+
+  // Sihirbaz sonucu: #/paket-sepet/<paket>/<plan>/<program,program>. Tutar sepette sunucudan gelir, burada yalnız program listesi taşınır
+  function sepet(param, ctx) {
+    const [id, pl, liste] = String(param || '').split('/'); const p = bul(id); const plan = [0, 1, 2].includes(Number(pl)) ? Number(pl) : PLAN();
+    const ids = String(liste || '').split(',').filter((x) => { const u = ctx.prod(x); return u && u.ready; });
+    if (!p || !ids.length) { location.hash = '#/paketler'; return; }
+    if (ids.length === 1) ctx.addCart(ids[0], plan, 'aylik'); else ctx.addPaket({ ...p, programlar: ids }, plan, 'aylik');
+    location.hash = '#/sepet';
+  }
 
   // ---------- Liste ----------
   function liste(el, ctx) {
@@ -31,7 +40,7 @@ window.NB_PAKET = (function () {
     el.innerHTML = `<section class="sec" style="padding-top:40px"><div class="mk-wrap">
       <div class="page-h"><div class="grow"><h1>Hazır paketler</h1><p>Sektörünüze uygun programlar. Fiyatlar aylık ve KDV hariçtir, toplu indirim dahil gösterilir.</p></div>${NS.searchBox('pk-q', 'Sektör ara... (ör. kuaför)')}</div>
       <div class="pk-l" id="pk-l"><div class="card pad empty" style="grid-column:1/-1">${icon('clock')}<div>Fiyatlar hesaplanıyor...</div></div></div>
-      <p class="small faint mt">Tüm programları istiyorsanız <a href="#/fiyatlar">Hepsi Bir Arada</a> aboneliğine bakın. Tek program için <a href="/programlar">programlar</a> sayfasına dönün.</p></div></section>`;
+      <p class="small faint mt">Karar veremediyseniz <a href="/paketler/hangi-program/">üç soruda size uygun paketi bulun</a>. Tüm programları istiyorsanız <a href="#/fiyatlar">Hepsi Bir Arada</a> aboneliğine bakın. Tek program için <a href="/programlar">programlar</a> sayfasına dönün.</p></div></section>`;
     const kutu = $('#pk-l', el); let F = null;
     const kart = (p) => { const t = F[p.id].planlar[PLAN()].aylik; return `<div class="card pk-k" style="--pc:${p.accent}"><a class="pk-kb" href="#/paket/${esc(p.id)}"><span class="pk-ic">${icon(p.icon)}</span><span class="grow"><b>${esc(p.ad)}</b><small>${esc(p.kim)}</small></span></a>
         <div class="pk-ps">${programlar(p, ctx).map((x) => `<span>${esc(x.name)}</span>`).join('')}</div>
@@ -85,5 +94,5 @@ window.NB_PAKET = (function () {
     btn.onclick = () => { if (ctx.addPaket(p, plan, donem)) location.hash = '#/sepet'; };
     yukle();
   }
-  return { vitrin, etiket, liste, detay };
+  return { vitrin, etiket, liste, detay, sepet };
 })();
