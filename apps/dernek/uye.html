@@ -41,13 +41,14 @@
       <div class="tk-find"><input class="input" id="ph" type="tel" inputmode="tel" placeholder="05xx xxx xx xx" aria-label="Telefon" autocomplete="tel" style="text-transform:none;letter-spacing:.02em"><input class="input" id="cd" placeholder="Giriş kodu" aria-label="Giriş kodu" autocomplete="one-time-code" style="max-width:140px;text-transform:uppercase"><button class="btn primary lg" id="go">Giriş</button></div>
       ${NS.pub ? '' : '<p class="small muted">Demo için <a href="#" id="hint">örnek üye bilgisi kullanın</a>.</p>'}
       <div class="tk-how"><div>${icon('wallet')}<b>Aidat durumu</b>Hangi dönemin ödendiğini ve kalan borcu görün.</div><div>${icon('calendar')}<b>Genel kurul</b>Planlanan toplantının tarihi, yeri ve gündemi.</div><div>${icon('bell')}<b>Duyurular</b>Yönetimin paylaştığı son duyurular.</div></div></div>`;
-    const go = () => { const d = digits($('#ph').value); const code = $('#cd').value.trim().toUpperCase(); if (!code) return toast('Yönetimden aldığınız giriş kodunu yazın', 'err'); if (d.length !== 10 || db.lookup({ phone: d, code }) === null) db.load(); const m = d.length === 10 && db.all('members').find((x) => digits(x.phone) === d && (NS.pub || (x.portalCode && x.portalCode === code))); if (!m) return toast('Telefon veya giriş kodu hatalı', 'err'); sset(m.id); render(); };
+    const go = () => { const d = digits($('#ph').value); const code = $('#cd').value.trim().toUpperCase(); if (!code) return toast('Yönetimden aldığınız giriş kodunu yazın', 'err'); // Bulutta sunucu telefonu ve kodu doğrular, görünümde yalnız giriş yapan üye gelir ve telefon alanı gönderilmez
+      const m = NS.pub ? d.length === 10 && db.lookup({ phone: d, code }) && db.all('members')[0] : d.length === 10 && (db.load(), db.all('members').find((x) => digits(x.phone) === d && x.portalCode && x.portalCode === code)); if (!m) return toast('Telefon veya giriş kodu hatalı', 'err'); sset(m.id); render(); };
     $('#go').onclick = go; $('#ph').onkeydown = (e) => { if (e.key === 'Enter') go(); };
     if ($('#hint')) $('#hint').onclick = (e) => { e.preventDefault(); const m = db.all('members', (x) => x.status === 'aktif' && x.phone)[0]; if (m) { $('#ph').value = m.phone; $('#cd').value = NS.portalCode(db, m); } };
   }
   function render() {
     const id = sget(); const m = id && db.get('members', id); if (!m) return login();
-    $('#out').innerHTML = '<button class="btn ghost sm" id="lo">Çıkış</button>'; $('#lo').onclick = () => { sset(null); login(); };
+    $('#out').innerHTML = '<button class="btn ghost sm" id="lo">Çıkış</button>'; $('#lo').onclick = () => { sset(null); db.pubLogout(); login(); };
     const dues = db.all('dues', (d) => d.member === m.id).sort((a, b) => b.period.localeCompare(a.period)); const recs = db.all('receipts', (r) => r.member === m.id && !r.canceled).sort((a, b) => b.at.localeCompare(a.at));
     const kalan = sum(dues, (d) => d.amount - (d.paid || 0)); const s = S(); const gk = db.all('meetings', (x) => x.type === 'gk' && x.status === 'plan' && x.date >= today()).sort((a, b) => a.date.localeCompare(b.date))[0];
     $('#root').innerHTML = `<div class="tk-view"><h1 style="margin-top:0">${esc(m.name)}</h1><div class="stat2"><div><b>${money(kalan)}</b><span>Kalan aidat</span></div><div><b>${money(sum(recs, (r) => r.amount))}</b><span>Ödenen</span></div></div>
