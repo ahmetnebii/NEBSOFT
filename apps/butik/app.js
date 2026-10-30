@@ -182,7 +182,11 @@
   const waitsFor = (m) => db.all('waits', (w) => w.status === 'bekliyor' && w.mid === m.id && m.variants.some((v) => v.stock > 0 && v.size === w.size && (!w.color || v.color === w.color)));
   async function addWait(m, customerId) {
     let c = customerId && cust(customerId);
-    if (!c) { const q = await NS.prompt('Müşteri telefonu veya adı', ''); if (q === null) return; c = db.find('customers', (x) => NS.match(q, x.name, x.phone) || String(x.phone).replace(/\D/g, '').endsWith(String(q).replace(/\D/g, '').slice(-10))); if (!c) return toast('Müşteri bulunamadı — önce kasada veya Müşteriler sayfasında ekleyin', 'err'); }
+    if (!c) { const q = await NS.prompt('Müşteri telefonu veya adı', ''); if (q === null) return; const d = String(q).replace(/\D/g, '').slice(-10);
+      // Telefonda en az 7 hane eşleşmeli (boş rakam her numaraya "uyuyordu"); birden çok eşleşmede seçtirilir
+      const hits = db.all('customers', (x) => (d.length >= 7 && String(x.phone).replace(/\D/g, '').endsWith(d)) || (String(q).trim().length >= 2 && NS.match(q, x.name, x.phone)));
+      if (!hits.length) return toast('Müşteri bulunamadı — önce kasada veya Müşteriler sayfasında ekleyin', 'err');
+      if (hits.length === 1) c = hits[0]; else { if (hits.length > 50) return toast(`${hits.length} müşteri eşleşti — daha ayrıntılı yazın`, 'err'); const p = await formModal({ title: 'Müşteri seçin', fields: [{ name: 'id', label: `${hits.length} müşteri eşleşti`, type: 'select', options: hits.map((x) => ({ value: x.id, label: `${x.name} · ${x.phone || '-'}` })) }] }); if (!p) return; c = cust(p.id); } }
     const v = await formModal({ title: `${m.name} — haber ver`, fields: [{ name: 'size', label: 'Beden', type: 'select', options: SZ(m.sizeType) }, { name: 'color', label: 'Renk', type: 'select', options: [{ value: '', label: 'Fark etmez' }, ...m.colors.map((x) => x.name)] }, { name: 'note', label: 'Not', full: true }], values: { size: c.size && SZ(m.sizeType).includes(c.size) ? c.size : SZ(m.sizeType)[0] } }); if (!v) return;
     db.insert('waits', { customer: c.id, mid: m.id, size: v.size, color: v.color, note: v.note, at: new Date().toISOString(), status: 'bekliyor' }); db.save();
     toast(`${c.name} için ${m.name} ${v.color || ''} ${v.size} listeye eklendi${c.kvkk ? '' : ' (SMS izni yok — gelince telefonla arayın)'}`, 'ok');
@@ -222,7 +226,7 @@
       onOpen: (b) => on(b, 'click', '[data-act=del]', async (e, t) => { if (!(await confirm('Beden takımı silinsin mi?'))) return; const st = S(); delete st.sizeSets[t.dataset.id]; if (st.sizeNames) delete st.sizeNames[t.dataset.id]; db.save(); $('#szt', b).innerHTML = body(); }),
       actions: [{ label: 'Kapat' }, { label: 'Yeni takım', cls: 'primary', icon: 'plus', onClick: async (c, b) => {
         const v = await formModal({ title: 'Yeni beden takımı', fields: [{ name: 'name', label: 'Takım adı', required: true, placeholder: 'Büyük beden' }, { name: 'sizes', label: 'Bedenler (sırasıyla, virgülle)', required: true, full: true, placeholder: '46, 48, 50, 52, 54' }] }); if (!v) return;
-        const sz = [...new Set(v.sizes.split(',').map((x) => x.trim().toUpperCase()).filter(Boolean))]; if (!sz.length || sz.length > 20) return toast('1–20 beden girin', 'err');
+        const sz = [...new Set(v.sizes.split(',').map((x) => x.trim().toLocaleUpperCase('tr-TR')).filter(Boolean))]; if (!sz.length || sz.length > 20) return toast('1–20 beden girin', 'err');
         const st = S(); st.sizeSets = st.sizeSets || {}; st.sizeNames = st.sizeNames || {}; const k = 'o' + NS.uid().slice(0, 6); st.sizeSets[k] = sz; st.sizeNames[k] = v.name.trim(); db.save(); $('#szt', b).innerHTML = body(); toast('Beden takımı eklendi', 'ok'); } }] });
   }
 
@@ -236,7 +240,7 @@
       const keys = Object.keys(rows[0]); const col = {}; Object.entries(COLS).forEach(([k, al]) => { const h = keys.find((x) => al.includes(norm(x))); if (h) col[k] = h; });
       if (!col.code || !col.color || !col.size) return toast('Gerekli sütunlar: Model kodu, Renk, Beden (bulunan: ' + keys.join(', ') + ')', 'err');
       const num = (v) => Number(String(v == null ? '' : v).replace(/\./g, '').replace(',', '.')) || 0; const errs = []; const groups = new Map();
-      rows.forEach((r, i) => { const g = (k) => (col[k] ? String(r[col[k]] == null ? '' : r[col[k]]).trim() : ''); const code = g('code').toUpperCase(); if (!code) return errs.push(`Satır ${i + 2}: model kodu boş`); if (!groups.has(code)) groups.set(code, []); groups.get(code).push({ i: i + 2, name: g('name'), cat: g('cat'), season: g('season'), color: g('color'), size: g('size').toUpperCase(), barcode: g('barcode'), stock: Math.max(0, Math.floor(num(g('stock')))), cost: num(g('cost')), price: num(g('price')) }); });
+      rows.forEach((r, i) => { const g = (k) => (col[k] ? String(r[col[k]] == null ? '' : r[col[k]]).trim() : ''); const code = g('code').toUpperCase(); if (!code) return errs.push(`Satır ${i + 2}: model kodu boş`); if (!groups.has(code)) groups.set(code, []); groups.get(code).push({ i: i + 2, name: g('name'), cat: g('cat'), season: g('season'), color: g('color'), size: g('size').toLocaleUpperCase('tr-TR'), barcode: g('barcode'), stock: Math.max(0, Math.floor(num(g('stock')))), cost: num(g('cost')), price: num(g('price')) }); });
       const plan = []; const usedBc = new Set(db.all('models').flatMap((m) => m.variants.map((v) => v.barcode)));
       groups.forEach((rs, code) => {
         const ex = db.find('models', (m) => String(m.code).toUpperCase() === code); const sizes = [...new Set(rs.map((x) => x.size))]; const st = ex ? ex.sizeType : typeOf(sizes);

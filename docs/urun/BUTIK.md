@@ -46,7 +46,23 @@ Yöntem: `CLAUDE.md` §2. Kullanıcı tüm dalgaları önceden onayladı ("atlam
 Sınır: beden takımları sabit (XS–XXL, 34–44, 36–41, STD); farklı beden (ör. XXXL, 46) Excel'de reddedilir → 3. dalgada
 "özel beden takımı" eklenecek.
 
-Kalite kapısı: `npm test` — 6 test dosyası geçti (XSD: 9 belge uygun); `cloud.test.js` temel committe de aynı hatayla düşüyor
+### 3. dalga — yapılanlar (30.10.2026, devir oturumu; "YARIM" commit `9935e34` tamamlandı)
+| Konu | Sonuç | Kanıt |
+|---|---|---|
+| Özel beden takımı | Ürünler > "Beden takımları": hazır takımlar değişmez; yeni takım (ad + virgüllü bedenler, 1–20); kullanılan takım silinemez. Model formu, stok matrisi, kasa beden seçimi, mal kabul, etiket ve Excel aktarımı yeni takımı kullanır. Bedenler Türkçe büyük harfe çevrilir (i → İ) | Tarayıcı: "Büyük beden 46–54" ve "Çocuk 2-3 yaş, 4-5 yaş" eklendi; bu takımla model açıldı, matris 46–54 |
+| Bedeni gelince haber ver | Kasada beden seçim penceresinde "Bedeni yok mu? Gelince haber ver" → müşteri (telefon ≥ 7 hane veya ad ≥ 2 harf; birden çok eşleşmede seçim listesi) + beden + renk. Mal kabulde eşleşen bekleyenler listelenir: SMS (izin varsa) veya "Haber verildi (telefonla)". Özet ekranında bekleyen talepler kartı, müşteri geçmişinde bekleyen talepler | Tarayıcı: Siyah 50 talebi → mal kabul 2 adet → "1 müşteri bu bedeni bekliyordu"; SMS izni yoksa gönderilmedi uyarısı |
+| Bedene göre öneri | Müşteri kartında beden varsa kasada "Bedeninde stokta" önerileri (son 30 günde gelen ve indirimli önce, daha önce aldığı model hariç) | Kod incelendi; demo müşterilerinde beden alanı boş olduğundan tarayıcıda ayrıca denenmedi |
+| Sell-through raporu | Raporlar > "Satış oranı": dönemde satılan ÷ (satılan + eldeki stok); hızlı dönen (yeniden sipariş) ve yavaş dönen (kampanya adayı) listeleri | Tarayıcı (masaüstü + 375 px) |
+| Kasada "etiketi eski" | Etiket basıldıktan sonra fiyatı değişen model kasaya eklenince uyarı (kasa fiyatı + Etiket Basımı > Fiyatı değişen) | Kod incelendi |
+
+Düzeltilen hata (devir oturumu): "haber ver" müşteri aramasında rakam içermeyen arama (ör. "a") her telefona "uyuyor" ve ilk müşteri
+sessizce seçiliyordu → artık en az 7 hane / 2 harf, birden çok eşleşmede seçim.
+
+Kalite kapısı (3. dalga): `npm test` — `cloud.test.js` dışındaki 8 test dosyası geçti (XSD 9 belge, .NET 8); `cloud.test.js` bu
+bilgisayarda MySQL olmadığı için çalışmadı (bağlantı reddedildi). Konsolda program hatası yok. 375 px'te 6 sayfada yatay taşma yok.
+Koyu tema yalnızca çekirdek sınıflarıyla (ayrı denenmedi). 5000 kayıtla hız denenmedi. `sw.js` V → `nebsoft-v3-22`.
+
+Kalite kapısı (2. dalga): `npm test` — 6 test dosyası geçti (XSD: 9 belge uygun); `cloud.test.js` temel committe de aynı hatayla düşüyor
 (bizden bağımsız, `CEKIRDEK-ISTEKLERI-perakende.md`). Konsol hatası yok. 375 px'te yatay taşma yok. Koyu tema yalnızca çekirdek
 sınıflarıyla (ayrı denenmedi; etiket önizlemesi bilerek beyaz kâğıt). `sw.js` sürümü kök dosya olduğu için artırılmadı (Ç8).
 
