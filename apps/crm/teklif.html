@@ -37,7 +37,7 @@
 <script src="quote.js"></script>
 <script>
 (function () {
-  const { esc, $, icon, money, toast } = NS;
+  const { esc, $, icon, toast } = NS;
   const Q = window.CRMQ;
   const db = new NS.DB('crm');
   const s = db.settings({});
@@ -52,7 +52,7 @@
     // İlk açılış satış ekibine "görüntülendi" olarak düşer
     if (!q.viewedAt) { q.viewedAt = new Date().toISOString(); db.insert('activities', { deal: q.deal, type: 'not', date: q.viewedAt, text: `Müşteri teklif ${q.no} bağlantısını açtı`, done: true }, true); db.save(); }
     const d = db.get('deals', q.deal) || {}; const c = db.get('companies', d.company) || {}; const ct = db.get('contacts', d.contact) || {}; const rep = db.get('users', d.owner) || {};
-    const k = Q.calc(q); const st = Q.status(q);
+    const k = Q.calc(q); const st = Q.status(q); const money = Q.fmt(q);
     const daysLeft = Math.ceil((new Date(q.valid + 'T23:59') - new Date()) / 864e5);
     let decide = '';
     if (st === 'gonderildi') decide = `<div class="decide noprint"><div class="row between" style="gap:12px;flex-wrap:wrap"><div><b>Bu teklifi onaylıyor musunuz?</b><div class="small ${daysLeft <= 3 ? 'left' : 'muted'}">${daysLeft <= 0 ? 'Bugün son gün' : `Geçerlilik: ${daysLeft} gün (${NS.date(q.valid)})`}</div></div><div class="tk-acts" style="flex:0 1 auto"><button class="btn lg" id="no">Reddet</button><button class="btn primary lg" id="ok">${icon('check')} Kabul ediyorum</button></div></div></div>`;

@@ -10,6 +10,9 @@ window.CRMQ = {
     const vatAmt = Math.round(net * vat * 100) / 10000;
     return { gross, disc, net, vat, vatAmt, grand: Math.round((net + vatAmt) * 100) / 100 };
   },
+  // Dövizli teklif: tutarlar teklif para biriminde, fırsat değeri TL (q.total = KDV hariç × kur). Kur elle girilir.
+  CUR: { TRY: '₺ TL', USD: '$ ABD doları', EUR: '€ Euro' },
+  fmt(q) { const c = (q && q.cur) || 'TRY'; if (c === 'TRY') return NS.money; const f = new Intl.NumberFormat('tr-TR', { style: 'currency', currency: c }); return (v) => f.format(v || 0); },
   status(q) {
     const s = q.status || 'gonderildi';
     if (s === 'gonderildi' && q.valid && q.valid < new Date().toISOString().slice(0, 10)) return 'suresi';

@@ -1,6 +1,6 @@
 # CRM — Ürün Spesifikasyonu
 
-> **Durum (30.10.2026):** Kullanıcı dalgaları önceden onayladı. Program: `apps/crm/` (+ `teklif.html`).
+> **Durum (30.10.2026):** Kullanıcı dalgaları önceden onayladı. 1., 2. ve 3. dalga tamamlandı. Program: `apps/crm/` (+ `teklif.html`).
 
 ## CANLIYA ÇIKMAYI ENGELLEYENLER
 - **e-Fatura:** gerçek gönderim sağlayıcı test hesabıyla denenmedi (`docs/DEVIR.md` B1).
@@ -51,3 +51,22 @@ Satıcı veya tanıtım kaynaklarıdır; iddialar bağımsız doğrulanmadı.
 | C10 | Görev eklemek ve bitirmek "son temas"ı güncellemiyordu, fırsat sessiz görünüyordu | Görev işlemleri son temas sayılır | Kod incelendi |
 | C11 | Teklif belge şablonundan geçmiyordu | `NS.docs` "teklif" | Şablon sayfası açıldı; çıktı kâğıtta denenmedi |
 | C12 | Hedef girilmezse panoda Infinity çıkıyordu; firma listesi ve huni binlerce kayıtta yavaştı | Hedef uyarısı; gruplama; huni aşamasında 100 kart | Kod incelendi |
+
+### 2. dalga — beklenenler
+| # | Özellik | Sonuç | Kanıt |
+|---|---|---|---|
+| B1 | Dövizli teklif | TL, USD, EUR; kur elle girilir; müşteri sayfası ve belge teklif para biriminde; fırsat değeri TL | Tarayıcı |
+| B2 | Ürün & Hizmet kataloğu | Teklife tek tıkla ekleme; aynı firmaya geçmiş fiyat hatırlatması | Tarayıcı |
+| B3 | Fatura | Kabul edilen tekliften `NS.ebelge.create`; firma kartına VKN, vergi dairesi, adres; TEST faturalı sayılmaz | Tarayıcı: TEST fatura. Dövizli fatura denenmedi |
+| B4 | Excel aktarımı | Firma ve kişi; özet onayı; bilinmeyen firma satırı atlanır | Tarayıcı (`NS.readSheet` taklit edilerek); gerçek dosyayla denenmedi |
+| B5 | Temsilci hedefi | Ayarlarda temsilci başına hedef; temsilci panosu kendi hedefini gösterir | Kod incelendi |
+
+### 3. dalga — fark yaratanlar
+| # | Özellik | Sonuç | Kanıt |
+|---|---|---|---|
+| F1 | Takip önerileri | Görülüp yanıtlanmayan teklif, süresi biten teklif, sessiz fırsat, tarihi geçen kapanış; tek tıkla görev; açık görevi olan fırsat listelenmez | Tarayıcı |
+| F2 | Sözleşme yenileme | Fırsatta yenileme tarihi; 60 gün kala panoda; tek tıkla yenileme fırsatı, ikinci kez açılmaz | Tarayıcı |
+| F3 | Dönemli raporlar | 30/90/365 gün ve tümü; kaybedilen tutar; temsilci karşılaştırması | Tarayıcı |
+| F4 | Gecikmiş görev bildirimi | Günde bir kez `NS.notify` | Kod incelendi |
+
+Yapılmadı: otomatik e-posta gönderimi (`email` entegrasyonu sağlayıcıya bağlı), web formundan otomatik fırsat, satır bazlı KDV.
