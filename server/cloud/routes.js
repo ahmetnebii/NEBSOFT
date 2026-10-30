@@ -13,6 +13,8 @@ const bizsite = require('../../core/bizsite');
 const odeme = () => require('./odeme'); // döngüsel bağımlılık olmasın diye çağrı anında yüklenir
 const log = require('./log');
 const analitik = require('./analitik');
+const destek = require('./destek');
+const indirim = require('./indirim');
 
 const uid = auth.uid;
 const now = () => new Date();
@@ -46,6 +48,7 @@ async function tenantOf(user) { return user && user.tenant_id ? db.one('SELECT *
 async function applyOrder(t, order) {
   const items = J(order.items, []);
   for (const it of items) {
+    if (it.type === 'support') continue; // destek kalemi lisans açmaz, aşağıda işletmenin paketine yazılır
     const pids = it.pid === 'bundle' ? cat.products().map((p) => p.id) : [it.pid];
     const months = it.period === 'yillik' ? 12 : 1;
     for (const pid of pids) {
@@ -58,6 +61,9 @@ async function applyOrder(t, order) {
   }
   // Tavsiye ödülü: davet edilen işletmenin ilk ödemesinde davet edene ve davet edilene +N gün
   const ten = (await t.q('SELECT * FROM tenants WHERE id=? FOR UPDATE', [order.tenant_id]))[0];
+  // Destek paketi yalnızca burada, yani ödeme onaylanınca açılır. Aynı paket uzar; farklı paket bugün başlar (kalan süre aktarılmaz, sepette yazar).
+  const sup = items.find((i) => i.type === 'support');
+  if (ten && sup) { const devam = ten.support_plan === sup.plan && ten.support_until && new Date(ten.support_until) > now(); await t.q('UPDATE tenants SET support_plan=?, support_until=? WHERE id=?', [sup.plan, addMonths(devam ? ten.support_until : now(), sup.period === 'yillik' ? 12 : 1), ten.id]); }
   if (ten && ten.referred_by && !ten.referral_rewarded) {
     const days = (await site()).referralDays || 30;
     for (const tid of [ten.referred_by, ten.id]) await t.q("UPDATE licenses SET end = DATE_ADD(GREATEST(end, UTC_TIMESTAMP()), INTERVAL ? DAY) WHERE tenant_id=? AND status IN ('aktif','deneme')", [days, tid]);
@@ -80,8 +86,26 @@ async function couponPct(code) {
   if (!k || (k.max_uses && k.uses >= k.max_uses) || (k.expires && new Date(k.expires) < now())) throw err(400, 'Geçersiz veya süresi dolmuş kupon');
   return { pct: k.pct, code: k.code };
 }
+// Sepet hesabı: katalog fiyatı + destek kalemi + toplu indirim veya kupon. Quote ve sipariş aynı yoldan geçer, istemciden gelen tutar kullanılmaz.
+const SUBE_UST = 1000;
+async function fiyatla(b) {
+  const k = await couponPct(b.coupon);
+  if (b.items && !Array.isArray(b.items)) throw err(400, 'Geçersiz ürün veya paket');
+  const lines = b.items && b.items.length ? cat.price(b.items).lines : [];
+  let dl = null;
+  if (b.support) {
+    if (!destek.has(b.support.plan)) throw err(400, 'Geçersiz destek paketi');
+    const l = destek.line(b.support.plan, b.support.period); if (l.price > 0) dl = l; // ücretsiz paket sipariş kalemi olmaz: var olan ücretli paketi düşürmesin
+  }
+  const hepsi = dl ? [...lines, dl] : lines; if (!hepsi.length) throw err(400, 'Sepet boş');
+  // Lisans sayısı istemciden alınmaz: ödenen adetlerin toplamıdır. Şube sayısı beyandır, sipariş kaydında ve panelde görünür.
+  const sube = Math.min(SUBE_UST, Math.max(1, Math.floor(Number(b.subeSayisi)) || 1));
+  const p = indirim.hesapla({ lines: hepsi, subeSayisi: sube }, { kuponYuzde: k.pct, kdv: cat.VAT });
+  return { ...p, sube, destek: dl, coupon: p.indirim && p.indirim.kural === 'kupon' ? k.code : null, kuponGirildi: k.code, sonraki: indirim.sonraki(p) };
+}
+const indirimKaydi = (p, beyan) => (p.indirim || p.sube > 1 ? { ...(p.indirim || { kural: null, ad: null, yuzde: 0, tutar: 0 }), olcut: p.olcut, beyan: p.sube > 1 ? { subeSayisi: p.sube, onay: !!beyan, at: iso(now()) } : null } : null);
 const banks = () => db.q('SELECT id, holder, iban, bank FROM bank_accounts WHERE active=1 ORDER BY created');
-const pubOrder = (o) => ({ id: o.id, no: o.no, items: J(o.items, []), subtotal: Number(o.subtotal), discount: Number(o.discount), vat: Number(o.vat), total: Number(o.total), coupon: o.coupon, status: o.status, created: o.created, paid_at: o.paid_at, billing: J(o.billing, {}) });
+const pubOrder = (o) => ({ id: o.id, no: o.no, items: J(o.items, []), subtotal: Number(o.subtotal), discount: Number(o.discount), vat: Number(o.vat), total: Number(o.total), coupon: o.coupon, status: o.status, created: o.created, paid_at: o.paid_at, billing: J(o.billing, {}), indirim: J(o.indirim, null) });
 
 // ---------- E-posta ----------
 const mailSite = async () => { const s = await site(); return { siteName: s.siteName, phone: s.phone, email: s.email, siteUrl: s.siteUrl }; };
@@ -118,6 +142,21 @@ async function notifyTrialRequest(biz, u, pid) {
     mailTo(m.replyTo || m.user, `Yeni deneme başladı: ${biz || u.name} · ${pnameOf(pid)}`, { title: 'Yeni deneme başladı', intro: `${biz || u.name} ${pnameOf(pid)} için ${trialLen(s)} günlük denemeye başladı.`, blocks: [{ type: 'kv', rows: [['İşletme', biz || '-'], ['Yetkili', u.name || '-'], ['E-posta', u.email || '-'], ['Telefon', u.phone || '-'], ['Program', pnameOf(pid)]] }, { type: 'button', label: 'Talebi onayla', url: `${s.siteUrl || ''}/admin/#/denemeler` }] });
   } catch (e) { /* yok */ }
 }
+
+// Destek paketi: geçerli paket ve bitiş. Süresi dolan ücretli paket varsayılana döner, kayıt silinmez.
+function destekDurumu(t) {
+  const id = destek.paid(t); const c = destek.load(); const p = destek.pub(c).find((x) => x.id === id); const ucretli = !!t && t.support_plan === id && p.aylik > 0;
+  return { ...p, bitis: ucretli ? t.support_until : null, ucretli };
+}
+// SLA aşımı: her talep bir kez işaretlenir, olay da bir kez yazılır. Arka plan taraması, panel ve yanıt aynı yoldan geçer.
+async function slaTara(id) {
+  if (!db.ready()) return 0; const an = now();
+  const rows = await db.q(`SELECT id, tenant_id, plan, first_reply_at FROM tickets WHERE breached=0 AND status<>'kapali' AND first_due IS NOT NULL AND ((first_reply_at IS NULL AND first_due < ?) OR resolve_due < ?)${id ? ' AND id=?' : ''} LIMIT 500`, id ? [an, an, id] : [an, an]);
+  let n = 0;
+  for (const t of rows) { const r = await db.q('UPDATE tickets SET breached=1 WHERE id=? AND breached=0', [t.id]); if (r.affectedRows) { n++; log.uygulama.uyari('destek.sla_asildi', { isletme: t.tenant_id, veri: { talep: t.id, paket: t.plan, asama: t.first_reply_at ? 'cozum' : 'ilk-yanit' } }); } }
+  return n;
+}
+setInterval(() => slaTara().catch(() => {}), 5 * 60e3).unref();
 
 // ---------- Uç noktalar ----------
 const R = [];
@@ -410,28 +449,39 @@ route('POST', '/api/trial', { auth: 'user', limit: ['trial', 20, 3600e3] }, asyn
   mailTo(c.user.email, `${pnameOf(pid)} denemeniz başladı`, { title: `${pnameOf(pid)} hazır`, intro: `${s.trialDays} günlük ücretsiz denemeniz başladı. Tüm özellikleri sınırsız kullanabilirsiniz.`, blocks: [{ type: 'kv', rows: [['Program', pnameOf(pid)], ['Deneme bitişi', addDays(now(), s.trialDays).toLocaleDateString('tr-TR')]] }, { type: 'button', label: 'Programı aç', url: `${s.siteUrl || ''}/#/programlarim` }] });
   return { ok: true, license: await db.one('SELECT * FROM licenses WHERE tenant_id=? AND product=?', [c.user.tenant_id, pid]) };
 });
-route('POST', '/api/orders/quote', { auth: 'none' }, async (c) => { const k = await couponPct(c.body.coupon); return { ok: true, coupon: k.code, ...cat.price(c.body.items, k.pct) }; });
+route('POST', '/api/orders/quote', { auth: 'none', limit: ['quote', 120, 60e3] }, async (c) => { const p = await fiyatla(c.body); return { ok: true, coupon: p.coupon, kuponGirildi: p.kuponGirildi, lines: p.lines, subtotal: p.subtotal, discount: p.discount, indirim: p.indirim, vat: p.vat, total: p.total, olcut: p.olcut, kurumsal: p.kurumsal, sonraki: p.sonraki }; });
+// Sepetteki paket seçimi: rakamlar yapılandırmadan gelir. Oturum varsa işletmenin geçerli paketi de döner.
+route('GET', '/api/destek/paketler', { auth: 'none', db: false }, async (c) => {
+  const out = { ok: true, paketler: destek.pub(), varsayilan: destek.load().varsayilan, turler: (indirim.load().kurumsal || {}).turler || {} };
+  if (db.ready()) { const u = await auth.current(c.req); const t = await tenantOf(u); if (t) out.aktif = destekDurumu(t); }
+  return out;
+});
 route('POST', '/api/orders', { auth: 'user', limit: ['order', 20, 3600e3] }, async (c) => {
   if (!c.user.tenant_id) throw err(400, 'Yönetici hesabıyla sipariş verilemez');
-  const k = await couponPct(c.body.coupon); const p = cat.price(c.body.items, k.pct);
+  const p = await fiyatla(c.body);
+  if (p.kurumsal) throw err(409, 'Bu adette sipariş kurumsal teklif ile verilir', { code: 'kurumsal' });
+  if (p.sube > 1 && c.body.subeBeyan !== true) throw err(400, 'Şube sayısı beyanını onaylayın');
   const b = c.body.billing || {};
   if (!sec.V.str(b.name, 120, 3) || !sec.V.str(b.taxNo, 20, 10) || !sec.V.str(b.address, 300, 5)) throw err(400, 'Fatura bilgileri (ad, VKN/TCKN, adres) eksik');
   const shop = c.body.method === 'shopier'; if (shop && !(await odeme().usable(c.user))) throw err(400, 'Bu ödeme yöntemi şu anda kullanılamıyor');
   if (!shop && !(await banks()).length) throw err(503, 'Ödeme hesabı tanımlı değil. Lütfen destek ile iletişime geçin.');
   const billing = { name: sec.clean(b.name, 120), company: sec.clean(b.company, 160), taxNo: sec.clean(b.taxNo, 20), taxOffice: sec.clean(b.taxOffice, 80), address: sec.clean(b.address, 300), city: sec.clean(b.city, 60), email: c.user.email, phone: sec.clean(b.phone, 40) };
+  const ind = indirimKaydi(p, c.body.subeBeyan === true);
   const o = await db.tx(async (t) => {
     const no = await nextOrderNo(t); const id = uid();
-    await t.q('INSERT INTO orders (id, no, tenant_id, user_id, items, subtotal, discount, vat, total, coupon, status, billing, created) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)', [id, no, c.user.tenant_id, c.user.id, JSON.stringify(p.lines), p.subtotal, p.discount, p.vat, p.total, k.code, 'odeme-bekliyor', JSON.stringify(billing), now()]);
-    if (k.code) await t.q('UPDATE coupons SET uses=uses+1 WHERE code=?', [k.code]);
+    await t.q('INSERT INTO orders (id, no, tenant_id, user_id, items, subtotal, discount, vat, total, coupon, status, billing, indirim, created) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)', [id, no, c.user.tenant_id, c.user.id, JSON.stringify(p.lines), p.subtotal, p.discount, p.vat, p.total, p.coupon, 'odeme-bekliyor', JSON.stringify(billing), ind ? JSON.stringify(ind) : null, now()]);
+    if (p.coupon) await t.q('UPDATE coupons SET uses=uses+1 WHERE code=?', [p.coupon]); // toplu indirim daha büyükse kupon kullanılmış sayılmaz
     await t.q('UPDATE tenants SET tax_no=?, tax_office=?, address=?, city=? WHERE id=?', [billing.taxNo, billing.taxOffice, billing.address, billing.city, c.user.tenant_id]);
     return (await t.q('SELECT * FROM orders WHERE id=?', [id]))[0];
   });
   await audit(c, shop ? 'Sipariş (Shopier)' : 'Sipariş (havale bekliyor)', `${o.no} · ${o.total} TL`);
+  if (p.destek) log.uygulama.bilgi('destek.paket_secildi', { istek: c.istek, kullanici: c.user.id, isletme: c.user.tenant_id, veri: { siparis: o.no, paket: p.destek.plan, donem: p.destek.period, tutar: p.destek.price } });
+  if (p.indirim) log.uygulama.bilgi('indirim.uygulandi', { istek: c.istek, kullanici: c.user.id, isletme: c.user.tenant_id, veri: { siparis: o.no, kural: p.indirim.kural, yuzde: p.indirim.yuzde, tutar: p.indirim.tutar, olcut: p.olcut } });
   if (shop) {
-    mailTo(c.user.email, `Siparişiniz alındı — ${o.no}`, { title: 'Siparişiniz alındı', intro: `${o.no} numaralı siparişiniz oluşturuldu. Ödemenizi Shopier güvenli ödeme sayfasında tamamladığınızda ödeme kontrol edilir, onaylanınca lisansınız aktifleşir.`, blocks: [{ type: 'kv', rows: [...p.lines.map((l) => [`${l.name} · ${l.period === 'yillik' ? 'Yıllık' : 'Aylık'}`, fmtTL(l.price)]), ...(p.discount ? [['İndirim', '-' + fmtTL(p.discount)]] : []), ['KDV', fmtTL(p.vat)], ['Ödenecek', fmtTL(p.total)]] }] });
+    mailTo(c.user.email, `Siparişiniz alındı — ${o.no}`, { title: 'Siparişiniz alındı', intro: `${o.no} numaralı siparişiniz oluşturuldu. Ödemenizi Shopier güvenli ödeme sayfasında tamamladığınızda ödeme kontrol edilir, onaylanınca lisansınız aktifleşir.`, blocks: [{ type: 'kv', rows: [...p.lines.map((l) => [`${l.name} · ${l.period === 'yillik' ? 'Yıllık' : 'Aylık'}`, fmtTL(l.price)]), ...(p.discount ? [[`İndirim (${p.indirim.ad} %${p.indirim.yuzde})`, '-' + fmtTL(p.discount)]] : []), ['KDV', fmtTL(p.vat)], ['Ödenecek', fmtTL(p.total)]] }] });
     return { ok: true, order: pubOrder(o), banks: await banks(), shopier: await odeme().start(o) };
   }
-  { const B = await banks(); mailTo(c.user.email, `Siparişiniz alındı — ${o.no}`, { title: 'Siparişiniz alındı', intro: `${o.no} numaralı siparişiniz oluşturuldu. Havale / EFT ödemeniz hesabımıza geçtiğinde lisansınız otomatik aktifleşir.`, blocks: [{ type: 'kv', rows: [...p.lines.map((l) => [`${l.name} · ${l.period === 'yillik' ? 'Yıllık' : 'Aylık'}`, fmtTL(l.price)]), ...(p.discount ? [['İndirim', '-' + fmtTL(p.discount)]] : []), ['KDV', fmtTL(p.vat)], ['Ödenecek', fmtTL(p.total)]] }, ...B.map((x) => ({ type: 'kv', rows: [['Banka', x.bank], ['Alıcı', x.holder], ['IBAN', String(x.iban).replace(/(.{4})/g, '$1 ').trim()]] })), { type: 'note', tone: 'warn', text: `Açıklamaya mutlaka ${o.no} yazın. Ödeme onaylanana kadar deneme süreniz devam eder.` }] }); }
+  { const B = await banks(); mailTo(c.user.email, `Siparişiniz alındı — ${o.no}`, { title: 'Siparişiniz alındı', intro: `${o.no} numaralı siparişiniz oluşturuldu. Havale / EFT ödemeniz hesabımıza geçtiğinde lisansınız otomatik aktifleşir.`, blocks: [{ type: 'kv', rows: [...p.lines.map((l) => [`${l.name} · ${l.period === 'yillik' ? 'Yıllık' : 'Aylık'}`, fmtTL(l.price)]), ...(p.discount ? [[`İndirim (${p.indirim.ad} %${p.indirim.yuzde})`, '-' + fmtTL(p.discount)]] : []), ['KDV', fmtTL(p.vat)], ['Ödenecek', fmtTL(p.total)]] }, ...B.map((x) => ({ type: 'kv', rows: [['Banka', x.bank], ['Alıcı', x.holder], ['IBAN', String(x.iban).replace(/(.{4})/g, '$1 ').trim()]] })), { type: 'note', tone: 'warn', text: `Açıklamaya mutlaka ${o.no} yazın. Ödeme onaylanana kadar deneme süreniz devam eder.` }] }); }
   return { ok: true, order: pubOrder(o), banks: await banks() };
 });
 route('GET', '/api/orders', { auth: 'user' }, async (c) => ({ ok: true, orders: (await db.q('SELECT * FROM orders WHERE tenant_id=? ORDER BY created DESC LIMIT 100', [c.user.tenant_id || '-'])).map(pubOrder), banks: await banks() }));
@@ -460,19 +510,26 @@ route('DELETE', '/api/team/:id', { auth: 'user' }, async (c) => {
   const r = await db.q('DELETE FROM users WHERE id=? AND tenant_id=?', [c.params.id, c.user.tenant_id || '-']); if (r.affectedRows) await db.q('DELETE FROM sessions WHERE user_id=?', [c.params.id]);
   await audit(c, 'Ekip üyesi silindi', c.params.id); return { ok: true };
 });
-route('GET', '/api/tickets', { auth: 'user' }, async (c) => ({ ok: true, tickets: (await db.q('SELECT * FROM tickets WHERE tenant_id=? ORDER BY updated DESC LIMIT 100', [c.user.tenant_id || '-'])).map((t) => ({ ...t, messages: J(t.messages, []) })) }));
+route('GET', '/api/tickets', { auth: 'user' }, async (c) => ({ ok: true, destek: destekDurumu(await tenantOf(c.user)), paketler: destek.pub(), tickets: (await db.q('SELECT * FROM tickets WHERE tenant_id=? ORDER BY updated DESC LIMIT 100', [c.user.tenant_id || '-'])).map((t) => ({ ...t, messages: J(t.messages, []), sla: destek.state(t) })) }));
 route('POST', '/api/tickets', { auth: 'user', limit: ['ticket', 20, 3600e3] }, async (c) => {
   if (!sec.V.str(c.body.subject, 200, 3) || !sec.V.str(c.body.text, 5000, 3)) throw err(400, 'Konu ve mesaj gerekli');
-  await db.q('INSERT INTO tickets (id, tenant_id, user_id, subject, product, status, messages, created, updated) VALUES (?,?,?,?,?,?,?,?,?)', [uid(), c.user.tenant_id || '-', c.user.id, sec.clean(c.body.subject, 200), sec.clean(c.body.product, 40), 'acik', JSON.stringify([{ from: 'musteri', text: sec.clean(c.body.text, 5000), at: iso(now()) }]), now(), now()]);
+  // Süreler talep açılırken sabitlenir: paket sonradan değişse de bu talep etkilenmez
+  const an = now(); const f = destek.ticketFields(destek.paid(await tenantOf(c.user), an), an);
+  await db.q('INSERT INTO tickets (id, tenant_id, user_id, subject, product, status, messages, created, updated, plan, priority, first_due, resolve_due) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)', [uid(), c.user.tenant_id || '-', c.user.id, sec.clean(c.body.subject, 200), sec.clean(c.body.product, 40), 'acik', JSON.stringify([{ from: 'musteri', text: sec.clean(c.body.text, 5000), at: iso(an) }]), an, an, f.plan, f.priority, f.first_due, f.resolve_due]);
   return { ok: true };
 });
 route('POST', '/api/tickets/:id/reply', { auth: 'user' }, async (c) => {
   const admin = ['admin', 'superadmin'].includes(c.user.role);
   const t = await db.one(admin ? 'SELECT * FROM tickets WHERE id=?' : 'SELECT * FROM tickets WHERE id=? AND tenant_id=?', admin ? [c.params.id] : [c.params.id, c.user.tenant_id || '-']);
   if (!t) throw err(404, 'Talep bulunamadı');
+  await slaTara(t.id); // yanıt veya kapanış geç geldiyse aşım, durum değişmeden önce işlenir
   const m = J(t.messages, []);
-  if (c.body.close && admin) await db.q("UPDATE tickets SET status='kapali', updated=? WHERE id=?", [now(), t.id]);
-  else { if (!sec.V.str(c.body.text, 5000, 1)) throw err(400, 'Mesaj boş'); m.push({ from: admin ? 'destek' : 'musteri', text: sec.clean(c.body.text, 5000), at: iso(now()), by: c.user.name }); await db.q('UPDATE tickets SET messages=?, status=?, updated=? WHERE id=?', [JSON.stringify(m), admin ? 'yanitlandi' : 'acik', now(), t.id]); }
+  if (c.body.close && admin) await db.q("UPDATE tickets SET status='kapali', closed_at=COALESCE(closed_at, ?), updated=? WHERE id=?", [now(), now(), t.id]);
+  else {
+    if (!sec.V.str(c.body.text, 5000, 1)) throw err(400, 'Mesaj boş'); m.push({ from: admin ? 'destek' : 'musteri', text: sec.clean(c.body.text, 5000), at: iso(now()), by: c.user.name });
+    if (admin) await db.q("UPDATE tickets SET messages=?, status='yanitlandi', first_reply_at=COALESCE(first_reply_at, ?), closed_at=NULL, updated=? WHERE id=?", [JSON.stringify(m), now(), now(), t.id]);
+    else await db.q("UPDATE tickets SET messages=?, status='acik', closed_at=NULL, updated=? WHERE id=?", [JSON.stringify(m), now(), t.id]);
+  }
   return { ok: true };
 });
 route('GET', '/api/referral', { auth: 'user' }, async (c) => {
@@ -636,7 +693,13 @@ A('POST', '/users/:id/reset', async (c) => {
 });
 A('GET', '/leads', async () => ({ ok: true, leads: await db.q('SELECT * FROM leads ORDER BY created DESC LIMIT 500') }));
 A('POST', '/leads/:id', async (c) => { await db.q('UPDATE leads SET status=? WHERE id=?', [['yeni', 'arandi', 'kazanildi', 'kayip'].includes(c.body.status) ? c.body.status : 'arandi', c.params.id]); return { ok: true }; });
-A('GET', '/tickets', async () => ({ ok: true, tickets: (await db.q('SELECT k.*, t.name AS tenant_name FROM tickets k LEFT JOIN tenants t ON t.id=k.tenant_id ORDER BY k.updated DESC LIMIT 300')).map((t) => ({ ...t, messages: J(t.messages, []) })) }));
+A('GET', '/tickets', async (c) => {
+  await slaTara();
+  const f = c.query.get('filtre'); const w = f === 'asildi' ? "WHERE k.breached=1 AND k.status<>'kapali'" : f === 'acik' ? "WHERE k.status<>'kapali'" : f === 'kapali' ? "WHERE k.status='kapali'" : '';
+  // Öncelik sırası: açıklar önde, sonra paket önceliği, sonra en yakın son süre. Eski taleplerin önceliği yoktur, sona düşer.
+  const rows = await db.q(`SELECT k.*, t.name AS tenant_name FROM tickets k LEFT JOIN tenants t ON t.id=k.tenant_id ${w} ORDER BY k.status='kapali', k.priority IS NULL, k.priority, IF(k.first_reply_at IS NULL, k.first_due, k.resolve_due), k.updated DESC LIMIT 300`);
+  return { ok: true, paketler: destek.pub(), tickets: rows.map((t) => ({ ...t, messages: J(t.messages, []), sla: destek.state(t) })) };
+});
 A('GET', '/coupons', async () => ({ ok: true, coupons: await db.q('SELECT * FROM coupons ORDER BY code') }));
 A('POST', '/coupons', async (c) => {
   const code = String(c.body.code || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 40); const pct = Math.round(Number(c.body.pct));
@@ -688,4 +751,4 @@ A('PUT', '/settings', async (c) => {
 A('GET', '/audit', async () => ({ ok: true, rows: await db.q('SELECT a.*, u.email FROM audit a LEFT JOIN users u ON u.id=a.user_id ORDER BY a.id DESC LIMIT 500') }));
 A('GET', '/db', async () => ({ ok: true, info: db.info(), tables: await db.q('SELECT table_name AS name, table_rows AS rows_est, ROUND((data_length+index_length)/1024/1024, 2) AS mb FROM information_schema.tables WHERE table_schema = DATABASE() ORDER BY name') }));
 
-module.exports = { R, valid, canUseApp, err, site, audit, J, syncCatalog, route, A, setting, setSetting, applyOrder, paidMail, mailTo, fmtTL };
+module.exports = { R, valid, canUseApp, err, site, audit, J, syncCatalog, route, A, setting, setSetting, applyOrder, paidMail, mailTo, fmtTL, slaTara };

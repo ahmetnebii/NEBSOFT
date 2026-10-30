@@ -132,3 +132,14 @@ Aşağıdakilerin hiçbiri doğrulanmadı (hafızadan, doğrulanmadı):
 4. Denetim kaydı (giriş ve IP) için asgari veya azami süre var mı? 5651 sayılı Kanun bu hizmete uygulanıyor mu?
 5. Yukarıdaki tablodaki sürelerin her biri ve VERBİS kaydına etkisi.
 6. `market.js` içindeki KVKK ve gizlilik metinlerine eklenen paragraflar (mevcut uyarı: metinler örnek şablondur).
+
+## Sipariş, destek ve teklif olayları
+
+Uygulama kanalına yazılır, kişi ve iletişim bilgisi, serbest not ve fatura bilgisi içermez.
+
+| Olay | Seviye | Veri |
+|---|---|---|
+| `destek.paket_secildi` | bilgi | sipariş no, paket, dönem, tutar |
+| `indirim.uygulandi` | bilgi | sipariş no, kural, yüzde, tutar, ölçütler |
+| `teklif.olusturuldu` | bilgi | teklif no, tür, lisans, şube, program adedi, ticari izin var/yok |
+| `destek.sla_asildi` | uyarı | talep kimliği, paket, aşama. Talep başına bir kez yazılır |

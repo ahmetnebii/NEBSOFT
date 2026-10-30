@@ -30,7 +30,7 @@ function price(items, couponPct = 0) {
   if (items && !Array.isArray(items)) throw gecersiz();
   for (const it of items || []) {
     if (!it || typeof it !== 'object') throw gecersiz();
-    const p = product(String(it.pid)); const plan = Number(it.plan); const period = it.period === 'yillik' ? 'yillik' : 'aylik'; const qty = Math.min(50, Math.max(1, Number(it.qty) || 1));
+    const p = product(String(it.pid)); const plan = Number(it.plan); const period = it.period === 'yillik' ? 'yillik' : 'aylik'; const qty = Math.min(50, Math.max(1, Math.floor(Number(it.qty)) || 1));
     if (!p || ![0, 1, 2].includes(plan)) throw gecersiz();
     lines.push({ pid: p.id, name: p.name, plan, period, qty, price: p.prices[plan] * (period === 'yillik' ? 10 : 1) * qty });
   }

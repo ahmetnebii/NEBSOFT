@@ -35,4 +35,11 @@ function hesapla(sepet, opt = {}) {
   return { lines: lines.map(({ kurus, ...l }) => l), subtotal: tl(ara), discount: tl(indirimK), indirim: secilen ? { ...secilen, tutar: tl(indirimK) } : null, adaylar, vat: tl(kdv), total: tl(matrah + kdv), olcut: n, kurumsal: n.lisansSayisi >= ((c.kurumsal || {}).formEsigi || Infinity) };
 }
 
-module.exports = { load, check, kademe, hesapla };
+// Bir sonraki kademe: uygulanan yüzdeyi geçen en yakın eşik. Sepette "2 lisans daha ekleyin, %10 olsun" bilgisi buradan gelir.
+function sonraki(sonuc, c = load()) {
+  const simdi = sonuc.indirim ? sonuc.indirim.yuzde : 0; const n = sonuc.olcut;
+  const adaylar = Object.keys(ADLAR).flatMap((k) => (c[k] || []).filter((t) => t.min > n[k] && t.yuzde > simdi).map((t) => ({ kural: k, ad: ADLAR[k], eksik: t.min - n[k], min: t.min, yuzde: t.yuzde })));
+  return adaylar.reduce((b, a) => (!b || a.eksik < b.eksik || (a.eksik === b.eksik && a.yuzde > b.yuzde) ? a : b), null);
+}
+
+module.exports = { load, check, kademe, hesapla, sonraki };

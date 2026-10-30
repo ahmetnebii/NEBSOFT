@@ -55,8 +55,21 @@ const SCHEMA = [
   `CREATE TABLE IF NOT EXISTS shopier_payments (order_id CHAR(16) PRIMARY KEY, product_id VARCHAR(64) NULL UNIQUE, product_url VARCHAR(400) NULL, amount DECIMAL(12,2) NOT NULL, status VARCHAR(20) NOT NULL, shop_order_id VARCHAR(64) NULL, alert VARCHAR(255) NULL, closed TINYINT NOT NULL DEFAULT 0, created DATETIME NOT NULL, updated DATETIME NOT NULL, last_check DATETIME NULL, INDEX (closed)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
   `CREATE TABLE IF NOT EXISTS shopier_orders (shop_id VARCHAR(64) PRIMARY KEY, order_id CHAR(16) NOT NULL, product_id VARCHAR(64) NOT NULL, total VARCHAR(20), currency VARCHAR(8), result VARCHAR(20) NOT NULL, detail VARCHAR(255), at DATETIME NOT NULL, INDEX (order_id)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
   `CREATE TABLE IF NOT EXISTS shopier_events (id VARCHAR(80) PRIMARY KEY, event VARCHAR(40) NOT NULL, at DATETIME NOT NULL, INDEX (at)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
+  // Kurumsal teklif: oda, dernek, bayi ve toplu alım talepleri. kvkk_at aydınlatma onayıdır; ticari_izin ayrı ve isteğe bağlıdır.
+  `CREATE TABLE IF NOT EXISTS quotes (id CHAR(16) PRIMARY KEY, no VARCHAR(20) NOT NULL UNIQUE, kurum VARCHAR(160) NOT NULL, tur VARCHAR(20) NOT NULL, yetkili VARCHAR(120) NOT NULL, eposta VARCHAR(190) NOT NULL, telefon VARCHAR(40) NOT NULL, program_listesi TEXT NOT NULL, lisans INT NOT NULL DEFAULT 1, sube INT NOT NULL DEFAULT 1, \`not\` TEXT, durum VARCHAR(20) NOT NULL DEFAULT 'yeni', teklif_tutari DECIMAL(12,2) NULL, gecerlilik DATE NULL, kvkk_at DATETIME NOT NULL, ticari_izin TINYINT NOT NULL DEFAULT 0, ticari_izin_at DATETIME NULL, order_id CHAR(16) NULL, created DATETIME NOT NULL, INDEX (durum), INDEX (created)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
 ];
-async function migrate() { for (const s of SCHEMA) await q(s); }
+// Var olan kurulumlara sütun ekleme: CREATE TABLE IF NOT EXISTS eski tabloyu değiştirmez. Sütun varsa dokunulmaz, eski satırlar NULL/varsayılan kalır.
+const COLUMNS = [
+  ['tenants', 'support_plan', 'VARCHAR(20) NULL'], ['tenants', 'support_until', 'DATETIME NULL'], ['orders', 'indirim', 'TEXT NULL'],
+  ['tickets', 'plan', 'VARCHAR(20) NULL'], ['tickets', 'priority', 'TINYINT NULL'], ['tickets', 'first_due', 'DATETIME NULL'], ['tickets', 'resolve_due', 'DATETIME NULL'], ['tickets', 'first_reply_at', 'DATETIME NULL'], ['tickets', 'closed_at', 'DATETIME NULL'], ['tickets', 'breached', 'TINYINT NOT NULL DEFAULT 0'],
+];
+async function addColumns() {
+  for (const [tablo, sutun, tip] of COLUMNS) {
+    if ((await q('SELECT 1 FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name=? AND column_name=?', [tablo, sutun])).length) continue;
+    try { await q(`ALTER TABLE \`${tablo}\` ADD COLUMN \`${sutun}\` ${tip}`); } catch (e) { if (e.code !== 'ER_DUP_FIELDNAME') throw e; } // iki süreç aynı anda açılırsa ikincisi hata vermesin
+  }
+}
+async function migrate() { for (const s of SCHEMA) await q(s); await addColumns(); }
 
 // Yöneticinin MySQL sunucusunda çalıştıracağı veritabanı + kullanıcı + yetki SQL'i
 function setupSql({ database = 'nebsoft', user = 'nebsoft_app', host = '%', password }) {
