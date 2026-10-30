@@ -1,0 +1,52 @@
+{
+  "sablon": "matbaa/urun-listesi",
+  "surum": 1,
+  "program": "matbaa",
+  "tur": "urun",
+  "ad": "Matbaa ürün listesi",
+  "aciklama": "Sık basılan işler. Fiyatları siz girin.",
+  "kaynak": "sablon",
+  "hedef": "services",
+  "fiyatAlan": "price",
+  "varsayilan": {
+    "price": 0
+  },
+  "kayitlar": [
+    {
+      "anahtar": "kartvizit",
+      "name": "Kartvizit",
+      "cat": "Kâğıt",
+      "unit": "adet"
+    },
+    {
+      "anahtar": "brosur",
+      "name": "Broşür",
+      "cat": "Kâğıt",
+      "unit": "adet"
+    },
+    {
+      "anahtar": "afis",
+      "name": "Afiş",
+      "cat": "Kâğıt",
+      "unit": "adet"
+    },
+    {
+      "anahtar": "branda",
+      "name": "Branda",
+      "cat": "Geniş format",
+      "unit": "m²"
+    },
+    {
+      "anahtar": "folyo",
+      "name": "Folyo",
+      "cat": "Geniş format",
+      "unit": "m²"
+    },
+    {
+      "anahtar": "tabela",
+      "name": "Tabela",
+      "cat": "Reklam",
+      "unit": "m²"
+    }
+  ]
+}

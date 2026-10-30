@@ -78,6 +78,14 @@ window.CATALOG = {
       modules: ['Servis Kayıtları', 'Kanban Pano', 'Müşteriler', 'Parça Stoku', 'Teknisyenler', 'Durum Sorgulama', 'Raporlar'],
     },
     {
+      id: 'matbaa', ready: true, extraDemos: [{ label: 'Müşteri takip sayfasını aç', url: 'apps/matbaa/takip.html' }], cat: 'uretim', name: 'Matbaa & Reklam Atölyesi', tagline: 'Teklif, tasarım onayı ve üretim takibi', icon: 'print', accent: '#7c3aed',
+      ornekFiyat: true, prices: [499, 899, 1690], sectors: ['Matbaa', 'Reklam atölyesi', 'Tabela', 'Branda baskı', 'Dijital baskı', 'Promosyon'], // fiyat ÖRNEK, kullanıcı onayı bekliyor
+      desc: 'Teklif, m² ve adet fiyatı, ebat ve son işlem bilgisi, tasarım sürümleri ve müşteri onayı, üretim panosu, kontrol listesi ve hata kaydı.',
+      features: ['Branda ve tabelada m² fiyat, kâğıtta adet fiyatı', 'Ebat, malzeme, yön ve son işlem kaleme yazılır', 'Tasarım sürümleri ve müşterinin bağlantıyla onayı', 'Onaysız tasarım üretime geçmez', 'Siparişten çıkan üretim kontrol listesi', 'Hata ve yeniden üretim nedeni raporu', 'Teklif belgesi, tahsilat ve adrese teslim'],
+      modules: ['Üretim Panosu', 'İşler', 'Teslim Takvimi', 'Dağıtım', 'Müşteriler', 'Ürün ve Fiyatlar', 'Ekip', 'SMS Bildirimleri'],
+      faq: [['Müşteri tasarımı nasıl onaylar?', 'Sürümü onaya sunarsınız, müşteri takip sayfasından onaylar veya düzeltme ister. Yüz yüze onayı da kimin onayladığını yazarak kaydedebilirsiniz.'], ['Onaysız baskı engellenir mi?', 'Evet. Hazır dosya işaretlenmemişse onaylı sürüm olmadan iş baskıya geçmez.']],
+    },
+    {
       id: 'kurutemizleme', ready: true, extraDemos: [{ label: 'Müşteri takip sayfasını aç', url: 'apps/kurutemizleme/takip.html' }], cat: 'randevu', name: 'Kuru Temizleme & Halı Yıkama', tagline: 'Fiş, etiket, adresten alma ve "hazır" SMS\'i', icon: 'drop', accent: '#0284c7',
       ornekFiyat: true, prices: [499, 899, 1690], sectors: ['Kuru temizleme', 'Halı yıkama', 'Çamaşırhane', 'Perde yıkama', 'Koltuk yıkama'], // fiyat ÖRNEK, kullanıcı onayı bekliyor
       desc: 'Fiş, m² hesabı, parça etiketi, teslim alma durum kaydı, adresten alma ve dağıtım listesi, "hazır" SMS\'i, müşteri takip sayfası ve tahsilat.',
