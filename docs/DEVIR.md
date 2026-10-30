@@ -13,11 +13,10 @@ kalındığını** ve **ne yapılacağını** anlatır. İkisi çelişirse `CLAU
 
 ### 0.1 Projeyi çek
 ```bash
-git clone <DEPO_ADRESİ> NEBSOFTAPP
+git clone https://github.com/ahmetnebii/NEBSOFT.git NEBSOFTAPP
 cd NEBSOFTAPP
-git fetch --all
-git branch -a          # tüm dallar görünmeli (§2)
-git checkout muhasebe/urun-spec
+git checkout devir/hepsi   # TÜM işin birleşik hâli — buradan devam et
+git branch -a              # ayrı dallar da duruyor (§2)
 ```
 Depo adresi yoksa: eski bilgisayardaki `C:\Users\AHMET\Downloads\NEBSOFT-git.bundle` dosyasını kopyala ve
 `git clone NEBSOFT-git.bundle NEBSOFTAPP` çalıştır (bundle tüm dalları içerir). Sonra `git remote set-url origin <yeni adres>`.
@@ -88,7 +87,9 @@ npm run dist          # çıktı: ../indir/NEBSOFT-Kurulum.exe + latest.yml (+ w
 ---
 
 ## 2. Dallar ve durumları
-Hiçbir dal `main`'e birleştirilmedi. Tüm dallar `main` + Ön Muhasebe 1. dalgası (`22b1dae`) üzerinden açıldı; birleştirme sırasında
+**`devir/hepsi` = `muhasebe/urun-spec` + aşağıdaki 6 alt oturum dalının birleşimi (30.10.2026).** Yeni işler bu dalda veya bundan
+açılan dallarda yapılır. Birleştirmede tek çakışma `.claude/launch.json` idi (tüm port kayıtları tutuldu); birleşik dalda `npm test`
+öncekiyle aynı sonucu verdi (yalnızca B8). `main`'e henüz birleştirilmedi. Tüm dallar `main` + Ön Muhasebe 1. dalgası (`22b1dae`) üzerinden açıldı; birleştirme sırasında
 çakışma çıkarsa genelde `docs/urun/ON-MUHASEBE.md` ve `.claude/launch.json` olur.
 
 | Dal | Programlar (grup) | Biten | Yarım / kalan |
