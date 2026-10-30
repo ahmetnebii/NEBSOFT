@@ -852,7 +852,9 @@ const qrItem = (x, i) => {
   if (!m || m.active === false || !Number.isInteger(q) || q < 1 || q > 50) bad('Menüde olmayan ürün');
   return { id: /^[A-Za-z0-9_-]{4,40}$/.test(String(i.id)) ? String(i.id) : 'q' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), pid: m.id, name: m.name, price: Number(m.price), qty: q, note: val('str:200', i.note || '', 'note'), status: 'new', station: m.station, qr: true };
 };
-const qrTable = (x) => { const t = x.q && x.get('tables', x.q.masa); if (!t) bad('Geçersiz masa kodu'); return t; };
+// Masa + masanın rastgele QR anahtarı (qrKey) birlikte gerekir: masa kimliği (salon-1) tahmin edilebildiği için dışarıdan sahte sipariş verilebiliyordu
+const qrOk = (x) => { const t = x.q && x.get('tables', x.q.masa); return t && t.qrKey && String(x.q.k || '') === t.qrKey ? t : null; };
+const qrTable = (x) => { const t = qrOk(x); if (!t) bad('Geçersiz masa kodu — masadaki QR kodu okutun'); return t; };
 RULES.adisyon = {
   pub: {
     mcats: true,
@@ -861,7 +863,7 @@ RULES.adisyon = {
     checks: { where: () => false }, // hesaplar yalnızca masaya göre (query)
   },
   query: (x, q) => {
-    const t = x.get('tables', q.masa); if (!t) return null;
+    const t = qrOk({ ...x, q }); if (!t) return null;
     // "Çok satanlar" için ürün bazında toplam (hesap ayrıntısı olmadan)
     const pop = {}; x.col('checks').forEach((k) => (k.items || []).forEach((i) => { pop[i.pid] = (pop[i.pid] || 0) + Number(i.qty || 0); }));
     const open = x.col('checks').filter((k) => k.table === t.id && k.status !== 'closed').map((k) => x.pick(k, ['id', 'no', 'table', 'items', 'payments', 'discount', 'status', 'opened', 'type']));

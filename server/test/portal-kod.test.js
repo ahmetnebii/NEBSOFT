@@ -40,6 +40,14 @@ for (const [prog, col] of [['veteriner', 'owners'], ['spor', 'members']]) {
   assert.ok(R.anaokulu.login(mk({ students: [{ ...st, portalCode: 'Q9W8E7' }] })(), { phone: c.phone, code: 'Q9W8E7' }));
   ok('toptan / müşavir / hukuk / anaokulu: rastgele portalCode ile giriş çalışır'); }
 
+// Adisyon QR menü: masa + masanın rastgele QR anahtarı (tahmin edilebilir masa kimliğiyle dışarıdan sipariş verilemez)
+{ const doc = { tables: [{ id: 'salon-1', qrKey: 'k7p2qxab' }, { id: 'salon-2' }], menu: [{ id: 'm1', name: 'Çay', price: 20, active: true }], checks: [] };
+  const x = (q) => ({ doc, q, col: (k) => (doc[k] = doc[k] || []), get: (k, id) => (doc[k] || []).find((r) => r.id === id), seq: () => 'A1' });
+  assert.ok(R.adisyon.query(x({}), { masa: 'salon-1', k: 'k7p2qxab' })); assert.strictEqual(R.adisyon.query(x({}), { masa: 'salon-1' }), null); assert.strictEqual(R.adisyon.query(x({}), { masa: 'salon-2', k: '' }), null);
+  assert.throws(() => R.adisyon.write.checks.ins({ items: [{ pid: 'm1', qty: 1 }] }, x({ masa: 'salon-1' })), /QR/);
+  assert.throws(() => R.adisyon.write.calls.ins({ type: 'garson' }, x({ masa: 'salon-1', k: 'yanlis' })), /QR/);
+  ok('adisyon: QR sipariş / garson çağrısı masa + QR anahtarı ister'); }
+
 // Otopark / oto yıkama: plaka + fişteki takip kodu (abonede abone kodu)
 { const today = new Date().toISOString().slice(0, 10); const x = mk({ parks: [{ id: 'p1', plate: '34 ABC 123', out: null, code: 'KX7P2' }], jobs: [{ id: 'j1', plate: '06XYZ99', status: 'bekliyor', code: 'J9W8E' }], subs: [{ id: 's1', plate: '35 AA 1', end: '2999-01-01', portalCode: 'ABONE7' }] });
   const L = (q) => R.oto.login({ ...x(), today }, q);
