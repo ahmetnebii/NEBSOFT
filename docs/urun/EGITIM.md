@@ -44,15 +44,14 @@ Not: Şikâyetler rakip ürünün yazılımına değil kurumların hizmetine ait
 | Eğitmen rolü: yalnız kendi grubu | Beklenen | Var, sunucu kuralıyla |
 | Eğitmen saat hakedişi | Beklenen | Var |
 | Ön kayıt | Beklenen | Var |
-| İmzalı kayıt formu (`NS.forms`) | Beklenen | Yok: `core/forms.js` kaydı gerekir. Kayıt formu `NS.docs` ile yazdırılır |
+| İmzalı kayıt sözleşmesi ve teslim tutanağı (`NS.forms`) | Beklenen | Var, metin örnek |
 | Kursiyer portalı | Fark yaratan | Yok, sonraki dalga |
 | Online eğitim bağlantısı | Fark yaratan | Yok |
 | Rozet, LinkedIn paylaşımı | Fark yaratan | Yok |
 
 ## Çekirdek ihtiyacı
 
-- `core/forms.js`: `egitim` kaydı (kayıt sözleşmesi, imzalı).
-- `core/kurulum-adimlari.js`, `core/notify.js`, `core/bizsite.js`, `core/integrations.js` `appName`.
+`docs/urun/CEKIRDEK-ISTEKLERI-uyelik-egitim-saglik.md`.
 
 ## Deneme
 

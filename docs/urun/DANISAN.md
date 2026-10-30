@@ -71,10 +71,8 @@ Bu ürünlere özgü Şikâyetvar araştırması sonuç vermedi. Aşağıdaki ih
 
 ## Çekirdek ihtiyacı
 
-- `core/forms.js`: imzalı onam formları (`NS.forms`). Şu an onam `NS.sign` ile kart üzerinde.
-- `core/kvkk.js`: anonimleştirme `adds` ve `title` alanlarını temizlemiyor; program bu alanları kendisi temizliyor.
-- `core/kurulum-adimlari.js`, `core/notify.js`, `core/bizsite.js` kaydı.
+`docs/urun/CEKIRDEK-ISTEKLERI-uyelik-egitim-saglik.md`. Onam `NS.sign` ile kart üzerinde tutulur.
 
 ## Deneme
 
-`?demo=1`: tüm ekranlar, not ve kilit, ölçüm, paket düşümü, çakışma, TEST SMS metni, sekreter ve uzman görünümü, anonimleştirme penceresi. Konsol hatası yok. Bulutta şifreli saklama için tür listesi saf testle doğrulandı, gerçek veritabanında `npm test` zinciri çalıştırıldı (son rapora bakın).
+`?demo=1`: tüm ekranlar, not ve kilit, ölçüm, paket düşümü, çakışma, TEST SMS metni, sekreter ve uzman görünümü, anonimleştirme penceresi. Konsol hatası yok. Şifreli saklama tür listesi saf testle doğrulandı. `npm test` geçti (MariaDB, XSD dahil, 30.10.2026). Danışan belgesiyle gerçek bulut akışı ayrıca denenmedi.

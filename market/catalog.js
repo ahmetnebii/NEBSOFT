@@ -247,7 +247,7 @@ window.CATALOG = {
     },
     {
       id: 'dernek', ready: true, extraDemos: [{ label: 'Üye portalını aç', url: 'apps/dernek/uye.html' }], cat: 'yonetim', name: 'Dernek, Vakıf & Muhtarlık', tagline: 'Üye, aidat, toplantı ve karar takibi', icon: 'users', accent: '#0f766e',
-      prices: [349, 690, 1290], sectors: ['Dernek', 'Hemşehri derneği', 'Spor kulübü derneği', 'Vakıf', 'Muhtarlık'],
+      prices: [349, 690, 1290], ornekFiyat: true, /* ÖRNEK FİYAT */ sectors: ['Dernek', 'Hemşehri derneği', 'Spor kulübü derneği', 'Vakıf', 'Muhtarlık'],
       desc: 'Üye kartı, dönemlik aidat tahakkuku, tahsilat, gelir-gider, genel kurul çağrısı, hazirun listesi, karar ve evrak kayıtları. Kayıtlar yardımcı kayıttır; tasdikli defter ve basılı alındı belgesi yerine geçmez.',
       features: ['Üye kartı: kimlik, giriş ve çıkış tarihi, kabul kararı', 'Yıllık veya aylık aidat tahakkuku, avans ve kısmi ödeme', 'Tahsilatta basılı alındı belgesi numarası ve mükerrer numara uyarısı', 'Borçlulara toplu SMS hatırlatma (SMS sağlayıcı hesabı gerekir)', 'Gelir-gider ve yıl sonu tablosu hazırlığı', 'Genel kurul: gündem, çağrı, ikinci toplantı tarihi kontrolü, hazirun listesi', 'Yönetim kurulu kararları ve toplantı tutanağı', 'Gelen-giden evrak kaydı', 'Beyanname ve sonuç bildirimi tarih hatırlatmaları', 'Üye portalı: aidat durumu, genel kurul ve duyurular', 'Muhtarlık için aidatsız kullanım'],
       modules: ['Üyeler', 'Aidat & Tahsilat', 'Gelir & Gider', 'Toplantılar', 'Karar Kayıtları', 'Evrak Kayıtları', 'Duyurular', 'Üye Portalı'],
@@ -255,7 +255,7 @@ window.CATALOG = {
     },
     {
       id: 'egitim', ready: true, extraDemos: [{ label: 'Sertifika doğrulama sayfasını aç', url: 'apps/egitim/dogrula.html' }], cat: 'egitim', name: 'Eğitim & Sertifika Merkezi', tagline: 'Grup, yoklama, ödeme ve sertifika takibi', icon: 'award', accent: '#4f46e5',
-      prices: [549, 990, 1890], sectors: ['Mesleki eğitim merkezi', 'Sertifika programı', 'Kurumsal eğitim', 'Atölye', 'Bilişim kursu'],
+      prices: [549, 990, 1890], ornekFiyat: true, /* ÖRNEK FİYAT */ sectors: ['Mesleki eğitim merkezi', 'Sertifika programı', 'Kurumsal eğitim', 'Atölye', 'Bilişim kursu'],
       desc: 'Eğitim kataloğu, tarihli gruplar, oturum yoklaması, not girişi, taksit ve sertifika. Şartları sağlayan kursiyere toplu belge üretin, karekodla doğrulansın. Belge kurumun kendi belgesidir, resmî geçerlilik sağlamaz.',
       features: ['Eğitim kataloğu: saat, ücret, belge geçerlilik süresi', 'Tarihli grup ve otomatik oturum takvimi', 'Oturum yoklaması ve saat bazlı devam oranı', 'Devam, not ve ödeme şartına göre sertifika hazırlık listesi', 'Toplu sertifika üretimi, teslim takibi ve hazır bildirimi', 'Karekod ve kodla doğrulama sayfası, iptal edilen belge iptal görünür', 'Taksit, tahsilat ve geciken ödeme hatırlatması', 'Eğitmen saat hakedişi', 'Ön kayıt ve aday takibi', 'Eğitmen yalnız kendi grubunu görür'],
       modules: ['Gruplar', 'Kursiyerler', 'Sertifikalar', 'Taksit & Tahsilat', 'Eğitim Kataloğu', 'Eğitmenler', 'Ön Kayıt'],
@@ -263,7 +263,7 @@ window.CATALOG = {
     },
     {
       id: 'danisan', ready: false, cat: 'saglik', name: 'Danışan Takibi', tagline: 'Diyetisyen, psikolog ve fizyoterapist için seans ve ödeme', icon: 'heart', accent: '#0d9488',
-      prices: [449, 790, 1490], sectors: ['Diyetisyen', 'Psikolog', 'Fizyoterapist', 'Danışmanlık merkezi'],
+      prices: [449, 790, 1490], ornekFiyat: true, /* ÖRNEK FİYAT */ sectors: ['Diyetisyen', 'Psikolog', 'Fizyoterapist', 'Danışmanlık merkezi'],
       desc: 'Danışan kartı, randevu, kilitli seans notu, ölçüm takibi, plan yazdırma, seans paketi ve ödeme. Satışa açılmadan önce hukuki inceleme gerekir.',
       features: ['Danışan kartı ve onam imzası', 'Uzman takvimi ve çakışma kontrolü', 'Kilitlenebilir seans notu, kilitli nota yalnız ek', 'Kilo, bel ve ağrı ölçümü, gelişim grafiği', 'Beslenme ve egzersiz planı yazdırma', 'Seans paketi ve kalan seans', 'Sekreter sağlık bilgisini görmez, uzman yalnız kendi danışanını görür'],
       modules: ['Randevular', 'Danışanlar', 'Seans Notları', 'Ölçümler', 'Planlar', 'Kasa & Bakiyeler', 'Uzmanlar'],

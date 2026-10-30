@@ -70,8 +70,7 @@ Kaynaklar üretici tanıtım sayfaları ve indirme sitesi özetleridir, bağıms
 
 ## Çekirdek ihtiyacı
 
-- `core/forms.js`: `dernek` için imzalı form (üyelik başvurusu, istifa). Şu an yok.
-- `core/kurulum-adimlari.js`, `core/notify.js`, `core/bizsite.js`, `core/integrations.js` `appName`: `dernek` kaydı.
+`docs/urun/CEKIRDEK-ISTEKLERI-uyelik-egitim-saglik.md`. İmzalı üyelik başvurusu ve ayrılma dilekçesi `NS.forms` ile programdan eklendi, metinleri örnektir.
 
 ## Deneme
 
