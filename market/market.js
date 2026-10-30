@@ -107,7 +107,7 @@
         <div><h4>Ürünler</h4>${products().filter((p) => p.ready).map((p) => `<a href="${urunHref(p)}">${esc(p.name)}</a>`).join('')}<a href="/programlar">Tüm ürünler →</a></div>
         <div><h4>Kurumsal</h4><a href="#/indir">Masaüstü sürümünü indir</a><a href="/fiyatlar/">Fiyatlandırma</a><a href="/rehber/">Rehber</a><a href="#/sektorler">Sektörler</a><a href="#/iletisim">İletişim</a><a href="#/hesabim">Müşteri paneli</a><a href="admin/">Yönetim paneli</a></div>
         <div><h4>Yasal</h4><a href="/kvkk/">KVKK Aydınlatma</a><a href="/mesafeli-satis/">Mesafeli Satış Sözleşmesi</a><a href="/iade/">İptal ve İade</a><a href="/gizlilik/">Gizlilik Politikası</a><a href="/cerez/">Çerez Politikası</a>${CL && CL.analitik ? '<a href="#" data-olay-tercih>Analitik tercihleri</a>' : ''}</div>
-      </div><hr><div class="row between small faint"><span>© ${new Date().getFullYear()} ${esc(S().siteName)} Yazılım. Tüm hakları saklıdır.</span><span>${icon('shield')} 256-bit SSL · KVKK uyumlu · Türkiye'de barındırılır</span></div></div></footer>`;
+      </div><hr><div class="row between small faint"><span>© ${new Date().getFullYear()} ${esc(S().siteName)} Yazılım. Tüm hakları saklıdır.</span></div></div></footer>`;
     on(document.body, 'click', '[data-theme]', NS.toggleTheme);
     $('#burger').onclick = () => $('#links').classList.toggle('open');
     on(document.body, 'click', '#links a', () => $('#links').classList.remove('open'));
@@ -291,7 +291,7 @@
           <div class="hm-b reveal"><div class="hm-b-ic">${icon('edit')}</div><h3>Kendi belgeniz, dijital imza</h3><p>Fiş, iş emri, teslim formu: logonuz, renginiz, metinleriniz. Müşteriye ekranda imzalatın.</p></div>
           <div class="hm-b reveal"><div class="hm-b-ic">${icon('zap')}</div><h3>Entegrasyonlar hazır</h3><p>e-Fatura, yazarkasa POS, SMS, WhatsApp, pazaryerleri, KBS, MEDULA… Her programda yalnızca işinize yarayanlar.</p></div>
           <div class="hm-b reveal"><div class="hm-b-ic">${icon('globe')}</div><h3>İnternet gitse de çalışır</h3><p>Kayıtlar cihazda tutulur, bağlantı gelince buluta eşitlenir. Veri kaybı yok.</p></div>
-          <div class="hm-b reveal"><div class="hm-b-ic">${icon('shield')}</div><h3>KVKK uyumlu, yedekli</h3><p>Rol ve yetki, işlem günlüğü, günlük yedek. Verileriniz Türkiye'de.</p></div>
+          <div class="hm-b reveal"><div class="hm-b-ic">${icon('shield')}</div><h3>Yetki ve işlem geçmişi</h3><p>Rol bazlı yetki ve işlem günlüğü. Kim neyi değiştirdi görürsünüz.</p></div>
         </div>
       </div></section>
 
@@ -586,7 +586,7 @@
         <div class="ax-tile t1"><div class="row1"><span class="i" style="--c:#34d399">${icon('trend')}</span><div><small>Bugünkü ciro</small><div class="num">₺48.320</div></div><span class="badge ok" style="margin-left:auto">+%12</span></div>${spark([6, 9, 7, 13, 12, 17, 15, 21, 19, 26])}</div>
         <div class="ax-tile t2"><span class="i" style="--c:#f87171">${icon('bell')}</span><div><b>Masa 7 garson çağırıyor</b><small>Adisyon · şimdi</small></div></div>
         <div class="ax-tile t3"><span class="i" style="--c:#a5b4fc">${icon('edit')}</span><div><b>Müşteri teslim formunu imzaladı</b><small>Oto Servis · 34 ABC 123</small></div></div></div>
-      <div class="ax-trust"><span>${icon('shield')} 256-bit SSL</span><span>${icon('check')} KVKK uyumlu</span><span>${icon('globe')} Türkiye'de barındırılır</span></div></section>`;
+      </section>`;
   }
   function authShell(el, kind, card) {
     document.body.classList.add('mk-auth');

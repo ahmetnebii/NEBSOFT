@@ -1,13 +1,8 @@
 // Arama motoru görünürlüğü ve "kendi kendini pazarlayan" sistem:
 //  • Alan adı yönetim panelindeki "Site adresi" ayarından gelir (tanıtım sitelerindeki yer tutucu sunarken değiştirilir)
-<<<<<<< C:/Users/AHMETN~1/AppData/Local/Temp/tmp.XJs63Fv0qp/o.seo.js
-//  • /sitemap.xml dinamiktir: ürün siteleri + /programlar + NEBSOFT kullanan her işletmenin herkese açık sayfası (/t/<işletme>/)
+//  • /sitemap.xml dinamiktir: site/sitemap.xml (ürün siteleri, /programlar, /fiyatlar/, yasal metinler, /rehber/) + NEBSOFT kullanan her işletmenin herkese açık sayfası (/t/<işletme>/)
 //  • /t/<işletme>/ : yayındaki işletme sitesi (core/bizsite.js) veya yalnızca online hizmet bağlantılarını gösteren noindex yalın sayfa
 //  • /t/<işletme>/hizmet/<slug>/ ve /t/<işletme>/sitemap.xml : hizmet sayfaları ve işletme site haritası (kendi alan adında kökten)
-=======
-//  • /sitemap.xml dinamiktir: site/sitemap.xml (ürün siteleri, /programlar, /fiyatlar/, yasal metinler, /rehber/) + NEBSOFT kullanan her işletmenin herkese açık sayfası (/t/<işletme>/)
-//  • /t/<işletme>/ : işletmenin müşterilerine açık hizmetlerini listeleyen, LocalBusiness şemalı sayfa (alt kısmında tavsiye bağlantısı)
->>>>>>> C:/Users/AHMETN~1/AppData/Local/Temp/tmp.XJs63Fv0qp/s.seo.js
 //  • IndexNow: yeni/değişen adresler Bing, Yandex, Seznam vb. arama motorlarına anında bildirilir
 const fs = require('fs');
 const path = require('path');
@@ -90,7 +85,9 @@ async function sitemap(req) {
   const pts = await publicTenants(); const seen = new Set(pts.map((t) => t.slug));
   const sites = await db.q("SELECT t.slug, b.updated FROM biz_sites b JOIN tenants t ON t.id=b.tenant_id JOIN licenses l ON l.tenant_id=t.id AND l.product='eklenti-web' AND l.status IN ('aktif','deneme') AND l.end>UTC_TIMESTAMP() WHERE b.published=1 AND t.status='active'").catch(() => []);
   sites.forEach((x) => { if (!seen.has(x.slug)) { seen.add(x.slug); pts.push({ slug: x.slug, updated: x.updated }); } });
-  const extra = pts.map((t) => `  <url><loc>${B}/t/${t.slug}/</loc><lastmod>${new Date(t.updated).toISOString().slice(0, 10)}</lastmod></url>`).join('\n');
+  // Yalnızca dizine girmesi istenen adresler: noindex işletme ve kendi alan adındaki siteler ana haritaya yazılmaz
+  const satir = []; for (const t of pts) { const r = await tenantUrls(req, t.slug).catch(() => null); if (!r || r.domain || !r.urls.length) continue; const m = new Date(r.updated || t.updated).toISOString().slice(0, 10); r.urls.forEach((u) => satir.push(`  <url><loc>${esc(u)}</loc><lastmod>${m}</lastmod></url>`)); }
+  const extra = satir.join('\n');
   return extra ? xml.replace('</urlset>', extra + '\n</urlset>') : xml;
 }
 async function robots(req) {

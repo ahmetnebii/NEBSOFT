@@ -252,7 +252,7 @@ const YASAL = [
   { ad: 'kvkk', dosya: ['kvkk'], baslik: 'KVKK Aydınlatma Metni', desc: `${CFG.brand} kişisel verilerin işlenmesine ilişkin aydınlatma metni: işlenen veriler, işleme amaçları ve 6698 sayılı Kanun kapsamındaki haklarınız.`,
     yedek: `<p>${SIRKET} ("Şirket") olarak, 6698 sayılı Kişisel Verilerin Korunması Kanunu kapsamında veri sorumlusu sıfatıyla kişisel verilerinizi aşağıda açıklanan amaçlarla işlemekteyiz.</p><h2>İşlenen veriler</h2><p>Kimlik, iletişim, fatura ve işlem güvenliği verileri.</p><h2>Amaçlar</h2><p>Sözleşmenin kurulması ve ifası, faturalandırma, destek hizmetleri, yasal yükümlülüklerin yerine getirilmesi.</p><h2>Haklarınız</h2><p>KVKK m.11 kapsamındaki taleplerinizi ${esc(CFG.email)} adresine iletebilirsiniz.</p>` },
   { ad: 'gizlilik', dosya: ['gizlilik'], baslik: 'Gizlilik Politikası', desc: `${CFG.brand} gizlilik politikası: programlara girdiğiniz işletme verilerinin nasıl saklandığı ve kimlerle paylaşılmadığı.`,
-    yedek: '<p>Uygulamalara girdiğiniz işletme verileri yalnızca size aittir; üçüncü kişilerle paylaşılmaz, reklam amacıyla kullanılmaz. Veriler Türkiye\'deki veri merkezlerinde şifreli saklanır ve günlük yedeklenir.</p>' },
+    yedek: '<p>Uygulamalara girdiğiniz işletme verileri yalnızca size aittir; üçüncü kişilerle paylaşılmaz, reklam amacıyla kullanılmaz. </p>' },
   { ad: 'mesafeli-satis', dosya: ['mesafeli-satis', 'sozlesme'], baslik: 'Mesafeli Satış Sözleşmesi', desc: `${CFG.brand} yazılım aboneliği mesafeli satış sözleşmesi: sözleşmenin konusu, taraflar ve hizmetin elektronik ortamda ifası.`,
     yedek: `<p>İşbu sözleşme, ${SIRKET} ile web sitesi üzerinden abonelik satın alan alıcı arasında, 6502 sayılı Tüketicinin Korunması Hakkında Kanun ve Mesafeli Sözleşmeler Yönetmeliği hükümleri uyarınca düzenlenmiştir.</p><h2>Konu</h2><p>Alıcının elektronik ortamda siparişini verdiği yazılım aboneliğinin satışı ve ifasıdır.</p><h2>İfa</h2><p>Lisans anahtarı ödeme onayının ardından elektronik ortamda derhal teslim edilir.</p>` },
   { ad: 'iade', dosya: ['iade'], baslik: 'İptal ve İade Koşulları', desc: `${CFG.brand} abonelik iptal ve iade koşulları: aylık ve yıllık aboneliklerde iptal ve iade nasıl yapılır.`,
@@ -261,7 +261,8 @@ const YASAL = [
     yedek: '<p>Bu sitede reklam veya ziyaretçi analizi çerezi kullanılmaz. Hesabınıza giriş yaptığınızda oturumunuzu sürdürmek için zorunlu bir oturum çerezi kullanılır. Sepetiniz ve tercihleriniz tarayıcınızda yerel olarak tutulur. Sayfalardaki yazı tipleri Google Fonts üzerinden yüklenir; bu sırada tarayıcınızın IP adresi Google\'a iletilir.</p>' },
 ];
 function yasalSayfa(y) {
-  const r = y.dosya.map((f) => mdOku(path.join(MD_DIR, 'yasal', f + '.md'))).find(Boolean);
+  // Avukat onayı ve şirket bilgisi gelmeden taslak yayına çıkmaz: TASLAK notu veya [...] yer tutucusu olan dosya kullanılmaz
+  const r = y.dosya.map((f) => mdOku(path.join(MD_DIR, 'yasal', f + '.md'))).find((x) => x && !/\*\*TASLAK|\[\.\.\.\]/.test(x.govde));
   const url = `${D}/${y.ad}/`; const title = (r && r.meta.title) || y.baslik; const desc = (r && r.meta.description) || y.desc;
   const updated = r && TARIH.test(r.meta.updated || '') ? r.meta.updated : '';
   const govde = r ? `${md(r.govde)}${updated ? `<p class="note">Son güncelleme: ${tarihTr(updated)}</p>` : ''}` : y.yedek + SABLON_NOTU;
