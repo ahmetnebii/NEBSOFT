@@ -1,0 +1,5 @@
+{
+  "_aciklama": "İş ortaklığı ayarı. Oran kullanıcının kararıdır: 'komisyon.yuzde' boş (null) kaldıkça /bayilik/ sayfasında hiçbir oran görünmez. Karar verilince 'yuzde' alanına sayı yazın (ör. 'komisyon' altındaki biçim '_ornek' ile aynıdır). '_ornek' yalnız biçimi gösterir, program tarafından okunmaz ve sitede görünmez. Değişiklik yeniden başlatma istemez.",
+  "_ornek": { "komisyon": { "yuzde": 20, "aciklama": "İlk yıl yapılan ödemeler üzerinden" } },
+  "komisyon": { "yuzde": null, "aciklama": "" }
+}

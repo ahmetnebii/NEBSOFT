@@ -123,7 +123,7 @@ const SITES = new Set(fs.existsSync(path.join(ROOT, 'site')) ? fs.readdirSync(pa
 const DENY = /^\/(data|dosyalar|config|server|node_modules|site\/tools|site\/src|awesome-claude-design|docs|desktop|android|scripts|yayin|ic-araclar|\.[^/]*)(\/|$)|^\/(server\.js|sunucu\.json|package(-lock)?\.json|skills-lock\.json|baslat\.bat)$|\.(md|bat|sh|test\.js)$|\/\.[^/]+$/i;
 const LONG = /\.(jpg|jpeg|png|webp|svg|ico|woff2?)$/i;
 // Adresi sonda / ile biten statik sayfalar (program sayfaları ve /programlar eski biçimde kalır: sonda / yok)
-const SLASHED = new Set(['fiyatlar', 'kvkk', 'gizlilik', 'mesafeli-satis', 'iade', 'cerez', 'kayit', 'rehber', 'paketler']);
+const SLASHED = new Set(['fiyatlar', 'kvkk', 'gizlilik', 'mesafeli-satis', 'iade', 'cerez', 'kayit', 'rehber', 'paketler', 'bayilik', 'veri-tasima', 'sistem-durumu', 'yenilikler', 'yol-haritasi']);
 const GZ = /^(text\/|application\/(json|xml|manifest\+json)|image\/svg)/; // sıkıştırılacak türler
 const canGz = (req, type, size) => size >= 1024 && GZ.test(type) && /\bgzip\b/.test(String(req.headers['accept-encoding'] || ''));
 

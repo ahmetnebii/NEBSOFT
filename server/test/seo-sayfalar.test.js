@@ -15,7 +15,7 @@ function sayfalar(site) {
   for (const k of ['rehber', 'paketler']) { const r = path.join(site, k); if (fs.existsSync(r)) for (const d of fs.readdirSync(r)) if (fs.statSync(path.join(r, d)).isDirectory()) oku(path.join(k, d).replace(/\\/g, '/')); }
   return S;
 }
-const SLASH = /^(fiyatlar|kvkk|gizlilik|mesafeli-satis|iade|cerez|kayit|rehber|paketler)(\/|$)/;
+const SLASH = /^(fiyatlar|kvkk|gizlilik|mesafeli-satis|iade|cerez|kayit|rehber|paketler|bayilik|veri-tasima|sistem-durumu|yenilikler|yol-haritasi)(\/|$)/;
 const adres = (rel) => `${D}/${rel}${SLASH.test(rel) ? '/' : ''}`;
 const sema = (h) => [...h.matchAll(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g)].map((m) => JSON.parse(m[1]));
 const turler = (h) => sema(h).map((x) => x['@type']);
@@ -62,7 +62,7 @@ ok('bilgi bloğu ve S/C satırları', () => {
 console.log('Depodaki üretilmiş sayfalar');
 const S = sayfalar(SITE); const XML = fs.readFileSync(path.join(SITE, 'sitemap.xml'), 'utf8');
 ok(`${Object.keys(S).length} sayfada başlık, canonical, JSON-LD, sosyal etiket, sitemap kapsaması`, () => denetle(S, XML));
-ok('beklenen adreslerin hepsi var', () => { for (const r of ['fiyatlar', 'kvkk', 'gizlilik', 'mesafeli-satis', 'iade', 'cerez', 'kayit', 'rehber', 'programlar', 'paketler', 'paketler/oto-sanayi']) assert(S[r], r); });
+ok('beklenen adreslerin hepsi var', () => { for (const r of ['fiyatlar', 'kvkk', 'gizlilik', 'mesafeli-satis', 'iade', 'cerez', 'kayit', 'rehber', 'programlar', 'paketler', 'paketler/oto-sanayi', 'bayilik', 'veri-tasima', 'sistem-durumu', 'yenilikler', 'yol-haritasi']) assert(S[r], r); });
 ok('program sayfaları: SoftwareApplication, Offer, FAQPage, anahtar kelime grupları', () => {
   for (const p of PRODUCTS) {
     const h = S[p.slug]; const T = turler(h); assert(T.includes('SoftwareApplication') && T.includes('FAQPage'), p.slug + ' ' + T);

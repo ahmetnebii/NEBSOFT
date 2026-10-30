@@ -48,6 +48,11 @@ async function base(req) {
 // Tanıtım siteleri derlenirken gömülen iletişim bilgisi (site.config.js) panelde değiştirilen bilgiyle değiştirilir
 const BUILT = require('../../site/src/site.config');
 const telOf = (p) => '+90' + String(p || '').replace(/\D/g, '').replace(/^(90)?0?/, '');
+// WhatsApp düğmesi: numara panelden (Site Ayarları) gelir, boşsa hiç basılmaz. Telefonda yalnız simge, alttaki sabit satın alma çubuğunun üstünde durur; sayfa sonu içeriği örtülmesin diye gövdeye pay bırakılır.
+const WA_NO = /^[1-9]\d{10,14}$/;
+const WA_CSS = '<style>.ns-wa{position:fixed;right:16px;bottom:16px;z-index:40;display:inline-flex;align-items:center;gap:8px;height:48px;padding:0 16px;border-radius:24px;background:#0b7a5e;color:#fff;font:600 14px/1 system-ui,sans-serif;text-decoration:none;box-shadow:0 6px 18px rgba(0,0,0,.28)}.ns-wa svg{width:22px;height:22px;flex:none}.ns-wa:hover{background:#086650}.ns-wa:focus-visible{outline:3px solid #fff;outline-offset:2px;box-shadow:0 0 0 6px #0b7a5e}body:has(.nsd) .ns-wa{right:20px;bottom:90px}@media(max-width:960px){.ns-wa{width:48px;padding:0;justify-content:center;bottom:calc(12px + env(safe-area-inset-bottom,0px))}body:has(.nsd) .ns-wa{right:25px;bottom:calc(90px + env(safe-area-inset-bottom,0px))}.ns-wa span{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)}.sticky-cta~.ns-wa{bottom:calc(74px + env(safe-area-inset-bottom,0px))}body{padding-bottom:72px}body:has(.sticky-cta){padding-bottom:130px}}@media print{.ns-wa{display:none}}</style>';
+// Pazar yeri sayfası gövdeyi yeniden çizer: düğme silinirse geri eklenir, biçim bu yüzden başlıktadır. Sağ altta destek düğmesi (.nsd) varsa onun üstünde durur.
+const waDugme = (no) => `<a class="ns-wa" href="https://wa.me/${no}" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 11.5a8.4 8.4 0 0 1-12.3 7.4L3 21l2.1-5.7A8.4 8.4 0 1 1 21 11.5z"/></svg><span>WhatsApp ile yazın</span></a><script>(function(){var w=document.querySelector('.ns-wa');new MutationObserver(function(){if(!document.body.contains(w))document.body.appendChild(w);}).observe(document.body,{childList:true});})();</script>`;
 async function rewrite(text, req) {
   const s = await settings();
   // Google Search Console doğrulama etiketi (panel: Site Ayarları). Biçimi kayıtta denetlenir, burada yine de yalnız geçerli kod basılır
@@ -55,6 +60,7 @@ async function rewrite(text, req) {
   if (text.includes('www.domain.com')) { const B = await base(req); text = text.split(PLACEHOLDER).join(B).split('www.domain.com').join(B.replace(/^https?:\/\//, '')); }
   if (s.phone && s.phone !== BUILT.phone) text = text.split(telOf(BUILT.phone)).join(telOf(s.phone)).split(BUILT.phone).join(s.phone);
   if (s.email && s.email !== BUILT.email) text = text.split(BUILT.email).join(s.email);
+  if (WA_NO.test(String(s.whatsapp || ''))) { const b = text.lastIndexOf('</body>'); if (b > -1) text = (text.slice(0, b) + waDugme(s.whatsapp) + text.slice(b)).replace('</head>', () => `${WA_CSS}</head>`); }
   // Yönetim panelinde değişen fiyatlar
   if (text.includes('data-p="')) { try { await syncCatalog(); } catch (e) { /* yok */ } const ov = cat.overrides(); text = text.replace(/data-p="([a-z]+):(\d)">[^<]*</g, (m, id, i) => (ov[id] && ov[id].prices ? `data-p="${id}:${i}">${tlf(ov[id].prices[i])}<` : m));
     // Arama motoru şeması (JSON-LD) da aynı fiyatı göstersin

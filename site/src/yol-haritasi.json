@@ -1,0 +1,10 @@
+{
+  "_aciklama": "Yol haritası sayfasının tek kaynağı. Yalnız gerçek plan yazılır, tarih verilmez. kaynak alanı sayfada görünmez, maddenin nereden geldiğini gösterir. durum: calisiliyor, planlandi, bekliyor (dış hesap veya karar bekleyen).",
+  "maddeler": [
+    { "durum": "calisiliyor", "baslik": "Hazır paketler ve program seçim sihirbazı", "metin": "İşletmenize uygun programları birkaç soruyla bulmanızı sağlayacak.", "kaynak": "Sürüyor: hazir-paketler çalışması" },
+    { "durum": "calisiliyor", "baslik": "Yeni sektör programları", "metin": "Yeni programlar üzerinde çalışılıyor. Yayımlananlar Yenilikler sayfasında duyurulur.", "kaynak": "Sürüyor: program çalışmaları" },
+    { "durum": "planlandi", "baslik": "Pilot işletmelerle kabul denemesi", "metin": "Teknik Servis, Oto Yıkama, Randevu, Oto Servis ve Spor Salonu programları gerçek işletmelerde denenecek.", "kaynak": "docs/pazarlama/PAZAR-GENISLEME.md, Dalga 1" },
+    { "durum": "bekliyor", "baslik": "Kartla ödeme", "metin": "Kod hazır, gerçek hesapla denenene kadar müşterilere kapalı. Bu sırada ödeme havale ile yapılır.", "kaynak": "docs/DEVAM-NOTU.md, Shopier test hesabı" },
+    { "durum": "bekliyor", "baslik": "Pazaryeri ve e-Fatura bağlantılarının test hesabıyla denenmesi", "metin": "Trendyol, n11 ve e-Fatura bağlantıları sağlayıcıların test hesabı açıldıktan sonra denenecek.", "kaynak": "docs/DEVAM-NOTU.md, kullanıcıdan beklenenler" }
+  ]
+}

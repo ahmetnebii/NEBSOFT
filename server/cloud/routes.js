@@ -32,7 +32,7 @@ const slugify = (s) => String(s).toLocaleLowerCase('tr').replace(/ç/g, 'c').rep
 
 async function setting(k, d) { const r = await db.one('SELECT v FROM settings WHERE k=?', [k]); return r ? J(r.v, r.v) : d; }
 async function setSetting(k, v) { await db.q('INSERT INTO settings (k, v) VALUES (?, ?) ON DUPLICATE KEY UPDATE v=VALUES(v)', [k, JSON.stringify(v)]); }
-const DEFAULTS = { trialDays: 7, siteName: 'NEBSOFT', phone: '0850 555 00 34', email: 'destek@nebsoft.com.tr', address: '', referralDays: 30, siteUrl: '', googleVerify: '' };
+const DEFAULTS = { trialDays: 7, siteName: 'NEBSOFT', phone: '0850 555 00 34', email: 'destek@nebsoft.com.tr', address: '', referralDays: 30, siteUrl: '', googleVerify: '', whatsapp: '' };
 async function site() { return { ...DEFAULTS, ...(await setting('site', {})) }; }
 // Denetim kaydı log.js üzerinden aynı audit tablosuna yazılır; ayrıntı alanı maskelenir (e-posta ve IP güvenlik kaydı için açık kalır)
 async function audit(c, action, detail, tenant) { await log.denetim(action, { kullanici: c.user ? c.user.id : null, isletme: tenant || (c.user ? c.user.tenant_id : null), ip: c.ip, mesaj: String(detail || '').slice(0, 500) }); }
@@ -903,11 +903,13 @@ A('PUT', '/catalog/:id', async (c) => {
 A('DELETE', '/catalog/:id', async (c) => { const ov = { ...(await setting('catalog', {})) }; delete ov[String(c.params.id)]; await setSetting('catalog', ov); await syncCatalog(true); await audit(c, 'Ürün varsayılana döndü', c.params.id); return { ok: true }; });
 // Search Console kodu: yalnız kod ya da panelin verdiği meta etiketinin tamamı yapıştırılabilir
 const googleCode = (v) => { const raw = String(v || '').trim(); const code = (/content=["']([^"']+)["']/.exec(raw) || [])[1] || raw; if (code && !/^[A-Za-z0-9_-]{10,100}$/.test(code)) throw err(400, 'Google doğrulama kodu geçersiz. Search Console\'un verdiği kodu veya meta etiketini yapıştırın'); return code; };
+// WhatsApp numarası uluslararası biçimde saklanır: boş ise sitede düğme hiç görünmez, yanlış biçim kaydedilmez
+const waNumara = (v) => { const d = String(v || '').replace(/\D/g, ''); if (!d) return ''; const n = /^0\d{10}$/.test(d) ? '90' + d.slice(1) : /^5\d{9}$/.test(d) ? '90' + d : d; if (!/^[1-9]\d{10,14}$/.test(n)) throw err(400, 'WhatsApp numarası geçersiz. Ülke koduyla ya da 0 ile başlayan biçimde yazın.'); return n; };
 A('PUT', '/settings', async (c) => {
-  const b = c.body; const s = { trialDays: Math.min(60, Math.max(1, Number(b.trialDays) || 7)), siteName: sec.clean(b.siteName, 60) || 'NEBSOFT', phone: sec.clean(b.phone, 40), email: sec.clean(b.email, 190), address: sec.clean(b.address, 300), referralDays: Math.min(365, Math.max(0, Number(b.referralDays) || 0)), siteUrl: sec.clean(b.siteUrl, 200), googleVerify: googleCode(b.googleVerify) };
+  const b = c.body; const s = { trialDays: Math.min(60, Math.max(1, Number(b.trialDays) || 7)), siteName: sec.clean(b.siteName, 60) || 'NEBSOFT', phone: sec.clean(b.phone, 40), email: sec.clean(b.email, 190), address: sec.clean(b.address, 300), referralDays: Math.min(365, Math.max(0, Number(b.referralDays) || 0)), siteUrl: sec.clean(b.siteUrl, 200), googleVerify: googleCode(b.googleVerify), whatsapp: waNumara(b.whatsapp) };
   await setSetting('site', s); await audit(c, 'Site ayarları', JSON.stringify(s).slice(0, 300)); return { ok: true };
 });
 A('GET', '/audit', async () => ({ ok: true, rows: await db.q('SELECT a.*, u.email FROM audit a LEFT JOIN users u ON u.id=a.user_id ORDER BY a.id DESC LIMIT 500') }));
 A('GET', '/db', async () => ({ ok: true, info: db.info(), tables: await db.q('SELECT table_name AS name, table_rows AS rows_est, ROUND((data_length+index_length)/1024/1024, 2) AS mb FROM information_schema.tables WHERE table_schema = DATABASE() ORDER BY name') }));
 
-module.exports = { R, valid, canUseApp, hesapRolu, err, site, audit, J, syncCatalog, route, A, setting, setSetting, applyOrder, paidMail, mailTo, fmtTL, mailSite, pnameOf, uid, slaTara };
+module.exports = { waNumara, R, valid, canUseApp, hesapRolu, err, site, audit, J, syncCatalog, route, A, setting, setSetting, applyOrder, paidMail, mailTo, fmtTL, mailSite, pnameOf, uid, slaTara };

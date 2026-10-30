@@ -7,7 +7,7 @@
   'use strict';
   const load = (srcs) => srcs.reduce((p, src) => p.then(() => new Promise((res, rej) => { const s = document.createElement('script'); s.src = src; s.onload = res; s.onerror = () => rej(new Error(src)); document.body.appendChild(s); })), Promise.resolve());
   const local = () => load(['../core/integrations.js', 'data.js', 'app.js']);
-  const cloud = () => load(['panel-ek.js', 'panel.js']);
+  const cloud = () => load(['panel-ek.js', 'panel-guven.js', 'panel.js']);
   const fail = (e) => { document.body.innerHTML = `<div class="wiz"><div class="card pad"><h2>Yönetim paneli açılamadı</h2><p class="muted">${String(e && e.message || e).replace(/[<>&]/g, '')}</p></div></div>`; };
   if (/[?&]demo=1/.test(location.search) || !/^https?:$/.test(location.protocol)) { local().catch(fail); return; }
   fetch('/api/setup/status', { headers: { 'x-ns-csrf': '1' } }).then((r) => (r.ok ? r.json() : null)).catch(() => null)

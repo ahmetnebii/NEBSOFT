@@ -1,0 +1,42 @@
+/* Güven sayfaları (bayilik, veri taşıma, sistem durumu, yenilikler, yol haritası). Renkler site.css değişkenlerinden gelir, koyu tema oradan çalışır. */
+.gf { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 18px; }
+.gf label { display: block; font: 600 14px var(--txt); color: var(--ink); }
+.gf .tam { grid-column: 1 / -1; }
+.gf input:not([type=checkbox]), .gf select, .gf textarea { display: block; width: 100%; box-sizing: border-box; margin-top: 6px; min-height: 46px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--card); color: var(--ink); font: 400 16px var(--txt); }
+.gf textarea { min-height: 110px; resize: vertical; }
+.gf input:focus-visible, .gf select:focus-visible, .gf textarea:focus-visible { outline: 2px solid var(--c); outline-offset: 1px; }
+.gf .sec { display: flex; gap: 10px; align-items: flex-start; font-weight: 500; color: var(--ink2); }
+.gf .sec input { margin-top: 4px; width: 18px; height: 18px; flex: none; }
+.gf .btn { justify-content: center; cursor: pointer; }
+.gf .btn:disabled { opacity: .6; cursor: progress; }
+.gf .msg { grid-column: 1 / -1; margin: 0; font-weight: 600; }
+.gf .msg:empty { display: none; }
+.gf .msg.ok { color: #0b7a4b; }
+.gf .msg.err { color: #c62828; }
+.gf .gz { position: absolute; left: -9999px; width: 1px; height: 1px; overflow: hidden; }
+.adim { padding-left: 22px; }
+.adim li { margin-bottom: 8px; }
+.kutu { padding: 14px 16px; border: 1px solid var(--line); border-radius: 12px; background: var(--bg2); }
+.kutu[hidden] { display: none; }
+.ortak { list-style: none; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 10px; }
+.ortak li { padding: 12px 14px; border: 1px solid var(--line); border-radius: 12px; }
+.ortak small { display: block; color: var(--ink2); }
+.yen { list-style: none; padding: 0; margin: 0 0 8px; }
+.yen li { padding: 12px 0; border-bottom: 1px solid var(--line); }
+.yen b { display: block; }
+.yen span { color: var(--ink2); }
+.ozet { padding: 18px 20px; border-radius: 14px; border: 1px solid var(--line); margin-bottom: 16px; border-left-width: 6px; }
+.ozet b { display: block; font: 700 20px var(--dis); }
+.ozet small { color: var(--ink2); }
+.drm-l { border: 1px solid var(--line); border-radius: 14px; overflow: hidden; }
+.drm { display: flex; justify-content: space-between; align-items: center; gap: 14px; padding: 14px 16px; }
+.drm + .drm { border-top: 1px solid var(--line); }
+.drm small { display: block; color: var(--ink2); font-size: 13.5px; }
+.dg { flex: none; padding: 4px 10px; border-radius: 99px; font: 600 13.5px var(--txt); border: 1px solid currentColor; }
+.ok { --dr: #0b7a4b; } .uy { --dr: #a86200; } .kt { --dr: #c62828; } .bil { --dr: var(--ink2); }
+.dg.ok, .dg.uy, .dg.kt, .dg.bil { color: var(--dr); }
+.ozet.ok, .ozet.uy, .ozet.kt, .ozet.bil { border-left-color: var(--dr); }
+@media (prefers-color-scheme: dark) { .gf .msg.ok { color: #4ade80; } .gf .msg.err { color: #f87171; } .ok { --dr: #4ade80; } .uy { --dr: #fbbf24; } .kt { --dr: #f87171; } }
+.tablo { overflow-x: auto; }
+.doc .yen { padding-left: 0; }
+@media (max-width: 640px) { .gf { grid-template-columns: 1fr; } .drm { flex-direction: column; align-items: flex-start; gap: 8px; } .dg { white-space: normal; } }
