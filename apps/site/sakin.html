@@ -321,7 +321,7 @@
         db.insert('receipts', { flat: f.id, amount, type: 'kart', ref, at: new Date().toISOString(), online: true }, true);
         db.log('Online aidat ödemesi', `${f.id} · ${money(amount)}`); db.save();
         close();
-        NS.modal({ title: 'Ödeme alındı', body: `<div class="center"><div style="width:56px;height:56px;border-radius:50%;background:var(--ok-soft);color:var(--ok);display:grid;place-items:center;margin:0 auto 12px">${icon('check', 'ico-lg')}</div><div class="amt clear">${money(amount)}</div><p class="muted">Makbuz no: <b class="mono">${ref}</b><br>Makbuzunuz e-posta ve SMS ile gönderildi (demo).</p></div>`, actions: [{ label: 'Makbuzu yazdır', icon: 'print', onClick: () => receipt(f, amount, ref) }, { label: 'Tamam', cls: 'primary' }] });
+        NS.modal({ title: 'TEST ödemesi', body: `<div class="center"><div style="width:56px;height:56px;border-radius:50%;background:var(--ok-soft);color:var(--ok);display:grid;place-items:center;margin:0 auto 12px">${icon('check', 'ico-lg')}</div><div class="amt clear">${money(amount)}</div><p class="muted">Makbuz no: <b class="mono">${ref}</b><br>TEST ödemesi: gerçek çekim yapılmadı, makbuz gönderilmedi.</p></div>`, actions: [{ label: 'Makbuzu yazdır', icon: 'print', onClick: () => receipt(f, amount, ref) }, { label: 'Tamam', cls: 'primary' }] });
         done && done();
       } }],
     });

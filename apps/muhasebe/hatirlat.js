@@ -37,7 +37,7 @@ window.MUHHATIRLAT = (function () {
   // Otomatik tur: ayar açıksa ve otomatik kanal varsa, her faturaya her aşamada en çok bir hatırlatma
   async function auto() {
     const c = cfgOf(); if (!c.remindAuto) return 0; const ch = autoChannels(); const use = ch.includes(c.remindChannel) ? c.remindChannel : ch[0]; if (!use) return 0;
-    let n = 0; for (const i of X.db.all('invoices')) { const st = stageOf(i, c); if (st && !sent(i, st)) { const r = await send(i, use, st); if (r.ok) n++; } }
+    let n = 0; for (const i of X.db.all('invoices')) { const st = stageOf(i, c); if (st && !sent(i, st)) { const r = await send(i, use, st); if (r.ok && !r.simulated) n++; } }
     if (n) toast(`${n} ödeme hatırlatması gönderildi`, 'ok'); return n;
   }
   function page(el, p, app) {

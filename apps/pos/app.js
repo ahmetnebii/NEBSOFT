@@ -664,7 +664,7 @@
       if (!v) return;
       const items = db.all('products', (p) => p.barcode && (v.scope === 'all' || (v.scope === 'fav' ? p.fav : p.stock > 0))).map((p) => ({ barcode: p.barcode, name: p.name, category: cat(p.cat).name, price: r2(p.price * (1 + (Number(v.markup) || 0) / 100)), vat: p.vat, stock: Math.max(0, Math.floor(p.stock)) }));
       const r = await NS.integ.call('pazaryeri', v.what === 'urun' ? 'urun-gonder' : 'stok-fiyat', { items });
-      if (r && r.ok) toast(`${items.length} ürün pazaryerine iletildi`, 'ok');
+      if (r && r.ok && !r.simulated) toast(`${items.length} ürün pazaryerine iletildi`, 'ok');
     };
     on(el, 'click', '[data-act]', async (e, t) => {
       const p = P(t.dataset.id);

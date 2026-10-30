@@ -534,7 +534,7 @@
   function cardPayment(amount, { installmentAsk = true } = {}) {
     const c = cfg('pos');
     return new Promise((resolve) => {
-      let done = false; const finish = (r, close) => { if (done) return; done = true; close && close(); log('pos', c.brand, money(amount), r.ok ? 'onaylandı' : 'iptal/red', r.ref || r.error || ''); resolve(r); };
+      let done = false; const finish = (r, close) => { if (done) return; done = true; close && close(); log('pos', c.brand, money(amount), r.test ? 'TEST — çekim yapılmadı' : r.ok ? 'onaylandı' : 'iptal/red', r.ref || r.error || ''); resolve(r); };
       const { close } = modal({
         title: 'Kartla ödeme', closable: c.mode === 'manual',
         body: `<div class="center"><div class="muted">Tahsil edilecek</div><div style="font-size:40px;font-weight:800">${money(amount)}</div>
@@ -551,7 +551,7 @@
           let j;
           if (url.startsWith('/')) j = await (await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ amount, installment }) })).json();
           else { const r = await httpCall({ url, method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ amount, installment }) }); j = JSON.parse(r.body || '{}'); }
-          if (j.ok) { $('#pst') && ($('#pst').innerHTML = `<div style="color:var(--ok);font-weight:700">${icon('check')} Onaylandı · ${esc(j.card || '')} · Onay ${esc(j.authCode || '')}</div>`); setTimeout(() => finish({ ok: true, ref: j.ref, authCode: j.authCode, installment }, close), 700); }
+          if (j.ok) { $('#pst') && ($('#pst').innerHTML = `<div style="color:var(--ok);font-weight:700">${icon('check')} ${j.test ? 'TEST — gerçek çekim yapılmadı' : `Onaylandı · ${esc(j.card || '')} · Onay ${esc(j.authCode || '')}`}</div>`); setTimeout(() => finish({ ok: true, ref: j.ref, authCode: j.authCode, installment, test: !!j.test }, close), 700); }
           else { $('#pst') && ($('#pst').innerHTML = `<div style="color:var(--err);font-weight:700">${icon('x')} ${esc(j.error || 'Reddedildi')}</div>`); setTimeout(() => finish({ ok: false, error: j.error }, close), 1800); }
         } catch (e) { $('#pst') && ($('#pst').innerHTML = `<div style="color:var(--err)">${esc(e.message)}</div>`); setTimeout(() => finish({ ok: false, error: e.message }, close), 2000); }
       })();

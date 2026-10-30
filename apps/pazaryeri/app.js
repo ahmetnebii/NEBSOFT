@@ -58,7 +58,7 @@
         const r = await live(k, 'siparis-cek', { since: addDays(new Date(), -3).toISOString() });
         if (!r.ok) { errs.push(`${CH[k].name}: ${r.error}`); continue; }
         ((r.data && r.data.orders) || []).forEach((x) => { const o = addOrder(k, x); if (o) { count++; o.items.forEach((i) => i.pid && touched.add(i.pid)); } });
-      } else { sim++; log(k, 'TEST: sipariş çekilmedi (demo bağlantı)', 'Canlı moda alınca siparişler gelir', false); }
+      } else { sim++; log(k, 'TEST: sipariş çekilmedi (TEST bağlantı)', 'Canlı moda alınca siparişler gelir', false); }
     }
     db.save();
     if (touched.size && S().autoStock !== false) await pushStock([...touched], true);
@@ -73,7 +73,7 @@
       const items = list.filter((p) => p.listings && p.listings[k]).map((p) => ({ barcode: p.barcode, sku: p.sku, stock: Math.max(0, p.stock - (Number(chCfg(k).buffer) || 0)), price: p.chPrice && p.chPrice[k] }));
       if (!items.length) continue;
       // Demo kanalda stok gönderilmez ve listeleme durumu değiştirilmez
-      if (!isLive(k)) { sim++; log(k, 'TEST: stok gönderilmedi (demo bağlantı)', `${items.length} ürün`, false); continue; }
+      if (!isLive(k)) { sim++; log(k, 'TEST: stok gönderilmedi (TEST bağlantı)', `${items.length} ürün`, false); continue; }
       const r = await live(k, 'stok-fiyat', { items }); if (!r.ok) { errs.push(`${CH[k].name}: ${r.error}`); continue; }
       list.forEach((p) => { if (p.listings && p.listings[k] && p.listings[k] !== 'hata') p.listings[k] = p.stock - (Number(chCfg(k).buffer) || 0) > 0 ? 'yayinda' : 'stoksuz'; });
       ok++;
@@ -155,7 +155,7 @@
       if (isLive(o.ch) && o.ch === 'trendyol' && o.pkgNo) { const r = await live(o.ch, 'kargo-bildir', { packageId: o.pkgNo, status: 'Invoiced', invoiceNo: o.invoiceTest ? '' : o.invoice, lines: o.items.map((i) => ({ lineId: i.lineId, qty: i.qty })) }); if (!r.ok) { toast(`${o.chNo}: ${r.error}`, 'err'); continue; } }
       setSt(o, 'kargoda', `${o.carrier} · ${o.tracking}`); n++;
     }
-    db.save(); toast(`${n} sipariş kargoya verildi olarak işaretlendi${list.some((o) => !isLive(o.ch)) ? ' (demo kanallara bildirim gitmedi)' : ''}`, 'ok');
+    db.save(); toast(`${n} sipariş kargoya verildi olarak işaretlendi${list.some((o) => !isLive(o.ch)) ? ' (TEST kanallara bildirim gitmedi)' : ''}`, 'ok');
   }
 
   // ---------- Özet ----------
@@ -389,7 +389,7 @@
     $('#pull', el).onclick = async () => {
       let n = 0;
       for (const k of connected().filter(isLive)) { const r = await live(k, 'soru-cek'); if (!r.ok) { toast(`${CH[k].name}: ${r.error}`, 'err'); continue; } ((r.data && r.data.questions) || []).forEach((x) => { if (db.find('questions', (y) => y.extId === x.id)) return; const pr2 = byCode(x.barcode); db.insert('questions', { ch: k, extId: x.id, pid: pr2 && pr2.id, text: x.text, customer: x.customer || 'Müşteri', at: x.at || new Date().toISOString(), answer: '' }); n++; }); }
-      db.save(); toast(n ? `${n} yeni soru` : 'Yeni soru yok (demo kanallar simülasyondur)', n ? 'ok' : ''); draw();
+      db.save(); toast(n ? `${n} yeni soru` : 'Yeni soru yok (TEST kanallar simülasyondur)', n ? 'ok' : ''); draw();
     };
     draw();
   }
@@ -423,7 +423,7 @@
           { label: 'Kaydet ve test et', cls: 'primary', onClick: async (close, b2) => {
             if (!NS.validate(b2)) return; const v = NS.readForm(b2);
             if (v.mode === 'live') { if (!v.apiKey || !v.apiSecret) return toast('Canlı mod için API bilgileri gerekli', 'err'); toast('Bağlantı test ediliyor…'); const r = await live(k, 'baglanti-test', {}, v); if (!r.ok) { db.save(); return toast(`Bağlantı kurulamadı: ${r.error}`, 'err'); } }
-            db.data.channels[k] = { ...(db.data.channels[k] || {}), ...v, connected: true }; log(k, 'Bağlantı', v.mode === 'live' ? 'Canlı bağlantı başarılı' : 'Kaydedildi (demo)'); db.save(); close(); toast(`${CH[k].name} kaydedildi`, 'ok'); draw();
+            db.data.channels[k] = { ...(db.data.channels[k] || {}), ...v, connected: true }; log(k, 'Bağlantı', v.mode === 'live' ? 'Canlı bağlantı başarılı' : 'Kaydedildi (TEST)'); db.save(); close(); toast(`${CH[k].name} kaydedildi`, 'ok'); draw();
           } }] });
     });
     draw();

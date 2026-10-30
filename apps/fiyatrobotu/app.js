@@ -41,7 +41,7 @@
       const cfg = (db.data.channels || {})[ch] || {};
       const live = cfg.mode === 'live' && ['trendyol', 'hepsiburada'].includes(ch);
       // Uydurma (demo) rakip fiyatına göre hesaplanmış fiyat canlı kanala gönderilmez
-      if (live && L.some((c) => !realComps(c.L) && ['buybox', 'esitle'].includes(c.L.strategy))) { errs.push(`${CH[ch].name}: rakip fiyatları gerçek bir kaynaktan alınmadı (demo) — rakibe göre hesaplanan fiyatlar gönderilmedi`); continue; }
+      if (live && L.some((c) => !realComps(c.L) && ['buybox', 'esitle'].includes(c.L.strategy))) { errs.push(`${CH[ch].name}: rakip fiyatları gerçek bir kaynaktan alınmadı (TEST) — rakibe göre hesaplanan fiyatlar gönderilmedi`); continue; }
       if (!live) local.push(CH[ch].name);
       if (live) {
         try { const r = await (await fetch('/api/kanal', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ channel: ch, action: 'stok-fiyat', creds: { sellerId: cfg.sellerId, apiKey: cfg.apiKey, apiSecret: cfg.apiSecret }, payload: { items: L.map((c) => ({ barcode: prod(c.L.pid).barcode, sku: prod(c.L.pid).sku, stock: prod(c.L.pid).stock, price: c.to, listPrice: Math.max(c.to, Number(c.L.maxPrice) || c.to) })) } }) })).json(); if (!r.ok) { errs.push(`${CH[ch].name}: ${r.error}`); continue; } } catch (e) { errs.push(`${CH[ch].name}: sunucu köprüsü yok`); continue; }
@@ -72,7 +72,7 @@
       const rows = db.all('listings', (x) => (!chf || x.ch === chf) && NS.match(q, prod(x.pid).name, prod(x.pid).sku)).map((x) => ({ id: x.id, x, r: res(x) })).filter((y) => !f || (f === 'zarar' ? y.r.profit < 0 : f === 'dusuk' ? y.r.margin < (Number(S().minMargin) || 8) : !y.x.buybox)).sort((a, b) => a.r.margin - b.r.margin);
       $('#t', el).innerHTML = table({ rows, emptyIcon: 'percent', columns: [
         { label: 'Ürün', render: (y) => `${chB(y.x.ch)} <b>${esc(prod(y.x.pid).name)}</b><div class="small faint">${esc(prod(y.x.pid).sku)} · ${esc(prod(y.x.pid).cat)} · ${prod(y.x.pid).desi} desi</div>` },
-        { label: 'Satış', cls: 'right', render: (y) => `<b>${money(y.x.price)}</b>${y.x.notSynced ? '<div>' + badge('Kanala gönderilmedi', 'warn') + '</div>' : y.x.buybox ? '<div>' + badge('Buybox', 'ok') + '</div>' : `<div class="small faint">rakip ${money(minComp(y.x))}${realComps(y.x) ? '' : ' (demo)'}</div>`}` },
+        { label: 'Satış', cls: 'right', render: (y) => `<b>${money(y.x.price)}</b>${y.x.notSynced ? '<div>' + badge('Kanala gönderilmedi', 'warn') + '</div>' : y.x.buybox ? '<div>' + badge('Buybox', 'ok') + '</div>' : `<div class="small faint">rakip ${money(minComp(y.x))}${realComps(y.x) ? '' : ' (TEST)'}</div>`}` },
         { label: 'Maliyet', cls: 'right', render: (y) => money(prod(y.x.pid).cost) },
         { label: 'Komisyon', cls: 'right', render: (y) => `${money(y.r.comAmt)}<div class="small faint">%${comOf(prod(y.x.pid), y.x.ch)}</div>` },
         { label: 'Kargo + bedel', cls: 'right', render: (y) => money(y.r.cargo + y.r.fee) },
