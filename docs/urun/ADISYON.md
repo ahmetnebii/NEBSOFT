@@ -3,7 +3,7 @@
 > **Durum (30.10.2026):** Kullanıcı dalgaları önceden onayladı. 1., 2. ve 3. dalga tamamlandı (devir oturumu). Program: `apps/adisyon/` (+ `qr.html` QR menü, `platform.js` yemek platformları).
 
 ## CANLIYA ÇIKMAYI ENGELLEYENLER
-- **ÖKC (yazarkasa) mali fiş:** resmî entegrasyon dokümanı yok → yalnızca simülasyon ("TEST"); adisyon bilgi fişidir.
+- **ÖKC (yazarkasa) mali fiş:** üretici kütüphanesi, güvenlik taahhütnamesi ve test cihazı yok → yalnızca simülasyon ("TEST"); adisyon bilgi fişidir (`docs/DEVIR.md` B11). Restoranlarda GMP-3 §6 ve Ek-1 akışı da uygulanmalıdır.
 - **Menü KDV oranları:** her ürüne oran girilebilir (boşsa %10). 2007/13033 sayılı Karar II sayılı liste md. 24: lokanta, içkili lokanta, kebapçı vb. hizmetler indirimli orandadır, "alkollü içeceklere isabet eden kısmı hariç"; gazino, bar, diskotek, pavyon, taverna, birahane listenin dışındadır (RG 30.12.2007/26742, `resmigazete.gov.tr/eskiler/2007/12/20071230-4.htm`, okundu 30.10.2026 — **DOĞRULANDI**, kapsam için). Güncel oran rakamları (%10 / %20) sonraki değişikliklerden gelir — **DOĞRULANAMADI** (metin okunamadı); alkollü içecekleri ve bar türü işletmeyi mali müşavire doğrulatın.
 - **QR kodlar yeniden basılmalı:** bulutta QR sipariş artık masa + gizli QR anahtarı ister; eski QR'lar (anahtarsız) çalışmaz.
 

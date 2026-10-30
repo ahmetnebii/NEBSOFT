@@ -260,6 +260,7 @@ Ayrıntı ve kaynaklar: `docs/MUHASEBE-DOGRULAMA-RAPORU.md`.
 | B6 | Logo / Sovos / Mysoft / EDM entegratörleri: kapalı | §4.3 ile doküman ara |
 | B7 | Gelen e-Faturaları entegratörden çekme yok | B1 hesabı ile |
 | ~~B8~~ | **Kapandı 30.10.2026:** `cloud.test.js` talep + yönetici onayı akışına uyarlandı, 44 test geçiyor | — |
+| B11 | **ÖKC (yazarkasa) — DOĞRULANAMADI.** Kaynak: GİB [GMP-3 s.5.0](https://ynokc.gib.gov.tr/UploadedFiles/Files/GMP3_v5_0_02082018.pdf) (okundu 30.10.2026). Bağlantı Ethernet, RS232 veya USB ile kablolu olur; Wi-Fi ve Bluetooth yasak (§2.6, §3.1, §5.3). Yazılım ÖKC üreticisinin derlenmiş GMP-3 kütüphanesini kullanmak zorunda; eşleştirmeyi üreticinin yetkili servisi yönetir (§3.3). Tarayıcıdan çalışan yazılım için bilgisayarda ayrı ara yazılım gerekir (§3.3). Üreticiyle güvenlik taahhütnamesi şart (§5.5). ÖKC TSM Merkezi üzerinden kablosuz yol da tanımlı (§2.3, §6, Ek-1), ayrıntısı üreticiye bağlı | Marka/model seçimi, üreticiyle anlaşma + kütüphane, test cihazı |
 Alt oturumların kendi engelleyenleri her spec dosyasının "karar / hesap gerektirenler" bölümündedir.
 
 ---

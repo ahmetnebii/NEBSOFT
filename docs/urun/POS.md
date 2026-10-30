@@ -48,5 +48,5 @@ Koyu tema ayrıca denenmedi (çekirdek sınıfları). 5000 kayıtla hız denenme
 | Çoklu şube / merkezden fiyat | ❌ | E — sonraki dalga |
 
 ## 3. Karar / hesap gerektirenler
-- **ÖKC:** kullanılacak marka/model, üreticinin resmî entegrasyon dokümanı ve test cihazı (Ingenico, Beko, Hugin, PAX…). O gelene kadar POS fişi bilgi fişidir.
+- **ÖKC:** kullanılacak marka/model, üreticiyle güvenlik taahhütnamesi, üreticinin GMP-3 iletişim kütüphanesi ve test cihazı (Ingenico, Beko, Hugin, PAX…). Doğrudan TCP/IP ile kendi yazdığımız bağlantı GMP-3'e aykırıdır; ayrıntı `docs/DEVIR.md` B11. O gelene kadar POS fişi bilgi fişidir.
 - **Eksi stokla satış** varsayılanı açık (marketlerde yaygın); işletme isterse Ayarlar'dan kapatır.

@@ -188,7 +188,7 @@
   // Resmî, herkese açık API dokümanı bulunamayan bağlayıcılar (CLAUDE.md §1 — DOĞRULANAMADI): yalnızca simülasyon seçilebilir,
   // gerçek / özel API çağrısı yapılmaz. Kaynak: docs/urun/CEKIRDEK-ISTEKLERI-* (servis-arac Ç2, konaklama Ç4–Ç5, randevu Ç2).
   // Doküman bulunup doğrulanınca buradan çıkarılır. '*' = tüm sağlayıcılar (özel API dahil).
-  // okc (yazarkasa POS / GMP3): üreticilerin entegrasyon dokümanı herkese açık değil; marka/model + resmî doküman + test cihazı gerekir.
+  // okc (yazarkasa POS / GMP3): protokol GİB'de açık (GMP-3 s.5.0) ama §3.3 gereği yazılım ÖKC üreticisinin derlenmiş GMP-3 kütüphanesiyle konuşur ve eşleştirmeyi yetkili servis yapar; üretici anlaşması + kütüphane + test cihazı gerekir.
   const UNVERIFIED = { okc: '*', sgk: '*', bankamaas: '*', ebordro: '*', pdks: '*', medula: '*', its: '*', uts: '*', aracbildirim: '*', hgs: '*', ilan: '*', parca: '*', tramer: '*', kbs: '*', kanal: '*', enabiz: '*', erecete: '*', kps: '*', vetbis: '*', petkayit: '*', meb: '*', googleisletme: '*' };
   const unverified = (k, prov) => prov !== 'sim' && !!UNVERIFIED[k] && (UNVERIFIED[k] === '*' || UNVERIFIED[k].includes(prov));
   Object.entries(CONN).forEach(([k, [title, ic, desc, cat, provs, extra]]) => {
