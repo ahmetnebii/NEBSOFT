@@ -9,6 +9,7 @@ const CFG = require('../src/site.config'); const PRODUCTS = require('../src/prod
 const D = CFG.domain.replace(/\/$/, ''); const tel = CFG.phone.replace(/\D/g, '');
 const ASG_KELIME = 200;
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const ORGW = [{ '@context': 'https://schema.org', '@type': 'Organization', '@id': `${CFG.domain}/#kurulus`, name: CFG.brand, url: `${CFG.domain}/` }, { '@context': 'https://schema.org', '@type': 'WebSite', '@id': `${CFG.domain}/#site`, name: CFG.brand, url: `${CFG.domain}/`, inLanguage: 'tr-TR', publisher: { '@id': `${CFG.domain}/#kurulus` } }];
 const ld = (o) => `<script type="application/ld+json">${JSON.stringify(o).replace(/</g, '\\u003c')}</script>`;
 const KATEGORI = [['kod', 'QR kod ve barkod', 'Kasada, rafta ve masada işe yarayan, hemen yazdırılabilen kodlar'], ['belge', 'Belge şablonları', 'Doldurun, yazdırın veya PDF olarak saklayın'], ['ticaret', 'Ticaret ve kârlılık', 'Satış fiyatınızı ve kârınızı girdiğiniz gerçek rakamlarla görün'], ['vergi', 'KDV ve tevkifat', 'Fatura tutarlarını GİB oranlarıyla ayrıştırın'], ['calisma', 'Personel ve ücret', 'İş Kanunu dayanaklı tazminat, izin ve mesai hesapları'], ['emlak', 'Kira, aidat ve kuyum', 'Kiracı, ev sahibi, site yönetimi ve kuyumcu için hesaplar']];
 const AYLAR = ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran', 'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'];
@@ -78,7 +79,7 @@ function sayfa(a, hepsi = []) {
   const rel = (a.ilgili || []).map((s) => hepsi.find((x) => x.slug === s)).filter(Boolean).concat(hepsi.filter((x) => x.kategori === a.kategori && x.slug !== a.slug && !(a.ilgili || []).includes(x.slug))).slice(0, 4);
   const schema = [
     { '@context': 'https://schema.org', '@type': 'WebApplication', name: a.ad, url, description: a.ozet, inLanguage: 'tr-TR', applicationCategory: a.kategori === 'vergi' || a.kategori === 'calisma' ? 'FinanceApplication' : 'BusinessApplication', operatingSystem: 'Web', browserRequirements: 'JavaScript gerekir', isAccessibleForFree: true, dateModified: a.guncelleme, offers: { '@type': 'Offer', price: 0, priceCurrency: 'TRY' }, publisher: { '@type': 'Organization', name: CFG.brand, url: D + '/' } },
-    { '@context': 'https://schema.org', '@type': 'BreadcrumbList', itemListElement: [{ '@type': 'ListItem', position: 1, name: CFG.brand, item: D + '/' }, { '@type': 'ListItem', position: 2, name: 'Ücretsiz Araçlar', item: D + '/araclar' }, { '@type': 'ListItem', position: 3, name: a.ad, item: url }] },
+    ...ORGW, { '@context': 'https://schema.org', '@type': 'BreadcrumbList', itemListElement: [{ '@type': 'ListItem', position: 1, name: CFG.brand, item: D + '/' }, { '@type': 'ListItem', position: 2, name: 'Ücretsiz Araçlar', item: D + '/araclar' }, { '@type': 'ListItem', position: 3, name: a.ad, item: url }] },
     { '@context': 'https://schema.org', '@type': 'FAQPage', mainEntity: a.sss.map(([q, c]) => ({ '@type': 'Question', name: q, acceptedAnswer: { '@type': 'Answer', text: c } })) },
   ];
   const gerekli = (a.alanlar || []).filter((f) => f.gerekli).map((f) => [f.ad, f.etiket]);
@@ -145,7 +146,7 @@ function dizin(hepsi) {
   const url = `${D}/araclar`; const title = `Ücretsiz İşletme Araçları — QR Menü, Barkod, Teklif, KDV ve Kıdem Hesaplama | ${CFG.brand}`;
   const desc = `QR menü, barkod, etiket ve belge şablonları ile KDV, tevkifat, kıdem, fazla mesai, kira artışı, aidat ve komisyon hesapları: ${hepsi.length} ücretsiz araç. Üyelik yok, veriler tarayıcıdan çıkmaz.`;
   const schema = [
-    { '@context': 'https://schema.org', '@type': 'BreadcrumbList', itemListElement: [{ '@type': 'ListItem', position: 1, name: CFG.brand, item: D + '/' }, { '@type': 'ListItem', position: 2, name: 'Ücretsiz Araçlar', item: url }] },
+    ...ORGW, { '@context': 'https://schema.org', '@type': 'BreadcrumbList', itemListElement: [{ '@type': 'ListItem', position: 1, name: CFG.brand, item: D + '/' }, { '@type': 'ListItem', position: 2, name: 'Ücretsiz Araçlar', item: url }] },
     { '@context': 'https://schema.org', '@type': 'ItemList', name: 'Ücretsiz işletme araçları', itemListElement: hepsi.map((x, i) => ({ '@type': 'ListItem', position: i + 1, url: `${D}/araclar/${x.slug}/`, name: x.ad })) },
   ];
   return `<!doctype html>
