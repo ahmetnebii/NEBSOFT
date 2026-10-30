@@ -1,0 +1,59 @@
+{
+  "sablon": "toptan/bayi-formlari",
+  "surum": 1,
+  "program": "toptan",
+  "tur": "form",
+  "ad": "Bayi formları",
+  "aciklama": "Bayilik ve kredi limiti için örnek metinler.",
+  "kaynak": "sablon",
+  "uyari": "Bu metin örnektir, hukuki danışmanlık değildir. Kullanmadan önce avukatınıza gösterin ve işinize göre düzenleyin.",
+  "kayitlar": [
+    {
+      "anahtar": "bayi",
+      "label": "Bayilik başvuru ve taahhüt formu",
+      "sign": [
+        "Firma",
+        "Bayi"
+      ],
+      "fields": [
+        {
+          "name": "bolge",
+          "label": "Bölge",
+          "type": "text"
+        },
+        {
+          "name": "limit",
+          "label": "Kredi limiti (₺)",
+          "type": "number"
+        },
+        {
+          "name": "vade",
+          "label": "Ödeme vadesi",
+          "type": "text"
+        }
+      ],
+      "body": "{{musteri}}, {{bolge}} bölgesinde firmanın ürünlerini satmak için başvurmuştur. Kredi limiti {{limit}} ₺, ödeme vadesi {{vade}} olarak belirlenmiştir. Fiyat listesi ve kampanyalar firma tarafından duyurulur."
+    },
+    {
+      "anahtar": "iade",
+      "label": "Mal iade tutanağı",
+      "sign": [
+        "Firma",
+        "Bayi"
+      ],
+      "fields": [
+        {
+          "name": "irsaliye",
+          "label": "İrsaliye no",
+          "type": "text"
+        },
+        {
+          "name": "neden",
+          "label": "İade nedeni",
+          "type": "text"
+        }
+      ],
+      "body": "{{irsaliye}} numaralı irsaliyeye ait ürünler \"{{neden}}\" nedeniyle iade alınmıştır."
+    }
+  ]
+}

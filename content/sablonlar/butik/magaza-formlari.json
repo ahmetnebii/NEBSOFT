@@ -1,0 +1,38 @@
+{
+  "sablon": "butik/magaza-formlari",
+  "surum": 1,
+  "program": "butik",
+  "tur": "form",
+  "ad": "Mağaza formları",
+  "aciklama": "Ölçü ve özel sipariş formları.",
+  "kaynak": "sablon",
+  "uyari": "Bu metin örnektir, hukuki danışmanlık değildir. Kullanmadan önce avukatınıza gösterin ve işinize göre düzenleyin.",
+  "kayitlar": [
+    {
+      "anahtar": "olcu",
+      "label": "Özel dikim ölçü formu",
+      "sign": [
+        "Mağaza",
+        "Müşteri"
+      ],
+      "fields": [
+        {
+          "name": "model",
+          "label": "Model",
+          "type": "text"
+        },
+        {
+          "name": "olcu",
+          "label": "Ölçüler",
+          "type": "textarea"
+        },
+        {
+          "name": "teslimTarih",
+          "label": "Teslim tarihi",
+          "type": "date"
+        }
+      ],
+      "body": "{{musteri}} için \"{{model}}\" modeli aşağıdaki ölçülere göre hazırlanacak, {{teslimTarih}} tarihinde teslim edilecektir."
+    }
+  ]
+}

@@ -1,0 +1,58 @@
+{
+  "sablon": "muhasebe/hizmet-kalemleri",
+  "surum": 1,
+  "program": "muhasebe",
+  "tur": "hizmet",
+  "ad": "Hizmet kalemleri",
+  "aciklama": "Fatura ve teklifte kullanılacak genel hizmet kalemleri. Fiyat ve KDV oranını kendi durumunuza göre girin.",
+  "kaynak": "sablon",
+  "hedef": "items",
+  "fiyatAlan": "price",
+  "varsayilan": {
+    "barcode": "",
+    "unit": "adet",
+    "price": 0,
+    "buy": 0,
+    "vat": 20,
+    "kind": "hizmet",
+    "min": 0,
+    "group": "Hizmetler"
+  },
+  "kayitlar": [
+    {
+      "anahtar": "danismanlik-hizmeti",
+      "name": "Danışmanlık hizmeti",
+      "code": "HZM-001"
+    },
+    {
+      "anahtar": "bakim-ve-onarim-hizmeti",
+      "name": "Bakım ve onarım hizmeti",
+      "code": "HZM-002"
+    },
+    {
+      "anahtar": "nakliye-hizmeti",
+      "name": "Nakliye hizmeti",
+      "code": "HZM-003"
+    },
+    {
+      "anahtar": "montaj-hizmeti",
+      "name": "Montaj hizmeti",
+      "code": "HZM-004"
+    },
+    {
+      "anahtar": "kira-bedeli",
+      "name": "Kira bedeli",
+      "code": "HZM-005"
+    },
+    {
+      "anahtar": "egitim-hizmeti",
+      "name": "Eğitim hizmeti",
+      "code": "HZM-006"
+    },
+    {
+      "anahtar": "tasarim-hizmeti",
+      "name": "Tasarım hizmeti",
+      "code": "HZM-007"
+    }
+  ]
+}

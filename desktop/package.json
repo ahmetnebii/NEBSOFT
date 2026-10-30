@@ -24,7 +24,7 @@
     "directories": { "output": "../indir" },
     "files": ["main.js", "preload.js", "splash.html", "setup.html", "config.json"],
     "extraResources": [
-      { "from": "..", "to": "web", "filter": ["server.js", "server/**/*", "core/**/*", "apps/**/*", "market/**/*", "admin/**/*", "assets/**/*", "site/**/*", "index.html", "sw.js", "package.json", "sunucu.json", "!server/test/**", "!site/tools/**", "!site/src/**", "!desktop/**", "!indir/**", "!data/**", "!docs/**"] }
+      { "from": "..", "to": "web", "filter": ["server.js", "server/**/*", "core/**/*", "content/**/*", "apps/**/*", "market/**/*", "admin/**/*", "assets/**/*", "site/**/*", "index.html", "sw.js", "package.json", "sunucu.json", "!server/test/**", "!site/tools/**", "!site/src/**", "!desktop/**", "!indir/**", "!data/**", "!docs/**"] }
     ],
     "win": { "target": [{ "target": "nsis", "arch": ["x64"] }], "signAndEditExecutable": false },
     "nsis": { "oneClick": false, "allowToChangeInstallationDirectory": true, "createDesktopShortcut": true, "shortcutName": "NEBSOFT" },

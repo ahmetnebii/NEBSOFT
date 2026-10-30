@@ -1,0 +1,86 @@
+{
+  "sablon": "randevu/berber-hizmetleri",
+  "surum": 1,
+  "program": "randevu",
+  "tur": "hizmet",
+  "ad": "Berber hizmetleri",
+  "aciklama": "Erkek berberi için hazır hizmet listesi. Hizmetler online randevuda kapalı gelir: fiyat ve uzman seçip açın.",
+  "kaynak": "sablon",
+  "hedef": "services",
+  "fiyatAlan": "price",
+  "varsayilan": {
+    "price": 0,
+    "staff": [],
+    "desc": "",
+    "online": false,
+    "color": ""
+  },
+  "kayitlar": [
+    {
+      "anahtar": "sac-kesimi",
+      "name": "Saç kesimi",
+      "duration": 30,
+      "cat": "Saç"
+    },
+    {
+      "anahtar": "cocuk-sac-kesimi",
+      "name": "Çocuk saç kesimi",
+      "duration": 20,
+      "cat": "Saç"
+    },
+    {
+      "anahtar": "sac-yikama-ve-fon",
+      "name": "Saç yıkama ve fön",
+      "duration": 15,
+      "cat": "Saç"
+    },
+    {
+      "anahtar": "sac-boyama",
+      "name": "Saç boyama",
+      "duration": 60,
+      "cat": "Saç"
+    },
+    {
+      "anahtar": "sakal-tirasi",
+      "name": "Sakal tıraşı",
+      "duration": 20,
+      "cat": "Sakal"
+    },
+    {
+      "anahtar": "sakal-sekillendirme",
+      "name": "Sakal şekillendirme",
+      "duration": 20,
+      "cat": "Sakal"
+    },
+    {
+      "anahtar": "sakal-boyama",
+      "name": "Sakal boyama",
+      "duration": 30,
+      "cat": "Sakal"
+    },
+    {
+      "anahtar": "yuz-maskesi",
+      "name": "Yüz maskesi",
+      "duration": 20,
+      "cat": "Bakım"
+    },
+    {
+      "anahtar": "cilt-bakimi",
+      "name": "Cilt bakımı",
+      "duration": 40,
+      "cat": "Bakım"
+    },
+    {
+      "anahtar": "kas-alimi",
+      "name": "Kaş alımı",
+      "duration": 10,
+      "cat": "Bakım"
+    },
+    {
+      "anahtar": "damat-tirasi",
+      "name": "Damat tıraşı",
+      "duration": 90,
+      "cat": "Bakım"
+    }
+  ]
+}

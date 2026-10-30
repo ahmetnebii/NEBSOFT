@@ -1,0 +1,38 @@
+{
+  "sablon": "fabrika/fabrika-formlari",
+  "surum": 1,
+  "program": "fabrika",
+  "tur": "form",
+  "ad": "Üretim formları",
+  "aciklama": "Fire ve bakım tutanakları.",
+  "kaynak": "sablon",
+  "uyari": "Bu metin örnektir, hukuki danışmanlık değildir. Kullanmadan önce avukatınıza gösterin ve işinize göre düzenleyin.",
+  "kayitlar": [
+    {
+      "anahtar": "fire",
+      "label": "Fire tutanağı",
+      "sign": [
+        "Üretim",
+        "Kalite"
+      ],
+      "fields": [
+        {
+          "name": "emir",
+          "label": "İş emri no",
+          "type": "text"
+        },
+        {
+          "name": "miktar",
+          "label": "Fire miktarı",
+          "type": "text"
+        },
+        {
+          "name": "neden",
+          "label": "Neden",
+          "type": "textarea"
+        }
+      ],
+      "body": "{{emir}} numaralı iş emrinde {{miktar}} fire oluşmuştur."
+    }
+  ]
+}

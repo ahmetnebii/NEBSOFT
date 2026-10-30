@@ -1,0 +1,59 @@
+{
+  "sablon": "galeri/galeri-formlari",
+  "surum": 1,
+  "program": "galeri",
+  "tur": "form",
+  "ad": "Galeri formları",
+  "aciklama": "Kapora ve ekspertiz formları.",
+  "kaynak": "sablon",
+  "uyari": "Bu metin örnektir, hukuki danışmanlık değildir. Kullanmadan önce avukatınıza gösterin ve işinize göre düzenleyin.",
+  "kayitlar": [
+    {
+      "anahtar": "kapora",
+      "label": "Kapora sözleşmesi",
+      "sign": [
+        "Satıcı",
+        "Alıcı"
+      ],
+      "fields": [
+        {
+          "name": "arac",
+          "label": "Araç",
+          "type": "text"
+        },
+        {
+          "name": "kapora",
+          "label": "Kapora (₺)",
+          "type": "number"
+        },
+        {
+          "name": "sonTarih",
+          "label": "Son tarih",
+          "type": "date"
+        }
+      ],
+      "body": "{{arac}} için {{kapora}} ₺ kapora alınmıştır. Satış {{sonTarih}} tarihine kadar tamamlanır. Kaporanın iade koşulları taraflarca aşağıda yazılır."
+    },
+    {
+      "anahtar": "ekspertiz",
+      "label": "Ekspertiz onay formu",
+      "sign": [
+        "Satıcı",
+        "Alıcı"
+      ],
+      "fields": [
+        {
+          "name": "arac",
+          "label": "Araç",
+          "type": "text"
+        },
+        {
+          "name": "rapor",
+          "label": "Rapor no",
+          "type": "text"
+        }
+      ],
+      "body": "{{arac}} aracının {{rapor}} numaralı ekspertiz raporunu inceledim, durumunu bilerek işleme devam ediyorum."
+    }
+  ]
+}

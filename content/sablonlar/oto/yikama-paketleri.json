@@ -1,0 +1,52 @@
+{
+  "sablon": "oto/yikama-paketleri",
+  "surum": 1,
+  "program": "oto",
+  "tur": "hizmet",
+  "ad": "Yıkama paketleri",
+  "aciklama": "Oto yıkama için hazır paketler. Fiyatları siz girin.",
+  "kaynak": "sablon",
+  "hedef": "packages",
+  "fiyatAlan": "price",
+  "varsayilan": {
+    "price": 0,
+    "color": "#0284c7"
+  },
+  "kayitlar": [
+    {
+      "anahtar": "dis-yikama",
+      "name": "Dış yıkama",
+      "min": 15
+    },
+    {
+      "anahtar": "ic-dis-yikama",
+      "name": "İç dış yıkama",
+      "min": 30
+    },
+    {
+      "anahtar": "detayli-temizlik",
+      "name": "Detaylı temizlik",
+      "min": 120
+    },
+    {
+      "anahtar": "motor-yikama",
+      "name": "Motor yıkama",
+      "min": 30
+    },
+    {
+      "anahtar": "pasta-cila",
+      "name": "Pasta cila",
+      "min": 180
+    },
+    {
+      "anahtar": "koltuk-yikama",
+      "name": "Koltuk yıkama",
+      "min": 120
+    },
+    {
+      "anahtar": "seramik-kaplama",
+      "name": "Seramik kaplama",
+      "min": 480
+    }
+  ]
+}

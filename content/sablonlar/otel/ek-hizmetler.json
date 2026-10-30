@@ -1,0 +1,56 @@
+{
+  "sablon": "otel/ek-hizmetler",
+  "surum": 1,
+  "program": "otel",
+  "tur": "hizmet",
+  "ad": "Ek hizmetler",
+  "aciklama": "Folyoya eklenen sık hizmetler. Fiyatları siz girin.",
+  "kaynak": "sablon",
+  "hedef": "extras",
+  "fiyatAlan": "price",
+  "varsayilan": {
+    "price": 0
+  },
+  "kayitlar": [
+    {
+      "anahtar": "minibar",
+      "name": "Minibar"
+    },
+    {
+      "anahtar": "oda-servisi",
+      "name": "Oda servisi"
+    },
+    {
+      "anahtar": "camasirhane",
+      "name": "Çamaşırhane"
+    },
+    {
+      "anahtar": "utu-hizmeti",
+      "name": "Ütü hizmeti"
+    },
+    {
+      "anahtar": "havaalani-transferi",
+      "name": "Havaalanı transferi"
+    },
+    {
+      "anahtar": "gec-cikis",
+      "name": "Geç çıkış"
+    },
+    {
+      "anahtar": "erken-giris",
+      "name": "Erken giriş"
+    },
+    {
+      "anahtar": "otopark",
+      "name": "Otopark"
+    },
+    {
+      "anahtar": "spa",
+      "name": "Spa"
+    },
+    {
+      "anahtar": "ek-yatak",
+      "name": "Ek yatak"
+    }
+  ]
+}

@@ -1,0 +1,49 @@
+{
+  "sablon": "bilet/etkinlik-formlari",
+  "surum": 1,
+  "program": "bilet",
+  "tur": "form",
+  "ad": "Etkinlik formları",
+  "aciklama": "Katılım kuralları ve kayıp bilet formları.",
+  "kaynak": "sablon",
+  "uyari": "Bu metin örnektir, hukuki danışmanlık değildir. Kullanmadan önce avukatınıza gösterin ve işinize göre düzenleyin.",
+  "kayitlar": [
+    {
+      "anahtar": "katilim",
+      "label": "Etkinlik katılım kuralları onayı",
+      "sign": [
+        "Gişe",
+        "Katılımcı"
+      ],
+      "fields": [
+        {
+          "name": "etkinlik",
+          "label": "Etkinlik",
+          "type": "text"
+        }
+      ],
+      "body": "{{etkinlik}} etkinliğinin giriş ve güvenlik kurallarını okudum, uymayı kabul ediyorum."
+    },
+    {
+      "anahtar": "kayip",
+      "label": "Kayıp bilet tutanağı",
+      "sign": [
+        "Gişe",
+        "Katılımcı"
+      ],
+      "fields": [
+        {
+          "name": "etkinlik",
+          "label": "Etkinlik",
+          "type": "text"
+        },
+        {
+          "name": "bilet",
+          "label": "Bilet no",
+          "type": "text"
+        }
+      ],
+      "body": "{{etkinlik}} etkinliğine ait {{bilet}} numaralı biletin kaybolduğu bildirilmiştir."
+    }
+  ]
+}

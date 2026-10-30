@@ -1,0 +1,69 @@
+{
+  "sablon": "kiralama/kira-formlari",
+  "surum": 1,
+  "program": "kiralama",
+  "tur": "form",
+  "ad": "Kiralama formları",
+  "aciklama": "Araç kiralama için örnek sözleşme ve teslim metni.",
+  "kaynak": "sablon",
+  "uyari": "Bu metin örnektir, hukuki danışmanlık değildir. Kullanmadan önce avukatınıza gösterin ve işinize göre düzenleyin.",
+  "kayitlar": [
+    {
+      "anahtar": "sozlesme",
+      "label": "Araç kiralama sözleşmesi",
+      "sign": [
+        "Kiralayan",
+        "Kiracı"
+      ],
+      "fields": [
+        {
+          "name": "plaka",
+          "label": "Plaka",
+          "type": "text"
+        },
+        {
+          "name": "baslangic",
+          "label": "Teslim tarihi",
+          "type": "date"
+        },
+        {
+          "name": "bitis",
+          "label": "İade tarihi",
+          "type": "date"
+        },
+        {
+          "name": "bedel",
+          "label": "Günlük ücret (₺)",
+          "type": "number"
+        }
+      ],
+      "body": "{{plaka}} plakalı araç {{baslangic}} ile {{bitis}} tarihleri arasında günlük {{bedel}} ₺ ücretle {{musteri}} adına kiralanmıştır. Kiracı aracı özenle kullanır, trafik cezası ve kusurundan doğan zararlardan sorumludur."
+    },
+    {
+      "anahtar": "hasar",
+      "label": "Araç iade hasar tutanağı",
+      "sign": [
+        "Kiralayan",
+        "Kiracı"
+      ],
+      "fields": [
+        {
+          "name": "plaka",
+          "label": "Plaka",
+          "type": "text"
+        },
+        {
+          "name": "km",
+          "label": "İade km",
+          "type": "number"
+        },
+        {
+          "name": "hasar",
+          "label": "Hasar açıklaması",
+          "type": "textarea"
+        }
+      ],
+      "body": "{{plaka}} plakalı araç {{km}} km ile iade alınmış, varsa hasarlar aşağıda yazılmıştır."
+    }
+  ]
+}

@@ -1,0 +1,59 @@
+{
+  "sablon": "otoservis/servis-formlari",
+  "surum": 1,
+  "program": "otoservis",
+  "tur": "form",
+  "ad": "Servis formları",
+  "aciklama": "Araç kabul ve ek iş onay formları.",
+  "kaynak": "sablon",
+  "uyari": "Bu metin örnektir, hukuki danışmanlık değildir. Kullanmadan önce avukatınıza gösterin ve işinize göre düzenleyin.",
+  "kayitlar": [
+    {
+      "anahtar": "arac-kabul",
+      "label": "Araç kabul formu",
+      "sign": [
+        "Servis",
+        "Araç sahibi"
+      ],
+      "fields": [
+        {
+          "name": "plaka",
+          "label": "Plaka",
+          "type": "text"
+        },
+        {
+          "name": "km",
+          "label": "Km",
+          "type": "number"
+        },
+        {
+          "name": "sikayet",
+          "label": "Şikâyet",
+          "type": "textarea"
+        }
+      ],
+      "body": "{{plaka}} plakalı araç {{km}} km ile servise alınmıştır. Tespit edilen ek işler yapılmadan önce araç sahibinden onay alınır."
+    },
+    {
+      "anahtar": "ek-is",
+      "label": "Ek iş onay formu",
+      "sign": [
+        "Servis",
+        "Araç sahibi"
+      ],
+      "fields": [
+        {
+          "name": "plaka",
+          "label": "Plaka",
+          "type": "text"
+        },
+        {
+          "name": "is",
+          "label": "Ek iş",
+          "type": "textarea"
+        }
+      ],
+      "body": "{{plaka}} plakalı araçta aşağıda yazılı ek işin yapılmasını onaylıyorum."
+    }
+  ]
+}

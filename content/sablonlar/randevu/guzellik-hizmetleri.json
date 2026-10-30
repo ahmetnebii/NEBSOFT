@@ -1,0 +1,110 @@
+{
+  "sablon": "randevu/guzellik-hizmetleri",
+  "surum": 1,
+  "program": "randevu",
+  "tur": "hizmet",
+  "ad": "Kuaför ve güzellik hizmetleri",
+  "aciklama": "Kadın kuaförü ve güzellik salonu için hazır hizmet listesi. Hizmetler online randevuda kapalı gelir.",
+  "kaynak": "sablon",
+  "hedef": "services",
+  "fiyatAlan": "price",
+  "varsayilan": {
+    "price": 0,
+    "staff": [],
+    "desc": "",
+    "online": false,
+    "color": ""
+  },
+  "kayitlar": [
+    {
+      "anahtar": "kadin-sac-kesimi",
+      "name": "Kadın saç kesimi",
+      "duration": 45,
+      "cat": "Saç"
+    },
+    {
+      "anahtar": "fon",
+      "name": "Fön",
+      "duration": 30,
+      "cat": "Saç"
+    },
+    {
+      "anahtar": "sac-boyama",
+      "name": "Saç boyama",
+      "duration": 120,
+      "cat": "Saç"
+    },
+    {
+      "anahtar": "rofle",
+      "name": "Röfle",
+      "duration": 150,
+      "cat": "Saç"
+    },
+    {
+      "anahtar": "keratin-bakimi",
+      "name": "Keratin bakımı",
+      "duration": 120,
+      "cat": "Saç"
+    },
+    {
+      "anahtar": "gelin-saci",
+      "name": "Gelin saçı",
+      "duration": 120,
+      "cat": "Saç"
+    },
+    {
+      "anahtar": "manikur",
+      "name": "Manikür",
+      "duration": 45,
+      "cat": "Tırnak"
+    },
+    {
+      "anahtar": "pedikur",
+      "name": "Pedikür",
+      "duration": 60,
+      "cat": "Tırnak"
+    },
+    {
+      "anahtar": "kalici-oje",
+      "name": "Kalıcı oje",
+      "duration": 60,
+      "cat": "Tırnak"
+    },
+    {
+      "anahtar": "protez-tirnak",
+      "name": "Protez tırnak",
+      "duration": 120,
+      "cat": "Tırnak"
+    },
+    {
+      "anahtar": "cilt-bakimi",
+      "name": "Cilt bakımı",
+      "duration": 60,
+      "cat": "Cilt"
+    },
+    {
+      "anahtar": "kas-tasarimi",
+      "name": "Kaş tasarımı",
+      "duration": 20,
+      "cat": "Cilt"
+    },
+    {
+      "anahtar": "kirpik-lifting",
+      "name": "Kirpik lifting",
+      "duration": 60,
+      "cat": "Cilt"
+    },
+    {
+      "anahtar": "agda",
+      "name": "Ağda",
+      "duration": 30,
+      "cat": "Cilt"
+    },
+    {
+      "anahtar": "makyaj",
+      "name": "Makyaj",
+      "duration": 60,
+      "cat": "Cilt"
+    }
+  ]
+}

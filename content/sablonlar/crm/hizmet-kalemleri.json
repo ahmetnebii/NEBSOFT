@@ -1,0 +1,66 @@
+{
+  "sablon": "crm/hizmet-kalemleri",
+  "surum": 1,
+  "program": "crm",
+  "tur": "hizmet",
+  "ad": "Hizmet kalemleri",
+  "aciklama": "Teklif hazırlarken seçilecek genel hizmet kalemleri. Fiyatı teklifte veya katalogda girin.",
+  "kaynak": "sablon",
+  "hedef": "catalog",
+  "fiyatAlan": "price",
+  "varsayilan": {
+    "price": 0
+  },
+  "kayitlar": [
+    {
+      "anahtar": "danismanlik-saat",
+      "name": "Danışmanlık (saat)",
+      "group": "Danışmanlık"
+    },
+    {
+      "anahtar": "ihtiyac-analizi",
+      "name": "İhtiyaç analizi",
+      "group": "Danışmanlık"
+    },
+    {
+      "anahtar": "egitim-gun",
+      "name": "Eğitim (gün)",
+      "group": "Danışmanlık"
+    },
+    {
+      "anahtar": "yerinde-kurulum",
+      "name": "Yerinde kurulum",
+      "group": "Danışmanlık"
+    },
+    {
+      "anahtar": "yillik-bakim-anlasmasi",
+      "name": "Yıllık bakım anlaşması",
+      "group": "Destek"
+    },
+    {
+      "anahtar": "uzaktan-destek-paketi",
+      "name": "Uzaktan destek paketi",
+      "group": "Destek"
+    },
+    {
+      "anahtar": "yerinde-servis",
+      "name": "Yerinde servis",
+      "group": "Destek"
+    },
+    {
+      "anahtar": "logo-tasarimi",
+      "name": "Logo tasarımı",
+      "group": "Tasarım"
+    },
+    {
+      "anahtar": "web-sitesi-tasarimi",
+      "name": "Web sitesi tasarımı",
+      "group": "Tasarım"
+    },
+    {
+      "anahtar": "sosyal-medya-yonetimi",
+      "name": "Sosyal medya yönetimi",
+      "group": "Tasarım"
+    }
+  ]
+}

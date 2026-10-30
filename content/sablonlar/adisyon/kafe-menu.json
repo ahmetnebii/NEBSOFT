@@ -1,0 +1,194 @@
+{
+  "sablon": "adisyon/kafe-menu",
+  "surum": 1,
+  "program": "adisyon",
+  "tur": "menu",
+  "ad": "Kafe menüsü",
+  "aciklama": "Sıcak ve soğuk içecek, kahvaltı, tost ve tatlı başlıklarıyla kafe menüsü. Ürünler kapalı gelir: fiyat girip açın.",
+  "kaynak": "sablon",
+  "hedef": "menu",
+  "fiyatAlan": "price",
+  "varsayilan": {
+    "price": 0,
+    "station": "bar",
+    "recipe": [],
+    "desc": "",
+    "active": false,
+    "prepMin": 0
+  },
+  "baglar": {
+    "cat": {
+      "koleksiyon": "mcats",
+      "varsayilan": {
+        "color": "#64748b"
+      }
+    }
+  },
+  "kayitlar": [
+    {
+      "anahtar": "espresso",
+      "name": "Espresso",
+      "cat": "Sıcak kahveler"
+    },
+    {
+      "anahtar": "americano",
+      "name": "Americano",
+      "cat": "Sıcak kahveler"
+    },
+    {
+      "anahtar": "latte",
+      "name": "Latte",
+      "cat": "Sıcak kahveler"
+    },
+    {
+      "anahtar": "cappuccino",
+      "name": "Cappuccino",
+      "cat": "Sıcak kahveler"
+    },
+    {
+      "anahtar": "flat-white",
+      "name": "Flat white",
+      "cat": "Sıcak kahveler"
+    },
+    {
+      "anahtar": "mocha",
+      "name": "Mocha",
+      "cat": "Sıcak kahveler"
+    },
+    {
+      "anahtar": "turk-kahvesi",
+      "name": "Türk kahvesi",
+      "cat": "Sıcak kahveler"
+    },
+    {
+      "anahtar": "filtre-kahve",
+      "name": "Filtre kahve",
+      "cat": "Sıcak kahveler"
+    },
+    {
+      "anahtar": "iced-latte",
+      "name": "Iced latte",
+      "cat": "Soğuk içecekler"
+    },
+    {
+      "anahtar": "iced-americano",
+      "name": "Iced americano",
+      "cat": "Soğuk içecekler"
+    },
+    {
+      "anahtar": "limonata",
+      "name": "Limonata",
+      "cat": "Soğuk içecekler"
+    },
+    {
+      "anahtar": "soguk-cay",
+      "name": "Soğuk çay",
+      "cat": "Soğuk içecekler"
+    },
+    {
+      "anahtar": "milkshake",
+      "name": "Milkshake",
+      "cat": "Soğuk içecekler"
+    },
+    {
+      "anahtar": "smoothie",
+      "name": "Smoothie",
+      "cat": "Soğuk içecekler"
+    },
+    {
+      "anahtar": "demlik-cay",
+      "name": "Demlik çay",
+      "cat": "Çaylar"
+    },
+    {
+      "anahtar": "bitki-cayi",
+      "name": "Bitki çayı",
+      "cat": "Çaylar"
+    },
+    {
+      "anahtar": "yesil-cay",
+      "name": "Yeşil çay",
+      "cat": "Çaylar"
+    },
+    {
+      "anahtar": "sicak-cikolata",
+      "name": "Sıcak çikolata",
+      "cat": "Çaylar"
+    },
+    {
+      "anahtar": "salep",
+      "name": "Salep",
+      "cat": "Çaylar"
+    },
+    {
+      "anahtar": "serpme-kahvalti",
+      "name": "Serpme kahvaltı",
+      "cat": "Kahvaltı"
+    },
+    {
+      "anahtar": "kahvalti-tabagi",
+      "name": "Kahvaltı tabağı",
+      "cat": "Kahvaltı"
+    },
+    {
+      "anahtar": "menemen",
+      "name": "Menemen",
+      "cat": "Kahvaltı"
+    },
+    {
+      "anahtar": "sahanda-yumurta",
+      "name": "Sahanda yumurta",
+      "cat": "Kahvaltı"
+    },
+    {
+      "anahtar": "omlet",
+      "name": "Omlet",
+      "cat": "Kahvaltı"
+    },
+    {
+      "anahtar": "kasarli-tost",
+      "name": "Kaşarlı tost",
+      "cat": "Tost ve sandviç"
+    },
+    {
+      "anahtar": "karisik-tost",
+      "name": "Karışık tost",
+      "cat": "Tost ve sandviç"
+    },
+    {
+      "anahtar": "soguk-sandvic",
+      "name": "Soğuk sandviç",
+      "cat": "Tost ve sandviç"
+    },
+    {
+      "anahtar": "tavuklu-wrap",
+      "name": "Tavuklu wrap",
+      "cat": "Tost ve sandviç"
+    },
+    {
+      "anahtar": "cheesecake",
+      "name": "Cheesecake",
+      "cat": "Tatlılar"
+    },
+    {
+      "anahtar": "brownie",
+      "name": "Brownie",
+      "cat": "Tatlılar"
+    },
+    {
+      "anahtar": "tiramisu",
+      "name": "Tiramisu",
+      "cat": "Tatlılar"
+    },
+    {
+      "anahtar": "kurabiye",
+      "name": "Kurabiye",
+      "cat": "Tatlılar"
+    },
+    {
+      "anahtar": "waffle",
+      "name": "Waffle",
+      "cat": "Tatlılar"
+    }
+  ]
+}

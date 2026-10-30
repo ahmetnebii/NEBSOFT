@@ -74,7 +74,7 @@
   // ---------- Düzen ----------
   const NAV = [{ sec: 'Satış' }, { id: 'ozet', label: 'Özet', icon: 'home' }, { id: 'havale', label: 'Havale Onayları', icon: 'cash', badge: true }, { id: 'siparisler', label: 'Tüm Siparişler', icon: 'receipt' }, { id: 'urunler', label: 'Ürünler & Fiyatlar', icon: 'box' }, { id: 'bankalar', label: 'Banka Hesapları', icon: 'building' }, { id: 'shopier', label: 'Kartla Ödeme (Shopier)', icon: 'card' }, { id: 'kuponlar', label: 'Kuponlar', icon: 'percent' },
     { sec: 'Müşteriler' }, { id: 'denemeler', label: 'Deneme talepleri', icon: 'key' }, { id: 'asistan', label: 'Destek asistanı', icon: 'message' }, { id: 'isletmeler', label: 'İşletmeler & Lisanslar', icon: 'users' }, { id: 'talepler', label: 'Satış Talepleri', icon: 'phone' }, { id: 'teklifler', label: 'Kurumsal Teklifler', icon: 'building' }, { id: 'destek', label: 'Destek', icon: 'message' },
-    { sec: 'Analitik' }, { id: 'analitik', label: 'Ziyaret & Dönüşüm', icon: 'trend' }, { id: 'sistem', label: 'Hata & Yavaşlık', icon: 'alert' },
+    { id: 'katalog', label: 'Ortak katalog', icon: 'box' }, { sec: 'Analitik' }, { id: 'analitik', label: 'Ziyaret & Dönüşüm', icon: 'trend' }, { id: 'sistem', label: 'Hata & Yavaşlık', icon: 'alert' },
     { sec: 'İletişim' }, { id: 'eposta', label: 'E-posta ayarları', icon: 'mail' }, { id: 'kampanya', label: 'E-posta gönder', icon: 'send' },
     { sec: 'Sistem' }, { id: 'duyuru', label: 'Duyurular & Bakım', icon: 'bell' }, { id: 'ayarlar', label: 'Site Ayarları', icon: 'settings' }, { id: 'yoneticiler', label: 'Yöneticiler', icon: 'shield' }, { id: 'veritabani', label: 'Veritabanı', icon: 'data' }, { id: 'kayitlar', label: 'Güvenlik Kayıtları', icon: 'list' }];
   (window.PANEL_EK ? window.PANEL_EK.nav : []).forEach((n) => NAV.splice(NAV.findIndex((x) => x.id === n.after) + 1, 0, n)); // admin/panel-ek.js
@@ -460,6 +460,8 @@
     await draw();
   };
   const ALARM_ROZET = { 'alarm.hata': ['Hata', 'err'], 'alarm.yavas': ['Yavaşlık', 'warn'] };
+  // Ortak katalog moderasyonu ayrı dosyada: ihtiyaç olunca yüklenir
+  ROUTES.katalog = async (el) => { if (!window.NS_KATALOG_PANEL) await new Promise((ok, no) => { const s = document.createElement('script'); s.src = 'katalog-panel.js'; s.onload = ok; s.onerror = () => no(new Error('Katalog ekranı yüklenemedi')); document.head.appendChild(s); }); return window.NS_KATALOG_PANEL(el, { api }); };
   ROUTES.sistem = async (el) => {
     let g = 1; let sv = '';
     const draw = async () => {

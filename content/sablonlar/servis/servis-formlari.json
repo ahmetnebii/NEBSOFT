@@ -1,0 +1,54 @@
+{
+  "sablon": "servis/servis-formlari",
+  "surum": 1,
+  "program": "servis",
+  "tur": "form",
+  "ad": "Servis formları",
+  "aciklama": "Cihaz teslim ve veri sorumluluğu formları.",
+  "kaynak": "sablon",
+  "uyari": "Bu metin örnektir, hukuki danışmanlık değildir. Kullanmadan önce avukatınıza gösterin ve işinize göre düzenleyin.",
+  "kayitlar": [
+    {
+      "anahtar": "cihaz-teslim",
+      "label": "Cihaz teslim tutanağı",
+      "sign": [
+        "Servis",
+        "Müşteri"
+      ],
+      "fields": [
+        {
+          "name": "cihaz",
+          "label": "Cihaz",
+          "type": "text"
+        },
+        {
+          "name": "seri",
+          "label": "Seri no",
+          "type": "text"
+        },
+        {
+          "name": "ariza",
+          "label": "Arıza",
+          "type": "textarea"
+        }
+      ],
+      "body": "{{cihaz}} (seri no: {{seri}}) arıza tespiti için teslim alınmıştır. Onarım ücreti, tespit sonrası müşteri onayıyla kesinleşir."
+    },
+    {
+      "anahtar": "veri",
+      "label": "Veri yedekleme beyanı",
+      "sign": [
+        "Servis",
+        "Müşteri"
+      ],
+      "fields": [
+        {
+          "name": "cihaz",
+          "label": "Cihaz",
+          "type": "text"
+        }
+      ],
+      "body": "{{cihaz}} cihazındaki verilerimi yedeklediğimi ya da yedeklenmesini istemediğimi, onarım sırasında veri kaybı olabileceğini bildiğimi beyan ederim."
+    }
+  ]
+}

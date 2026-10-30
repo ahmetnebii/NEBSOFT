@@ -1,0 +1,109 @@
+{
+  "sablon": "servis/parca-listesi",
+  "surum": 1,
+  "program": "servis",
+  "tur": "urun",
+  "ad": "Teknik servis parçaları",
+  "aciklama": "Telefon, bilgisayar ve beyaz eşya servisi için parça adları. Modeli ve fiyatı siz girin.",
+  "kaynak": "sablon",
+  "hedef": "parts",
+  "fiyatAlan": "price",
+  "varsayilan": {
+    "cost": 0,
+    "price": 0,
+    "stock": 0,
+    "min": 0
+  },
+  "kayitlar": [
+    {
+      "anahtar": "ekran",
+      "name": "Ekran",
+      "cat": "Telefon"
+    },
+    {
+      "anahtar": "batarya",
+      "name": "Batarya",
+      "cat": "Telefon"
+    },
+    {
+      "anahtar": "sarj-soketi",
+      "name": "Şarj soketi",
+      "cat": "Telefon"
+    },
+    {
+      "anahtar": "kamera-modulu",
+      "name": "Kamera modülü",
+      "cat": "Telefon"
+    },
+    {
+      "anahtar": "hoparlor",
+      "name": "Hoparlör",
+      "cat": "Telefon"
+    },
+    {
+      "anahtar": "klavye",
+      "name": "Klavye",
+      "cat": "Bilgisayar"
+    },
+    {
+      "anahtar": "ssd",
+      "name": "SSD",
+      "cat": "Bilgisayar"
+    },
+    {
+      "anahtar": "ram",
+      "name": "RAM",
+      "cat": "Bilgisayar"
+    },
+    {
+      "anahtar": "fan",
+      "name": "Fan",
+      "cat": "Bilgisayar"
+    },
+    {
+      "anahtar": "termal-macun",
+      "name": "Termal macun",
+      "cat": "Bilgisayar"
+    },
+    {
+      "anahtar": "sarj-adaptoru",
+      "name": "Şarj adaptörü",
+      "cat": "Bilgisayar"
+    },
+    {
+      "anahtar": "kapi-contasi",
+      "name": "Kapı contası",
+      "cat": "Beyaz eşya"
+    },
+    {
+      "anahtar": "pompa",
+      "name": "Pompa",
+      "cat": "Beyaz eşya"
+    },
+    {
+      "anahtar": "rezistans",
+      "name": "Rezistans",
+      "cat": "Beyaz eşya"
+    },
+    {
+      "anahtar": "termostat",
+      "name": "Termostat",
+      "cat": "Beyaz eşya"
+    },
+    {
+      "anahtar": "gaz-dolumu",
+      "name": "Gaz dolumu",
+      "cat": "Klima"
+    },
+    {
+      "anahtar": "kapasitor",
+      "name": "Kapasitör",
+      "cat": "Klima"
+    },
+    {
+      "anahtar": "fan-motoru",
+      "name": "Fan motoru",
+      "cat": "Klima"
+    }
+  ]
+}

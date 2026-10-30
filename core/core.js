@@ -8,7 +8,7 @@
   const base = me.src.replace(/core\.js(\?.*)?$/, '');
   window.__NB_ASSETS = base.replace(/core\/$/, 'assets/');
   try { const p = localStorage.getItem('nebsoft:palette') || (!localStorage.getItem('nebsoft:theme') && !/\/apps\/adisyon\//.test(location.pathname) ? 'kurumsal' : ''); if (p) document.documentElement.setAttribute('data-palette', p); if (localStorage.getItem('nebsoft:navmini') === '1') document.documentElement.classList.add('nv-mini'); } catch (e) { /* yok */ }
-  if (document.readyState === 'loading') ['auth.js', 'notify.js', 'docs.js', 'forms.js', 'pwa.js', 'scan.js', 'labels.js', 'support.js', 'integ-guides.js', 'integ-guides-ek.js', 'integ-wizard.js'].forEach((f) => document.write(`<script src="${base}${f}"><\/script>`));
+  if (document.readyState === 'loading') ['auth.js', 'notify.js', 'docs.js', 'forms.js', 'sablon.js', 'katalog.js', 'pwa.js', 'scan.js', 'labels.js', 'support.js', 'integ-guides.js', 'integ-guides-ek.js', 'integ-wizard.js'].forEach((f) => document.write(`<script src="${base}${f}"><\/script>`));
   const page = /\/apps\/[a-z0-9]+\/(?!index\.html)[^/]+\.html$/.test(location.pathname) ? null : (location.pathname.match(/\/apps\/([a-z0-9]+)\//) || [])[1] || 'site';
   let seen = true; try { seen = sessionStorage.getItem('nv:splash:' + page) === '1'; sessionStorage.setItem('nv:splash:' + page, '1'); } catch (e) { /* yok */ }
   if (!page || seen || window.top !== window || /[?&](print|nosplash|embed)=1/.test(location.search) || matchMedia('print').matches) return;
@@ -1125,7 +1125,7 @@
     on(el, 'click', '[data-f]', (e, t) => { filter = t.dataset.f; $$('[data-f]', el).forEach((b) => b.classList.toggle('active', b === t)); draw(); });
     const edit = async (rec) => {
       const fields = typeof cfg.fields === 'function' ? cfg.fields(rec) : cfg.fields;
-      const v = await formModal({ title: rec ? `${cfg.single || 'Kayıt'} Düzenle` : `Yeni ${cfg.single || 'Kayıt'}`, fields, values: rec ? (cfg.toForm ? cfg.toForm(rec) : rec) : (typeof cfg.defaults === 'function' ? cfg.defaults() : cfg.defaults) || {}, size: fields.length > 8 ? 'wide' : '' });
+      const v = await formModal({ title: rec ? `${cfg.single || 'Kayıt'} Düzenle` : `Yeni ${cfg.single || 'Kayıt'}`, fields, values: rec ? (cfg.toForm ? cfg.toForm(rec) : rec) : (typeof cfg.defaults === 'function' ? cfg.defaults() : cfg.defaults) || {}, size: fields.length > 8 ? 'wide' : '', onOpen: cfg.formOpen });
       if (!v) return;
       if (cfg.beforeSave) { const ok = await cfg.beforeSave(v, rec); if (ok === false || typeof ok === 'string') { if (typeof ok === 'string') toast(ok, 'err'); return; } }
       if (rec) app.db.update(cfg.col, rec.id, v); else app.db.insert(cfg.col, v);
@@ -1170,6 +1170,7 @@
         </div>
         <div class="col" style="gap:16px">
           ${app.can('admin') && app.navVisible ? `<div class="card"><div class="card-h"><h3>${icon('grid')} Menü ve modüller</h3></div><div class="card-b"><p class="small muted mb">Kullanmadığınız bölümleri menüden gizleyin; veriler silinmez, istediğiniz zaman geri açabilirsiniz. Tüm kullanıcılar için geçerlidir.</p><div class="col" id="navh" style="gap:6px">${app.opts.nav.filter((n) => n.id && !app.navLocked(n.id)).map((n) => `<label class="row"><input type="checkbox" data-nv="${esc(n.id)}" ${app.navVisible(n) ? 'checked' : ''}> ${icon(n.icon || 'grid')} <span>${esc(n.label)}</span></label>`).join('')}</div></div></div>` : ''}
+          ${app.can('admin') && NS.sablon ? `<div class="card"><div class="card-h"><h3>${icon('file')} Hazır şablonlar</h3></div><div class="card-b"><p class="small muted mb">Sektörünüze özel menü, hizmet, form ve temaları önizleyip tek tıkla ekleyin. Eski kayıtlarınız değişmez.</p><a class="btn" href="#/sablonlar">${icon('eye')} Şablonları aç</a></div></div>` : ''}
           <div class="card"><div class="card-h"><h3>${icon('sparkles')} Görünüm ve tema</h3></div><div class="card-b"><p class="small muted mb">Seçtiğiniz tema bu cihazda kaydedilir ve program her açıldığında otomatik yüklenir.</p>${themeCards()}</div></div>
           <div class="card"><div class="card-h"><h3>Veri Yönetimi</h3></div><div class="card-b col">
             <p class="small muted">Tüm verilerinizi JSON olarak yedekleyin veya yedekten geri yükleyin.</p>

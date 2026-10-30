@@ -1,0 +1,48 @@
+{
+  "sablon": "anaokulu/haftalik-menu",
+  "surum": 1,
+  "program": "anaokulu",
+  "tur": "menu",
+  "ad": "Haftalık yemek listesi",
+  "aciklama": "Pazartesiden cumaya örnek kahvaltı, öğle ve ikindi listesi. Alerjisi olan çocuklar için kontrol edin; gerekiyorsa diyetisyene gösterin.",
+  "kaynak": "sablon",
+  "hedef": "menu",
+  "adAlan": "day",
+  "kayitlar": [
+    {
+      "anahtar": "pazartesi",
+      "day": "Pazartesi",
+      "kahvalti": "Haşlanmış yumurta, peynir, zeytin, ekmek, süt",
+      "ogle": "Mercimek çorbası, tavuklu pilav, yoğurt",
+      "ikindi": "Mevsim meyvesi, kraker"
+    },
+    {
+      "anahtar": "sali",
+      "day": "Salı",
+      "kahvalti": "Peynirli omlet, domates, salatalık, ekmek, süt",
+      "ogle": "Sebze çorbası, etli nohut, bulgur pilavı",
+      "ikindi": "Ayran, kek"
+    },
+    {
+      "anahtar": "carsamba",
+      "day": "Çarşamba",
+      "kahvalti": "Reçel, tereyağı, peynir, ekmek, ıhlamur",
+      "ogle": "Tarhana çorbası, fırında köfte, patates",
+      "ikindi": "Meyve, galeta"
+    },
+    {
+      "anahtar": "persembe",
+      "day": "Perşembe",
+      "kahvalti": "Haşlanmış yumurta, zeytin, ekmek, süt",
+      "ogle": "Yayla çorbası, kıymalı makarna, salata",
+      "ikindi": "Sütlaç"
+    },
+    {
+      "anahtar": "cuma",
+      "day": "Cuma",
+      "kahvalti": "Peynirli poğaça, domates, salatalık, ayran",
+      "ogle": "Ezogelin çorbası, tavuk sote, pilav, cacık",
+      "ikindi": "Meyve, bisküvi"
+    }
+  ]
+}

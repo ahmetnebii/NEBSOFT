@@ -15,7 +15,7 @@ Her kanal aynı alanları üretir (`log.kayitOlustur`):
 | `zaman` | ISO 8601, UTC |
 | `kanal` | `uygulama`, `denetim`, `analitik` |
 | `seviye` | `bilgi`, `uyari`, `hata` |
-| `olay` | Noktalı kısa ad: `api.hata`, `alarm.yavas`, `Giriş` |
+| `olay` | Noktalı kısa ad: `api.hata`, `alarm.yavas`, `Giriş`, `katalog.oneri` (yalnız sayılar), `katalog.birlestirme` (denetim), `sablon.iceri_aktarildi` |
 | `mesaj` | Maskelenmiş metin, en çok 500 karakter |
 | `istek` | İstek kodu. 500 yanıtında kullanıcıya da döner, destek bununla kaydı bulur |
 | `kullanici`, `isletme` | Kimlik numarası (ad veya e-posta değil) |

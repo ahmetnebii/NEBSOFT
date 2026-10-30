@@ -1,0 +1,78 @@
+{
+  "sablon": "veteriner/urun-listesi",
+  "surum": 1,
+  "program": "veteriner",
+  "tur": "urun",
+  "ad": "Klinik ürün listesi",
+  "aciklama": "Veteriner kliniği için genel ürün başlıkları. Marka, fiyat ve stoku siz girin.",
+  "kaynak": "sablon",
+  "hedef": "products",
+  "fiyatAlan": "price",
+  "varsayilan": {
+    "price": 0,
+    "stock": 0,
+    "min": 0
+  },
+  "kayitlar": [
+    {
+      "anahtar": "yavru-kedi-mamasi",
+      "name": "Yavru kedi maması",
+      "cat": "Mama"
+    },
+    {
+      "anahtar": "yetiskin-kedi-mamasi",
+      "name": "Yetişkin kedi maması",
+      "cat": "Mama"
+    },
+    {
+      "anahtar": "yavru-kopek-mamasi",
+      "name": "Yavru köpek maması",
+      "cat": "Mama"
+    },
+    {
+      "anahtar": "yetiskin-kopek-mamasi",
+      "name": "Yetişkin köpek maması",
+      "cat": "Mama"
+    },
+    {
+      "anahtar": "tasma",
+      "name": "Tasma",
+      "cat": "Aksesuar"
+    },
+    {
+      "anahtar": "tasima-cantasi",
+      "name": "Taşıma çantası",
+      "cat": "Aksesuar"
+    },
+    {
+      "anahtar": "mama-kabi",
+      "name": "Mama kabı",
+      "cat": "Aksesuar"
+    },
+    {
+      "anahtar": "kedi-kumu",
+      "name": "Kedi kumu",
+      "cat": "Aksesuar"
+    },
+    {
+      "anahtar": "sampuan",
+      "name": "Şampuan",
+      "cat": "Bakım"
+    },
+    {
+      "anahtar": "tarak",
+      "name": "Tarak",
+      "cat": "Bakım"
+    },
+    {
+      "anahtar": "tirnak-makasi",
+      "name": "Tırnak makası",
+      "cat": "Bakım"
+    },
+    {
+      "anahtar": "kulak-temizleme-solusyonu",
+      "name": "Kulak temizleme solüsyonu",
+      "cat": "Bakım"
+    }
+  ]
+}

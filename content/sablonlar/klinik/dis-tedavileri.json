@@ -1,0 +1,76 @@
+{
+  "sablon": "klinik/dis-tedavileri",
+  "surum": 1,
+  "program": "klinik",
+  "tur": "hizmet",
+  "ad": "Diş tedavi listesi",
+  "aciklama": "Diş kliniği için sık kullanılan tedavi kalemleri. Fiyatları siz girin.",
+  "kaynak": "sablon",
+  "hedef": "treatments",
+  "fiyatAlan": "price",
+  "varsayilan": {
+    "price": 0
+  },
+  "kayitlar": [
+    {
+      "anahtar": "muayene",
+      "name": "Muayene",
+      "tooth": false
+    },
+    {
+      "anahtar": "dis-tasi-temizligi",
+      "name": "Diş taşı temizliği",
+      "tooth": false
+    },
+    {
+      "anahtar": "panoramik-rontgen",
+      "name": "Panoramik röntgen",
+      "tooth": false
+    },
+    {
+      "anahtar": "dolgu",
+      "name": "Dolgu",
+      "tooth": true
+    },
+    {
+      "anahtar": "kanal-tedavisi",
+      "name": "Kanal tedavisi",
+      "tooth": true
+    },
+    {
+      "anahtar": "dis-cekimi",
+      "name": "Diş çekimi",
+      "tooth": true
+    },
+    {
+      "anahtar": "gomulu-dis-cekimi",
+      "name": "Gömülü diş çekimi",
+      "tooth": true
+    },
+    {
+      "anahtar": "kuron",
+      "name": "Kuron",
+      "tooth": true
+    },
+    {
+      "anahtar": "implant",
+      "name": "İmplant",
+      "tooth": true
+    },
+    {
+      "anahtar": "dis-beyazlatma",
+      "name": "Diş beyazlatma",
+      "tooth": false
+    },
+    {
+      "anahtar": "fissur-ortucu",
+      "name": "Fissür örtücü",
+      "tooth": true
+    },
+    {
+      "anahtar": "gece-plagi",
+      "name": "Gece plağı",
+      "tooth": false
+    }
+  ]
+}

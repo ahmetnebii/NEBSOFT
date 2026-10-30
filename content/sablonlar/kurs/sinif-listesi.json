@@ -1,0 +1,48 @@
+{
+  "sablon": "kurs/sinif-listesi",
+  "surum": 1,
+  "program": "kurs",
+  "tur": "kategori",
+  "ad": "Sınıf ve grup listesi",
+  "aciklama": "LGS, YKS ve yabancı dil için başlangıç grupları. Ücret ve kontenjanı siz girin.",
+  "kaynak": "sablon",
+  "hedef": "classes",
+  "fiyatAlan": "fee",
+  "varsayilan": {
+    "room": "",
+    "capacity": 0,
+    "fee": 0
+  },
+  "kayitlar": [
+    {
+      "anahtar": "lgs-grubu",
+      "name": "LGS grubu",
+      "level": "8. sınıf"
+    },
+    {
+      "anahtar": "tyt-grubu",
+      "name": "TYT grubu",
+      "level": "11. sınıf"
+    },
+    {
+      "anahtar": "ayt-sayisal",
+      "name": "AYT sayısal",
+      "level": "12. sınıf"
+    },
+    {
+      "anahtar": "ayt-esit-agirlik",
+      "name": "AYT eşit ağırlık",
+      "level": "12. sınıf"
+    },
+    {
+      "anahtar": "ingilizce-baslangic",
+      "name": "İngilizce başlangıç",
+      "level": "A1"
+    },
+    {
+      "anahtar": "ingilizce-orta",
+      "name": "İngilizce orta",
+      "level": "B1"
+    }
+  ]
+}

@@ -40,6 +40,11 @@ const SCHEMA = [
   `CREATE TABLE IF NOT EXISTS audit (id BIGINT AUTO_INCREMENT PRIMARY KEY, at DATETIME NOT NULL, user_id CHAR(16) NULL, tenant_id CHAR(16) NULL, ip VARCHAR(64), action VARCHAR(60) NOT NULL, detail VARCHAR(500), INDEX (at), INDEX (tenant_id)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
   `CREATE TABLE IF NOT EXISTS settings (k VARCHAR(60) PRIMARY KEY, v TEXT) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
   `CREATE TABLE IF NOT EXISTS product_pool (barcode VARCHAR(32) PRIMARY KEY, name VARCHAR(200) NOT NULL, brand VARCHAR(120), image VARCHAR(400), category VARCHAR(80), uses INT NOT NULL DEFAULT 1, source VARCHAR(16), updated DATETIME NOT NULL, FULLTEXT KEY ft (name, brand)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
+  // Ortak katalog: dış kaynak ve kendi kayıtlarımız lisans gereği ayrı tablolarda; catalog_suggest'te işletme kimliği sütunu bilerek yoktur. product_pool artık okunmaz (göç: katalog.js)
+  `CREATE TABLE IF NOT EXISTS catalog_ext (gtin CHAR(14) NOT NULL, kaynak VARCHAR(16) NOT NULL, ad VARCHAR(500) NOT NULL, marka VARCHAR(300), kategori VARCHAR(800), gorsel VARCHAR(500), lisans VARCHAR(40) NOT NULL, kaynak_url VARCHAR(300) NOT NULL, alindi DATETIME NOT NULL, PRIMARY KEY (gtin, kaynak), KEY ad (ad(60))) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
+  `CREATE TABLE IF NOT EXISTS catalog_own (gtin CHAR(14) PRIMARY KEY, ad VARCHAR(200) NOT NULL, ad_norm VARCHAR(200) NOT NULL, marka VARCHAR(120), kategori VARCHAR(80), kaynak VARCHAR(80) NOT NULL, lisans VARCHAR(200) NOT NULL, kaynak_url VARCHAR(300) NOT NULL, alindi DATETIME NOT NULL, ust_kaynak VARCHAR(16) NULL, oneri_id BIGINT NULL, onaylayan CHAR(16) NULL, guncel DATETIME NOT NULL, KEY an (ad_norm(60))) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
+  `CREATE TABLE IF NOT EXISTS catalog_suggest (id BIGINT AUTO_INCREMENT PRIMARY KEY, gtin VARCHAR(32) NOT NULL, ad VARCHAR(200) NOT NULL, ad_norm VARCHAR(200) NOT NULL, marka VARCHAR(120), kategori VARCHAR(80), kaynak VARCHAR(80) NOT NULL, lisans VARCHAR(200) NOT NULL, kaynak_url VARCHAR(300) NOT NULL, izin VARCHAR(200) NULL, alindi DATETIME NOT NULL, sayac INT NOT NULL DEFAULT 1, durum VARCHAR(12) NOT NULL DEFAULT 'bekliyor', bayrak VARCHAR(40) NULL, neden VARCHAR(200) NULL, karar_veren CHAR(16) NULL, karar_zamani DATETIME NULL, UNIQUE KEY tekil (gtin, ad_norm, kaynak), KEY d (durum, sayac)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
+  `CREATE TABLE IF NOT EXISTS catalog_merge (id BIGINT AUTO_INCREMENT PRIMARY KEY, oneri_id BIGINT NOT NULL, hedef_gtin CHAR(14) NOT NULL, onceki LONGTEXT, sonraki LONGTEXT NOT NULL, yapan CHAR(16) NULL, zaman DATETIME NOT NULL, geri_alindi DATETIME NULL, geri_alan CHAR(16) NULL, KEY h (hedef_gtin)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
   `CREATE TABLE IF NOT EXISTS kb_log (id BIGINT AUTO_INCREMENT PRIMARY KEY, at DATETIME NOT NULL, kind VARCHAR(12) NOT NULL, q VARCHAR(300) NOT NULL, app VARCHAR(40), entry VARCHAR(16), page VARCHAR(60), done TINYINT NOT NULL DEFAULT 0, KEY k (kind, done)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
   `CREATE TABLE IF NOT EXISTS biz_sites (tenant_id CHAR(16) PRIMARY KEY, data LONGTEXT NOT NULL, published TINYINT NOT NULL DEFAULT 0, domain VARCHAR(190) NULL UNIQUE, orders INT NOT NULL DEFAULT 0, updated DATETIME NOT NULL) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
   `CREATE TABLE IF NOT EXISTS email_codes (id CHAR(64) PRIMARY KEY, email VARCHAR(190) NOT NULL, purpose VARCHAR(16) NOT NULL, code_hash CHAR(64) NOT NULL, meta TEXT, expires DATETIME NOT NULL, attempts INT NOT NULL DEFAULT 0, INDEX (email)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
@@ -73,7 +78,9 @@ async function addColumns() {
     try { await q(`ALTER TABLE \`${tablo}\` ADD COLUMN \`${sutun}\` ${tip}`); } catch (e) { if (e.code !== 'ER_DUP_FIELDNAME') throw e; } // iki süreç aynı anda açılırsa ikincisi hata vermesin
   }
 }
-async function migrate() { for (const s of SCHEMA) await q(s); await addColumns(); }
+// Tablo kurulduktan sonra çalışan veri göçleri (modüller kaydeder; her biri kendi kez-kontrolünü yapar)
+const goc = []; const gocEkle = (fn) => goc.push(fn);
+async function migrate() { for (const s of SCHEMA) await q(s); await addColumns(); for (const fn of goc) await fn(); }
 
 // Yöneticinin MySQL sunucusunda çalıştıracağı veritabanı + kullanıcı + yetki SQL'i
 function setupSql({ database = 'nebsoft', user = 'nebsoft_app', host = '%', password }) {
@@ -91,4 +98,4 @@ function setupSql({ database = 'nebsoft', user = 'nebsoft_app', host = '%', pass
     `-- SSL önerilir: ALTER USER '${id(user)}'@'${h}' REQUIRE SSL;`,
   ].join('\n');
 }
-module.exports = { test, connect, ready, q, one, tx, migrate, setupSql, info: () => info, close: async () => { if (pool) await pool.end(); pool = null; } };
+module.exports = { test, connect, ready, q, one, tx, migrate, gocEkle, setupSql, info: () => info, close: async () => { if (pool) await pool.end(); pool = null; } };

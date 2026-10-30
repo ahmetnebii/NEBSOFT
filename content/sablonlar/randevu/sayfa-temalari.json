@@ -1,0 +1,51 @@
+{
+  "sablon": "randevu/sayfa-temalari",
+  "surum": 1,
+  "program": "randevu",
+  "tur": "tema",
+  "ad": "Randevu sayfası temaları",
+  "aciklama": "Müşterilerinizin gördüğü randevu sayfasının rengini seçin. İstediğiniz zaman değiştirebilirsiniz.",
+  "kaynak": "sablon",
+  "kayitlar": [
+    {
+      "anahtar": "mor",
+      "label": "Lavanta (mor)",
+      "ayarlar": {
+        "bookAccent": "#9333ea",
+        "bookSoft": "#f3e8ff"
+      }
+    },
+    {
+      "anahtar": "gul",
+      "label": "Gül kurusu",
+      "ayarlar": {
+        "bookAccent": "#be185d",
+        "bookSoft": "#fce7f3"
+      }
+    },
+    {
+      "anahtar": "zeytin",
+      "label": "Zeytin yeşili",
+      "ayarlar": {
+        "bookAccent": "#4d7c0f",
+        "bookSoft": "#ecfccb"
+      }
+    },
+    {
+      "anahtar": "lacivert",
+      "label": "Berber laciverti",
+      "ayarlar": {
+        "bookAccent": "#1e3a8a",
+        "bookSoft": "#dbeafe"
+      }
+    },
+    {
+      "anahtar": "kiremit",
+      "label": "Kiremit",
+      "ayarlar": {
+        "bookAccent": "#c2410c",
+        "bookSoft": "#ffedd5"
+      }
+    }
+  ]
+}

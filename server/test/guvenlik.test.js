@@ -102,12 +102,12 @@ async function bulut() {
     if (/^DELETE FROM users/.test(sql)) { log.push(['sil', p[0]]); return { affectedRows: 1 }; }
     if (/^INSERT INTO users/.test(sql)) { log.push(['ekle', p[1]]); return {}; }
     if (/^INSERT INTO biz_sites/.test(sql)) { log.push(['site', p[3]]); return {}; }
-    if (/^INSERT INTO product_pool/.test(sql)) { log.push(['havuz', p[0]]); return {}; }
+    if (/^INSERT INTO catalog_suggest/.test(sql)) { log.push(['havuz', p[0]]); return {}; }
     if (/^UPDATE tenants SET name/.test(sql)) { log.push(['sirket', p[0]]); return {}; }
     if (/COUNT\(\*\) AS n FROM users/.test(sql)) return [{ n: 1 }];
     return [];
   };
-  const fake = { ready: () => true, q, one: async (s, p) => (await q(s, p))[0] || null, tx: async (f) => f({ q }), info: () => ({ host: '10.0.0.10', database: 'nebsoft', version: '8' }), close: async () => {} };
+  const fake = { ready: () => true, gocEkle: () => {}, q, one: async (s, p) => (await q(s, p))[0] || null, tx: async (f) => f({ q }), info: () => ({ host: '10.0.0.10', database: 'nebsoft', version: '8' }), close: async () => {} };
   const id = require.resolve('../cloud/db'); require.cache[id] = { id, filename: id, loaded: true, exports: fake };
   const cloud = require('../cloud'); const seo = require('../cloud/seo');
   const srv = http.createServer((a, b) => { let p; try { p = decodeURIComponent(a.url.split('?')[0]); } catch (e) { b.writeHead(400); return b.end(); } cloud.handle(a, b, p).then((d) => { if (!d) { b.writeHead(404); b.end('{}'); } }); });
@@ -127,7 +127,7 @@ async function bulut() {
     assert.ok(!log.some((x) => x[0] === 'site')); r = await api('PUT', '/api/websitem', 'a', { data: {}, domain: 'www.isletmem.com.tr' }); assert.strictEqual(r.s, 200); assert.ok(log.some((x) => x[0] === 'site' && x[1] === 'www.isletmem.com.tr')); ok('işletme platformun alan adını ve IP adresini sahiplenemiyor');
     assert.strictEqual(await seo.domainSite({ headers: { host: 'www.nebsoftapp.test' }, socket: {} }, '/'), null); ok('eski kayıt olsa da platform adresi işletme sitesine dönmüyor');
 
-    r = await api('POST', '/api/katalog/katki', null, { items: [{ barcode: '86900000001', name: 'Sahte' }] }); assert.strictEqual(r.s, 401); assert.ok(!log.some((x) => x[0] === 'havuz')); r = await api('POST', '/api/katalog/katki', 'a', { items: [{ barcode: '86900000001', name: 'Gerçek' }] }); assert.strictEqual(r.j.added, 1); ok('ürün havuzuna yalnızca oturumlu işletme yazıyor');
+    r = await api('POST', '/api/katalog/katki', null, { items: [{ barcode: '8690000000012', name: 'Sahte' }] }); assert.strictEqual(r.s, 401); assert.ok(!log.some((x) => x[0] === 'havuz')); r = await api('POST', '/api/katalog/katki', 'a', { items: [{ barcode: '8690000000012', name: 'Gerçek' }] }); assert.strictEqual(r.j.eklenen, 1); ok('ortak kataloğa yalnızca oturumlu işletme öneri gönderiyor');
 
     r = await raw(port, '/api/w/yok/siparis', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' }); assert.strictEqual(r.s, 404); r = await raw(port, '/api/w/yok/siparis', { method: 'POST', headers: { Origin: 'https://evil.example', Host: '127.0.0.1' }, body: '{}' }); assert.strictEqual(r.s, 403); ok('site siparişi: sayfanın isteği geçiyor, başka siteden reddediliyor');
   } finally { srv.close(); }

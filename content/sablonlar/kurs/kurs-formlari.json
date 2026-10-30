@@ -1,0 +1,54 @@
+{
+  "sablon": "kurs/kurs-formlari",
+  "surum": 1,
+  "program": "kurs",
+  "tur": "form",
+  "ad": "Kurum formları",
+  "aciklama": "Görüşme ve ayrılma işlemleri için kurum formları.",
+  "kaynak": "sablon",
+  "uyari": "Bu metin örnektir, hukuki danışmanlık değildir. Kullanmadan önce avukatınıza gösterin ve işinize göre düzenleyin.",
+  "kayitlar": [
+    {
+      "anahtar": "veli-gorusme",
+      "label": "Veli görüşme tutanağı",
+      "sign": [
+        "Danışman",
+        "Veli"
+      ],
+      "fields": [
+        {
+          "name": "konu",
+          "label": "Görüşme konusu",
+          "type": "text"
+        },
+        {
+          "name": "karar",
+          "label": "Alınan karar",
+          "type": "textarea"
+        }
+      ],
+      "body": "{{tarih}} tarihinde {{musteri}} ile \"{{konu}}\" konusunda görüşülmüş, aşağıda yazılı kararlar alınmıştır."
+    },
+    {
+      "anahtar": "ayrilma",
+      "label": "Kurumdan ayrılma dilekçesi",
+      "sign": [
+        "Kurum",
+        "Veli"
+      ],
+      "fields": [
+        {
+          "name": "neden",
+          "label": "Ayrılma nedeni",
+          "type": "text"
+        },
+        {
+          "name": "ayrilisTarih",
+          "label": "Ayrılış tarihi",
+          "type": "date"
+        }
+      ],
+      "body": "{{musteri}} adına yapılan kaydın {{neden}} nedeniyle {{ayrilisTarih}} tarihi itibarıyla sonlandırılmasını talep ederim. Varsa iade işlemleri sözleşme ve kurum kurallarına göre yapılır."
+    }
+  ]
+}

@@ -1,0 +1,47 @@
+{
+  "sablon": "fabrika/is-istasyonlari",
+  "surum": 1,
+  "program": "fabrika",
+  "tur": "kategori",
+  "ad": "Üretim istasyonları",
+  "aciklama": "Genel üretim için iş istasyonları. Saatlik maliyeti ve kapasiteyi siz girin.",
+  "kaynak": "sablon",
+  "hedef": "stations",
+  "varsayilan": {
+    "cap": 0,
+    "cph": 0,
+    "status": "calisiyor"
+  },
+  "kayitlar": [
+    {
+      "anahtar": "kesim-hatti",
+      "name": "Kesim hattı",
+      "kind": "Kesim",
+      "code": "KS-01"
+    },
+    {
+      "anahtar": "montaj-hatti",
+      "name": "Montaj hattı",
+      "kind": "Montaj",
+      "code": "MN-01"
+    },
+    {
+      "anahtar": "paketleme-hatti",
+      "name": "Paketleme hattı",
+      "kind": "Paketleme",
+      "code": "PK-01"
+    },
+    {
+      "anahtar": "kalite-kontrol",
+      "name": "Kalite kontrol",
+      "kind": "Kalite",
+      "code": "KK-01"
+    },
+    {
+      "anahtar": "depo-sevkiyat",
+      "name": "Depo sevkiyat",
+      "kind": "Sevkiyat",
+      "code": "SV-01"
+    }
+  ]
+}

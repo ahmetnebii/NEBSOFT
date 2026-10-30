@@ -1,0 +1,43 @@
+{
+  "sablon": "hukuk/buro-formlari",
+  "surum": 1,
+  "program": "hukuk",
+  "tur": "form",
+  "ad": "Büro formları",
+  "aciklama": "Müvekkil bilgilendirme örnekleri.",
+  "kaynak": "sablon",
+  "uyari": "Bu metin örnektir, hukuki danışmanlık değildir. Kullanmadan önce avukatınıza gösterin ve işinize göre düzenleyin.",
+  "kayitlar": [
+    {
+      "anahtar": "bilgilendirme",
+      "label": "Müvekkil bilgilendirme tutanağı",
+      "sign": [
+        "Avukat",
+        "Müvekkil"
+      ],
+      "fields": [
+        {
+          "name": "dosya",
+          "label": "Dosya",
+          "type": "text"
+        },
+        {
+          "name": "konu",
+          "label": "Bilgilendirme konusu",
+          "type": "textarea"
+        }
+      ],
+      "body": "{{dosya}} dosyası ile ilgili {{tarih}} tarihinde müvekkile bilgi verilmiştir."
+    },
+    {
+      "anahtar": "kvkk",
+      "label": "Kişisel veri aydınlatma metni",
+      "sign": [
+        "Büro",
+        "Müvekkil"
+      ],
+      "fields": [],
+      "body": "Kişisel verilerimin avukatlık hizmetinin yürütülmesi ve yasal yükümlülükler için işleneceği, haklarım ve başvuru yolları konusunda bilgilendirildim."
+    }
+  ]
+}

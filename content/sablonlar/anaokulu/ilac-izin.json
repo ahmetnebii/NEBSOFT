@@ -1,0 +1,64 @@
+{
+  "sablon": "anaokulu/ilac-izin",
+  "surum": 1,
+  "program": "anaokulu",
+  "tur": "form",
+  "ad": "İlaç ve servis izin formları",
+  "aciklama": "Okulda ilaç verilmesi ve servis kullanımı için veli izinleri.",
+  "kaynak": "sablon",
+  "uyari": "Bu metin örnektir, hukuki danışmanlık değildir. Kullanmadan önce avukatınıza gösterin ve işinize göre düzenleyin.",
+  "kayitlar": [
+    {
+      "anahtar": "ilac-izin",
+      "label": "İlaç verme izin formu",
+      "sign": [
+        "Okul",
+        "Veli"
+      ],
+      "fields": [
+        {
+          "name": "ilac",
+          "label": "İlacın adı",
+          "type": "text"
+        },
+        {
+          "name": "doz",
+          "label": "Doz ve saat",
+          "type": "text"
+        },
+        {
+          "name": "sure",
+          "label": "Kullanım süresi",
+          "type": "text"
+        },
+        {
+          "name": "hekim",
+          "label": "Reçeteyi yazan hekim",
+          "type": "text"
+        }
+      ],
+      "body": "Velisi bulunduğum {{musteri}} adlı öğrenciye {{ilac}} ilacının {{doz}} şeklinde, {{sure}} süreyle okulda verilmesini rica ederim. İlacı etiketli kutusunda teslim ettiğimi, yanlış bilgi vermekten doğacak sorumluluğun bana ait olduğunu beyan ederim."
+    },
+    {
+      "anahtar": "servis-izin",
+      "label": "Servis kullanım izin formu",
+      "sign": [
+        "Okul",
+        "Veli"
+      ],
+      "fields": [
+        {
+          "name": "guzergah",
+          "label": "Güzergâh",
+          "type": "text"
+        },
+        {
+          "name": "alan",
+          "label": "Teslim alacak kişi",
+          "type": "text"
+        }
+      ],
+      "body": "{{musteri}} adlı öğrencinin okul servisini {{guzergah}} güzergâhında kullanmasına izin veriyorum. Öğrenci, servis durağında {{alan}} tarafından teslim alınacaktır."
+    }
+  ]
+}

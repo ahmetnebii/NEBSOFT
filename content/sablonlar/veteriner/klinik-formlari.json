@@ -1,0 +1,38 @@
+{
+  "sablon": "veteriner/klinik-formlari",
+  "surum": 1,
+  "program": "veteriner",
+  "tur": "form",
+  "ad": "Klinik formları",
+  "aciklama": "Taburcu ve sorumluluk formları.",
+  "kaynak": "sablon",
+  "uyari": "Bu metin örnektir, hukuki danışmanlık değildir. Kullanmadan önce avukatınıza gösterin ve işinize göre düzenleyin.",
+  "kayitlar": [
+    {
+      "anahtar": "taburcu",
+      "label": "Taburcu bilgilendirme formu",
+      "sign": [
+        "Veteriner hekim",
+        "Hayvan sahibi"
+      ],
+      "fields": [
+        {
+          "name": "hayvan",
+          "label": "Hayvanın adı / türü",
+          "type": "text"
+        },
+        {
+          "name": "bakim",
+          "label": "Evde bakım talimatı",
+          "type": "textarea"
+        },
+        {
+          "name": "kontrol",
+          "label": "Kontrol tarihi",
+          "type": "date"
+        }
+      ],
+      "body": "{{hayvan}} taburcu edilmiştir. Evde bakım talimatları anlatılmış, kontrol tarihi {{kontrol}} olarak belirlenmiştir."
+    }
+  ]
+}

@@ -1,0 +1,33 @@
+{
+  "sablon": "pazaryeri/iade-formlari",
+  "surum": 1,
+  "program": "pazaryeri",
+  "tur": "form",
+  "ad": "Pazaryeri formları",
+  "aciklama": "İade kontrol tutanağı.",
+  "kaynak": "sablon",
+  "uyari": "Bu metin örnektir, hukuki danışmanlık değildir. Kullanmadan önce avukatınıza gösterin ve işinize göre düzenleyin.",
+  "kayitlar": [
+    {
+      "anahtar": "iade-kontrol",
+      "label": "İade kontrol tutanağı",
+      "sign": [
+        "Depo",
+        "Kontrol eden"
+      ],
+      "fields": [
+        {
+          "name": "siparis",
+          "label": "Sipariş no",
+          "type": "text"
+        },
+        {
+          "name": "durum",
+          "label": "Ürün durumu",
+          "type": "textarea"
+        }
+      ],
+      "body": "{{siparis}} numaralı siparişe ait iade ürünü kontrol edilmiş, durumu aşağıda yazılmıştır."
+    }
+  ]
+}

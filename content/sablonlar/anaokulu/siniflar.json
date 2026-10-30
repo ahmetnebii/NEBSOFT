@@ -1,0 +1,40 @@
+{
+  "sablon": "anaokulu/siniflar",
+  "surum": 1,
+  "program": "anaokulu",
+  "tur": "kategori",
+  "ad": "Yaş grubu sınıfları",
+  "aciklama": "Yaş gruplarına göre başlangıç sınıfları. Öğretmen atamasını siz yapın.",
+  "kaynak": "sablon",
+  "hedef": "classes",
+  "varsayilan": {
+    "teacher": "",
+    "color": "#f59e0b"
+  },
+  "kayitlar": [
+    {
+      "anahtar": "oyun-grubu",
+      "name": "Oyun grubu",
+      "age": "2-3 yaş",
+      "nap": true
+    },
+    {
+      "anahtar": "minikler",
+      "name": "Minikler",
+      "age": "3-4 yaş",
+      "nap": true
+    },
+    {
+      "anahtar": "kucukler",
+      "name": "Küçükler",
+      "age": "4-5 yaş",
+      "nap": false
+    },
+    {
+      "anahtar": "buyukler",
+      "name": "Büyükler",
+      "age": "5-6 yaş",
+      "nap": false
+    }
+  ]
+}

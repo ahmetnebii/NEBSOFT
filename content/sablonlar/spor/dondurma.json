@@ -1,0 +1,59 @@
+{
+  "sablon": "spor/dondurma",
+  "surum": 1,
+  "program": "spor",
+  "tur": "form",
+  "ad": "Üyelik işlem formları",
+  "aciklama": "Dondurma ve kişisel antrenör formları.",
+  "kaynak": "sablon",
+  "uyari": "Bu metin örnektir, hukuki danışmanlık değildir. Kullanmadan önce avukatınıza gösterin ve işinize göre düzenleyin.",
+  "kayitlar": [
+    {
+      "anahtar": "dondurma",
+      "label": "Üyelik dondurma talebi",
+      "sign": [
+        "Tesis",
+        "Üye"
+      ],
+      "fields": [
+        {
+          "name": "baslangic",
+          "label": "Başlangıç",
+          "type": "date"
+        },
+        {
+          "name": "bitis",
+          "label": "Bitiş",
+          "type": "date"
+        },
+        {
+          "name": "neden",
+          "label": "Neden",
+          "type": "text"
+        }
+      ],
+      "body": "{{musteri}}, üyeliğinin {{baslangic}} ile {{bitis}} tarihleri arasında {{neden}} nedeniyle dondurulmasını talep eder."
+    },
+    {
+      "anahtar": "pt",
+      "label": "Kişisel antrenör katılım formu",
+      "sign": [
+        "Eğitmen",
+        "Üye"
+      ],
+      "fields": [
+        {
+          "name": "hedef",
+          "label": "Hedef",
+          "type": "text"
+        },
+        {
+          "name": "seans",
+          "label": "Seans sayısı",
+          "type": "number"
+        }
+      ],
+      "body": "{{musteri}}, \"{{hedef}}\" hedefiyle {{seans}} seanslık kişisel antrenörlük programına katılır; egzersizleri eğitmenin önerdiği şekilde yapacağını kabul eder."
+    }
+  ]
+}

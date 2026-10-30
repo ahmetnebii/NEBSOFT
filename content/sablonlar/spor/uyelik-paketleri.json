@@ -1,0 +1,42 @@
+{
+  "sablon": "spor/uyelik-paketleri",
+  "surum": 1,
+  "program": "spor",
+  "tur": "hizmet",
+  "ad": "Üyelik paketleri",
+  "aciklama": "Spor salonu için hazır üyelik süreleri. Fiyatları siz girin.",
+  "kaynak": "sablon",
+  "hedef": "plans",
+  "fiyatAlan": "price",
+  "varsayilan": {
+    "price": 0,
+    "color": "#16a34a"
+  },
+  "kayitlar": [
+    {
+      "anahtar": "aylik-uyelik",
+      "name": "Aylık üyelik",
+      "months": 1
+    },
+    {
+      "anahtar": "3-aylik-uyelik",
+      "name": "3 aylık üyelik",
+      "months": 3
+    },
+    {
+      "anahtar": "6-aylik-uyelik",
+      "name": "6 aylık üyelik",
+      "months": 6
+    },
+    {
+      "anahtar": "yillik-uyelik",
+      "name": "Yıllık üyelik",
+      "months": 12
+    },
+    {
+      "anahtar": "ogrenci-uyeligi-aylik",
+      "name": "Öğrenci üyeliği (aylık)",
+      "months": 1
+    }
+  ]
+}

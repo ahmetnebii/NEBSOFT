@@ -1,0 +1,54 @@
+{
+  "sablon": "ik/ik-formlari",
+  "surum": 1,
+  "program": "ik",
+  "tur": "form",
+  "ad": "İnsan kaynakları formları",
+  "aciklama": "İşe giriş ve çıkış formları.",
+  "kaynak": "sablon",
+  "uyari": "Bu metin örnektir, hukuki danışmanlık değildir. Kullanmadan önce avukatınıza gösterin ve işinize göre düzenleyin.",
+  "kayitlar": [
+    {
+      "anahtar": "ise-giris",
+      "label": "İşe giriş evrak kontrolü",
+      "sign": [
+        "İK",
+        "Personel"
+      ],
+      "fields": [
+        {
+          "name": "baslangic",
+          "label": "İşe başlama",
+          "type": "date"
+        },
+        {
+          "name": "evrak",
+          "label": "Teslim edilen evraklar",
+          "type": "textarea"
+        }
+      ],
+      "body": "{{musteri}}, {{baslangic}} tarihinde işe başlamış, aşağıda yazılı evrakları teslim etmiştir."
+    },
+    {
+      "anahtar": "ibra",
+      "label": "İşten ayrılma teslim tutanağı",
+      "sign": [
+        "İK",
+        "Personel"
+      ],
+      "fields": [
+        {
+          "name": "cikis",
+          "label": "Çıkış tarihi",
+          "type": "date"
+        },
+        {
+          "name": "teslim",
+          "label": "İade edilen malzemeler",
+          "type": "textarea"
+        }
+      ],
+      "body": "{{musteri}}, {{cikis}} tarihinde işten ayrılmış, zimmetindeki malzemeleri aşağıda yazıldığı gibi teslim etmiştir."
+    }
+  ]
+}

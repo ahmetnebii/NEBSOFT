@@ -121,11 +121,12 @@ async function liveSite(t) {
   const apps = (await db.q("SELECT product FROM licenses WHERE tenant_id=? AND status IN ('aktif','deneme') AND end>UTC_TIMESTAMP()", [t.id])).map((r) => r.product);
   return { data: await dropSample(t.id, J(s.data, {})), domain: s.domain, updated: s.updated, apps, orderable: apps.includes('eklenti-siparis') };
 }
-// Programın "örnek veri" ile başlayan kaydından içe aktarılmış ürünler yayınlanmaz (örnek veriler temizlenince bu denetim boşa düşer)
+// Programın "örnek veri" ile başlayan kaydından içe aktarılmış ürünler yayınlanmaz (örnek veriler temizlenince bu denetim boşa düşer).
+// İşletmenin onaylamadığı hazır şablon kayıtları da yayınlanmaz.
 async function dropSample(tid, data) {
   if (!Array.isArray(data.products) || !data.products.length) return data;
-  const rows = await db.q("SELECT data FROM app_data WHERE tenant_id=? AND app IN ('pos','butik','eticaret','toptan','eczane') AND data LIKE '%\"sample\":true%'", [tid]).catch(() => []);
-  const names = new Set(); rows.forEach((r) => { const d = J(r.data, {}); if (d._meta && d._meta.sample) (d.products || d.urunler || []).forEach((p) => p && p.name && names.add(String(p.name).slice(0, 120))); });
+  const rows = await db.q("SELECT data FROM app_data WHERE tenant_id=? AND app IN ('pos','butik','eticaret','toptan','eczane') AND (data LIKE '%\"sample\":true%' OR data LIKE '%\"kaynak\":\"sablon\"%')", [tid]).catch(() => []);
+  const names = new Set(); rows.forEach((r) => { const d = J(r.data, {}); const orn = d._meta && d._meta.sample; (d.products || d.urunler || []).forEach((p) => { if (p && p.name && (orn || (p.kaynak === 'sablon' && !p.onay))) names.add(String(p.name).slice(0, 120)); }); });
   return names.size ? { ...data, products: data.products.filter((p) => !names.has(p.name)) } : data;
 }
 // İşletme sitesinin kanonik kök adresi: kendi alan adı varsa o, yoksa /t/<işletme>/
