@@ -1,0 +1,46 @@
+{
+  "sablon": "pastane/urun-listesi",
+  "surum": 1,
+  "program": "pastane",
+  "tur": "urun",
+  "ad": "Pastane ürün listesi",
+  "aciklama": "Sık satılan ürünler. Fiyatları siz girin.",
+  "kaynak": "sablon",
+  "hedef": "services",
+  "fiyatAlan": "price",
+  "varsayilan": {
+    "price": 0
+  },
+  "kayitlar": [
+    {
+      "anahtar": "yas-pasta",
+      "name": "Yaş pasta",
+      "cat": "Yaş pasta",
+      "unit": "adet"
+    },
+    {
+      "anahtar": "butik-pasta",
+      "name": "Butik pasta",
+      "cat": "Yaş pasta",
+      "unit": "adet"
+    },
+    {
+      "anahtar": "kuru-pasta",
+      "name": "Kuru pasta",
+      "cat": "Kuru pasta",
+      "unit": "kg"
+    },
+    {
+      "anahtar": "kurabiye",
+      "name": "Kurabiye",
+      "cat": "Kuru pasta",
+      "unit": "kg"
+    },
+    {
+      "anahtar": "tart",
+      "name": "Tart",
+      "cat": "Yaş pasta",
+      "unit": "adet"
+    }
+  ]
+}

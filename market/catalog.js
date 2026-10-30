@@ -78,6 +78,14 @@ window.CATALOG = {
       modules: ['Servis Kayıtları', 'Kanban Pano', 'Müşteriler', 'Parça Stoku', 'Teknisyenler', 'Durum Sorgulama', 'Raporlar'],
     },
     {
+      id: 'pastane', ready: true, extraDemos: [{ label: 'Müşteri takip sayfasını aç', url: 'apps/pastane/takip.html' }], cat: 'yeme', name: 'Fırın & Pastane', tagline: 'Özel sipariş, kapora, üretim planı ve reçete maliyeti', icon: 'chef', accent: '#db2777',
+      ornekFiyat: true, prices: [499, 899, 1690], sectors: ['Pastane', 'Fırın', 'Butik pasta', 'Tatlıcı', 'Kurabiye atölyesi'], // fiyat ÖRNEK, kullanıcı onayı bekliyor
+      desc: 'Özel pasta siparişi, kapora, teslim saati, sipariş kartı, reçete maliyeti, günlük üretim planı, malzeme stoğu ve zayi takibi.',
+      features: ['Özel sipariş kartı: kişi, tat, yazı, alerji, örnek görsel', 'Kapora, kalan ve iptalde iade kaydı', 'Teslim saati ve saat başına iş sınırı', 'Reçeteden birim maliyet ve kâr', 'Teslim gününe göre üretim planı ve malzeme ihtiyacı', 'Üretimle stok düşümü, zayi ve neden raporu', 'Müşteri takip sayfası ve özel sipariş talebi'],
+      modules: ['Sipariş Panosu', 'Siparişler', 'Teslim Takvimi', 'Dağıtım', 'Gelen Talepler', 'Üretim Planı', 'Reçeteler', 'Malzemeler', 'Zayi', 'Müşteriler', 'Ürünler ve Fiyatlar'],
+      faq: [['Kapora iptalde ne olur?', 'İptal ederken iade tutarını yazarsınız, kayda iade olarak geçer. Koşul metnini kendiniz belirlersiniz, fişe yazılır.'], ['Adisyon ile bağlantılı mı?', 'Ayrı programlardır. Tezgâh satışı Adisyon\'da, özel sipariş burada izlenir; aralarında otomatik veri geçişi şu an yok.']],
+    },
+    {
       id: 'matbaa', ready: true, extraDemos: [{ label: 'Müşteri takip sayfasını aç', url: 'apps/matbaa/takip.html' }], cat: 'uretim', name: 'Matbaa & Reklam Atölyesi', tagline: 'Teklif, tasarım onayı ve üretim takibi', icon: 'print', accent: '#7c3aed',
       ornekFiyat: true, prices: [499, 899, 1690], sectors: ['Matbaa', 'Reklam atölyesi', 'Tabela', 'Branda baskı', 'Dijital baskı', 'Promosyon'], // fiyat ÖRNEK, kullanıcı onayı bekliyor
       desc: 'Teklif, m² ve adet fiyatı, ebat ve son işlem bilgisi, tasarım sürümleri ve müşteri onayı, üretim panosu, kontrol listesi ve hata kaydı.',
