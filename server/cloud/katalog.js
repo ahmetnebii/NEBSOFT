@@ -19,7 +19,8 @@ const ham = (s, n) => (s == null ? '' : String(s)).slice(0, n); // dış kaynak 
 const offUrun = (g) => `https://world.openfoodfacts.org/product/${K.gtinGoster(g)}`;
 const atifOff = (g, gorsel) => ({ kaynak: 'Open Food Facts', kaynak_url: offUrun(g), metin: 'Open Food Facts verisi, Open Database License (ODbL) ile', lisans: 'ODbL 1.0', lisans_url: URL_LISANS.odbl, icerik_lisans_url: URL_LISANS.dbcl, ...(gorsel ? { gorsel_lisans: 'CC BY-SA 3.0', gorsel_lisans_url: URL_LISANS.ccbysa } : {}) });
 const ownItem = (r) => ({ barcode: K.gtinGoster(r.gtin), gtin: r.gtin, name: r.ad, brand: r.marka || '', category: r.kategori || '', image: '', source: 'own', lisans: r.lisans, atif: null });
-const extItem = (r) => ({ barcode: K.gtinGoster(r.gtin), gtin: r.gtin, name: r.ad, brand: r.marka || '', category: r.kategori || '', image: r.gorsel || '', source: r.kaynak, lisans: r.lisans, atif: atifOff(r.gtin, r.gorsel) });
+const sonEtiket = (s) => String(s || '').split(',').pop().replace(/^\w+:/, '').replace(/-/g, ' ').trim(); // gösterim için: tablodaki değer aynen kalır
+const extItem = (r) => ({ barcode: K.gtinGoster(r.gtin), gtin: r.gtin, name: r.ad, brand: r.marka || '', category: sonEtiket(r.kategori), image: r.gorsel || '', source: r.kaynak, lisans: r.lisans, atif: atifOff(r.gtin, r.gorsel) });
 
 // ---------- Open Food Facts kaydı → catalog_ext satırı (değerler aynen) ----------
 const extSatir = ({ gtin, ad, marka, kategori, gorsel, alindi, kaynak_url }) => [gtin, 'off', ham(ad, 500), ham(marka, 300) || null, ham(kategori, 800) || null, ham(gorsel, 500) || null, LISANS.off, kaynak_url || offUrun(gtin), alindi || new Date()];
@@ -107,11 +108,11 @@ async function kuyruk({ durum: d = 'bekliyor', filtre = '' } = {}) {
     }
     const tohum = r.ad_norm.split(' ')[0] || ''; if (tohum.length >= 3) {
       const ad = await db.q('SELECT gtin, ad FROM catalog_own WHERE ad_norm LIKE ? AND gtin<>? LIMIT 30', [tohum + '%', g || '']);
-      r.benzer = ad.map((x) => ({ gtin: x.gtin, ad: x.ad, oran: Math.round(K.benzerlik(x.ad, r.ad) * 100) / 100 })).filter((x) => x.oran >= 0.8).slice(0, 5); if (r.benzer.length) r.bayraklar.push('benzer_ad');
+      r.benzer = ad.map((x) => ({ gtin: K.gtinGoster(x.gtin), ad: x.ad, oran: Math.round(K.benzerlik(x.ad, r.ad) * 100) / 100 })).filter((x) => x.oran >= 0.8).slice(0, 5); if (r.benzer.length) r.bayraklar.push('benzer_ad');
     }
   }
   const f = filtre && ['hatali_gtin', 'ayni_gtin_farkli_ad', 'benzer_ad'].includes(filtre) ? rows.filter((r) => r.bayraklar.includes(filtre)) : rows;
-  return f.map(({ ad_norm, ...r }) => r);
+  return f.map(({ ad_norm, ...r }) => ({ ...r, gtin: K.gtinKanon(r.gtin) ? K.gtinGoster(r.gtin) : r.gtin }));
 }
 const hata = (status, m) => Object.assign(new Error(m), { status });
 const oneriGetir = async (id, t = db) => { const s = await t.one('SELECT * FROM catalog_suggest WHERE id=?', [Number(id)]); if (!s) throw hata(404, 'Öneri bulunamadı'); return s; };
@@ -157,7 +158,7 @@ async function geriAl(mid, yapan) {
   });
   return { hedef_gtin: m.hedef_gtin, oneri_id: Number(m.oneri_id) };
 }
-const birlestirmeler = () => db.q('SELECT id, oneri_id, hedef_gtin, onceki, sonraki, yapan, zaman, geri_alindi FROM catalog_merge ORDER BY id DESC LIMIT 100');
+const birlestirmeler = async () => (await db.q('SELECT id, oneri_id, hedef_gtin, onceki, sonraki, yapan, zaman, geri_alindi FROM catalog_merge ORDER BY id DESC LIMIT 100')).map((r) => ({ ...r, hedef_gtin: K.gtinGoster(r.hedef_gtin) }));
 
 // ---------- product_pool göçü ----------
 // Bir kez çalışır (settings: katalog_goc_1). Kaynağı 'off' olanlar catalog_ext'e, işletme kaynaklılar öneri olarak moderasyona gider.

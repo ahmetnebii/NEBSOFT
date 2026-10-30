@@ -6,7 +6,6 @@ const sec = require('./security');
 const auth = require('./auth');
 const cat = require('./catalog');
 const mail = require('./mail');
-const katalog = require('./katalog');
 const secrets = require('./secrets');
 const cfgMod = require('./config');
 const bizsite = require('../../core/bizsite');

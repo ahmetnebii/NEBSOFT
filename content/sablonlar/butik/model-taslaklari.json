@@ -4,7 +4,7 @@
   "program": "butik",
   "tur": "urun",
   "ad": "Model taslakları",
-  "aciklama": "Giyim mağazası için temel model adları. Taslaklar pasif gelir: renk, beden ve fiyat girip satışa açın.",
+  "aciklama": "Giyim mağazası için temel model adları. Taslaklar pasif gelir ve Ürünler sayfasındaki Pasif filtresinde görünür: renk, beden ve fiyat girip satışa açın.",
   "kaynak": "sablon",
   "hedef": "models",
   "fiyatAlan": "price",

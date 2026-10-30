@@ -25,7 +25,8 @@
     const bag = (alan, ad) => { const b = s.baglar[alan]; const L = (data[b.koleksiyon] = data[b.koleksiyon] || []); const f = b.adAlan || 'name'; const hit = L.find((x) => norm(x[f]) === norm(ad)); if (hit) return hit.id; const x = { id: uid(), ...(b.varsayilan || {}), [f]: ad, kaynak: 'sablon', sablon_anahtar: `${s.sablon}#bag:${norm(ad)}` }; L.push(x); return x.id; };
     for (const k of s.kayitlar) {
       if (set && !set.has(k.anahtar)) continue; if (durum(data, s, k) !== 'yeni') { r.atlanan++; continue; }
-      if (s.tur === 'tema') { data._settings = data._settings || {}; Object.assign(data._settings, k.ayarlar, { bookTema: k.anahtar }); r.eklenen++; continue; }
+      if (s.tur === 'tema') { // tek tema geçerlidir: seçim yoksa mevcut temaya dokunulmaz, seçilen tema uygulanır
+        data._settings = data._settings || {}; if (!set && data._settings.bookTema) { r.atlanan++; continue; } Object.assign(data._settings, k.ayarlar, { bookTema: k.anahtar }); r.eklenen++; break; }
       const { anahtar: _a, ...alanlar } = JSON.parse(JSON.stringify(k));
       const rec = { id: s.tur === 'form' ? 'sb-' + k.anahtar : uid(), ...JSON.parse(JSON.stringify(s.varsayilan || {})), ...alanlar };
       Object.keys(s.baglar || {}).forEach((a) => { if (rec[a]) rec[a] = bag(a, rec[a]); });
@@ -62,10 +63,10 @@
   function onizleModal(s, bitti) {
     const db = NS.app.db; const R = onizle(db.data, s); const yeni = R.filter((x) => x.durum === 'yeni'); const u = uyariOf(s);
     modal({ title: s.ad, size: 'wide', body: `<p class="muted small mb">${esc(s.aciklama)}</p>${u ? `<div class="ns-sablon-uyari small mb">${icon('alert')} <span>${esc(u)}</span></div>` : ''}
-      <div class="row between mb"><label class="row small"><input type="checkbox" id="sbt" ${yeni.length ? 'checked' : 'disabled'}> Tümünü seç</label><span class="small faint">${yeni.length} yeni · ${R.length} kayıt</span></div>
-      <div class="col" style="gap:4px;max-height:46vh;overflow:auto">${R.map((x) => `<label class="row small nw" style="padding:4px 2px"><input type="checkbox" data-sk="${esc(x.anahtar)}" ${x.durum === 'yeni' ? 'checked' : 'disabled'}><span class="grow">${esc(x.ad)}</span>${ETK[x.durum] ? `<span class="badge">${esc(ETK[x.durum])}</span>` : ''}</label>`).join('')}</div>`,
+      <div class="row between mb">${s.tur === 'tema' ? '<span class="small">Bir tema seçin</span>' : `<label class="row small"><input type="checkbox" id="sbt" ${yeni.length ? 'checked' : 'disabled'}> Tümünü seç</label>`}<span class="small faint">${yeni.length} yeni · ${R.length} kayıt</span></div>
+      <div class="col" style="gap:4px;max-height:46vh;overflow:auto">${R.map((x) => `<label class="row small nw" style="padding:4px 2px"><input type="${s.tur === 'tema' ? 'radio' : 'checkbox'}" name="sbs" data-sk="${esc(x.anahtar)}" ${x.durum === 'yeni' ? (s.tur === 'tema' ? '' : 'checked') : 'disabled'}><span class="grow">${esc(x.ad)}</span>${ETK[x.durum] ? `<span class="badge">${esc(ETK[x.durum])}</span>` : ''}</label>`).join('')}</div>`,
     actions: [{ label: 'Vazgeç' }, { label: 'Seçilenleri aktar', cls: 'primary', icon: 'check', onClick: (c, b) => { const seç = [...b.querySelectorAll('[data-sk]:checked')].map((i) => i.dataset.sk); if (!seç.length) return toast('Önce kayıt seçin', 'err'); const r = aktar(s, seç); sonuc(r); c(); bitti && bitti(r); } }],
-    onOpen: (b) => { const all = b.querySelector('#sbt'); all.onchange = () => b.querySelectorAll('[data-sk]:not(:disabled)').forEach((i) => { i.checked = all.checked; }); } });
+    onOpen: (b) => { const all = b.querySelector('#sbt'); if (all) all.onchange = () => b.querySelectorAll('[data-sk]:not(:disabled)').forEach((i) => { i.checked = all.checked; }); } });
   }
   function sayfa(el, app) {
     const db = app.db; let L = null; let hata = null;
@@ -91,7 +92,7 @@
   async function sihirbaz(zorla) {
     const app = NS.app; const db = app.db; const m = (db.data._meta = db.data._meta || {}); if (!zorla && m.sablonSoruldu) return; let L;
     try { L = (await getir()).filter((s) => s.tur !== 'tema'); } catch (e) { return; } if (!L.length || document.querySelector('.ns-modal')) return; m.sablonSoruldu = true; db.save();
-    modal({ title: 'Hazır şablonlarla başlayın', size: 'wide', body: `<p class="muted small mb">Sektörünüze uygun içeriği tek tıkla ekleyin. Fiyatlar boş gelir; hepsini sonra düzenleyebilirsiniz.${m.sample ? ' Örnek verileri temizlerseniz şablon kayıtları da silinir: bu durumda buradan yeniden aktarın.' : ''}</p>
+    modal({ title: 'Hazır şablonlarla başlayın', size: 'wide', body: `<p class="muted small mb">Sektörünüze uygun içeriği tek tıkla ekleyin. Fiyatlar boş gelir; hepsini sonra düzenleyebilirsiniz.${m.sample ? ' Örnek verileri temizlerseniz şablon kayıtları da silinir: yeniden aktarmak için Ayarlar → Hazır şablonlar.' : ''}</p>
       <div class="col" style="gap:6px">${L.map((s, i) => `<label class="row nw small"><input type="checkbox" data-sz="${esc(s.sablon)}" ${L.findIndex((x) => x.tur === s.tur) === i ? 'checked' : ''}><span class="grow"><b>${esc(s.ad)}</b><br><span class="faint">${esc(TUR[s.tur] || s.tur)} · ${s.kayitlar.length} kayıt</span></span></label>`).join('')}</div>${L.some((s) => s.tur === 'form') ? `<div class="ns-sablon-uyari small mt">${icon('alert')} <span>${esc(L.find((s) => s.tur === 'form').uyari)}</span></div>` : ''}`,
     actions: [{ label: 'Şimdilik geç' }, { label: 'Seçilenleri kur', cls: 'primary', icon: 'check', onClick: (c, b) => { const seç = new Set([...b.querySelectorAll('[data-sz]:checked')].map((i) => i.dataset.sz)); let n = 0, y = 0; L.filter((s) => seç.has(s.sablon)).forEach((s) => { const r = aktar(s); n += r.eklenen; y += r.atlanan; }); c(); sonuc({ eklenen: n, atlanan: y }); if (NS.app.refresh) NS.app.refresh(); } }] });
   }
