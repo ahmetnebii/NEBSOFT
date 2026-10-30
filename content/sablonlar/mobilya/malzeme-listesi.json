@@ -1,0 +1,66 @@
+{
+  "sablon": "mobilya/malzeme-listesi",
+  "surum": 1,
+  "program": "mobilya",
+  "tur": "urun",
+  "ad": "Sık kullanılan malzemeler",
+  "aciklama": "Atölye için malzeme adları. Alış fiyatını siz girin.",
+  "kaynak": "sablon",
+  "hedef": "materials",
+  "fiyatAlan": "price",
+  "varsayilan": {
+    "cost": 0,
+    "stock": 0,
+    "min": 0
+  },
+  "kayitlar": [
+    {
+      "anahtar": "mdf-18",
+      "name": "18 mm MDF lam",
+      "code": "MB-001",
+      "unit": "plaka"
+    },
+    {
+      "anahtar": "mdf-08",
+      "name": "8 mm arkalık MDF",
+      "code": "MB-002",
+      "unit": "plaka"
+    },
+    {
+      "anahtar": "sunta-18",
+      "name": "18 mm suntalam",
+      "code": "MB-003",
+      "unit": "plaka"
+    },
+    {
+      "anahtar": "kenar-bandi",
+      "name": "PVC kenar bandı",
+      "code": "MB-004",
+      "unit": "m"
+    },
+    {
+      "anahtar": "mentese",
+      "name": "Frenli menteşe",
+      "code": "MB-005",
+      "unit": "adet"
+    },
+    {
+      "anahtar": "ray",
+      "name": "Teleskopik ray",
+      "code": "MB-006",
+      "unit": "takım"
+    },
+    {
+      "anahtar": "kulp",
+      "name": "Kulp",
+      "code": "MB-007",
+      "unit": "adet"
+    },
+    {
+      "anahtar": "tezgah",
+      "name": "Tezgâh",
+      "code": "MB-008",
+      "unit": "m"
+    }
+  ]
+}
