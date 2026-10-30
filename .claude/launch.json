@@ -16,7 +16,7 @@
         "-e",
         "process.env.PORT='5061';require('./server.js')"
       ],
-      "port": 5061
+      "port": 5067
     },
     {
       "name": "perakende",

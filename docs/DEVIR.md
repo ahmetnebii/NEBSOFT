@@ -12,6 +12,10 @@ kalındığını** ve **ne yapılacağını** anlatır. İkisi çelişirse `CLAU
 ## 0. Yeni bilgisayarda kurulum
 
 ### 0.1 Projeyi çek
+> **GitHub uyarısı:** depodaki `main` dalı, 26.10.2026'da elle atılmış eski bir "first commit"tir (`nebsoft-pazar/` klasörü, 94 dosya)
+> ve bu projeyle ortak geçmişi yoktur. Üzerine yazılmadı. `git clone` varsayılan olarak `main`'i açar → mutlaka `devir/hepsi`'ye geç.
+> İstersen GitHub → Settings → Branches → varsayılan dalı `devir/hepsi` yap; eski `main`'in silinmesi / değiştirilmesi kullanıcı kararıdır.
+
 ```bash
 git clone https://github.com/ahmetnebii/NEBSOFT.git NEBSOFTAPP
 cd NEBSOFTAPP
@@ -67,7 +71,7 @@ npm run dist          # çıktı: ../indir/NEBSOFT-Kurulum.exe + latest.yml (+ w
 - İmzasız exe SmartScreen uyarısı verir; kod imzalama sertifikası: `CSC_LINK`, `CSC_KEY_PASSWORD`.
 - Sunucu `indir/` klasörünü `/indir/` adresinden yayınlar; sitedeki "Masaüstü & Mobil" düğmeleri dosya varsa açılır.
 
-**Her dalga / sürüm sonunda:** `sw.js` içindeki `V` artırılır (şu an `nebsoft-v3-20`), sonra APK ve exe yeniden derlenir.
+**Her dalga / sürüm sonunda:** `sw.js` içindeki `V` artırılır (şu an `nebsoft-v3-21`), sonra APK ve exe yeniden derlenir.
 
 ---
 
@@ -156,8 +160,29 @@ Ayrıntı: `docs/urun/ON-MUHASEBE.md` (yapılanlar tabloları) ve `docs/MUHASEBE
    2–3 program açılıyor mu, `sw.js` V artır, `docs/urun/ON-MUHASEBE.md` başlığını "3. dalga tamamlandı" + tablo ile güncelle, commit.
 
 ### 4.2 Çekirdek istekleri (yalnızca ana oturum `core/`'a dokunur)
-Her dalda `docs/urun/CEKIRDEK-ISTEKLERI-*.md` var (6 dosya). Hepsini oku, ortak olanları birleştir, `core/`'da uygula, istenen
-programda kullan. Uygulananı ilgili dosyada "yapıldı (commit)" diye işaretle.
+`docs/urun/CEKIRDEK-ISTEKLERI-*.md` (6 dosya, `devir/hepsi`'de hepsi var). Ayrıntı ve gerekçe o dosyalarda; özet (birleştirilmiş):
+
+| Öncelik | İstek | İsteyen (dosya · no) |
+|---|---|---|
+| **Yüksek — sahte başarı** | `NS.smsLog` sonucu Promise döndürsün, simülasyon "TEST" görünsün | servis-arac Ç1 |
+| **Yüksek — sahte başarı** | `NS.integ.call` simülasyonda `toast(..,'ok')` yerine "TEST — gönderilmedi" | eticaret Ç2, konaklama Ç2, randevu Ç2 |
+| **Yüksek — sahte başarı** | Eski `sendEInvoice` yolu kaldırılsın / simülasyonda başarı yazmasın | eticaret Ç3 |
+| **Yüksek — doğrulanamayan** | Yedek parça (Martaş/Başbuğ/Dinamik), TRAMER, KBS, kanal yöneticisi (HotelRunner, SiteMinder, Booking…), resmî kurum bağlayıcıları (e-Nabız, e-Reçete, KPS, VetBİS, MEB) ve Google İşletme: resmî doküman yoksa "doğrulanmadı — seçilemez" | servis-arac Ç2, konaklama Ç4–Ç5, randevu Ç2 |
+| Yüksek — tutar | `NS.ebelge.create()` belge geneli indirimi (`doc.disc`) desteklesin ya da reddetsin | servis-arac Ç3 |
+| Yüksek — tutar | e-Belge'de konaklama vergisi (yalnızca KDV 0015 yazılıyor) — GİB kod listesinden doğrulanarak | konaklama Ç3 |
+| Yüksek — tutar | e-SMM'de stopaj yalnızca alıcı vergi kesintisi yapmakla yükümlüyse | profesyonel Ç1 |
+| Yüksek — güvenlik | Portal kodları formülle türetilmesin (VKN/TCKN/telefon + id): yalnızca rastgele `portalCode` (hukuk `hkkCode`, veteriner/spor/kurs telefonla giriş, anaokulu) — Ön Muhasebe portalı zaten böyle | profesyonel Ç2, randevu Ç7 |
+| Orta — bulut kuralları | `RULES.otel` (hafta sonu fiyatı vb.), `RULES.bilet` (kod sınırları), randevuda yeni alanlar (`noReminder`, `waitlist`), Klinik online randevu kuralı, Otopark plaka sorgusu kuralı | konaklama Ç7–Ç8, randevu Ç4–Ç5, servis-arac Ç6 |
+| Orta — sunucu | Zamanlanmış hatırlatma (panel kapalıyken randevudan X saat önce SMS) | randevu Ç3 |
+| Orta — etiket | `core/labels.js`: eski fiyat uydurmasın (`fiyat × 1,2`), program alanı kaydı, önizleme bağlamı, logo öğesi, indirim yüzdesi; `printLabels` şablon desteği; `USED.butik`'e printer/label/barcode/pos | perakende Ç1–Ç7 |
+| Orta — çekirdek UI | `NS.crud`: `beforeDelete`/`canDelete` kancası, `beforeSave` false dönerse kaydetmesin; `fieldsHtml` datalist önerisi; `table()` dar ekranda kart görünümü | profesyonel Ç5–Ç6, randevu Ç6/Ç8, eticaret Ç6 |
+| Orta — dosya | Fotoğraf vb. ikili veri kayıt dışında (dosya deposu) | eticaret Ç7 |
+| Düşük | `navigator.vibrate` kullanıcı dokunmadan çağrılınca konsol hatası | profesyonel Ç8 |
+| Düşük | `kanal.test.js`: Trendyol yeni yollar (`/v2/products` vb.) | eticaret Ç4 |
+| **Yapıldı (30.10.2026)** | `sw.js` V → `nebsoft-v3-21` (tüm "V artır" istekleri); `apps/hukuk/sure.test.js` `npm test`'e eklendi (18/18); servis-arac önizleme portu 5061 Chrome'da güvensiz port → 5067 | hepsi Ç1/Ç4/Ç8, profesyonel Ç3, servis-arac Ç5 |
+| Kullanıcı kararı | `cloud.test.js` 'talep' ≠ 'deneme' (§5 B8) | eticaret Ç5, konaklama Ç6, profesyonel Ç7 |
+
+Uyguladıkça ilgili dosyada "yapıldı (commit)" diye işaretle ve isteyen programda geçici çözümü kaldır.
 
 ### 4.3 YENİ: Daha fazla e-Fatura entegratörü (kullanıcı isteği, 30.10.2026)
 Amaç: resmî, herkese açık API dokümanı veya SDK'sı **bulunabilen** her GİB özel entegratörünü eklemek. Kural `CLAUDE.md` §1:
@@ -214,6 +239,11 @@ Alt oturumların kendi engelleyenleri her spec dosyasının "karar / hesap gerek
 ---
 
 ## 6. Faydalı bilgiler
+- Diğer belgeler: `docs/MUHASEBE-DOGRULAMA-RAPORU.md` (entegrasyon doğrulaması, test stratejisi, §6.2 canlı öncesi manuel test
+  listesi), `docs/urun/*.md` (21 program spec'i), `docs/GELISTIRME-PLANI.md`, `README.md`, `desktop/README.md`.
+- Önizleme portları (`.claude/launch.json`): nebsoft 5050, servis-arac 5067, perakende 5062, eticaret-uretim 5063,
+  randevu-uyelik 5064, konaklama-etkinlik 5065, profesyonel 5066.
+- Eski bilgisayardaki alt oturum çalışma ağaçları (`.claude/worktrees/`) taşınmaz; tüm işleri dallarda ve `devir/hepsi`'de.
 - Yerel sunucu statik dosyaları bellekte önbelleğe alır: dosya değişince sunucuyu yeniden başlat. Tarayıcıda eski dosya görünürse
   servis çalışanı kaydını sil (DevTools → Application) veya `sw.js` V'yi artır.
 - Ön Muhasebe betik sırası `apps/muhasebe/index.html`'de; yeni modül `window.MUH<AD>` kalıbıyla, `init(ctx)` ile bağlanır.
