@@ -3,6 +3,9 @@
 .sp-col { background: var(--bg-2); border-radius: 14px; padding: 10px; min-height: 50vh; }
 .sp-col.over { outline: 2px dashed var(--accent); }
 .sp-col h4 { display: flex; align-items: center; gap: 8px; margin: 4px 4px 10px; font-size: 13px; }
+.sp-card, .sp-det, .sp-tl, .sp-grid, .sp-h { overflow-wrap: anywhere; }
+.sp-h { min-width: 0; }
+.sp-det > * { min-width: 0; }
 .sp-card { background: var(--surface); border: 1px solid var(--border); border-left: 4px solid var(--c); border-radius: 10px; padding: 10px 12px; margin-bottom: 8px; cursor: pointer; box-shadow: var(--shadow); font-size: 12.5px; }
 .sp-card.late { box-shadow: 0 0 0 2px var(--err); }
 .sp-card b { font-size: 13px; }
@@ -32,6 +35,8 @@
   .sp-l1 [data-l=price] { grid-column: 2 / 4; }
   .sp-l1 .sp-t { grid-column: 1 / 3; text-align: left; }
   .sp-kanban { grid-auto-columns: 78vw; }
+  .grid.g4:has(+ .sp-kanban) { grid-template-columns: 1fr 1fr; gap: 8px; }
+  .seg button { min-height: 40px; }
   .sp-steps { gap: 3px; }
   .sp-steps > div { min-width: 0; font-size: 10.5px; line-height: 1.2; }
 }
