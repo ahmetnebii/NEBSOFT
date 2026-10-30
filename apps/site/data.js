@@ -32,6 +32,7 @@ window.SITE = {
       { id: 'n2', title: 'Su kesintisi', text: 'İSKİ çalışması nedeniyle Perşembe günü 10:00-16:00 arası su kesintisi olacaktır.', date: iso(addDays(new Date(), -6)), pinned: false },
       { id: 'n3', title: 'Havuz sezonu kapandı', text: 'Havuzumuz bakım için kapatılmıştır. İyi kışlar dileriz.', date: iso(addDays(new Date(), -20)), pinned: false },
     ];
+    db.data.plans = [{ id: 'pj1', year: new Date().getFullYear(), status: 'kabul', decidedAt: iso(addDays(new Date(), -120)), note: 'Olağan kurul kararı', lines: [['Personel (kapıcı, bahçıvan, güvenlik)', 1080000, 'esit'], ['Ortak elektrik ve su', 180000, 'arsa'], ['Asansör bakımı', 60000, 'arsa'], ['Sigorta', 45000, 'arsa'], ['Yönetici ücreti', 60000, 'arsa']].map(([name, amount, mode]) => ({ name, amount, mode })) }]; db.data.meters = []; db.data.meetings = [];
     db.data.requests = [
       { id: 'r1', flat: 'A5', title: 'Koridor lambası yanmıyor', desc: '3. kat koridor lambası yanmıyor.', status: 'acik', at: addDays(new Date(), -1).toISOString(), cat: 'Elektrik' },
       { id: 'r2', flat: 'B9', title: 'Otopark kapısı kumandası', desc: 'Yeni kumanda talep ediyorum.', status: 'islemde', at: addDays(new Date(), -3).toISOString(), cat: 'Genel' },
@@ -48,6 +49,20 @@ window.SITE = {
     const kr = Math.round(total * 100); const raw = w.map((x) => (kr * x) / W); const base = raw.map(Math.floor); let left = kr - base.reduce((a, b) => a + b, 0);
     raw.map((x, i) => [x - base[i], i]).sort((a, b) => b[0] - a[0]).forEach(([, i]) => { if (left > 0) { base[i]++; left--; } }); return Object.fromEntries(flats.map((f, i) => [f.id, base[i] / 100]));
   },
+  // İşletme projesi (KMK md. 37): kalem başına paylaşım, daire başına yıllık pay ve aylık avans
+  planShares(flats, plan) { const out = Object.fromEntries(flats.map((f) => [f.id, 0])); let ok = true; (plan.lines || []).forEach((l) => { const m = SITE.split(flats, l.amount, l.mode); if (!m) { ok = false; return; } flats.forEach((f) => { out[f.id] += m[f.id]; }); }); if (!ok) return null; const r = {}; flats.forEach((f) => { const y = Math.round(out[f.id] * 100) / 100; r[f.id] = { year: y, month: Math.round((y / 12) * 100) / 100 }; }); return r; },
+  // Kat malikleri kurulu yeter sayısı — KMK md. 30, 31 (okundu 30.10.2026 — DOĞRULANDI): kat maliklerinin sayıca ve arsa payınca yarıdan fazlası.
+  // Birden çok bağımsız bölümü olanın oyu toplam oyun üçte birini aşamaz; bir kişi oyların %5'inden fazlasına vekil olamaz, 40 ve daha az bölümde en çok 2 kişiye.
+  // att: { daireId: { mode: 'asil' | 'vekil', proxy: 'Ad' } }
+  quorum(flats, att) {
+    const total = flats.length; const shareT = flats.reduce((t, f) => t + (Number(f.share) || 0), 0); const here = flats.filter((f) => att[f.id] && att[f.id].mode);
+    const cap = Math.floor(total / 3); const byOwner = {}; here.forEach((f) => { byOwner[f.owner] = (byOwner[f.owner] || 0) + 1; }); const capped = Object.entries(byOwner).filter(([, n]) => cap > 0 && n > cap).map(([o]) => o);
+    const votes = Object.values(byOwner).reduce((t, n) => t + (cap > 0 ? Math.min(n, cap) : n), 0); const owners = new Set(flats.map((f) => f.owner)).size; const ownersHere = Object.keys(byOwner).length; const share = here.reduce((t, f) => t + (Number(f.share) || 0), 0);
+    const pLimit = total <= 40 ? 2 : Math.floor(total * 0.05); const px = {}; here.filter((f) => att[f.id].mode === 'vekil').forEach((f) => { const n = String(att[f.id].proxy || '').trim(); px[n] = px[n] || new Set(); px[n].add(f.owner); }); const overProxy = Object.entries(px).filter(([n, o]) => n && o.size > pLimit).map(([n]) => n); const noProxy = here.some((f) => att[f.id].mode === 'vekil' && !String(att[f.id].proxy || '').trim());
+    return { total, here: here.length, votes, owners, ownersHere, share, shareT, capped, pLimit, overProxy, noProxy, ok: ownersHere * 2 > owners && share * 2 > shareT };
+  },
+  // Toplantı tarihi denetimi (md. 29, 30): olağanüstü çağrı en az 15 gün önce; ikinci toplantı birinciden en az 7, en çok 15 gün sonra
+  meetCheck(m) { const days = (a, b) => Math.round((new Date(b) - new Date(a)) / 864e5); const e = []; if (m.type === 'olaganustu' && m.noticeAt && days(m.noticeAt, m.date) < 15) e.push('Olağanüstü toplantı çağrısı en az 15 gün önce yapılmalı'); if (m.second) { const g = days(m.date, m.second); if (g < 7) e.push('İkinci toplantı birinciden en az 7 gün sonra olmalı'); if (g > 15) e.push('İkinci toplantı birinciden en geç 15 gün sonra olmalı'); } return e; },
   // Daire borcu ve gecikme faizi
   debt(db, flatId) { return db.all('dues', (d) => d.flat === flatId).reduce((t, d) => t + (d.amount - (d.paid || 0)), 0); },
   // Gecikme tazminatı — 634 sayılı Kat Mülkiyeti Kanunu md. 20 (mevzuat.gov.tr/mevzuatmetin/1.5.634.htm, okundu 30.10.2026 — DOĞRULANDI):

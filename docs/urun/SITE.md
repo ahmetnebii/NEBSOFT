@@ -1,6 +1,6 @@
 # Site Yönetimi — Ürün Spesifikasyonu
 
-> **Durum (30.10.2026):** Kullanıcı dalgaları önceden onayladı. Program: `apps/site/` (+ `sakin.html`).
+> **Durum (30.10.2026):** Kullanıcı dalgaları önceden onayladı. 1., 2. ve 3. dalga tamamlandı. Program: `apps/site/` (+ `sakin.html`).
 
 ## CANLIYA ÇIKMAYI ENGELLEYENLER
 - **Online aidat ödemesi:** sakin portalındaki kart formu yalnızca demoda çalışır; bulutta havale bilgisi gösterilir. Sanal POS doğrulanmadı.
@@ -53,3 +53,20 @@
 | S10 | Banka eşleştirmede A1 açıklaması A12'yi de yakalıyordu | Daire no tam eşleşir | Kod incelendi; banka bağlantısı DOĞRULANAMADI |
 | S11 | Makbuz ve rapor belge şablonundan geçmiyordu | `NS.docs` | Şablon sayfası açıldı; çıktı kâğıtta denenmedi |
 | S12 | Binlerce daire ve borçta tekrar eden tarama | Tek geçişte borç özeti | Kod incelendi |
+
+### 2. dalga — beklenenler
+| # | Özellik | Sonuç | Kanıt |
+|---|---|---|---|
+| B1 | İşletme projesi (md. 37) | Kalem, paylaşım (eşit/arsa), daire payı ve aylık avans; taslak, geçici, kabul; geçici projede yeniden değerleme sınırı; projeden aidat tahakkuku; yazdırma | Tarayıcı, `site-kural.test.js` |
+| B2 | Borç ihtarı, borcu yoktur yazısı | Daire kartından `NS.docs`; metinler değiştirilebilir, hukukça gözden geçirilmedi | Tarayıcı (belge oluştu); çıktı kâğıtta denenmedi |
+| B3 | Dönem hesabı (md. 39) | Yıl seçimi, aylık hesap, yönetici hesabı belgesi | Tarayıcı |
+| B4 | Excel'den daire aktarımı | Özet onayı; eksik arsa payı atlanır | Tarayıcı (`NS.readSheet` taklit edilerek); gerçek dosyayla denenmedi |
+| B5 | Talep yanıtı SMS | İsteğe bağlı; gerçek sonuç gösterilir | Kod incelendi |
+
+### 3. dalga — fark yaratanlar
+| # | Özellik | Sonuç | Kanıt |
+|---|---|---|---|
+| F1 | Sayaç okuma | Su ve ısınma; endeks; tüketim × birim fiyat borca yansır; endeks geri gidemez; ilk okuma borç oluşturmaz; iki kez yansımaz | Tarayıcı |
+| F2 | Kat malikleri kurulu | Toplantı, katılım, vekâlet; sayı ve arsa payı yeter sayısı, üçte bir oy ve vekâlet sınırı; tarih uyarıları; kararlar; tutanak. Noter onaylı defterin yerine geçmez | `site-kural.test.js`, tarayıcı |
+
+Yapılmadı: online aidat ödemesi (sanal POS), kiracı borç sınırı (md. 22), personel bordrosu, malik değişimi geçmişi. Karar yeter sayıları karar türüne göre değişir (ör. md. 42–45); program yalnızca toplantı yeter sayısını hesaplar.

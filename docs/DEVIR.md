@@ -33,7 +33,8 @@ ebsoft güncel`). Node 24, .NET 8 var → `npm test`: 8 test dosyası geçti (XS
 - **Spor 1–3 (`SPOR.md`), Kurs ve Anaokulu 1. dalga (`KURS.md`, `ANAOKULU.md`), Mali Müşavir 1. dalga (`MUSAVIR.md`) yapıldı.** §4.3: **Nilvera eklendi** (`core/integrations.js`, sahte sunucuyla denendi; gerçek test hesabı gerekir), tablo `MUHASEBE-DOGRULAMA-RAPORU.md` §3.0.
 - **Toptan 1–3 tamamlandı** (`TOPTAN.md`): stok, risk, iade, çek, plasiyer yetkisi, fatura, gün sonu, kampanya; `toptan-kural.test.js` 15 test.
 - **CRM 1–3 tamamlandı** (`CRM.md`): teklif kuralları, güvenli anahtar, temsilci yetkisi, döviz, katalog, fatura, takip önerileri, yenileme; `crm-kural.test.js` 8 test.
-- **Sıradaki:** Site Yönetimi; ardından (bilinen güven hatası taraması temiz; spec yok) ve 1. dalgası yapılanlar için pazar araştırması + spec + dalgalar (portal kodu ve SMS düzeltmeleri bunların bazılarında zaten yapıldı); İK ve Eczane 2–3. dalga; kalan 2–3. dalgalar; §4.3 entegratörler.
+- **Site Yönetimi 1–3 tamamlandı** (`SITE.md`): avans, tahsilat iptali, rastgele sakin kodu, KMK md. 20 paylaşımı, işletme projesi, sayaç, kurul; `site-kural.test.js` 11 test. Mevcut sakinlere yeni kod dağıtılmalı.
+- **Sıradaki:** Kurs, Anaokulu, Müşavir, İK, Eczane, Kuyumcu, Fiyat Robotu, Kiralama, Emlak; ardından (bilinen güven hatası taraması temiz; spec yok) ve 1. dalgası yapılanlar için pazar araştırması + spec + dalgalar (portal kodu ve SMS düzeltmeleri bunların bazılarında zaten yapıldı); İK ve Eczane 2–3. dalga; kalan 2–3. dalgalar; §4.3 entegratörler.
 
 ---
 
