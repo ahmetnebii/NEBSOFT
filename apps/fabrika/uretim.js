@@ -71,7 +71,7 @@
         lines.forEach((r) => { const c = unitCost(r.mat); move({ mat: r.mat, wh: r.wh, loc: r.loc, lot: r.lot, qty: -r.qty, cost: c, type: 'fason', ref: f.id, refNo: f.no }); move({ mat: r.mat, wh: WF, loc: f.no, lot: r.lot, qty: r.qty, cost: c, type: 'fason', ref: f.id, refNo: f.no }); f.sent.push({ mat: r.mat, lot: r.lot, wh: r.wh, loc: r.loc, qty: r.qty, cost: c, at: batch.at }); batch.lines.push({ mat: r.mat, lot: r.lot, qty: r.qty }); });
         if (f.status === 'taslak') f.status = 'sevk';
         if (h.eirs && NS.ebelge) { const su = sup(f.sup); const r = await NS.ebelge.create({ docType: 'e-İrsaliye', no, buyer: su.name, buyerVkn: su.taxNo, buyerTaxOffice: su.taxOffice, address: su.address || su.city || '', plate: h.plate, driver: h.driver, date: today(), note: 'Fason işçilik için gönderim', lines: batch.lines.map((l) => ({ code: mat(l.mat).code, name: `${mat(l.mat).name} (lot ${l.lot})`, qty: l.qty, unit: mat(l.mat).unit, price: 0 })) }); if (r && r.ok) { if (!r.simulated) batch.ebelge = r.no; batch.ebelgeTest = !!r.simulated; batch.ebelgeId = r.id; } }
-        (f.batches = f.batches || []).push(batch); db.log('Fason sevk', no); db.save(); close(); toast(`${no} gönderildi, malzeme "Fasoncuda" deposuna geçti`, 'ok'); NS.docs.print('fason-sevk', fasonDoc(f, batch, no)); app.refresh();
+        (f.batches = f.batches || []).push(batch); db.log('Fason sevk', no); db.save(); close(); toast(`${no} sevk kaydedildi, malzeme "Fasoncuda" deposuna geçti`, 'ok'); NS.docs.print('fason-sevk', fasonDoc(f, batch, no)); app.refresh();
       } }],
     });
   }
