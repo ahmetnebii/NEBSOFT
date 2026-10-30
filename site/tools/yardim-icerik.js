@@ -138,7 +138,7 @@ module.exports = {
   kuyumcu: { kanca: 'Kur değişince fiyatları tek tek mi hesaplıyorsunuz? Bu videoda Kuyumcu programıyla kuru girip ilk satışı yapıyoruz.',
     gorevler: [['Kur', ['**Kur & Fiyatlar** sayfasını açın.', 'Has alış ve satışı girin.', '**Kuru kaydet** düğmesine basın.']],
       ['Stok', ['**Stok** sayfasında **Takı girişi** yapın.', 'Gram ve ayarı girin.', 'Gerekirse **Etiket bas** kullanın.']],
-      ['Satış ve emanet', ['**Satış** sayfasında **Tartılı takı** seçin.', '**Müşteri seç** ile kaydı bağlayın.', '**Müşteri & Emanet** sayfasından **Emanet yatır / çek** yapın.']]],
+      ['Satış', ['**Satış** sayfasında **Tartılı takı** seçin.', '**Müşteri seç** ile kaydı bağlayın.']]],
     ipucu: 'Gün sonu raporu kasa ve has hareketlerini kapanışta kontrol etmenizi sağlar.',
     sss: [['Hurda alışı nerede?', '**Alış & Hurda** sayfasında **Hurdayı ekle** ile.'], ['Özel sipariş takibi var mı?', 'Evet, **Özel Sipariş** sayfasında.']] },
   galeri: { kanca: 'Araç masrafları kâğıtta kalıp kâr hesabını bozuyor mu? Bu videoda Oto Galeri programıyla ilk aracı giriyoruz.',
