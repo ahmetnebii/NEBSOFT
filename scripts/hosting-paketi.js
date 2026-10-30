@@ -8,7 +8,7 @@ const ROOT = path.join(__dirname, '..');
 const OUT = path.join(ROOT, 'yayin');
 // Çalışma anında gereken her şey burada: yeni bir üst klasör eklenirse bu listeye de yazılmalı
 const DOSYALAR = ['server.js', 'package.json', 'package-lock.json', 'index.html', 'sw.js', 'robots.txt', 'sunucu.json'];
-const KLASORLER = ['admin', 'apps', 'assets', 'core', 'market', 'server', 'site'];
+const KLASORLER = ['admin', 'apps', 'assets', 'config', 'content', 'core', 'market', 'server', 'site'];
 // Klasörlerin içinden atılanlar (kök klasöre göre)
 // site/src/site.config.js sunucu tarafından çalışma anında okunur, pakette kalır
 const HARIC = [/^server\/test(\/|$)/, /^site\/src\/(?!site\.config\.js$)/, /^site\/tools(\/|$)/, /\.test\.js$/, /(^|\/)\.DS_Store$/, /\.md$/];
@@ -27,7 +27,7 @@ function tara(dir, out = []) { fs.readdirSync(dir).forEach((n) => { const f = pa
 
 if (!OUT.startsWith(ROOT + path.sep)) throw new Error('Çıktı klasörü hatalı');
 fs.rmSync(OUT, { recursive: true, force: true }); fs.mkdirSync(OUT);
-DOSYALAR.forEach(kopya); KLASORLER.forEach(kopya);
+DOSYALAR.forEach(kopya); KLASORLER.filter((k) => fs.existsSync(path.join(ROOT, k))).forEach(kopya);
 const kacak = tara(OUT).filter((f) => YASAK.some((r) => r.test(f)));
 if (kacak.length) { fs.rmSync(OUT, { recursive: true, force: true }); console.error('DURDURULDU: pakette gizli dosya var:\n' + kacak.join('\n')); process.exit(1); }
 fs.writeFileSync(path.join(OUT, 'YUKLEME-NOTU.txt'), `NEBSOFT hosting paketi\nÜretim: ${new Date().toISOString()}\n\nBu klasörün içeriğini sunucuya yükleyin, sonra: npm ci --omit=dev && node server.js\ndata/ klasörü sunucuda kalır, üzerine yazılmaz. Ayrıntı: depodaki DEPLOY.md\n`);
