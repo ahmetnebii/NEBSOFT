@@ -94,7 +94,7 @@
     if (EMBED) { document.body.innerHTML = '<main id="page"></main>'; document.body.classList.add('mk-embed'); return; }
     document.body.innerHTML = `<header class="mk-nav"><div class="mk-wrap">
         <a class="mk-logo" href="#/">${NS.logoMark(LOGO(), 36)}${brandName()}</a>
-        <nav class="mk-links" id="links"><a href="/programlar" data-l="urunler">Ürünler</a><a href="/fiyatlar/" data-l="fiyatlar">Fiyatlar</a><a href="/rehber/">Rehber</a><a href="#/sektorler" data-l="sektorler">Sektörler</a><a href="#/indir" data-l="indir">Masaüstü & Mobil</a><a href="#/iletisim" data-l="iletisim">İletişim</a><div class="mk-only-m" id="accm"></div></nav>
+        <nav class="mk-links" id="links"><a href="/programlar" data-l="urunler">Ürünler</a><a href="/fiyatlar/" data-l="fiyatlar">Fiyatlar</a><a href="/rehber/">Rehber</a><a href="/araclar">Ücretsiz araçlar</a><a href="#/sektorler" data-l="sektorler">Sektörler</a><a href="#/indir" data-l="indir">Masaüstü & Mobil</a><a href="#/iletisim" data-l="iletisim">İletişim</a><div class="mk-only-m" id="accm"></div></nav>
         <span class="grow mk-hide-m"></span>
         <button class="btn ghost icon" data-theme title="Tema" data-theme-ico>${icon(NS.getTheme() === 'dark' ? 'sun' : 'moon')}</button>
         <a class="btn ghost icon cart-btn" href="#/sepet" title="Sepet">${icon('cart')}<span class="cnt hide" id="cc"></span></a>

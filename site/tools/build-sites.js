@@ -368,6 +368,9 @@ ${ld(WEBSITE)}`;
   HARITA.unshift({ yol: '/', lastmod: sonDegisim('/', `<title>${title}</title><meta name="description" content="${desc}"><main>${body}</main>`) });
 }
 
+// Ücretsiz araçlar ayrı üretilir (build-araclar.js): yalnızca dizine alınabilir olanlar haritaya yazılır
+{ const f = path.join(SITE, 'araclar', 'liste.json'); if (fs.existsSync(f)) { const L = JSON.parse(fs.readFileSync(f, 'utf8')); HARITA.push({ yol: L.dizin, lastmod: L.guncelleme }); L.araclar.filter((x) => x.index).forEach((x) => HARITA.push({ yol: x.yol, lastmod: x.guncelleme })); } }
+
 fs.writeFileSync(path.join(SITE, 'sitemap.xml'), `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
 ${HARITA.map((x) => `  <url><loc>${D}${x.yol}</loc><lastmod>${x.lastmod}</lastmod></url>`).join('\n')}

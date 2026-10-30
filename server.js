@@ -209,6 +209,7 @@ function serve(req, res, p) {
     p = '/site' + p;
   } else if (/^[a-z0-9-]+$/.test(seg) && SITES.has(seg)) {
     if (p === '/' + seg + '/') { res.writeHead(301, { Location: '/' + seg }); return res.end(); }
+    if (seg === 'araclar' && /^\/araclar\/[a-z0-9-]+$/.test(p)) { res.writeHead(301, { Location: p + '/' }); return res.end(); }
     p = '/site' + (p === '/' + seg ? p + '/index.html' : p);
   }
   if (p.endsWith('/')) p += 'index.html';
