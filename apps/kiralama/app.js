@@ -180,12 +180,13 @@
           <div class="list-item"><span class="grow muted">Ek hizmet</span>${EXTRAS.filter((e) => (r.extras || []).includes(e.id)).map((e) => badge(e.name)).join(' ') || '-'}</div>${r.driver2 ? `<div class="list-item"><span class="grow muted">Ek sürücü</span>${esc(r.driver2)}</div>` : ''}
           ${live ? `<div class="list-item"><span class="grow muted">Kiralık araç bildirimi</span>${r.kabis ? `${badge('Yapıldı · ' + r.kabis.no, 'ok')}` : r.emniyet === 'TEST' ? badge('TEST — bildirilmedi', 'warn') : r.emniyet === 'hata' ? badge('Hata — bildirilmedi', 'err') : r.emniyet ? badge('Bildirildi · ' + r.emniyet, 'ok') : badge('Kayıt yok', 'err')}</div>` : ''}
           ${r.outKm != null ? `<div class="list-item"><span class="grow muted">Teslim</span>${num(r.outKm)} km · ${fuelHtml(r.outFuel)}</div>` : ''}${r.inKm != null ? `<div class="list-item"><span class="grow muted">İade</span>${num(r.inKm)} km · ${fuelHtml(r.inFuel)} · ${num(x.driven)} km yapıldı</div>` : ''}
+          ${[['Teslim fotoğrafları', r.outPhotos], ['İade fotoğrafları', r.inPhotos]].filter(([, L]) => (L || []).length).map(([l, L]) => `<div class="list-item" style="display:block"><div class="muted small mb">${l}</div><div class="row" style="gap:6px;flex-wrap:wrap">${L.map((u, i) => `<a href="${esc(u)}" download="${esc(r.no)}-${i + 1}.jpg" title="Fotoğrafı indir"><img src="${esc(u)}" alt="${l} ${i + 1}" style="width:84px;height:63px;object-fit:cover;border-radius:6px"></a>`).join('')}</div></div>`).join('')}
           ${(r.damages || []).map((d) => `<div class="list-item" style="color:var(--err)"><span class="grow">${icon('alert')} ${esc(d.desc)}</span><b>${money(d.cost)}</b></div>`).join('')}${r.cancel ? `<div class="list-item"><span class="grow muted">İptal</span>${esc(r.cancel.reason)}${r.cancel.refund ? ' · iade ' + money(r.cancel.refund) : ''}</div>` : r.cancelNote ? `<div class="list-item"><span class="grow muted">İptal</span>${esc(r.cancelNote)}</div>` : ''}</div>
         <div class="card pad" style="background:var(--surface-2)"><h3 class="mb">Hesap</h3><div class="row between"><span>Kira (${x.d} gün)</span><span>${money(x.base)}</span></div>${x.disc ? `<div class="row between"><span>İndirim</span><span>−${money(x.disc)}</span></div>` : ''}${x.ext ? `<div class="row between"><span>Ek hizmetler</span><span>${money(x.ext)}</span></div>` : ''}${x.kmFee ? `<div class="row between"><span>Km aşımı (${num(x.overKm)} km)</span><span>${money(x.kmFee)}</span></div>` : ''}${x.fuelFee ? `<div class="row between"><span>Eksik yakıt</span><span>${money(x.fuelFee)}</span></div>` : ''}${x.dmg ? `<div class="row between"><span>Hasar ve masraf</span><span>${money(x.dmg)}</span></div>` : ''}<hr><div class="row between"><b>Toplam</b><b>${money(x.total)}</b></div><div class="row between small"><span>Ödenen</span><span>${money(x.paid)}</span></div><div class="row between"><b>${x.due < 0 ? 'Fazla ödeme' : 'Kalan'}</b><b style="font-size:20px;color:${x.due !== 0 ? 'var(--err)' : 'var(--ok)'}">${money(Math.abs(x.due))}</b></div>${dep}</div></div>`,
       actions: [
         ...(r.status === 'rezervasyon' ? [{ label: 'İptal', cls: 'danger', onClick: async (cl) => { if (await cancelRent(app, r)) cl(); } }, { label: 'Düzenle', icon: 'edit', onClick: (cl) => { cl(); rentForm(app, r); } }, { label: 'Aracı teslim et', cls: 'primary', icon: 'key', onClick: (cl) => { cl(); handOut(app, r); } }] : []),
         ...(r.status === 'kirada' ? [{ label: 'İade al', cls: 'primary', icon: 'check', onClick: (cl) => { cl(); takeBack(app, r); } }] : []),
-        ...(live ? [{ label: 'Masraf ekle', icon: 'plus', onClick: (cl) => { cl(); addCharge(app, r); } }, { label: 'Bildirim kaydı', onClick: (cl) => { cl(); kabisForm(app, r); } }, { label: 'Tutanak', icon: 'print', onClick: () => NS.docs.print('tutanak', handoverDoc(r)) }] : []),
+        ...(live ? [{ label: 'Fotoğraflar', icon: 'plus', onClick: (cl) => { cl(); photosModal(app, r); } }, { label: 'Masraf ekle', icon: 'plus', onClick: (cl) => { cl(); addCharge(app, r); } }, { label: 'Bildirim kaydı', onClick: (cl) => { cl(); kabisForm(app, r); } }, { label: 'Tutanak', icon: 'print', onClick: () => NS.docs.print('tutanak', handoverDoc(r)) }] : []),
         ...(x.due > 0 && live ? [{ label: 'Ödeme al', icon: 'cash', onClick: async (cl) => { cl(); if (await takePay(app, r)) app.refresh(); } }] : []),
         ...(x.due < 0 ? [{ label: 'Fazla ödemeyi iade et', icon: 'cash', onClick: (cl) => { cl(); refundOver(app, r); } }] : []),
         ...(depPending(r) ? [{ label: r.depositOut ? 'Depozito iadesini kaydet' : 'Depozitoyu kapat', onClick: (cl) => { cl(); depositAct(app, r); } }] : []),
@@ -195,6 +196,36 @@
       ],
     });
   }
+  // Teslim/iade fotoğrafı: tarayıcıda küçültülür (en uzun kenar 1280 px, JPEG), üst sınırı aşarsa kalite düşürülür; sözleşmeye gömülür
+  const shrink = (file) => new Promise((res, rej) => { if (!/^image\//.test(file.type || '')) return rej(new Error('Yalnızca görsel dosyası seçin')); const fr = new FileReader(); fr.onerror = () => rej(new Error('Dosya okunamadı')); fr.onload = () => { const im = new Image(); im.onerror = () => rej(new Error('Görsel okunamadı')); im.onload = () => { const k = Math.min(1, 1280 / Math.max(im.width, im.height)); const c = document.createElement('canvas'); c.width = Math.round(im.width * k); c.height = Math.round(im.height * k); c.getContext('2d').drawImage(im, 0, 0, c.width, c.height); let q = 0.72, u = c.toDataURL('image/jpeg', q); while (u.length > H.PHOTO.perPhoto && q > 0.3) { q -= 0.12; u = c.toDataURL('image/jpeg', q); } if (u.length > H.PHOTO.perPhoto) return rej(new Error('Görsel küçültülemedi')); res(u); }; im.src = fr.result; }; fr.readAsDataURL(file); });
+  // Yerel kayıt tarayıcı deposuna sığmazsa core yalnızca konsola yazar: kaydın gerçekten yazıldığı burada doğrulanır
+  const stored = () => { if (db.cloud || db.pub) return true; try { return localStorage.getItem(db.key) === JSON.stringify(db.data); } catch (e) { return false; } };
+  // Forma eklenen fotoğraf alanı: taslak listesi; form onaylanınca sözleşmeye yazılır (photoSave)
+  function photoField(r, side) {
+    const key = side === 'out' ? 'outPhotos' : 'inPhotos'; const otherKey = side === 'out' ? 'inPhotos' : 'outPhotos'; const list = [...(r[key] || [])]; const box = 'ph' + side; const old = r[key];
+    const draw = (b) => { $('#' + box, b).innerHTML = list.length ? `<div class="row" style="gap:8px;flex-wrap:wrap">${list.map((u, i) => `<div style="position:relative;width:104px"><img src="${esc(u)}" alt="Fotoğraf ${i + 1}" style="width:100%;height:78px;object-fit:cover;border-radius:8px"><button type="button" class="btn sm ghost icon" data-phrm="${side}|${i}" title="Fotoğrafı sil" aria-label="Fotoğrafı sil" style="position:absolute;top:2px;right:2px;background:var(--surface)">${icon('x')}</button></div>`).join('')}</div>` : '<div class="faint small">Fotoğraf eklenmedi</div>'; };
+    return {
+      list, extra: `<div class="mt"><h3 class="mb">${side === 'out' ? 'Teslim' : 'İade'} fotoğrafları</h3><div class="small faint mb">İsteğe bağlı, en fazla ${H.PHOTO.perSide} fotoğraf. Aracın dört yönünü ve hasarları çekin. Yüklenirken küçültülür.</div><div id="${box}"></div><input class="input mt" type="file" data-phf="${side}" accept="image/*" multiple aria-label="${side === 'out' ? 'Teslim' : 'İade'} fotoğrafı seç"></div>`,
+      onOpen: (b) => {
+        draw(b);
+        on(b, 'click', `[data-phrm^="${side}|"]`, (e, x) => { list.splice(Number(x.dataset.phrm.split('|')[1]), 1); draw(b); });
+        $(`[data-phf=${side}]`, b).onchange = async (e) => {
+          const inp = e.target; const fs = [...inp.files]; inp.disabled = true;
+          try { for (const f of fs) { const u = await shrink(f); const msg = H.photoCheck(db.all('rents'), r, list, u.length, { other: r[otherKey] || [], docChars: JSON.stringify(db.data).length, local: !db.cloud }); if (msg) { toast(msg, 'err'); break; } list.push(u); draw(b); } } catch (x) { toast('Fotoğraf eklenemedi: ' + (x.message || ''), 'err'); }
+          inp.value = ''; inp.disabled = false;
+        };
+      },
+      save: () => { if (list.length) r[key] = list; else delete r[key]; },
+      undo: () => { if (old) r[key] = old; else delete r[key]; },
+    };
+  }
+  // Depoya sığmayan fotoğraf geri alınır: kaydedildi denip yenilemede kaybolmasın
+  function photoStored(fields) { if (stored()) return true; fields.forEach((f) => f.undo()); db.save(); toast('Tarayıcı deposu dolu: fotoğraflar kaydedilemedi, diğer bilgiler kaydedildi.', 'err'); return false; }
+  async function photosModal(app, r) {
+    const a = photoField(r, 'out'), b2 = photoField(r, 'in');
+    const v = await formModal({ title: `Fotoğraflar · ${r.no}`, size: 'wide', fields: [], extra: a.extra + b2.extra, onOpen: (b) => { a.onOpen(b); b2.onOpen(b); } }); if (!v) return;
+    a.save(); b2.save(); db.log('Sözleşme fotoğrafı', r.no); db.save(); if (photoStored([a, b2])) toast('Fotoğraflar kaydedildi', 'ok'); app.refresh();
+  }
   async function handOut(app, r) {
     const c = car(r.car), m = cust(r.customer); const x0 = bill(r);
     if (r.status !== 'rezervasyon') return toast('Bu kiralama teslime uygun değil', 'err');
@@ -202,7 +233,8 @@
     if (r.from > today()) return toast(`Alış tarihi ${NS.date(r.from)}; daha erken teslim için tarihi düzenleyin`, 'err');
     const out = db.find('rents', (o) => o.id !== r.id && o.car === r.car && o.status === 'kirada'); if (out) return toast(`Araç hâlâ ${out.no} kiralamasında; önce iade alın`, 'err');
     const issue = docIssue(c, r.to); if (issue.length && !(await NS.approve(app, `${c.plate} kiralama bitmeden süresi doluyor: ${issue.join(', ')}`, ['admin']))) return;
-    const v = await formModal({ title: `Teslim — ${c.plate}`, fields: [{ name: 'km', label: `Çıkış km (kayıtlı ${num(c.km)})`, type: 'number', value: c.km, required: true }, { name: 'fuel', label: 'Yakıt seviyesi', type: 'select', options: [{ value: 4, label: 'Dolu' }, { value: 3, label: '3/4' }, { value: 2, label: '1/2' }, { value: 1, label: '1/4' }] }, { name: 'tc', label: 'TC / pasaport no', value: m.tc || '', required: true }, { name: 'license', label: 'Ehliyet no', value: m.license || '', required: true }, { name: 'licenseDate', label: 'Ehliyet tarihi', type: 'date', value: m.licenseDate || '', required: true }, { name: 'dep', label: 'Depozito (₺)', type: 'number', value: r.deposit || 0 }, { name: 'depType', label: 'Depozito alınışı', type: 'select', options: ['kart provizyonu', 'nakit', 'kart', 'havale', 'alınmadı'] }, { name: 'pay', label: `Peşin tahsilat (kalan ${money(Math.max(0, x0.due))})`, type: 'number', value: Math.max(0, x0.due) }, paySel, { name: 'note', label: 'Mevcut hasar notu', full: true }], submitLabel: 'Teslim et' });
+    const phOut = photoField(r, 'out');
+    const v = await formModal({ title: `Teslim — ${c.plate}`, fields: [{ name: 'km', label: `Çıkış km (kayıtlı ${num(c.km)})`, type: 'number', value: c.km, required: true }, { name: 'fuel', label: 'Yakıt seviyesi', type: 'select', options: [{ value: 4, label: 'Dolu' }, { value: 3, label: '3/4' }, { value: 2, label: '1/2' }, { value: 1, label: '1/4' }] }, { name: 'tc', label: 'TC / pasaport no', value: m.tc || '', required: true }, { name: 'license', label: 'Ehliyet no', value: m.license || '', required: true }, { name: 'licenseDate', label: 'Ehliyet tarihi', type: 'date', value: m.licenseDate || '', required: true }, { name: 'dep', label: 'Depozito (₺)', type: 'number', value: r.deposit || 0 }, { name: 'depType', label: 'Depozito alınışı', type: 'select', options: ['kart provizyonu', 'nakit', 'kart', 'havale', 'alınmadı'] }, { name: 'pay', label: `Peşin tahsilat (kalan ${money(Math.max(0, x0.due))})`, type: 'number', value: Math.max(0, x0.due) }, paySel, { name: 'note', label: 'Mevcut hasar notu', full: true }], submitLabel: 'Teslim et', extra: phOut.extra, onOpen: phOut.onOpen });
     if (!v) return;
     if (Number(v.km) < Number(c.km)) return toast(`Çıkış km kayıtlı km'den (${num(c.km)}) küçük olamaz`, 'err');
     const pay = r2(v.pay); if (pay < 0 || pay > Math.max(0, x0.due)) return toast(`Peşin tahsilat 0 ile ${money(Math.max(0, x0.due))} arasında olmalı`, 'err');
@@ -210,10 +242,10 @@
     Object.assign(m, { tc: v.tc, license: v.license, licenseDate: v.licenseDate });
     // Teslim kontrolü: hasar krokisi ve kiracı imzası
     if (NS.docs) { const mk = await NS.docs.damageModal(r.outDamage || [], `Teslim kontrolü — ${c.plate}`); if (mk) r.outDamage = mk; const sg = await NS.sign({ title: 'Teslim — kiracı imzası', label: 'Kiracı adı soyadı', name: m.name, text: 'Aracı belirtilen km, yakıt ve hasar durumuyla teslim aldım; sözleşme şartlarını okudum ve kabul ediyorum.' }); if (sg) r.signOut = sg; }
-    Object.assign(r, { status: 'kirada', outKm: Number(v.km), outFuel: Number(v.fuel), outNote: v.note, outAt: nowIso(), outBy: me() });
+    Object.assign(r, { status: 'kirada', outKm: Number(v.km), outFuel: Number(v.fuel), outNote: v.note, outAt: nowIso(), outBy: me() }); phOut.save();
     const dep = r2(v.dep); if (dep > 0 && v.depType !== 'alınmadı') { r.deposit = dep; r.depositIn = { amount: dep, type: v.depType, at: nowIso(), by: me() }; }
     if (pay > 0) { r.payments = r.payments || []; r.payments.push({ amount: pay, type: v.type, at: nowIso(), by: me() }); }
-    db.log('Araç teslim', `${r.no} · ${c.plate}`); db.save(); toast('Araç teslim edildi', 'ok');
+    db.log('Araç teslim', `${r.no} · ${c.plate}`); db.save(); photoStored([phOut]); toast('Araç teslim edildi', 'ok');
     // Emniyet kiralık araç bildirimi ve GPS takibinde kiralama başlangıcı
     if (NS.integ) { if (NS.integ.isOn('aracbildirim')) NS.integ.call('aracbildirim', 'kiralama-bildir', { plate: c.plate, contract: r.no, from: r.from, to: r.to, renter: { name: m.name, tc: m.tc || m.idNo, license: m.license, phone: m.phone } }, { silent: true }).then((x) => { if (x) { r.emniyet = x.simulated ? 'TEST' : x.ok ? x.ref : 'hata'; db.save(); if (x.simulated) toast('Kiralık araç bildirimi TEST — Emniyet’e bildirim YAPILMADI (simülasyon)', 'warn'); } }); if (NS.integ.isOn('gps')) NS.integ.call('gps', 'kiralama-basla', { plate: c.plate, contract: r.no }, { silent: true }); }
     printContract(r); app.refresh();
@@ -228,13 +260,13 @@
     return { tolls, km };
   }
   async function takeBack(app, r) {
-    const c = car(r.car); const now = new Date();
-    const v = await formModal({ title: `İade — ${c.plate}`, fields: [{ name: 'date', label: 'İade tarihi', type: 'date', value: today(), required: true }, { name: 'time', label: 'İade saati', type: 'time', value: `${NS.pad(now.getHours())}:${NS.pad(now.getMinutes())}`, required: true }, { name: 'km', label: `Dönüş km (çıkış ${num(r.outKm)})`, type: 'number', required: true, value: Number(r.outKm) + 300 * days(r) }, { name: 'fuel', label: 'Yakıt', type: 'select', options: [{ value: 4, label: 'Dolu' }, { value: 3, label: '3/4' }, { value: 2, label: '1/2' }, { value: 1, label: '1/4' }] }, { name: 'dmg', label: 'Yeni hasar açıklaması (yoksa boş)' }, { name: 'dmgCost', label: 'Hasar bedeli (₺)', type: 'number', value: 0 }, ...(today() < r.to ? [{ name: 'early', label: 'Erken iade: kullanılmayan günler ücretlendirilmesin', type: 'checkbox', value: true }] : [])], submitLabel: 'İade al' });
+    const c = car(r.car); const now = new Date(); const phIn = photoField(r, 'in');
+    const v = await formModal({ title: `İade — ${c.plate}`, fields: [{ name: 'date', label: 'İade tarihi', type: 'date', value: today(), required: true }, { name: 'time', label: 'İade saati', type: 'time', value: `${NS.pad(now.getHours())}:${NS.pad(now.getMinutes())}`, required: true }, { name: 'km', label: `Dönüş km (çıkış ${num(r.outKm)})`, type: 'number', required: true, value: Number(r.outKm) + 300 * days(r) }, { name: 'fuel', label: 'Yakıt', type: 'select', options: [{ value: 4, label: 'Dolu' }, { value: 3, label: '3/4' }, { value: 2, label: '1/2' }, { value: 1, label: '1/4' }] }, { name: 'dmg', label: 'Yeni hasar açıklaması (yoksa boş)' }, { name: 'dmgCost', label: 'Hasar bedeli (₺)', type: 'number', value: 0 }, ...(today() < r.to ? [{ name: 'early', label: 'Erken iade: kullanılmayan günler ücretlendirilmesin', type: 'checkbox', value: true }] : [])], submitLabel: 'İade al', extra: phIn.extra, onOpen: phIn.onOpen });
     if (!v) return;
     if (Number(v.km) < Number(r.outKm)) return toast('Dönüş km çıkış km\'den küçük olamaz', 'err');
     if (v.date < r.from) return toast('İade tarihi alış tarihinden önce olamaz', 'err');
     if (Number(v.dmgCost) > 0 && !String(v.dmg || '').trim()) return toast('Hasar bedeli için açıklama yazın', 'err');
-    Object.assign(r, { inKm: Number(v.km), inFuel: Number(v.fuel), inAt: `${v.date}T${v.time}`, inBy: me() });
+    Object.assign(r, { inKm: Number(v.km), inFuel: Number(v.fuel), inAt: `${v.date}T${v.time}`, inBy: me() }); phIn.save();
     // Geç iade ek gün olarak, erken iade kullanılan gün olarak faturalanır; plan tarihi saklanır
     const late = H.lateDays(r, r.inAt, S().graceHours); const plan = r.to;
     if (late > 0) r.to = H.addDay(r.to, late); else if (v.early && v.date < r.to) r.to = v.date > r.from ? v.date : H.addDay(r.from);
@@ -247,7 +279,7 @@
     if (tg.km && Math.abs(tg.km - v.km) > 50) toast(`Uyarı: GPS km (${num(tg.km)}) ile girilen km (${num(v.km)}) farklı`, 'err');
     if (NS.integ && NS.integ.isOn('aracbildirim')) NS.integ.call('aracbildirim', 'iade-bildir', { plate: c.plate, contract: r.no, at: nowIso() }, { silent: true });
     // Araç geri geldi: kiralama kapanır; ödenmeyen tutar "Kalan" olarak açık kalır, tekrar iade alınamaz
-    r.status = 'tamamlandi'; const x = bill(r); db.log('Araç iade', `${r.no} · ${num(x.driven)} km${late ? ` · ${late} gün gecikme` : ''}`); db.save(); toast(late ? `İade alındı: ${late} gün gecikme sözleşmeye eklendi` : 'İade tamamlandı', late ? 'warn' : 'ok');
+    r.status = 'tamamlandi'; const x = bill(r); db.log('Araç iade', `${r.no} · ${num(x.driven)} km${late ? ` · ${late} gün gecikme` : ''}`); db.save(); photoStored([phIn]); toast(late ? `İade alındı: ${late} gün gecikme sözleşmeye eklendi` : 'İade tamamlandı', late ? 'warn' : 'ok');
     if (x.due > 0) await takePay(app, r);
     if (r.depositIn && !r.depositOut) await closeDeposit(app, r);
     if (bill(r).due < 0) toast(`Müşteriye ${money(-bill(r).due)} fazla ödeme iadesi gerekiyor`, 'warn');

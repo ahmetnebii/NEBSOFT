@@ -20,12 +20,23 @@
   const lblOld = (m) => !!(m.priceAt && (!m.lblAt || m.priceAt > m.lblAt));
   const sw = (hex) => `<span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:${hex};border:1px solid var(--border);vertical-align:-1px"></span>`;
   const colorHex = (m, name) => (m.colors.find((c) => c.name === name) || {}).hex || '#999';
-  // Pazaryeri/online stoğa gönderim (Entegrasyonlar > Pazaryerleri açıksa gerçek çağrı)
-  function syncOnline(models) {
-    const list = models.filter((m) => m.online); if (!list.length || S().online === false) return;
-    const items = list.flatMap((m) => m.variants.map((v) => ({ barcode: v.barcode, stock: Math.max(0, v.stock), price: unit(m) })));
-    if (NS.integ && NS.integ.isOn && NS.integ.isOn('pazaryeri')) NS.integ.call('pazaryeri', 'stok-fiyat', { items }, { silent: true });
+  // Online stok ve fiyat: Pazaryeri ve E-ticaret programlarıyla aynı yol (/api/kanal). Sonuç günlüğe yazılır;
+  // bağlantı yoksa veya canlı değilse istek atılmaz, "gönderildi" gösterilmez (CLAUDE.md §1)
+  const kanal = () => B.kanalDurum(NS.integ ? NS.integ.cfg('pazaryeri') : {});
+  const onlineTone = (m) => (m === 'canli' ? 'ok' : m === 'yok' ? '' : 'warn');
+  const syncNote = (e) => { db.data.onlineLog = [{ at: new Date().toISOString(), ...e }, ...(db.data.onlineLog || [])].slice(0, 30); const nu = db._noUndo; db._noUndo = true; db.save(); db._noUndo = nu; };
+  async function syncOnline(models) {
+    const list = models.filter((m) => m.online); if (!list.length || S().online === false) return null;
+    const d = kanal(); const n = sum(list, (m) => m.variants.length);
+    if (d.mode === 'yok' || d.mode === 'test') return { mode: d.mode, ok: false, msg: `${d.label}: gönderilmedi` }; // yapılmamış işlem günlüğe yazılmaz
+    const items = list.flatMap((m) => m.variants.map((v) => ({ barcode: v.barcode, sku: v.barcode, stock: Math.max(0, v.stock), price: unit(m), listPrice: Math.max(Number(m.price) || 0, unit(m)) })));
+    let r;
+    if (d.mode === 'ozel') r = await NS.integ.call('pazaryeri', 'stok-fiyat', { items }, { silent: true });
+    else { const c = NS.integ.cfg('pazaryeri'); try { r = await (await fetch('/api/kanal', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ channel: d.channel, action: 'stok-fiyat', creds: { sellerId: c.sellerId, apiKey: c.user, apiSecret: c.pass, stage: d.mode === 'stage' }, payload: { items } }) })).json(); } catch (e) { r = { ok: false, error: 'Sunucu köprüsüne ulaşılamadı' }; } }
+    const ok = !!(r && r.ok); const e = { mode: d.mode, ok, msg: ok ? `${d.label}: ${n} varyant kabul edildi` : `${d.label}: gönderilemedi. ${(r && r.error) || 'Bilinmeyen hata'}` };
+    syncNote(e); if (!ok) toast(`Online stok gönderilemedi: ${(r && r.error) || 'bilinmeyen hata'}`, 'err'); return e;
   }
+  const onlineBar = () => { const d = kanal(); const l = (db.data.onlineLog || [])[0]; return `<div class="card pad mb row small" style="flex-wrap:wrap">${badge(d.label, onlineTone(d.mode))}<span class="grow">${esc(S().online === false ? 'Online gönderim Ayarlar\'dan kapalı.' : d.text)}${l ? ` <span class="faint">Son durum: ${esc(l.msg)} (${NS.dt(l.at)})</span>` : ''}</span>${['canli', 'stage', 'ozel'].includes(d.mode) && S().online !== false ? '<button class="btn sm" id="ols">Şimdi gönder</button>' : ''}<a class="btn sm" href="#/entegrasyonlar">Bağlantı</a></div>`; };
   // Stok hareketi: satış, iade, değişim, sayım, mal kabul (model kartında "Hareketler")
   const MOVE = { satis: 'Satış', iade: 'İade', degisim: 'Değişim', sayim: 'Sayım', kabul: 'Mal kabul' };
   const move = (m, v, qty, type, ref) => { if (qty) db.insert('moves', { at: new Date().toISOString(), mid: m.id, barcode: v.barcode, size: v.size, color: v.color, qty, type, ref: ref || '', user: (NS.currentUser || {}).name || '' }, true); };
@@ -310,11 +321,12 @@
   // ---------- Ürünler ----------
   function productsPage(el, p, app) {
     let q = '', f = p || '';
-    el.innerHTML = pageHead('Ürünler & Stok', 'Model bazında beden × renk stok matrisi', `<button class="btn" id="lbl">${icon('tag')} Etiket bas</button><button class="btn" id="kb">${icon('download')} Mal kabul</button><button class="btn" id="xl">${icon('upload')} Excel'den aktar</button><button class="btn" id="sz">${icon('grid')} Beden takımları</button><button class="btn primary" id="add">${icon('plus')} Yeni model</button>`) + `<div class="card"><div class="card-h">${NS.searchBox('q', 'Model, kod, kategori...')}<div class="seg">${[['', 'Tümü'], ['az', 'Azalan beden'], ['indirim', 'İndirimde'], ['online', 'Online satışta'], ['olu', 'Satmayan (60 gün)'], ['pasif', 'Pasif']].map(([v, l]) => `<button data-f="${v}" class="${v === f ? 'active' : ''}">${l}</button>`).join('')}</div></div><div id="t"></div></div>`;
+    el.innerHTML = pageHead('Ürünler & Stok', 'Model bazında beden × renk stok matrisi', `<button class="btn" id="lbl">${icon('tag')} Etiket bas</button><button class="btn" id="kb">${icon('download')} Mal kabul</button><button class="btn" id="xl">${icon('upload')} Excel'den aktar</button><button class="btn" id="sz">${icon('grid')} Beden takımları</button><button class="btn primary" id="add">${icon('plus')} Yeni model</button>`) + onlineBar() + `<div class="card"><div class="card-h">${NS.searchBox('q', 'Model, kod, kategori...')}<div class="seg">${[['', 'Tümü'], ['az', 'Azalan beden'], ['indirim', 'İndirimde'], ['online', 'Online satışta'], ['olu', 'Satmayan (60 gün)'], ['pasif', 'Pasif']].map(([v, l]) => `<button data-f="${v}" class="${v === f ? 'active' : ''}">${l}</button>`).join('')}</div></div><div id="t"></div></div>`;
     // Satış adetleri bir kez hesaplanır (binlerce modelde her satır için tüm satışları taramamak için)
     const soldMap = (days) => { const from = addDays(new Date(), -days).toISOString(); const r = new Map(); db.all('sales', (x) => x.at > from).forEach((x) => x.lines.forEach((l) => r.set(l.mid, (r.get(l.mid) || 0) + l.qty))); return r; };
     let S30 = soldMap(30), S60 = soldMap(60); const sold = (m, days) => (days === 30 ? S30 : S60).get(m.id) || 0;
     const rows = () => db.all('models', (m) => NS.match(q, m.name, m.code, m.cat) && (f === 'pasif' ? m.passive : !m.passive && (!f || (f === 'az' ? m.variants.some((v) => v.stock <= (Number(S().lowStock) || 2)) : f === 'indirim' ? m.disc > 0 : f === 'online' ? m.online : sold(m, 60) === 0))));
+    if ($('#ols', el)) $('#ols', el).onclick = async (e) => { e.target.disabled = true; const ms = db.all('models', (m) => m.online && !m.passive); const r = await syncOnline(ms); e.target.disabled = false; if (!r) return toast('Online işaretli model yok', 'warn'); if (r.ok) toast(r.msg, r.mode === 'canli' ? 'ok' : 'warn'); app.refresh(); };
     const draw = () => { S30 = soldMap(30); S60 = soldMap(60); const all = rows(); const LIM = 200; $('#t', el).innerHTML = (all.length > LIM ? `<p class="small muted" style="padding:8px 16px;margin:0">${all.length} modelden ilk ${LIM} tanesi gösteriliyor — aramayı daraltın.</p>` : '') + table({ rows: all.slice(0, LIM), emptyIcon: 'tag', columns: [
       { label: 'Model', render: (m) => `<b>${esc(m.name)}</b><div class="small faint"><span class="mono">${esc(m.code)}</span> · ${esc(m.cat)} · ${esc(m.season)}</div>` },
       { label: 'Renkler', render: (m) => m.colors.map((c) => sw(c.hex)).join(' ') },
@@ -322,7 +334,7 @@
       { label: 'Stok', cls: 'right', render: (m) => `<b>${mStock(m)}</b>` },
       { label: 'Fiyat', cls: 'right', render: (m) => (oldRef(m) ? `<s class="faint small">${money(oldRef(m))}</s> <b>${money(unit(m))}</b><div>${badge('%' + pctOff(m), 'err')}${oldRef(m) < m.price ? ` <span class="small" title="Son 10 günde daha düşük fiyat uygulandığı için eski fiyat olarak o gösterilir (Yönetmelik m.14/3)">${icon('alert')}</span>` : ''}</div>` : `<b>${money(unit(m))}</b>${m.disc ? `<div class="small faint" title="Bu fiyat son 10 günde zaten uygulandığı için indirim olarak gösterilemez">%${m.disc} uygulanıyor · eski fiyat gösterilmez</div>` : ''}`) },
       { label: '30 gün satış', cls: 'right', render: (m) => sold(m, 30) },
-      { label: 'Online', render: (m) => (m.online ? badge('Satışta', 'ok') : '') },
+      { label: 'Online', render: (m) => (m.online ? badge(kanal().mode === 'canli' ? 'Gönderiliyor' : 'İşaretli', kanal().mode === 'canli' ? 'ok' : '') : '') },
     ], actions: [{ icon: 'grid', act: 'mx', title: 'Stok matrisi' }, { icon: 'edit', act: 'ed' }] }); };
     const edit = async (m) => {
       let kat = null;
@@ -340,7 +352,7 @@
       rec.variants = rec.variants.filter((x) => names.includes(x.color) && SZ(rec.sizeType).includes(x.size));
       db.save(); syncOnline([rec]); toast('Kaydedildi', 'ok'); draw(); if (!m) mx(rec);
     };
-    const mx = (m) => modal({ title: `${m.name} — stok`, size: 'wide', body: matrix(m, true) + '<p class="small muted mt">Sayım sonucunu girip kaydedin; değişiklik online kanallara da gönderilir.</p>', actions: [{ label: 'Hareketler', icon: 'layers', onClick: () => moves(m) }, { label: 'Etiket bas', icon: 'tag', onClick: (c) => { c(); goLabels(m.variants.filter((v) => v.stock > 0).map((v) => ({ v, n: v.stock }))); } }, { label: 'Kaydet', cls: 'primary', onClick: (c, b) => { $$('[data-bc]', b).forEach((i) => { const v = m.variants.find((x) => x.barcode === i.dataset.bc); const n = Math.max(0, Math.floor(Number(i.value) || 0)); move(m, v, n - v.stock, 'sayim', 'Sayım'); v.stock = n; }); db.log('Stok sayımı', m.code); db.save(); syncOnline([m]); c(); draw(); toast('Stok güncellendi', 'ok'); } }] });
+    const mx = (m) => modal({ title: `${m.name} — stok`, size: 'wide', body: matrix(m, true) + `<p class="small muted mt">Sayım sonucunu girip kaydedin. ${esc(m.online && S().online !== false ? kanal().text : 'Bu model online kanala gönderilmez.')}</p>`, actions: [{ label: 'Hareketler', icon: 'layers', onClick: () => moves(m) }, { label: 'Etiket bas', icon: 'tag', onClick: (c) => { c(); goLabels(m.variants.filter((v) => v.stock > 0).map((v) => ({ v, n: v.stock }))); } }, { label: 'Kaydet', cls: 'primary', onClick: (c, b) => { $$('[data-bc]', b).forEach((i) => { const v = m.variants.find((x) => x.barcode === i.dataset.bc); const n = Math.max(0, Math.floor(Number(i.value) || 0)); move(m, v, n - v.stock, 'sayim', 'Sayım'); v.stock = n; }); db.log('Stok sayımı', m.code); db.save(); syncOnline([m]); c(); draw(); toast('Stok güncellendi', 'ok'); } }] });
     $('#q', el).oninput = (e) => { q = e.target.value; draw(); };
     on(el, 'click', '[data-f]', (e, b) => { f = b.dataset.f; $$('[data-f]', el).forEach((x) => x.classList.toggle('active', x === b)); draw(); });
     on(el, 'click', '[data-act=ed]', (e, b) => edit(model(b.dataset.id)));
@@ -459,7 +471,7 @@
   // ---------- Kampanyalar ----------
   function campaignsPage(el, p, app) {
     campTick();
-    el.innerHTML = pageHead('Sezon & Kampanyalar', 'Sezon/kategori indirimi tek tıkla tüm etiketlere ve online kanallara yansır; tarih verilirse kendiliğinden başlar ve biter', `<button class="btn primary" id="bulk">${icon('percent')} Yeni kampanya</button>`) + `<div class="card"><div class="card-h"><h3>Kampanyalar</h3></div><div id="t"></div></div>`;
+    el.innerHTML = pageHead('Sezon & Kampanyalar', `Sezon/kategori indirimi tek tıkla tüm etiketlere yansır; tarih verilirse kendiliğinden başlar ve biter. ${kanal().text}`, `<button class="btn primary" id="bulk">${icon('percent')} Yeni kampanya</button>`) + `<div class="card"><div class="card-h"><h3>Kampanyalar</h3></div><div id="t"></div></div>`;
     const st = (c) => (!c.active ? badge('Kapalı') : campOn(c) ? badge('Uygulanıyor', 'ok') : c.start && today() < c.start ? badge('Başlayacak', 'info') : badge('Süresi bitti', 'warn'));
     const draw = () => { $('#t', el).innerHTML = table({ rows: db.all('campaigns'), columns: [{ label: 'Kampanya', render: (c) => `<b>${esc(c.name)}</b>${c.start || c.end ? `<div class="small faint">${c.start ? NS.date(c.start) : '…'} – ${c.end ? NS.date(c.end) : '…'}</div>` : ''}` }, { label: 'Kapsam', render: (c) => `${c.scope === 'sezon' ? 'Sezon' : 'Kategori'}: ${esc(c.target)}` }, { label: 'Tür', render: (c) => (c.type === 'ikinci' ? `2. üründe %${c.value}` : `%${c.value} indirim`) }, { label: 'Durum', render: st }], actions: [{ icon: 'refresh', act: 'tg', title: 'Aç / kapat' }, { icon: 'trash', act: 'del' }] }); };
     on(el, 'click', '[data-act]', async (e, b) => { const c = db.get('campaigns', b.dataset.id); if (b.dataset.act === 'del') { if (!(await confirm('Kampanya silinsin mi?'))) return; if (c.type === 'yuzde' && c.applied) campApply(c, 0); db.remove('campaigns', c.id); } else { c.active = !c.active; if (c.type === 'yuzde' && campOn(c) !== !!c.applied) campApply(c, campOn(c) ? c.value : 0); } db.save(); draw(); });
@@ -535,6 +547,6 @@
     id: 'butik', integrations: ['pazaryeri', 'pos', 'printer', 'label', 'barcode', 'efatura', 'sms', 'whatsapp', 'webhook', 'backup'], name: 'Butik & Giyim', tagline: 'Beden-renk stok ve mağaza satış', icon: 'tag', accent: '#db2777', db, home: 'ozet', auth: { roles: ROLES },
     nav: [{ sec: 'Mağaza' }, { id: 'ozet', label: 'Özet', icon: 'home', roles: ['kasa'] }, { id: 'satis', label: 'Satış', icon: 'barcode', roles: ['kasa'] }, { id: 'degisim', label: 'Değişim & İade', icon: 'refresh', roles: ['kasa'] }, { id: 'satislar', label: 'Satışlar', icon: 'receipt', roles: ['kasa'] }, { id: 'urunler', label: 'Ürünler & Stok', icon: 'tag', roles: ['kasa'] }, { id: 'etiket', label: 'Etiket Basımı', icon: 'print', roles: ['kasa'] }, { id: 'musteriler', label: 'Müşteriler', icon: 'users', roles: ['kasa'] }, { sec: 'Yönetim' }, { id: 'kampanyalar', label: 'Sezon & Kampanya', icon: 'percent', roles: ['admin'] }, { id: 'raporlar', label: 'Raporlar', icon: 'chart', roles: ['admin'] }, { id: 'ayarlar', label: 'Ayarlar', icon: 'settings', roles: ['admin'] }],
     routes: { ozet: dashboard, satis: posPage, degisim: exchangePage, satislar: salesPage, urunler: productsPage, etiket: labelsPage, musteriler: customersPage, kampanyalar: campaignsPage, raporlar: reportsPage,
-      ayarlar: (el, p, a) => NS.settingsPage(el, a, { roles: ROLES, fields: [{ type: 'section', label: 'Mağaza kuralları' }, { name: 'pointPct', label: 'Puan oranı %', type: 'number' }, { name: 'exchangeDays', label: 'Değişim süresi (gün)', type: 'number' }, { name: 'lowStock', label: 'Az kalan beden sınırı', type: 'number' }, { name: 'commPct', label: 'Satış danışmanı primi % (net satış)', type: 'number' }, { name: 'online', label: 'Stok değişince online kanallara gönder', type: 'checkbox' }] }) },
+      ayarlar: (el, p, a) => NS.settingsPage(el, a, { roles: ROLES, fields: [{ type: 'section', label: 'Mağaza kuralları' }, { name: 'pointPct', label: 'Puan oranı %', type: 'number' }, { name: 'exchangeDays', label: 'Değişim süresi (gün)', type: 'number' }, { name: 'lowStock', label: 'Az kalan beden sınırı', type: 'number' }, { name: 'commPct', label: 'Satış danışmanı primi % (net satış)', type: 'number' }, { name: 'online', label: 'Stok değişince bağlı online kanala gönder', type: 'checkbox', hint: 'Bağlantı Entegrasyonlar > Pazaryerleri ekranından kurulur. Bağlı kanal yoksa gönderim yapılmaz.' }] }) },
   });
 })();

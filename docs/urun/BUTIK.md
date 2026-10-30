@@ -8,6 +8,9 @@ Yöntem: `CLAUDE.md` §2. Kullanıcı tüm dalgaları önceden onayladı ("atlam
 |---|---|---|---|
 | E1 | Ürün etiketi | "Etiket Basımı" sayfası: kendi şablonun (askı 40×60, barkod 50×30, indirim 60×40, mini 30×20 hazır), beden, renk, indirimli + eski fiyat, barkod, logo; tek tek, beden/renk matrisiyle, "stok kadar", barkod okuyucu veya kamerayla seçim; A4 ya da etiket yazıcısı (sürücüyle, şablon ölçüsünde); "fiyatı değişenler" filtresi | Commit `c6d95aa`, tarayıcı (masaüstü + 375 px) |
 
+### Online gönderim (dal `urun/temel-eksikler`, 30.10.2026)
+`syncOnline` artık Pazaryeri/E-ticaret ile aynı yolu (`/api/kanal`) kullanır. Durum `BTK.kanalDurum` ile belirlenir: bağlantı kapalı veya bilgi eksikse "Bağlı kanal yok", simülasyon veya canlı adaptörü olmayan kanalda TEST (istek atılmaz), Trendyol test ortamında "TEST ortamı", n11'de test ortamı olmadığı için TEST. Özel API seçilmişse eski bağlayıcı yolu çalışır, sonucu yazılır. Ürünler ekranındaki şerit durumu, son gönderimi ve hatayı gösterir. Sahte pazaryeriyle denendi; gerçek hesapla denenmedi.
+
 ### 1. dalga — yapılanlar
 | # | Konu | Sonuç | Kanıt |
 |---|---|---|---|

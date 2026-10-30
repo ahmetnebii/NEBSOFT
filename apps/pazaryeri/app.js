@@ -23,7 +23,7 @@
   // Kanal başı fiyat tabanı: maliyet + hedef kâr, komisyon ve sabit bedelin üstünde kalacak en düşük KDV dahil fiyat
   const floorOf = (p, k) => { const c = chCfg(k); const m = Number(S().minMargin); const pct = (Number(c.commission) || 0) + (Number(m) || 0); if (!(pct < 100) || !p.cost) return 0; return Math.ceil(((Number(p.cost) + (Number(c.fixedFee) || 0) + (Number(S().avgShip) || 0)) / (1 - pct / 100)) * 100) / 100; };
   const vatOf = (p) => { const v = (p || {}).vat; return v !== undefined && v !== null && v !== '' && Number.isFinite(Number(v)) ? Number(v) : Number(S().vat ?? 20); };
-  const unB = (o) => (o.items.some((i) => !i.pid) ? ' ' + badge('Eşleşmeyen ürün', 'err') : '');
+  const unB = (o) => (o.items.some((i) => !i.pid) ? ' ' + badge('Eşleşmeyen ürün', 'err') : '') + (o.manual ? ' ' + badge('Elle girildi', 'info') : '');
   const costOf = (i) => (prod(i.pid) || {}).cost || 0;
   const profit = (o) => Z.profit(o, chCfg(o.ch), costOf);
   const chB = (k) => `<span class="badge" style="background:${CH[k].color};color:#fff;border:0">${esc(CH[k].name)}</span>`;
@@ -55,9 +55,9 @@
     const no = String(x.orderNo || x.chNo);
     // Aynı sipariş birden çok pakete bölünebilir: paket no varsa tekrar denetimi pakete göre
     if (db.find('orders', (o) => o.ch === k && (x.packageId ? o.pkgNo === String(x.packageId) || (!o.pkgNo && o.chNo === no) : o.chNo === no))) return null;
-    const items = (x.items || []).map((i) => { const p = byCode(i.barcode) || byCode(i.sku); const q = i.qty || 1; const taken = p ? Math.min(q, Math.max(0, p.stock)) : 0; return { pid: p ? p.id : null, code: i.barcode || i.sku || '', sku: p ? p.sku : i.sku, barcode: i.barcode || (p && p.barcode), name: i.name || (p && p.name) || i.sku, qty: q, price: i.price || 0, lineId: i.lineId, taken, ...(p && taken < q ? { short: q - taken } : {}) }; });
+    const items = (x.items || []).map((i) => { const p = (i.pid && prod(i.pid)) || byCode(i.barcode) || byCode(i.sku); const q = i.qty || 1; const taken = p ? Math.min(q, Math.max(0, p.stock)) : 0; return { pid: p ? p.id : null, code: i.barcode || i.sku || '', sku: p ? p.sku : i.sku, barcode: i.barcode || (p && p.barcode), name: i.name || (p && p.name) || i.sku, qty: q, price: i.price || 0, lineId: i.lineId, taken, ...(p && taken < q ? { short: q - taken } : {}) }; });
     const at = new Date(x.at || Date.now()); const shipBy = addDays(at, chCfg(k).shipDays || 1); shipBy.setHours(23, 59, 0, 0);
-    const o = db.insert('orders', { ch: k, chNo: no, pkgNo: String(x.packageId || ''), at: at.toISOString(), shipBy: shipBy.toISOString(), customer: x.customer || {}, items, total: x.total || sum(items, (i) => i.qty * i.price), shipCost: 0, carrier: x.cargo || S().carrier, tracking: x.tracking || '', status: 'yeni', history: [{ at: new Date().toISOString(), st: 'yeni', note: `${CH[k].name} siparişi alındı` }] });
+    const o = db.insert('orders', { ch: k, chNo: no, pkgNo: String(x.packageId || ''), at: at.toISOString(), shipBy: shipBy.toISOString(), customer: x.customer || {}, items, total: x.total || sum(items, (i) => i.qty * i.price), shipCost: 0, carrier: x.cargo || S().carrier, tracking: x.tracking || '', status: 'yeni', ...(x.manual ? { manual: true } : {}), ...(x.hook ? { viaHook: true } : {}), history: [{ at: new Date().toISOString(), st: 'yeni', note: x.manual ? `${CH[k].name} siparişi elle girildi${me() ? ' · ' + me() : ''}` : `${CH[k].name} siparişi alındı${x.hook ? ' (webhook)' : ''}` }] });
     items.forEach((i) => { const p = i.pid && prod(i.pid); if (p) p.stock -= i.taken; });
     return o;
   }
@@ -89,9 +89,41 @@
     });
     db.save(); return { count, miss, err: '' };
   }
+  // Webhook gelen kutusu: sunucudan okunan kayıt orada silinir, bu yüzden her yük önce burada saklanır.
+  // Biçimi doğrulanan yük siparişe çevrilir, kalanı ham haliyle "elle incele" listesine düşer; hiçbir alan tahmin edilmez.
+  const HOOK_RAW = 32e3, HOOK_MAX = 300;
+  function hookRow(k, it, r) {
+    const raw = JSON.stringify(it.body) || ''; const row = db.insert('hooks', { ch: k, at: it.at ? new Date(it.at).toISOString() : new Date().toISOString(), ...r, ...(r.status === 'incele' ? { raw: raw.slice(0, HOOK_RAW), cut: raw.length > HOOK_RAW } : {}) }, true);
+    const c = db.col('hooks'); if (c.length > HOOK_MAX) { const old = c.filter((x) => x.status !== 'incele').slice(0, c.length - HOOK_MAX); db.data.hooks = c.filter((x) => !old.includes(x)).slice(-HOOK_MAX); }
+    return row;
+  }
+  async function pullInbox() {
+    const out = { orders: 0, review: 0, off: false }; const touched = new Set();
+    for (const k of Object.keys(CH)) {
+      let j; try { j = await (await fetch('/api/inbox', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ channel: k }) })).json(); } catch (e) { out.off = true; return out; }
+      if (!j.ok || !Array.isArray(j.items) || !j.items.length) continue;
+      for (const it of j.items) for (const r of Z.parseHook(k, it.body)) {
+        if (r.kind === 'incele') { hookRow(k, it, { status: 'incele', reason: r.reason, ref: r.ref }); out.review++; continue; }
+        if (r.kind === 'durum') {
+          const o = db.find('orders', (x) => x.ch === k && x.pkgNo === r.packageId);
+          if (o && Z.HOOK_QUIET.includes(r.status)) continue;
+          hookRow(k, it, { status: 'incele', reason: o ? `Durum bildirimi: ${r.status}. Siparişi kontrol edin.` : `Durum bildirimi: ${r.status}. Bu paket panelde yok.`, ref: r.orderNo, ...(o ? { oid: o.id } : {}) }); out.review++; continue;
+        }
+        const x = r.order; const same = db.find('orders', (o) => o.ch === k && o.chNo === x.orderNo && o.pkgNo !== x.packageId);
+        // API ile çekilen paketin numarası webhook'takiyle aynı mı, resmî dokümanda doğrulanamadı: çift sipariş ve çift stok düşümü önlenir
+        if (same) { hookRow(k, it, { status: 'incele', reason: 'Bu sipariş numarasıyla başka paket var. Aynı sipariş olabilir, elle kontrol edin.', ref: x.orderNo, oid: same.id }); out.review++; continue; }
+        const o = addOrder(k, { ...x, hook: true }); if (!o) continue;
+        hookRow(k, it, { status: 'siparis', reason: 'Siparişe çevrildi', ref: x.orderNo, oid: o.id }); out.orders++; o.items.forEach((i) => i.pid && touched.add(i.pid));
+      }
+      db.save(); // sunucu kutusu boşaldı: kayıt hemen yazılır
+    }
+    if (touched.size && S().autoStock !== false) await pushStock([...touched], true);
+    return out;
+  }
   // Canlı kanallardan API ile çeker; demo (simülasyon) kanalda sipariş uydurulmaz (CLAUDE.md §1)
   async function pullOrders() {
-    let count = 0, sim = 0; const errs = []; const touched = new Set();
+    const hk = await pullInbox();
+    let count = hk.orders, sim = 0; const errs = []; const touched = new Set();
     for (const k of connected()) {
       if (isLive(k)) {
         const r = await live(k, 'siparis-cek', { since: addDays(new Date(), -3).toISOString() });
@@ -102,9 +134,9 @@
     db.save();
     if (touched.size && S().autoStock !== false) await pushStock([...touched], true);
     const st = await pullStatus(); if (st.err) errs.push(st.err);
-    return { count, sim, err: errs.join(' · '), cancelled: st.cancelled, delivered: st.delivered, late: st.late };
+    return { count, sim, err: errs.join(' · '), cancelled: st.cancelled, delivered: st.delivered, late: st.late, review: hk.review };
   }
-  const pullMsg = (r) => r.err || [`${r.count} yeni sipariş alındı`, r.cancelled ? `${r.cancelled} sipariş pazaryerinde iptal edildi` : '', r.delivered ? `${r.delivered} sipariş teslim edildi` : '', (r.late || []).length ? `Paketlenmiş iptal: ${r.late.join(', ')} — kargoya vermeyin` : '', r.sim ? `${r.sim} kanal demo (TEST): sipariş alınmadı` : ''].filter(Boolean).join(' · ');
+  const pullMsg = (r) => r.err || [`${r.count} yeni sipariş alındı`, r.cancelled ? `${r.cancelled} sipariş pazaryerinde iptal edildi` : '', r.delivered ? `${r.delivered} sipariş teslim edildi` : '', (r.late || []).length ? `Paketlenmiş iptal: ${r.late.join(', ')} — kargoya vermeyin` : '', r.review ? `${r.review} bildirim elle incelenecek (Gelen Kutusu)` : '', r.sim ? `${r.sim} kanal demo (TEST): sipariş alınmadı` : ''].filter(Boolean).join(' · ');
   // Tek stoktan tüm kanallara: tampon düşülerek gönderilir
   async function pushStock(pids, silent) {
     const list = (pids ? pids.map(prod).filter(Boolean) : db.all('products'));
@@ -237,9 +269,9 @@
   function ordersPage(el, p, app) {
     let f = p || 'acik', chf = '', q = ''; const sel = new Set();
     const F = [['acik', 'Kargolanacak'], ['yeni', 'Yeni'], ['toplaniyor', 'Toplanıyor'], ['paketlendi', 'Paketlendi'], ['kargoda', 'Kargoda'], ['teslim', 'Teslim'], ['iade', 'İade'], ['iptal', 'İptal'], ['all', 'Tümü']];
-    el.innerHTML = pageHead('Siparişler', 'Tüm pazaryerlerinin siparişleri tek listede', `<button class="btn" id="pull">${icon('refresh')} Siparişleri çek</button><button class="btn" id="ex">${icon('download')}</button>`) + `
+    el.innerHTML = pageHead('Siparişler', 'Tüm pazaryerlerinin siparişleri tek listede', `${canOps() ? `<button class="btn" id="man">${icon('plus')} Elle sipariş</button>` : ''}<button class="btn" id="pull">${icon('refresh')} Siparişleri çek</button><button class="btn" id="ex" title="Listeyi indir" aria-label="Listeyi indir">${icon('download')}</button>`) + `
       <div class="card"><div class="card-h" style="flex-wrap:wrap;gap:8px">${NS.searchBox('q', 'Sipariş no, alıcı, ürün, barkod...')}<div class="seg">${F.map(([v, l]) => `<button data-f="${v}" class="${v === f ? 'active' : ''}">${l} <span class="faint" data-n="${v}"></span></button>`).join('')}</div></div>
-      <div class="card-h" style="gap:6px;flex-wrap:wrap"><label class="row small" style="gap:6px;margin-right:6px"><input type="checkbox" id="sa"> Tümünü seç</label><button class="btn sm ${!chf ? 'primary' : ''}" data-ch="">Tüm kanallar</button>${connected().map((k) => `<button class="btn sm" data-ch="${k}" style="${chf === k ? `background:${CH[k].color};color:#fff;border-color:${CH[k].color}` : ''}">${esc(CH[k].name)}</button>`).join('')}</div>
+      <div class="card-h" style="gap:6px;flex-wrap:wrap"><label class="row small" style="gap:6px;margin-right:6px"><input type="checkbox" id="sa"> Tümünü seç</label><button class="btn sm ${!chf ? 'primary' : ''}" data-ch="">Tüm kanallar</button>${[...new Set([...connected(), ...db.all('orders').map((o) => o.ch)])].filter((k) => CH[k]).map((k) => `<button class="btn sm" data-ch="${k}" style="${chf === k ? `background:${CH[k].color};color:#fff;border-color:${CH[k].color}` : ''}">${esc(CH[k].name)}</button>`).join('')}</div>
       <div class="card-h hide" id="bulk" style="background:var(--app-accent-soft)"><b id="bn"></b><span class="grow"></span><button class="btn sm" data-b="pick">${icon('list')} Toplama listesi</button><button class="btn sm" data-b="label">${icon('print')} Etiket</button><button class="btn sm" data-b="inv">${icon('file')} Fatura kes</button><button class="btn sm primary" data-b="ship">${icon('truck')} Kargoya verildi</button></div><div id="t"></div></div>`;
     const match = (o) => (f === 'all' || (f === 'acik' ? OPEN.includes(o.status) : o.status === f)) && (!chf || o.ch === chf) && NS.match(q, o.chNo, o.pkgNo, o.tracking, o.customer.name, ...o.items.map((i) => i.name + ' ' + i.barcode));
     const rows = () => db.all('orders', match).sort((a, b) => (f === 'acik' ? a.shipBy.localeCompare(b.shipBy) : b.at.localeCompare(a.at)));
@@ -279,7 +311,66 @@
       sel.clear(); draw();
     });
     $('#pull', el).onclick = async () => { const r = await pullOrders(); toast(pullMsg(r), r.err ? 'err' : r.sim && !r.count ? 'warn' : 'ok'); draw(); };
+    if ($('#man', el)) $('#man', el).onclick = () => manualOrder(app);
     $('#ex', el).onclick = () => NS.csv('siparisler', rows(), [{ label: 'Kanal', value: (o) => CH[o.ch].name }, { key: 'chNo', label: 'Sipariş no' }, { label: 'Tarih', value: (o) => NS.dt(o.at) }, { label: 'Alıcı', value: (o) => o.customer.name }, { label: 'Şehir', value: (o) => o.customer.city }, { label: 'Ürünler', value: (o) => o.items.map((i) => `${i.qty}x ${i.sku}`).join(' ') }, { key: 'total', label: 'Tutar' }, ...(isAdm() ? [{ label: 'Net kâr', value: (o) => profit(o).kar }] : []), { label: 'Durum', value: (o) => Z.ST[o.status][0] }, { key: 'tracking', label: 'Kargo takip' }, { key: 'invoice', label: 'Fatura' }]);
+    draw();
+  }
+
+  // ---------- Elle sipariş ----------
+  // Canlı bağlı olmayan kanalın siparişi: pazaryerine bir şey gönderilmez, stok bu panelde düşer ve canlı kanallara yeni stok gider
+  function manualOrder(app, preset = {}) {
+    const chs = Object.keys(CH).filter((k) => !isLive(k));
+    if (!chs.length) return toast('Tüm kanallar canlı bağlı; siparişler otomatik gelir', 'warn');
+    const lines = []; const findP = (q) => { const c = String(q || '').trim(); if (!c) return null; const hit = byCode(c) || db.find('products', (p) => p.name === c); if (hit) return hit; const m = db.all('products', (p) => NS.match(c, p.name)); return m.length === 1 ? m[0] : null; };
+    modal({
+      title: 'Elle sipariş', size: 'wide',
+      body: `<p class="small muted mb">Canlı bağlı olmayan kanalların siparişini buraya girin. Pazaryerine bilgi gitmez: kargo ve durum güncellemesini pazaryeri panelinden de yapın.</p><div id="mf">${NS.fieldsHtml([{ name: 'ch', label: 'Kanal', type: 'select', required: true, options: chs.map((k) => ({ value: k, label: CH[k].name })) }, { name: 'no', label: 'Pazaryeri sipariş no', required: true }, { name: 'date', label: 'Sipariş tarihi', type: 'date', required: true }, { name: 'name', label: 'Alıcı adı', required: true }, { name: 'phone', label: 'Telefon', type: 'tel' }, { name: 'city', label: 'İl' }, { name: 'district', label: 'İlçe' }, { name: 'address', label: 'Adres', full: true }, { name: 'cargo', label: 'Kargo firması', type: 'select', options: Z.CARRIERS }, { name: 'tracking', label: 'Takip no' }], { date: today(), cargo: S().carrier, ...preset })}</div>
+        <h3 class="mt mb">Ürünler</h3><div class="row nw"><input class="input grow" id="mq" list="mdl" placeholder="Barkod, stok kodu veya ürün adı" autocomplete="off" aria-label="Ürün ara"><datalist id="mdl">${db.all('products').slice(0, 3000).map((p) => `<option value="${esc(p.sku)}">${esc(p.name)}</option>`).join('')}</datalist><button type="button" class="btn" id="madd">${icon('plus')} Ekle</button></div><div id="ml" class="mt"></div>`,
+      onOpen: (b) => {
+        const draw = () => { $('#ml', b).innerHTML = lines.length ? `<div style="overflow:auto"><table class="tbl"><thead><tr><th>Ürün</th><th>Stok</th><th>Adet</th><th>Fiyat (₺)</th><th></th></tr></thead><tbody>${lines.map((l, i) => `<tr><td><b>${esc(l.p.name)}</b><div class="small faint mono">${esc(l.p.sku)}</div></td><td>${l.p.stock < l.qty ? badge(l.p.stock, 'err') : l.p.stock}</td><td><input class="input" style="width:76px" type="number" min="1" step="1" data-q="${i}" value="${l.qty}" aria-label="Adet"></td><td><input class="input" style="width:104px" type="number" min="0" step="0.01" data-pr="${i}" value="${l.price}" aria-label="Fiyat"></td><td><button type="button" class="btn sm ghost icon" data-rm="${i}" title="Satırı sil" aria-label="Satırı sil">${icon('x')}</button></td></tr>`).join('')}</tbody></table></div><div class="row between mt"><span class="muted">Toplam</span><b>${money(sum(lines, (l) => l.qty * l.price))}</b></div>` : '<div class="faint small">Henüz ürün eklenmedi</div>'; };
+        const add = () => { const inp = $('#mq', b); const p = findP(inp.value); if (!p) return toast('Ürün bulunamadı. Barkod veya stok kodunu kontrol edin.', 'err'); const ex = lines.find((l) => l.p.id === p.id); const k = $('[name=ch]', b).value; if (ex) ex.qty++; else lines.push({ p, qty: 1, price: Number(p.chPrice && p.chPrice[k]) || p.price }); inp.value = ''; inp.focus(); draw(); };
+        $('#madd', b).onclick = add; $('#mq', b).onkeydown = (e) => { if (e.key === 'Enter') { e.preventDefault(); add(); } };
+        on(b, 'input', '[data-q]', (e, x) => { lines[Number(x.dataset.q)].qty = Number(x.value); });
+        on(b, 'change', '[data-q]', () => draw());
+        on(b, 'input', '[data-pr]', (e, x) => { lines[Number(x.dataset.pr)].price = Number(x.value); });
+        on(b, 'change', '[data-pr]', () => draw());
+        on(b, 'click', '[data-rm]', (e, x) => { lines.splice(Number(x.dataset.rm), 1); draw(); });
+        draw();
+      },
+      actions: [{ label: 'Vazgeç' }, { label: 'Siparişi kaydet', cls: 'primary', icon: 'check', onClick: async (c, b) => {
+        if (!NS.validate($('#mf', b))) return; const v = NS.readForm($('#mf', b));
+        if (!lines.length) return toast('En az bir ürün ekleyin', 'err');
+        if (lines.some((l) => !Number.isInteger(l.qty) || l.qty < 1)) return toast('Adet en az 1 olan tam sayı olmalı', 'err');
+        if (lines.some((l) => !(l.price >= 0))) return toast('Fiyat 0 veya daha büyük olmalı', 'err');
+        if (db.find('orders', (o) => o.ch === v.ch && o.chNo === v.no)) return toast('Bu sipariş numarası bu kanalda zaten kayıtlı', 'err');
+        const short = lines.filter((l) => l.p.stock < l.qty); if (short.length && !(await confirm(`${short.map((l) => `${l.p.name}: stokta ${Math.max(0, l.p.stock)}, istenen ${l.qty}`).join(' · ')}. Eksik adet stoktan düşülmez, sipariş yine kaydedilsin mi?`, { ok: 'Kaydet', danger: false }))) return;
+        const at = v.date === today() ? new Date() : new Date(`${v.date}T12:00`);
+        const o = addOrder(v.ch, { manual: true, orderNo: v.no, at: at.toISOString(), customer: { name: v.name, phone: v.phone, city: v.city, district: v.district, address: v.address }, items: lines.map((l) => ({ pid: l.p.id, barcode: l.p.barcode, sku: l.p.sku, name: l.p.name, qty: l.qty, price: l.price })), total: Math.round(sum(lines, (l) => l.qty * l.price) * 100) / 100, cargo: v.cargo, tracking: v.tracking });
+        if (!o) return toast('Sipariş kaydedilemedi', 'err');
+        const hk = preset.hook && db.get('hooks', preset.hook); if (hk) { Object.assign(hk, { status: 'kapali', reason: 'Elle siparişe çevrildi', oid: o.id, closedBy: me() }); delete hk.raw; }
+        log(v.ch, 'Elle sipariş', `${v.no} · ${lines.length} ürün`); db.log('Elle sipariş', `${CH[v.ch].name} ${v.no}`); db.save(); c();
+        let msg = `${v.no} kaydedildi, stok düştü`; if (S().autoStock !== false) { const r = await pushStock(o.items.map((i) => i.pid), true); if (r.ok || r.errs.length) msg += ` · ${r.msg}`; }
+        toast(msg, 'ok'); app.refresh();
+      } }],
+    });
+  }
+
+  // ---------- Gelen kutusu (webhook) ----------
+  function hooksPage(el, p, app) {
+    let f = 'incele';
+    el.innerHTML = pageHead('Gelen Kutusu', 'Pazaryerlerinin sunucuya gönderdiği bildirimler', `<button class="btn primary" id="hp">${icon('refresh')} Kutuyu oku</button>`) + `
+      <div class="card pad mb small">${icon('info')} Yalnızca resmî biçimi doğrulanan bildirimler (şu an Trendyol'un yeni sipariş bildirimi) siparişe çevrilir. Diğerleri tahminle okunmaz: <b>Elle incele</b> listesine düşer, içeriğine bakıp gerekirse elle sipariş girersiniz.</div>
+      <div id="wh" class="mb"></div><div class="card"><div class="card-h"><div class="seg">${[['incele', 'Elle incele'], ['siparis', 'Siparişe çevrilen'], ['kapali', 'Kapatılan']].map(([v, l]) => `<button data-hf="${v}" class="${v === f ? 'active' : ''}">${l}</button>`).join('')}</div></div><div id="t"></div></div>`;
+    const draw = () => {
+      const rows = db.all('hooks', (h) => h.status === f).sort((a, b) => b.at.localeCompare(a.at));
+      $('#t', el).innerHTML = table({ rows: rows.slice(0, 300), empty: f === 'incele' ? 'İncelenecek bildirim yok' : 'Kayıt yok', emptyIcon: 'check', columns: [{ label: 'Kanal', render: (h) => chB(h.ch) }, { label: 'Zaman', render: (h) => NS.dt(h.at) }, { label: 'Referans', render: (h) => `<span class="mono small">${esc(h.ref || '-')}</span>` }, { label: 'Durum', render: (h) => `<span class="small">${esc(h.reason || '')}</span>` }], actions: [{ icon: 'eye', act: 'hv', title: 'İncele' }] });
+    };
+    const view = (h) => modal({ title: `${CH[h.ch].name} bildirimi`, size: 'wide', body: `<p class="small muted mb">${esc(h.reason || '')}${h.cut ? ' · Gövde uzun olduğu için ilk bölümü saklandı.' : ''}</p>${h.raw ? `<pre class="small" style="max-height:50vh;overflow:auto;background:var(--surface-2);padding:10px;border-radius:8px;white-space:pre-wrap;word-break:break-all">${esc(h.raw)}</pre>` : '<div class="faint small">Ham içerik saklanmadı.</div>'}`, actions: [{ label: 'Kapat' }, ...(h.oid && db.get('orders', h.oid) ? [{ label: 'Siparişi aç', icon: 'eye', onClick: (c) => { c(); orderModal(app, db.get('orders', h.oid)); } }] : []), ...(h.status === 'incele' && canOps() ? [{ label: 'İncelendi', icon: 'check', onClick: (c) => { h.status = 'kapali'; h.closedBy = me(); delete h.raw; db.save(); c(); draw(); } }, { label: 'Elle sipariş gir', cls: 'primary', icon: 'plus', onClick: (c) => { c(); manualOrder(app, { ch: h.ch, no: h.ref || '', hook: h.id }); } }] : [])] });
+    on(el, 'click', '[data-hf]', (e, b) => { f = b.dataset.hf; $$('[data-hf]', el).forEach((x) => x.classList.toggle('active', x === b)); draw(); });
+    on(el, 'click', '[data-act=hv]', (e, b) => view(db.get('hooks', b.dataset.id)));
+    $('#hp', el).onclick = async (e) => { e.target.disabled = true; const r = await pullInbox(); e.target.disabled = false; toast(r.off ? 'Sunucuya ulaşılamadı. Gelen kutusu yalnızca sunucu üzerinden okunur.' : r.orders || r.review ? `${r.orders} sipariş eklendi · ${r.review} bildirim elle incelenecek` : 'Yeni bildirim yok', r.off ? 'err' : ''); app.refresh(); };
+    // Webhook adresi belirteç içerir: yalnız yöneticiye gösterilir
+    if (isAdm()) fetch('/api/kanal').then((r) => (r.ok ? r.json() : null)).then((j) => { const w = $('#wh', el); if (w && j && j.webhook) w.innerHTML = `<div class="card pad small"><b>Bildirim adresi:</b> <code style="word-break:break-all">${esc(location.origin + j.webhook)}</code><div class="faint mt">&lt;kanal&gt; yerine kanal adını yazın (ör. trendyol). Bu adresi kimseyle paylaşmayın.</div></div>`; }).catch(() => {});
     draw();
   }
 
@@ -536,12 +627,14 @@
   const ROLES = { admin: 'Yönetici', depo: 'Depo / paketleme', destek: 'Müşteri hizmetleri' };
   const app = NS.shell({
     id: 'pazaryeri', integrations: ['pazaryeri', 'kargofirma', 'efatura', 'label', 'barcode', 'printer', 'sms', 'webhook', 'backup'], name: 'Pazaryeri Satıcı Paneli', tagline: 'Tüm pazaryerleri tek ekranda', icon: 'store', accent: '#f97316', db, home: 'ozet', auth: { roles: ROLES },
-    nav: [{ sec: 'Operasyon' }, { id: 'ozet', label: 'Özet', icon: 'home', roles: ['depo', 'destek'] }, { id: 'siparisler', badge: true, label: 'Siparişler', icon: 'cart', roles: ['depo', 'destek'] }, { id: 'toplama', label: 'Toplama Listesi', icon: 'list', roles: ['depo'] }, { id: 'paketleme', label: 'Paketleme', icon: 'barcode', roles: ['depo'] }, { id: 'iadeler', badge: true, label: 'İadeler', icon: 'refresh', roles: ['depo', 'destek'] }, { id: 'sorular', badge: true, label: 'Müşteri Soruları', icon: 'message', roles: ['destek'] }, { sec: 'Mağaza' }, { id: 'urunler', label: 'Ürünler & Stok', icon: 'box', roles: ['depo'] }, { id: 'kanallar', label: 'Pazaryerleri', icon: 'store', roles: ['admin'] }, { sec: 'Finans' }, { id: 'fiyat', label: 'Fiyat Kuralı', icon: 'percent', roles: ['admin'] }, { id: 'hakedis', label: 'Hakediş & Kâr', icon: 'wallet', roles: ['admin'] }, { id: 'raporlar', label: 'Raporlar', icon: 'chart', roles: ['admin'] }, { id: 'ayarlar', label: 'Ayarlar', icon: 'settings', roles: ['admin'] }],
-    badges: () => ({ siparisler: db.all('orders', (o) => o.status === 'yeni' || (OPEN.includes(o.status) && o.items.some((i) => !i.pid))).length, sorular: db.all('questions', (q) => !q.answer).length, iadeler: db.all('returns', (r) => ['talep', 'yolda', 'geldi'].includes(r.status)).length }),
-    routes: { ozet: dashboard, siparisler: ordersPage, toplama: pickPage, paketleme: packPage, urunler: productsPage, iadeler: returnsPage, sorular: questionsPage, fiyat: pricePage, hakedis: payoutPage, kanallar: channelsPage, raporlar: reportsPage,
+    nav: [{ sec: 'Operasyon' }, { id: 'ozet', label: 'Özet', icon: 'home', roles: ['depo', 'destek'] }, { id: 'siparisler', badge: true, label: 'Siparişler', icon: 'cart', roles: ['depo', 'destek'] }, { id: 'toplama', label: 'Toplama Listesi', icon: 'list', roles: ['depo'] }, { id: 'paketleme', label: 'Paketleme', icon: 'barcode', roles: ['depo'] }, { id: 'gelen', badge: true, label: 'Gelen Kutusu', icon: 'message', roles: ['depo', 'destek'] }, { id: 'iadeler', badge: true, label: 'İadeler', icon: 'refresh', roles: ['depo', 'destek'] }, { id: 'sorular', badge: true, label: 'Müşteri Soruları', icon: 'message', roles: ['destek'] }, { sec: 'Mağaza' }, { id: 'urunler', label: 'Ürünler & Stok', icon: 'box', roles: ['depo'] }, { id: 'kanallar', label: 'Pazaryerleri', icon: 'store', roles: ['admin'] }, { sec: 'Finans' }, { id: 'fiyat', label: 'Fiyat Kuralı', icon: 'percent', roles: ['admin'] }, { id: 'hakedis', label: 'Hakediş & Kâr', icon: 'wallet', roles: ['admin'] }, { id: 'raporlar', label: 'Raporlar', icon: 'chart', roles: ['admin'] }, { id: 'ayarlar', label: 'Ayarlar', icon: 'settings', roles: ['admin'] }],
+    badges: () => ({ siparisler: db.all('orders', (o) => o.status === 'yeni' || (OPEN.includes(o.status) && o.items.some((i) => !i.pid))).length, sorular: db.all('questions', (q) => !q.answer).length, gelen: db.all('hooks', (h) => h.status === 'incele').length, iadeler: db.all('returns', (r) => ['talep', 'yolda', 'geldi'].includes(r.status)).length }),
+    routes: { ozet: dashboard, siparisler: ordersPage, gelen: hooksPage, toplama: pickPage, paketleme: packPage, urunler: productsPage, iadeler: returnsPage, sorular: questionsPage, fiyat: pricePage, hakedis: payoutPage, kanallar: channelsPage, raporlar: reportsPage,
       ayarlar: (el, p, a) => NS.settingsPage(el, a, { roles: ROLES, fields: [{ type: 'section', label: 'Operasyon' }, { name: 'cutoff', label: 'Günlük kargo kesim saati', type: 'time' }, { name: 'carrier', label: 'Varsayılan kargo firması', type: 'select', options: Z.CARRIERS }, { name: 'lowStock', label: 'Kritik stok sınırı', type: 'number' }, { name: 'minMargin', label: 'Hedef marj (satış fiyatının %)', type: 'number', step: '0.1', hint: 'Fiyat kuralı ekranı bu marjı korur' }, { name: 'avgShip', label: 'Ortalama sipariş kargo gideri (₺)', type: 'number', step: '0.01' }, { name: 'autoInvoice', label: 'Paketlemede e-Arşiv faturayı otomatik kes', type: 'checkbox' }, { name: 'autoStock', label: 'Sipariş gelince stoğu tüm kanallara otomatik gönder', type: 'checkbox' }, { name: 'autoFinish', label: 'Tüm ürünler okutulunca paketi otomatik kapat', type: 'checkbox' }, { name: 'templates', label: 'Hazır soru yanıtları (her satır bir yanıt)', type: 'textarea', full: true }] }) },
   });
   // Arka planda: canlı kanallardan 5 dakikada bir sipariş çek
+  // Webhook kutusu API bağlantısından bağımsızdır: sipariş veya elle inceleme gelirse bildirilir
+  setInterval(() => { if (connected().some(isLive)) return; pullInbox().then((r) => { if (r.orders) { toast(`${r.orders} yeni pazaryeri siparişi`, 'ok'); NS.beep(); } if (r.review) toast(`${r.review} bildirim elle incelenecek`, 'warn'); if (r.orders || r.review) app.refresh(); }); }, 5 * 60e3);
   setInterval(() => { if (connected().some(isLive)) pullOrders().then((r) => { if (r.count) { toast(`${r.count} yeni pazaryeri siparişi`, 'ok'); NS.beep(); } if (r.err) toast(r.err, 'err'); }); }, 5 * 60e3);
   if (NS.currentUser && NS.currentUser.role === 'depo' && !location.hash) app.go('paketleme');
 })();

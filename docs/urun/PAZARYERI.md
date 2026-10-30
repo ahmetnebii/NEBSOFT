@@ -10,6 +10,17 @@
 - **Fiyat tabanı:** kanal ayarındaki komisyonla hesaplanır; kampanya ve kategori komisyonu hesaba girmez. Tahmindir.
 - **İade faturası:** gerçek satış faturası olan siparişte çıkar; sağlayıcıyla denenmedi, düğme tarayıcıda görülmedi.
 
+## Temel eksikler (dal `urun/temel-eksikler`, 30.10.2026)
+- **Elle sipariş:** Siparişler > Elle sipariş. Yalnız canlı bağlı olmayan kanallar seçilebilir; stok bu panelde düşer, canlı kanallara yeni stok gider, pazaryerine başka bilgi gitmez. Kayıtta "Elle girildi" rozeti.
+- **Gelen Kutusu (`#/gelen`):** `/api/inbox` okununca sunucudaki kayıt silinir; bu yüzden her yük önce program verisine (`hooks`) yazılır. Biçimi doğrulanmayan yük ham haliyle "Elle incele" listesinde kalır, tahminle ayrıştırılmaz (`core/inbox.js` normalize kullanılmaz).
+
+| İddia | Etiket | Kaynak |
+|---|---|---|
+| Trendyol webhook gövdesi `{ content: [paket] }`, `shipmentPackageId`, `orderNumber`, `packageTotalPrice`, satırda `lineUnitPrice`, `createdBy` değerleri | DOĞRULANDI (doküman), canlı denenmedi | developers.trendyol.com/docs/webhook-model.md (sayfa 07.10.2026, okundu 30.10.2026), developers.trendyol.com/v3.0/docs/1-webhook-model |
+| Durum yazımı: liste büyük harfli (CREATED), örnek "Delivered" | Doküman tutarsız: karşılaştırma büyük harfe çevrilerek yapılır, iki alan çelişirse elle incelenir | aynı sayfa |
+| Webhook `shipmentPackageId` = API `id` | **DOĞRULANAMADI** (developers.trendyol.com/reference/getshipmentpackages.md yalnız `id` veriyor, eşitlik yazmıyor) → aynı sipariş numarasıyla başka paket varsa siparişe çevrilmez, elle incelenir | aynı sayfalar |
+| Hepsiburada, n11, Amazon, Pazarama, Çiçeksepeti webhook biçimi | **DOĞRULANAMADI** → yalnız "Elle incele" | — |
+
 ## 2-3. dalga — yapılanlar (30.10.2026)
 Kanıt: **Tarayıcı** = başsız Chrome'da sayfa gerçekten çalıştırıldı (`?demo=1`); **Test** = otomatik test; **Kod incelendi** = çalıştırılmadı.
 

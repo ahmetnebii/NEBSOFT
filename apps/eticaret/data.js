@@ -68,8 +68,21 @@ window.SHOP = {
     p23: ['1608256246200-53e635b5b65f', '1520639888713-7851133b1ed0'],
   },
   SCENES: { hero1: '1441986300917-64674bd600d8', hero2: '1490481651871-ab68de25d43d', hero3: '1483985988355-763728e1935b', edit: '1445205170230-053b83016050', elbise: '1595777457583-95e059d581b8', bluz: '1581044777550-4cfa60707c03', pantolon: '1509631179647-0177331693ae', ceket: '1539533018447-63fcce2678e3', aksesuar: '1584917865442-de89df76afd3', ayakkabi: '1543163521-1bf539c55dd2', gallery: ['1469334031218-e382a71b716b', '1475180098004-ca77a66827be', '1566174053879-31528523f8ae', '1617922001439-4a2e6562f328', '1554412933-514a83d2f3c8', '1485968579580-b6d095142e6e'] },
-  imgUrl: (id, w = 600, h = 0) => `https://images.unsplash.com/photo-${id}?w=${w}${h ? '&h=' + h : ''}&q=75&auto=format&fit=crop`,
-  photos(p) { return (this.PHOTOS[p.id] || []).length ? this.PHOTOS[p.id] : [this.SCENES[p.cat] || this.SCENES.hero2]; },
+  // Yüklenen fotoğraf kayda gömülü data adresidir, olduğu gibi kullanılır; örnek ürünlerde demo görsel kimliği adrese çevrilir
+  imgUrl: (id, w = 600, h = 0) => (/^data:image\//.test(String(id)) ? id : `https://images.unsplash.com/photo-${id}?w=${w}${h ? '&h=' + h : ''}&q=75&auto=format&fit=crop`),
+  // Sıra: işletmenin yüklediği fotoğraflar, demo ürünün görseli, ürün rengiyle yer tutucu (ürüne ait olmayan görsel gösterilmez)
+  photos(p) { const own = (p.photos || []).filter((u) => /^data:image\/(jpeg|png|webp);base64,/.test(String(u))); if (own.length) return own; return (this.PHOTOS[p.id] || []).length ? this.PHOTOS[p.id] : [this.fallback(p)]; },
+  // Fotoğraf kayda gömülür ve belge bütün olarak gider (bulutta 20 MB sınırı, yerelde tarayıcı deposu): ürün başına ve toplam sınır
+  PHOTO: { perProduct: 4, perPhoto: 350e3, total: 10e6, local: 3e6, doc: 18e6 },
+  // Eklenebilir mi: boş dönerse sığar, değilse kullanıcıya gösterilecek ileti. products: tüm ürünler, p: düzenlenen ürün (taslak olabilir)
+  photoCheck(products, p, chars, { docChars = 0, local = false } = {}) {
+    const L = this.PHOTO; const size = (x) => (x.photos || []).reduce((t, u) => t + String(u).length, 0);
+    if ((p.photos || []).length >= L.perProduct) return `Bir ürüne en fazla ${L.perProduct} fotoğraf eklenebilir. Yeni fotoğraf için önce birini silin.`;
+    const max = local ? L.local : L.total; const used = (products || []).filter((x) => x.id !== p.id).reduce((t, x) => t + size(x), 0) + size(p);
+    if (used + chars > max) return `Mağazanın toplam fotoğraf alanı doldu (${Math.round(max / 1e6)} MB). Yeni fotoğraf için başka ürünlerden fotoğraf silin.`;
+    if (docChars + chars > L.doc) return 'Mağaza kaydı büyüdüğü için yeni fotoğraf eklenemiyor. Önce kullanılmayan ürünlerin fotoğraflarını silin.';
+    return '';
+  },
   // Fotoğraf açılmazsa ürün rengiyle yer tutucu
   fallback(p) { const c = this.COLORS[(p.colors || [])[0]] || '#d6c3a5'; return `data:image/svg+xml,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 400"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${c}" stop-opacity=".25"/><stop offset="1" stop-color="${c}" stop-opacity=".7"/></linearGradient></defs><rect width="300" height="400" fill="url(#g)"/><text x="150" y="215" font-size="90" text-anchor="middle">${this.CAT_EMOJI[p.cat] || '🛍️'}</text></svg>`)}`; },
   // Ürün yorumları (yoksa örnek yorumlar üretilir)

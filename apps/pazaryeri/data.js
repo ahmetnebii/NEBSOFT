@@ -14,6 +14,36 @@ window.PZR = {
   // Canlı mod yalnızca resmî dokümanla doğrulanan adaptörlerde (docs/urun/ETICARET.md §6, 29.10.2026)
   LIVE: ['trendyol', 'n11'],
   UNVERIFIED: { hepsiburada: 'Hepsiburada API dokümanı doğrulanamadı (developers.hepsiburada.com erişilemedi); canlı mod kapalı.' },
+  // Webhook yükü yalnızca resmî biçimi doğrulanan kanalda siparişe çevrilir; diğerleri "elle incele" kalır, alan adı tahmin edilmez.
+  // Trendyol: developers.trendyol.com/docs/webhook-model.md (sayfa 07.10.2026, okundu 30.10.2026): gövde { content: [paket] }, paket no shipmentPackageId,
+  // tutar packageTotalPrice, satır lineUnitPrice. Durum dokümanda büyük harfli liste, örnekte "Delivered": büyük harfe çevrilip karşılaştırılır.
+  // Dönüş: [{ kind: 'siparis', order } | { kind: 'durum', status, orderNo, packageId } | { kind: 'incele', reason, ref }]
+  HOOK: {
+    trendyol(body) {
+      const list = body && Array.isArray(body.content) ? body.content : null;
+      if (!list || !list.length) return [{ kind: 'incele', reason: 'Trendyol biçimine uymuyor: paket listesi (content) yok', ref: '' }];
+      return list.map((p) => {
+        const ref = String((p && (p.orderNumber || p.shipmentPackageId)) || ''); const no = (why) => ({ kind: 'incele', reason: why, ref });
+        if (!p || typeof p !== 'object') return no('Paket okunamadı');
+        const up = (v) => String(v || '').toUpperCase(); const st = up(p.status), st2 = up(p.shipmentPackageStatus);
+        if (!st && !st2) return no('Paket durumu yok'); if (st && st2 && st !== st2) return no(`Paket durumu çelişkili: ${p.status} / ${p.shipmentPackageStatus}`);
+        if (!p.orderNumber || !p.shipmentPackageId) return no('Sipariş veya paket numarası yok');
+        if ((st || st2) !== 'CREATED') return { kind: 'durum', status: st || st2, orderNo: String(p.orderNumber), packageId: String(p.shipmentPackageId) };
+        // Bölünen, kısmi iptal veya aktarılan paket yeni sipariş sayılırsa stok iki kez düşer
+        if (p.createdBy !== 'order-creation') return no(`Paket kaynağı "${p.createdBy || 'belirtilmemiş'}": bölünmüş veya aktarılmış paket olabilir`);
+        if (p.currencyCode && p.currencyCode !== 'TRY') return no(`Para birimi ${p.currencyCode}`);
+        const num = (v) => typeof v === 'number' && Number.isFinite(v);
+        if (!num(p.packageTotalPrice) || !num(p.orderDate)) return no('Tutar veya sipariş tarihi yok');
+        const L = Array.isArray(p.lines) ? p.lines : [];
+        if (!L.length || L.some((l) => !l || !(l.barcode || l.stockCode) || !Number.isInteger(l.quantity) || l.quantity < 1 || !num(l.lineUnitPrice))) return no('Satır bilgisi eksik (barkod, adet veya birim fiyat)');
+        const a = p.shipmentAddress && typeof p.shipmentAddress === 'object' ? p.shipmentAddress : {};
+        return { kind: 'siparis', order: { orderNo: String(p.orderNumber), packageId: String(p.shipmentPackageId), at: new Date(p.orderDate).toISOString(), customer: { name: [p.customerFirstName, p.customerLastName].filter(Boolean).join(' ') || a.fullName || '', phone: a.phone || '', address: a.fullAddress || '', city: a.city || '', district: a.district || '' }, items: L.map((l) => ({ lineId: l.lineId, barcode: l.barcode, sku: l.stockCode || l.barcode, name: l.productName, qty: l.quantity, price: l.lineUnitPrice })), total: p.packageTotalPrice, cargo: p.cargoProviderName || '', tracking: p.cargoTrackingNumber ? String(p.cargoTrackingNumber) : '' } };
+      });
+    },
+  },
+  parseHook(ch, body) { const f = this.HOOK[ch]; return f ? f(body) : [{ kind: 'incele', reason: 'Bu kanalın bildirim biçimi resmî kaynaktan doğrulanmadı', ref: '' }]; },
+  // Mevcut siparişi etkilemeyen durum bildirimleri (panelden veya API'den zaten izlenir); iptal, iade ve tedarik sorunu elle incelenir
+  HOOK_QUIET: ['PICKING', 'INVOICED', 'SHIPPED', 'DELIVERED', 'AT_COLLECTION_POINT', 'VERIFIED'],
   ST: { yeni: ['Yeni', 'info'], toplaniyor: ['Toplanıyor', 'warn'], paketlendi: ['Paketlendi', 'acc'], kargoda: ['Kargoda', ''], teslim: ['Teslim edildi', 'ok'], iptal: ['İptal', 'err'], iade: ['İade', 'err'] },
   RST: { talep: ['İade talebi', 'warn'], yolda: ['Kargoda (geliyor)', 'info'], geldi: ['Depoya ulaştı', 'acc'], onay: ['Onaylandı', 'ok'], red: ['Reddedildi / itiraz', 'err'] },
   REASONS: ['Beden/ölçü uymadı', 'Beklediğim gibi değil', 'Kusurlu / hasarlı ürün', 'Yanlış ürün gönderildi', 'Vazgeçtim', 'Renk farklı'],

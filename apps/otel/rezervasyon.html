@@ -42,7 +42,6 @@
   .boards label:has(input:checked) { border-color: var(--accent); background: var(--accent-soft); }
   .boards label b { margin-left: auto; font-variant-numeric: tabular-nums; }
   .price { text-align: right; display: flex; flex-direction: column; justify-content: flex-end; gap: 4px; min-width: 190px; }
-  .price .ota { font-size: 12px; color: var(--text-3); text-decoration: line-through; }
   .price .tot { font-size: 28px; font-weight: 800; letter-spacing: -.01em; font-variant-numeric: tabular-nums; }
   .price small { color: var(--text-3); font-size: 12px; }
   .save { display: inline-block; font-size: 12px; font-weight: 700; color: #047857; background: #d1fae5; border-radius: 99px; padding: 3px 10px; align-self: flex-end; }
@@ -75,7 +74,7 @@
 (function () {
   const { esc, $, $$, on, icon, money, toast, iso, today, addDays, daysBetween, sum } = NS;
   const db = new NS.DB('otel');
-  const S = () => db.settings({ directDiscount: 10, otaMarkup: 18, hbPrice: 650, checkInTime: '14:00', checkOutTime: '12:00', freeCancelDays: 3 });
+  const S = () => db.settings({ directDiscount: 10, hbPrice: 650, checkInTime: '14:00', checkOutTime: '12:00', freeCancelDays: 3 });
   const IMG = (id, w = 900) => `https://images.unsplash.com/photo-${id}?w=${w}&q=75&auto=format&fit=crop`;
   const HERO = '1613490493576-7fde63acd811';
   const PHOTOS = ['1505691938895-1758d7feb511', '1540518614846-7eded433c457', '1600210492486-724fe5c67fb0', '1522708323590-d24dbb6b0267', '1600607687939-ce8a6c25118c'];
@@ -93,11 +92,11 @@
   try { Object.assign(st, JSON.parse(sessionStorage.getItem('nebsoft:otel:ara') || '{}')); } catch (e) { /* yok */ }
   if (st.ci < today()) { st.ci = iso(addDays(new Date(), 1)); st.co = iso(addDays(new Date(), 3)); }
   const keep = () => { try { sessionStorage.setItem('nebsoft:otel:ara', JSON.stringify(st)); } catch (e) { /* yok */ } };
-  const quote = (t, board) => { const ns = nightly(t, st.ci, st.co); const room = sum(ns); const disc = Math.round(room * S().directDiscount / 100); const hb = board === 'HB' ? S().hbPrice * (st.ad + st.ch * 0.5) * ns.length : 0; const ro = board === 'RO' ? Math.round((room - disc) * 0.1) : 0; const total = room - disc + hb - ro; return { ns, room, disc, hb, ro, total, ota: Math.round(room * (1 + S().otaMarkup / 100) + hb) }; };
+  const quote = (t, board) => { const ns = nightly(t, st.ci, st.co); const room = sum(ns); const disc = Math.round(room * S().directDiscount / 100); const hb = board === 'HB' ? S().hbPrice * (st.ad + st.ch * 0.5) * ns.length : 0; const ro = board === 'RO' ? Math.round((room - disc) * 0.1) : 0; const total = room - disc + hb - ro; return { ns, room, disc, hb, ro, total }; };
 
   $('#bar').innerHTML = `<a href="#/" class="row nw" style="gap:10px"><span style="width:36px;height:36px;border-radius:9px;background:rgba(255,255,255,.18);display:grid;place-items:center">${icon('bed')}</span><b style="font-size:16px">${esc(S().bizName || 'Otel')}</b></a><span class="grow"></span><a class="btn hide-sm" href="tel:${esc(String(S().bizPhone || '').replace(/\s/g, ''))}">${icon('phone')} ${esc(S().bizPhone || '')}</a><a class="btn" href="#/yonet">${icon('ticket')} Rezervasyonum</a>`;
 
-  const hero = (compact) => `<section class="hero" style="background-image:url('${IMG(HERO, 1800)}');${compact ? 'min-height:300px' : ''}"><div class="wrap">${compact ? '' : `<h1>${esc(S().bizName || 'Otelimiz')}</h1><p>${esc(S().bizAddress || '')} · Doğrudan rezervasyonda en iyi fiyat garantisi ve %${S().directDiscount} indirim.</p>`}
+  const hero = (compact) => `<section class="hero" style="background-image:url('${IMG(HERO, 1800)}');${compact ? 'min-height:300px' : ''}"><div class="wrap">${compact ? '' : `<h1>${esc(S().bizName || 'Otelimiz')}</h1><p>${esc(S().bizAddress || '')} ${Number(S().directDiscount) > 0 ? `· Web sitemizden rezervasyonda %${S().directDiscount} indirim.` : ''}</p>`}
     <form class="sbar" id="sf"><div><label for="ci">Giriş</label><input type="date" id="ci" value="${st.ci}" min="${today()}" required></div><div><label for="co">Çıkış</label><input type="date" id="co" value="${st.co}" min="${iso(addDays(st.ci, 1))}" required></div><div><label for="ad">Yetişkin</label><select id="ad">${[1, 2, 3, 4].map((n) => `<option ${n === st.ad ? 'selected' : ''}>${n}</option>`).join('')}</select></div><div><label for="ch">Çocuk</label><select id="ch">${[0, 1, 2].map((n) => `<option ${n === st.ch ? 'selected' : ''}>${n}</option>`).join('')}</select></div><button type="submit">${icon('search')} Müsaitlik</button></form></div></section>
     <div class="wrap"><div class="strip"><span>${icon('check')} ${S().freeCancelDays} gün öncesine kadar ücretsiz iptal</span><span>${icon('clock')} Giriş ${esc(S().checkInTime)} · Çıkış ${esc(S().checkOutTime)}</span><span>${icon('wallet')} ${NS.pub ? 'Ödeme otelde, girişte' : 'Otelde ödeme veya %30 kapora'}</span><span>${icon('shield')} ${NS.pub ? 'Kart bilgisi gerekmez' : 'Güvenli ödeme · 3D Secure'}</span></div></div>`;
   const bindSearch = () => {
@@ -114,7 +113,7 @@
       <div class="rooms">${fit.map(({ t, i, free }) => { const q = quote(t, 'BB'); return `<article class="room" data-t="${t.id}"><div class="ph" style="background-image:url('${IMG(PHOTOS[i % PHOTOS.length])}')">${free.length && free.length <= 2 ? `<span class="left">Son ${free.length} oda</span>` : ''}</div>
         <div class="bd"><div><h3>${esc(t.name)}</h3><div class="small muted">En fazla ${t.capacity} kişi</div><div class="feat">${(FEAT[t.id] || []).map((f) => `<span>${icon('check')}${esc(f)}</span>`).join('')}</div>
           ${free.length ? `<div class="boards" role="radiogroup" aria-label="Pansiyon">${Object.entries(BOARD).map(([k, l]) => { const qq = quote(t, k); return `<label><input type="radio" name="b-${t.id}" value="${k}" ${k === 'BB' ? 'checked' : ''}> ${l}<b>${money(qq.total)}</b></label>`; }).join('')}</div>` : '<div class="small" style="color:var(--err);font-weight:600">Seçtiğiniz tarihlerde dolu</div>'}</div>
-          <div class="price">${free.length ? `<span class="save">Doğrudan rezervasyonda ${money(q.ota - q.total)} avantaj</span><span class="ota">Booking.com'da yaklaşık ${money(q.ota)}</span><span class="tot" data-tot>${money(q.total)}</span><small>${n} gece, vergiler dahil</small><button class="btn primary lg mt" data-sel="${t.id}">Seç</button>` : Number(t.minNights) > n ? `<button class="btn lg" disabled>En az ${t.minNights} gece</button>` : `<button class="btn lg" disabled>Dolu</button>`}</div></div></article>`; }).join('') || `<div class="none">${icon('bed')}<p>${st.ad + st.ch} kişiye uygun oda bulunamadı. Kişi sayısını azaltmayı veya bizi aramayı deneyin.</p></div>`}</div></div>`;
+          <div class="price">${free.length ? `${q.disc > 0 ? `<span class="save">Web sitemize özel %${S().directDiscount} indirim uygulandı</span>` : ''}<span class="tot" data-tot>${money(q.total)}</span><small>${n} gece, vergiler dahil</small><button class="btn primary lg mt" data-sel="${t.id}">Seç</button>` : Number(t.minNights) > n ? `<button class="btn lg" disabled>En az ${t.minNights} gece</button>` : `<button class="btn lg" disabled>Dolu</button>`}</div></div></article>`; }).join('') || `<div class="none">${icon('bed')}<p>${st.ad + st.ch} kişiye uygun oda bulunamadı. Kişi sayısını azaltmayı veya bizi aramayı deneyin.</p></div>`}</div></div>`;
     bindSearch();
   }
 
