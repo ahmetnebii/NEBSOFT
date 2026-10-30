@@ -14,14 +14,30 @@
   const late = (t) => !['teslim', 'iade', 'hazir'].includes(t.status) && t.promised && t.promised < new Date().toISOString();
   const trackUrl = (t) => location.href.replace(/index\.html.*$/, '').replace(/#.*$/, '') + 'takip.html?kod=' + t.code;
 
+  // SMS: sonuç beklenir — gönderilmeyen "gönderildi" görünmez (simülasyon = TEST), olmazsa WhatsApp önerilir
+  const waLink = (phone, text) => `https://wa.me/90${String(phone || '').replace(/\D/g, '').slice(-10)}?text=${encodeURIComponent(text)}`;
+  async function smsSend(to, name, text) {
+    const r = db.insert('sms', { to, name, text, at: new Date().toISOString(), status: 'gönderiliyor' }, true);
+    const res = NS.integ ? await NS.integ.sms(to, text, { silent: true }) : { ok: false, error: 'SMS bağlantısı yok' };
+    r.status = res.simulated ? 'TEST — gönderilmedi' : res.ok ? 'gönderildi' : 'gönderilmedi: ' + String(res.error || '').slice(0, 60); db.save();
+    return { sent: !!res.ok && !res.simulated, test: !!res.simulated, error: res.simulated ? 'TEST modu — gerçek gönderim yapılmadı' : res.error || 'SMS gönderilemedi' };
+  }
+  async function tell(c, text, what) {
+    const r = await smsSend(c.phone, c.name, text);
+    if (r.sent) { toast(`${what}: SMS gönderildi`, 'ok'); return r; }
+    if (await confirm(`${what} SMS ile gönderilemedi (${r.error}). WhatsApp ile göndermek ister misiniz?`, { title: 'Müşteriye bildirim', ok: 'WhatsApp ile gönder', danger: false })) window.open(waLink(c.phone, text), '_blank', 'noopener');
+    return r;
+  }
+  const maskCode = (x) => (x ? '•'.repeat(String(x).length) : '');
+
   function setStatus(t, status, note) {
     t.status = status;
     t.log.push({ at: new Date().toISOString(), status, note: note || ST[status].name, user: NS.currentUser && NS.currentUser.name });
-    if (status === 'teslim') t.delivered = new Date().toISOString();
-    // Müşteriye otomatik bildirim (demo: simüle edilir)
-    if (['onay', 'hazir', 'parca'].includes(status)) NS.smsLog(db, { to: cust(t.customer).phone, name: cust(t.customer).name, text: `${S().bizName}: ${t.no} nolu ${t.brand} ${t.model} cihazınızın durumu: ${ST[status].name}. Takip: ${trackUrl(t)}`, at: new Date().toISOString() }, true);
+    if (status === 'teslim') { t.delivered = new Date().toISOString(); if (t.lockCode) { t.lockCode = ''; t.log.push({ at: t.delivered, status, note: 'Ekran kilidi şifresi silindi' }); } }
     db.log('Durum', `${t.no} → ${ST[status].name}`);
     db.save();
+    // Müşteriye bildirim: teklif, parça bekleniyor, teslime hazır
+    if (['onay', 'hazir', 'parca'].includes(status)) setTimeout(() => tell(cust(t.customer), `${S().bizName}: ${t.no} nolu ${t.brand} ${t.model} cihazınızın durumu: ${ST[status].name}. Takip: ${trackUrl(t)}`, 'Durum bildirimi'), 300);
   }
 
   // ---------- Cihaz kabul ----------
@@ -30,6 +46,7 @@
     modal({
       title: 'Cihaz Kabul', size: 'wide',
       body: `<div class="form-grid">
+        <div class="field full"><label>Telefonla bul</label><input class="input" id="iph" type="tel" placeholder="05… — kayıtlıysa müşteri seçilir"><div class="small faint" id="iphm"></div></div>
         <div class="field full"><label>Müşteri *</label><div class="row nw"><select class="input" id="ic"><option value="">Seçin...</option>${db.all('customers').sort((a, b) => a.name.localeCompare(b.name, 'tr')).map((c) => `<option value="${c.id}">${esc(c.name)} · ${esc(c.phone)}</option>`).join('')}</select><button class="btn" id="icn">${icon('plus')} Yeni</button></div></div>
         ${NS.fieldsHtml([
           { name: 'type', label: 'Cihaz türü', type: 'select', options: ['Telefon', 'Tablet', 'Laptop', 'Bilgisayar', 'Konsol', 'Televizyon', 'Çamaşır makinesi', 'Bulaşık makinesi', 'Buzdolabı', 'Klima', 'Diğer'] },
@@ -39,14 +56,16 @@
           { name: 'lockCode', label: 'Ekran kilidi / şifre', hint: 'Test için gerekliyse' }, { name: 'tech', label: 'Teknisyen', type: 'select', options: db.all('techs').map((x) => ({ value: x.id, label: `${x.name} (${x.skill})` })) },
           { name: 'promised', label: 'Söz verilen teslim', type: 'date', value: iso(addDays(new Date(), 3)) }, { name: 'priority', label: 'Öncelik', type: 'select', options: [{ value: 'normal', label: 'Normal' }, { value: 'acil', label: 'Acil' }] },
           { name: 'deposit', label: 'Alınan ön ödeme (₺)', type: 'number', value: 0 }, { name: 'estimate', label: 'Tahmini ücret (₺)', type: 'number', hint: 'Bilinmiyorsa boş bırakın' },
-        ]).replace(/^<div class="form-grid">|<\/div>$/g, '')}</div>`,
-      onOpen: (b) => { $('#icn', b).onclick = async () => { const c = await formModal({ title: 'Yeni müşteri', fields: CUST_FIELDS }); if (c) { const n = db.insert('customers', c); $('#ic', b).insertAdjacentHTML('beforeend', `<option value="${n.id}">${esc(n.name)}</option>`); $('#ic', b).value = n.id; } }; },
+        ]).replace(/^<div class="form-grid">|<\/div>$/g, '')}<div class="full" id="wrn" style="grid-column:1/-1"></div></div>`,
+      onOpen: (b) => { const dg = (s) => String(s || '').replace(/\D/g, '').slice(-10);
+        $('#iph', b).oninput = (e) => { const d = dg(e.target.value); const c = d.length >= 10 ? db.find('customers', (x) => dg(x.phone) === d) : null; $('#iphm', b).textContent = d.length < 10 ? '' : c ? `Bulundu: ${c.name} · ${db.all('tickets', (t) => t.customer === c.id).length} kayıt` : 'Kayıtlı değil — "Yeni" ile ekleyin'; if (c) $('#ic', b).value = c.id; };
+        $('[name=serial]', b).oninput = (e) => { const sn = String(e.target.value).trim(); const w = sn.length >= 5 ? db.all('tickets', (t) => t.serial === sn && t.warrantyUntil && t.warrantyUntil >= today())[0] : null; b._war = w ? w.id : null; $('#wrn', b).innerHTML = w ? `<div class="card pad row" style="border-color:var(--info);background:var(--info-soft)">${icon('shield')}<span class="grow">Bu cihaz garanti süresi içinde: <b>${esc(w.no)}</b> · ${esc(w.diagnosis || w.issue || '')} — bitiş ${NS.date(w.warrantyUntil)}. Kayıt "garanti dönüşü" olarak açılacak.</span></div>` : ''; }; $('#icn', b).onclick = async () => { const c = await formModal({ title: 'Yeni müşteri', fields: CUST_FIELDS }); if (c) { const n = db.insert('customers', c); $('#ic', b).insertAdjacentHTML('beforeend', `<option value="${n.id}">${esc(n.name)}</option>`); $('#ic', b).value = n.id; } }; },
       actions: [{ label: 'Vazgeç' }, {
         label: 'Kaydet ve fiş yazdır', cls: 'primary', icon: 'print', onClick: (close, b) => {
           if (!$('#ic', b).value) return toast('Müşteri seçin', 'err');
           if (!NS.validate(b)) return;
           const v = NS.readForm(b);
-          const t = db.insert('tickets', { ...v, customer: $('#ic', b).value, no: db.nextNo('tickets', 'SRV'), code: Math.random().toString(36).slice(2, 8).toUpperCase(), status: 'kabul', received: new Date().toISOString(), promised: new Date(v.promised + 'T18:00').toISOString(), parts: [], labor: 0, payments: [], estimate: Number(v.estimate) || 0, deposit: Number(v.deposit) || 0, approved: false, log: [{ at: new Date().toISOString(), status: 'kabul', note: 'Cihaz teslim alındı', user: NS.currentUser && NS.currentUser.name }] });
+          const t = db.insert('tickets', { ...v, customer: $('#ic', b).value, no: db.nextNo('tickets', 'SRV'), code: Math.random().toString(36).slice(2, 8).toUpperCase(), status: 'kabul', received: new Date().toISOString(), promised: new Date(v.promised + 'T18:00').toISOString(), parts: [], labor: 0, payments: [], estimate: Number(v.estimate) || 0, deposit: Number(v.deposit) || 0, approved: false, warrantyOf: b._war || null, log: [{ at: new Date().toISOString(), status: 'kabul', note: b._war ? 'Cihaz teslim alındı · garanti dönüşü' : 'Cihaz teslim alındı', user: NS.currentUser && NS.currentUser.name }] });
           db.log('Cihaz kabul', `${t.no} · ${t.brand} ${t.model}`);
           close(); toast(`${t.no} kaydedildi`, 'ok'); printIntake(t); app.go('kayit', t.id);
         },
@@ -54,7 +73,7 @@
     });
   }
   const svDoc = (t, kind) => { const c = cust(t.customer); const del = kind === 'teslim';
-    return { title: del ? 'Teslim ve garanti belgesi' : 'Servis kabul formu', no: t.no, date: del ? t.deliveredAt || new Date().toISOString() : t.received,
+    return { title: del ? 'Teslim ve garanti belgesi' : 'Servis kabul formu', no: t.no, date: del ? t.delivered || new Date().toISOString() : t.received,
       info: [['Cihaz', `${t.type || ''} — ${t.brand || ''} ${t.model || ''}`], ['Seri / IMEI', t.serial || '-'], ['Aksesuar', t.accessories || '-'], ['Fiziksel durum', t.condition || '-'], ...(del ? [['Garanti bitiş', t.warrantyUntil ? NS.date(t.warrantyUntil) : '-']] : [['Tahmini teslim', t.promised ? NS.date(t.promised) : '-'], ['Takip kodu', t.code]])],
       party: { title: 'Müşteri', name: c.name, lines: [c.phone] },
       lines: del ? [...t.parts.map((p) => ({ name: p.name, qty: p.qty, price: p.price, total: p.price * p.qty })), { name: 'İşçilik', qty: 1, price: t.labor || 0, total: t.labor || 0 }] : [],
@@ -82,7 +101,7 @@
     const c = cust(t.customer), st = ST[t.status];
     const bal = total(t) - paid(t);
     const idx = SV.STATUS.findIndex((s) => s.id === t.status);
-    el.innerHTML = `<div class="row mb"><a class="btn" href="#/pano">${icon('back')} Pano</a><h1 class="grow">${esc(t.no)} · ${esc(t.brand)} ${esc(t.model)}</h1>${t.priority === 'acil' ? badge('ACİL', 'err') : ''}${late(t) ? badge('Gecikti', 'err') : ''}<span class="badge" style="background:${st.color};color:#fff;border:0">${esc(st.name)}</span></div>
+    el.innerHTML = `<div class="row mb"><a class="btn" href="#/pano">${icon('back')} Pano</a><h1 class="grow">${esc(t.no)} · ${esc(t.brand)} ${esc(t.model)}</h1>${t.warrantyOf ? badge('Garanti dönüşü', 'info') : ''}${t.priority === 'acil' ? badge('ACİL', 'err') : ''}${late(t) ? badge('Gecikti', 'err') : ''}<span class="badge" style="background:${st.color};color:#fff;border:0">${esc(st.name)}</span></div>
       <div class="card pad mb"><div class="row">${SV.STATUS.filter((s) => s.id !== 'iade').map((s, i) => `<div class="grow center small" style="min-width:90px"><div style="height:6px;border-radius:6px;background:${i <= idx && t.status !== 'iade' ? s.color : 'var(--border)'}"></div><div class="mt ${s.id === t.status ? '' : 'faint'}" style="${s.id === t.status ? 'font-weight:700' : ''}">${esc(s.name)}</div></div>`).join('')}</div>
         <div class="row mt">${statusButtons(t)}<span class="grow"></span><button class="btn" data-x="print">${icon('print')} Kabul fişi</button><button class="btn" data-x="track">${icon('globe')} Takip linki</button><button class="btn" data-x="edit">${icon('edit')} Düzenle</button></div></div>
       <div class="grid g-21"><div class="col" style="gap:16px">
@@ -91,7 +110,7 @@
           <div><div class="small muted">Müşteri</div><b>${esc(c.name)}</b><div class="small">${esc(c.phone)}</div></div>
           <div><div class="small muted">Şikâyet</div>${esc(t.issue)}</div><div><div class="small muted">Fiziksel durum / aksesuar</div>${esc(t.condition || '-')} · ${esc(t.accessories || '-')}</div>
           <div><div class="small muted">Teknisyen</div><b>${esc(tech(t.tech).name)}</b></div><div><div class="small muted">Kabul / söz verilen</div>${NS.dt(t.received)} → <b>${NS.date(t.promised)}</b></div>
-          ${t.lockCode ? `<div><div class="small muted">Kilit kodu</div><span class="mono">${esc(t.lockCode)}</span></div>` : ''}
+          ${t.lockCode ? `<div><div class="small muted">Kilit kodu <span class="faint">(teslimde silinir)</span></div><span class="mono" id="lc">${maskCode(t.lockCode)}</span> <button class="btn sm ghost" data-x="lc">${icon('eye')}</button></div>` : ''}
           <div class="full" style="grid-column:1/-1"><div class="small muted">Teknisyen tespiti</div><textarea class="input" id="dg" rows="2" placeholder="Arıza tespiti ve yapılan işlemler...">${esc(t.diagnosis || '')}</textarea><button class="btn sm mt" id="dgs">Tespiti kaydet</button></div>
         </div></div>
         <div class="card"><div class="card-h"><h3>Parça ve işçilik</h3><button class="btn sm" id="ap">${icon('plus')} Parça ekle</button></div>
@@ -103,6 +122,7 @@
         <div class="card"><div class="card-h"><h3>Geçmiş</h3></div><div class="card-b"><div class="timeline">${t.log.slice().reverse().map((l) => `<div class="tl" style="--c:${(ST[l.status] || {}).color}"><b>${esc((ST[l.status] || {}).name || l.status)}</b><div class="small">${esc(l.note || '')}</div><div class="small faint">${NS.dt(l.at)}${l.user ? ' · ' + esc(l.user) : ''}</div></div>`).join('')}</div>
           <div class="row nw mt"><input class="input" id="nt" placeholder="Not ekle..."><button class="btn" id="nts">${icon('plus')}</button></div></div></div>
         ${t.review ? `<div class="card pad"><div class="small muted">Müşteri değerlendirmesi</div><div style="font-size:20px;color:#f59e0b">${'★'.repeat(t.review.stars)}<span style="color:var(--border)">${'★'.repeat(5 - t.review.stars)}</span></div>${t.review.text ? `<div class="small mt">“${esc(t.review.text)}”</div>` : ''}<div class="small faint">${NS.dt(t.review.at)}</div></div>` : ''}
+        ${(() => { const H = t.serial ? db.all('tickets', (x) => x.id !== t.id && x.serial === t.serial).sort((a, b) => b.received.localeCompare(a.received)) : []; return H.length ? `<div class="card"><div class="card-h"><h3>${icon('clock')} Cihaz geçmişi (${H.length})</h3></div>${H.map((x) => `<a class="list-item" style="padding:10px 18px;color:inherit" href="#/kayit/${x.id}"><span class="grow"><b class="small">${esc(x.no)} · ${NS.date(x.received)}</b><div class="small muted">${esc(x.diagnosis || x.issue || '')}</div></span><span class="small">${esc(ST[x.status].name)}</span></a>`).join('')}</div>` : ''; })()}
         <div class="card pad center"><div class="small muted mb">Müşteri takip kodu</div><div style="font-size:24px;font-weight:800;letter-spacing:.1em" class="mono">${esc(t.code)}</div><div class="mt">${NS.qrSvg(trackUrl(t), 110)}</div></div>
       </div></div>`;
     const re = () => app.refresh();
@@ -110,19 +130,22 @@
       const s = b.dataset.st;
       if (s === 'onay') {
         const v = await formModal({ title: 'Fiyat teklifi gönder', fields: [{ name: 'estimate', label: 'Teklif tutarı (₺)', type: 'number', value: t.estimate || total(t), required: true }, { name: 'diagnosis', label: 'Tespit (müşteriye iletilir)', type: 'textarea', value: t.diagnosis, full: true }] });
-        if (!v) return; t.estimate = v.estimate; t.diagnosis = v.diagnosis; setStatus(t, 'onay', `Fiyat teklifi: ${money(v.estimate)}`); toast('Teklif SMS ile müşteriye iletildi', 'ok');
+        if (!v) return; t.estimate = v.estimate; t.diagnosis = v.diagnosis; setStatus(t, 'onay', `Fiyat teklifi: ${money(v.estimate)}`);
       } else if (s === 'approve') { t.approved = true; setStatus(t, 'tamirde', 'Müşteri fiyatı onayladı'); }
       else if (s === 'teslim') {
-        const due = total(t) - paid(t);
-        if (due > 0) { const v = await formModal({ title: `Teslim — tahsilat ${money(due)}`, fields: [{ name: 'amount', label: 'Tutar', type: 'number', value: due }, { name: 'type', label: 'Ödeme', type: 'select', options: [{ value: 'nakit', label: 'Nakit' }, { value: 'kart', label: 'Kart' }, { value: 'havale', label: 'Havale' }] }], submitLabel: 'Teslim et' }); if (!v) return; t.payments.push({ ...v, at: new Date().toISOString() }); }
-        t.warrantyUntil = iso(addDays(new Date(), S().warrantyDays || 90));
-        setStatus(t, 'teslim', `Teslim edildi · ${S().warrantyDays} gün garanti`); printDelivery(t);
+        if (t.status === 'iade') { t.parts.forEach((p) => { const part = db.get('parts', p.pid); if (part) part.stock += p.qty; }); if (t.parts.length) t.log.push({ at: new Date().toISOString(), status: 'iade', note: `${t.parts.length} parça stoğa geri alındı` }); t.parts = []; t.labor = Number(S().diagFee) || 0; }
+        const due = total(t) - paid(t); const inv = !!(NS.ebelge && NS.integ && NS.integ.isOn('efatura') && total(t) > 0); let wantInv = false;
+        if (due > 0 || inv) { const v = await formModal({ title: due > 0 ? `Teslim — tahsilat ${money(due)}` : 'Teslim', fields: [...(due > 0 ? [{ name: 'amount', label: 'Tutar', type: 'number', step: '0.01', value: due }, { name: 'type', label: 'Ödeme', type: 'select', options: [{ value: 'nakit', label: 'Nakit' }, { value: 'kart', label: 'Kart' }, { value: 'havale', label: 'Havale' }] }] : []), ...(inv ? [{ name: 'inv', label: 'e-Arşiv / e-Fatura kes', type: 'checkbox' }] : [])], values: { amount: due, inv: inv && !t.invoice }, submitLabel: 'Teslim et' }); if (!v) return; if (due > 0 && Number(v.amount) > 0) t.payments.push({ type: v.type, amount: Number(v.amount), at: new Date().toISOString() }); wantInv = !!v.inv; }
+        if (wantInv) { const r = await NS.ebelge.create({ docType: 'auto', buyer: cust(t.customer).name, no: t.no, lines: [...t.parts.map((p) => ({ name: p.name, qty: p.qty, total: p.price * p.qty, vat: 20 })), ...(t.labor ? [{ name: 'İşçilik', qty: 1, total: t.labor, vat: 20 }] : [])], note: `${t.brand} ${t.model} ${t.serial || ''}` }); if (r && r.no) { t.invoice = r.no + (r.simulated ? ' (TEST)' : ''); t.log.push({ at: new Date().toISOString(), status: t.status, note: 'Fatura ' + t.invoice }); } else if (r && r.error) toast('Fatura kesilemedi: ' + r.error, 'err'); }
+        const wasIade = t.status === 'iade'; if (!wasIade) t.warrantyUntil = iso(addDays(new Date(), S().warrantyDays || 90));
+        if (wasIade) { t.delivered = new Date().toISOString(); if (t.lockCode) t.lockCode = ''; t.log.push({ at: t.delivered, status: 'iade', note: 'Cihaz onarılmadan iade edildi' }); db.save(); } else { setStatus(t, 'teslim', `Teslim edildi · ${S().warrantyDays} gün garanti`); printDelivery(t); }
       } else if (s === 'iade') { const n = await NS.prompt('Neden tamir edilemedi?', '', { title: 'İade' }); if (n === null) return; setStatus(t, 'iade', n || 'Tamir edilemedi'); }
       else setStatus(t, s);
       re();
     });
     on(el, 'click', '[data-x]', (e, b) => {
       const x = b.dataset.x;
+      if (x === 'lc') { const s2 = $('#lc', el); s2.textContent = s2.textContent === t.lockCode ? maskCode(t.lockCode) : t.lockCode; return; }
       if (x === 'print') printIntake(t);
       else if (x === 'track') { navigator.clipboard && navigator.clipboard.writeText(trackUrl(t)); window.open(trackUrl(t), '_blank'); toast('Takip linki kopyalandı', 'ok'); }
       else if (x === 'edit') formModal({ title: 'Kaydı düzenle', fields: [{ name: 'brand', label: 'Marka' }, { name: 'model', label: 'Model' }, { name: 'serial', label: 'Seri no' }, { name: 'issue', label: 'Arıza', type: 'textarea', full: true }, { name: 'tech', label: 'Teknisyen', type: 'select', options: db.all('techs').map((x2) => ({ value: x2.id, label: x2.name })) }, { name: 'priority', label: 'Öncelik', type: 'select', options: ['normal', 'acil'] }, { name: 'promisedD', label: 'Söz verilen tarih', type: 'date' }], values: { ...t, promisedD: iso(t.promised) } }).then((v) => { if (!v) return; v.promised = new Date(v.promisedD + 'T18:00').toISOString(); delete v.promisedD; db.update('tickets', t.id, v); re(); });
@@ -175,7 +198,7 @@
       // Arayan numara: müşterinin serviste olan cihazları ve durumları anında gösterilir
       $('#cid', el).onclick = async () => {
         let phone = '';
-        if (NS.integ && NS.integ.isOn('callerid')) { const r = await NS.integ.call('callerid', 'son-arama', {}, { silent: true }); phone = r && r.data && r.data.phone ? r.data.phone : r && r.simulated ? (cust((openT()[0] || {}).customer).phone || '') : ''; }
+        if (NS.integ && NS.integ.isOn('callerid')) { const r = await NS.integ.call('callerid', 'son-arama', {}, { silent: true }); phone = r && !r.simulated && r.data && r.data.phone ? r.data.phone : ''; }
         if (!phone) phone = await NS.prompt('Arayan numara', '05', { title: 'Gelen çağrı', type: 'tel' }); if (!phone) return;
         const digits = String(phone).replace(/\D/g, '').slice(-10); const c = db.find('customers', (x) => String(x.phone).replace(/\D/g, '').slice(-10) === digits);
         if (!c) { toast('Kayıtlı müşteri değil — cihaz kabulü açılıyor'); return intake(app); }
@@ -190,6 +213,7 @@
       const col = e.target.closest('[data-col]'); if (!col || !dragId) return;
       e.preventDefault();
       const t = db.get('tickets', dragId); dragId = null;
+      if (['onay', 'iade'].includes(col.dataset.col) && t.status !== col.dataset.col) { toast(col.dataset.col === 'onay' ? 'Teklif tutarı için kaydı açın' : 'İade nedeni için kaydı açın'); return app.go('kayit', t.id); }
       if (t.status !== col.dataset.col) { if (col.dataset.col === 'tamirde' && t.status === 'onay') t.approved = true; setStatus(t, col.dataset.col); toast(`${t.no} → ${ST[col.dataset.col].name}`, 'ok'); }
       draw();
     });
@@ -212,6 +236,8 @@
     draw();
   }
 
+  const readyAt = (t) => ((t.log.filter((l) => l.status === 'hazir').pop() || {}).at || t.received);
+  const waitDays = (t) => Math.floor((Date.now() - new Date(readyAt(t))) / 864e5);
   // ---------- Özet ----------
   function dashboard(el, p, app) {
     const done = db.all('tickets', (t) => t.status === 'teslim' && t.delivered);
@@ -221,13 +247,28 @@
     const avgH = done.length ? sum(done, (t) => (new Date(t.delivered) - new Date(t.received)) / 3600000) / done.length : 0;
     const ser = NS.dailySeries(done.map((t) => ({ ...t, at: t.delivered })), 30, 'at', total);
     const byType = NS.groupBy(db.all('tickets'), (t) => t.type);
+    const waiting = openT().filter((t) => t.status === 'hazir' && waitDays(t) >= 3).sort((a, b) => waitDays(b) - waitDays(a));
+    const rv = db.all('tickets', (t) => t.review); const avgStar = rv.length ? sum(rv, (t) => t.review.stars) / rv.length : 0;
     el.innerHTML = pageHead('Servis Özeti', NS.dateLong(new Date()), `<button class="btn primary" id="ni">${icon('plus')} Cihaz kabul</button>`) + `
       <div class="grid g4 mb">${kpi('Serviste bekleyen', openT().length, 'wrench')}${kpi('30 gün ciro', money(rev), 'trend', 'ok')}${kpi('30 gün brüt kâr', money(profit), 'wallet', 'info')}${kpi('Ort. teslim süresi', (avgH / 24).toFixed(1) + ' gün', 'clock', 'warn')}</div>
       <div class="grid g-21 mb"><div class="card"><div class="card-h"><h3>Günlük teslim cirosu</h3></div><div class="card-b">${chart.bars(ser.labels.map((l, i) => ({ label: l, value: ser.values[i] })), { format: money, labelEvery: 3 })}</div></div>
       <div class="card"><div class="card-h"><h3>Cihaz türleri</h3></div><div class="card-b">${chart.donut(Object.entries(byType).map(([label, v]) => ({ label, value: v.length })), { size: 130 })}</div></div></div>
+      <div class="grid g2 mb"><div class="card"><div class="card-h"><h3>${icon('bell')} Teslim alınmayan cihazlar (3+ gün)</h3></div>${table({ rows: waiting, empty: 'Bekleyen cihaz yok', columns: [{ label: 'No', render: (t) => `<a href="#/kayit/${t.id}"><b>${esc(t.no)}</b></a>` }, { label: 'Müşteri', render: (t) => esc(cust(t.customer).name) }, { label: 'Bekliyor', cls: 'right', render: (t) => badge(waitDays(t) + ' gün', waitDays(t) >= 30 ? 'err' : 'warn') }, { label: 'Son hatırlatma', render: (t) => (t.remindedAt ? NS.date(t.remindedAt) : '-') }], actions: [{ icon: 'send', act: 'rem', title: 'Hatırlat' }] })}</div>
+        <div class="card pad"><h3 class="mb">${icon('star')} Müşteri memnuniyeti</h3><div style="font-size:28px;font-weight:800">${avgStar ? avgStar.toFixed(1) + ' / 5' : '-'}</div><div class="small muted mb">${rv.length} değerlendirme</div>${rv.sort((a, b) => b.review.at.localeCompare(a.review.at)).slice(0, 4).map((t) => `<div class="small mt"><b style="color:#f59e0b">${'★'.repeat(t.review.stars)}</b> ${esc(t.review.text || '')} <span class="faint">· ${esc(t.no)}</span></div>`).join('')}</div></div>
       <div class="grid g2"><div class="card"><div class="card-h"><h3>${icon('alert')} Geciken işler</h3></div>${table({ rows: openT().filter(late), empty: 'Geciken iş yok 🎉', columns: [{ label: 'No', render: (t) => `<a href="#/kayit/${t.id}"><b>${esc(t.no)}</b></a>` }, { label: 'Cihaz', render: (t) => `${esc(t.brand)} ${esc(t.model)}` }, { label: 'Söz', render: (t) => NS.date(t.promised) }, { label: 'Durum', render: (t) => esc(ST[t.status].name) }] })}</div>
       <div class="card"><div class="card-h"><h3>Teknisyen iş yükü</h3></div><div class="card-b">${db.all('techs').map((x) => { const n = openT().filter((t) => t.tech === x.id).length; return `<div class="list-item"><div class="avatar">${esc(NS.initials(x.name))}</div><div class="grow"><b>${esc(x.name)}</b><div class="small faint">${esc(x.skill)}</div><div class="progress mt"><i style="width:${Math.min(100, n * 10)}%"></i></div></div><b>${n} iş</b></div>`; }).join('')}</div></div></div>`;
     $('#ni', el).onclick = () => intake(app);
+    on(el, 'click', '[data-act=rem]', async (e, b) => { const t = db.get('tickets', b.dataset.id); const r = await tell(cust(t.customer), `${S().bizName}: ${t.no} nolu ${t.brand} ${t.model} cihazınız ${waitDays(t)} gündür teslime hazır. Çalışma saatlerimizde teslim alabilirsiniz. ${S().bizPhone || ''}`, 'Teslim hatırlatması'); t.remindedAt = new Date().toISOString(); t.log.push({ at: t.remindedAt, status: t.status, note: r.sent ? 'Teslim hatırlatması SMS ile gönderildi' : 'Teslim hatırlatması — SMS gönderilemedi' }); db.save(); app.refresh(); });
+  }
+
+  // Parça sipariş listesi: kritik stok + "parça bekleniyor" kayıtlarındaki parçalar
+  function orderList() {
+    const need = {}; db.all('parts', (x) => x.stock <= (x.min || 0)).forEach((x) => { need[x.id] = { x, qty: Math.max(1, (x.min || 3) * 2 - x.stock), why: 'kritik stok' }; });
+    db.all('tickets', (t) => t.status === 'parca').forEach((t) => t.parts.forEach((pp) => { const x = db.get('parts', pp.pid); if (!x) return; const n = need[x.id] || (need[x.id] = { x, qty: 0, why: '' }); n.qty += pp.qty; n.why = [n.why, t.no].filter(Boolean).join(', '); }));
+    const rows = Object.values(need); if (!rows.length) return toast('Sipariş edilecek parça yok');
+    const text = `${S().bizName} — parça siparişi (${NS.date(new Date())})\n` + rows.map((r) => `• ${r.x.name} — ${r.qty} adet`).join('\n');
+    modal({ title: 'Parça sipariş listesi', size: 'wide', body: table({ rows: rows.map((r, i) => ({ ...r, id: i })), columns: [{ label: 'Parça', render: (r) => `<b>${esc(r.x.name)}</b>` }, { label: 'Stok', cls: 'right', render: (r) => r.x.stock }, { label: 'Sipariş', cls: 'right', render: (r) => r.qty }, { label: 'Neden', render: (r) => `<span class="small">${esc(r.why)}</span>` }] }),
+      actions: [{ label: 'CSV indir', icon: 'download', onClick: () => NS.csv('parca-siparis', rows.map((r) => ({ Parça: r.x.name, Stok: r.x.stock, Sipariş: r.qty, Neden: r.why }))) }, { label: 'Kopyala', icon: 'copy', onClick: async () => { try { await navigator.clipboard.writeText(text); toast('Kopyalandı', 'ok'); } catch (e) { NS.prompt('Sipariş listesi', text); } } }, { label: 'WhatsApp ile gönder', icon: 'message', cls: 'primary', onClick: (close) => { window.open('https://wa.me/?text=' + encodeURIComponent(text), '_blank', 'noopener'); close(); } }] });
   }
 
   // ---------- Parça, teknisyen, müşteri ----------
@@ -240,21 +281,23 @@
       extraActions: [{ icon: 'plus', act: 'in', title: 'Stok girişi' }],
       onAction: async (a, x, draw) => { const v = await NS.prompt(`${x.name} — gelen adet`, 1, { type: 'number' }); if (v) { x.stock += Number(v); db.save(); draw(); } },
     });
+    const h = $('.page-h .row', el); if (h) h.insertAdjacentHTML('afterbegin', `<button class="btn" data-order>${icon('truck')} Sipariş listesi</button>`);
+    on(el, 'click', '[data-order]', orderList);
   }
   function techsPage(el, p, app) {
-    NS.crud(el, app, { col: 'techs', title: 'Teknisyenler', single: 'Teknisyen', addLabel: 'Yeni teknisyen', fields: [{ name: 'name', label: 'Ad soyad', required: true }, { name: 'skill', label: 'Uzmanlık' }, { name: 'phone', label: 'Telefon' }], columns: [{ key: 'name', label: 'Teknisyen', render: (x) => `<b>${esc(x.name)}</b>` }, { key: 'skill', label: 'Uzmanlık' }, { label: 'Açık iş', cls: 'right', render: (x) => openT().filter((t) => t.tech === x.id).length }, { label: 'Tamamlanan', cls: 'right', render: (x) => db.all('tickets', (t) => t.tech === x.id && t.status === 'teslim').length }, { label: 'Ciro', cls: 'right', render: (x) => money(sum(db.all('tickets', (t) => t.tech === x.id && t.status === 'teslim'), total)) }] });
+    NS.crud(el, app, { col: 'techs', title: 'Teknisyenler', single: 'Teknisyen', addLabel: 'Yeni teknisyen', fields: [{ name: 'name', label: 'Ad soyad', required: true }, { name: 'skill', label: 'Uzmanlık' }, { name: 'phone', label: 'Telefon' }], columns: [{ key: 'name', label: 'Teknisyen', render: (x) => `<b>${esc(x.name)}</b>` }, { key: 'skill', label: 'Uzmanlık' }, { label: 'Açık iş', cls: 'right', render: (x) => openT().filter((t) => t.tech === x.id).length }, { label: 'Tamamlanan', cls: 'right', render: (x) => db.all('tickets', (t) => t.tech === x.id && t.status === 'teslim').length }, { label: 'Ciro', cls: 'right', render: (x) => money(sum(db.all('tickets', (t) => t.tech === x.id && t.status === 'teslim'), total)) }, { label: 'Ort. süre', cls: 'right', render: (x) => { const D = db.all('tickets', (t) => t.tech === x.id && t.status === 'teslim' && t.delivered); return D.length ? (sum(D, (t) => (new Date(t.delivered) - new Date(t.received)) / 864e5) / D.length).toFixed(1) + ' gün' : '-'; } }, { label: 'Garanti dönüşü', cls: 'right', render: (x) => { const D = db.all('tickets', (t) => t.tech === x.id && t.status === 'teslim').length; const G = db.all('tickets', (t) => t.warrantyOf && (db.get('tickets', t.warrantyOf) || {}).tech === x.id).length; return D ? '%' + Math.round((G / D) * 100) : '-'; } }, { label: 'Puan', cls: 'right', render: (x) => { const V = db.all('tickets', (t) => t.tech === x.id && t.review); return V.length ? (sum(V, (t) => t.review.stars) / V.length).toFixed(1) + ' ★' : '-'; } }] });
   }
   function customersPage(el, p, app) {
     NS.crud(el, app, { col: 'customers', title: 'Müşteriler', single: 'Müşteri', addLabel: 'Yeni müşteri', emptyIcon: 'users', fields: CUST_FIELDS, sort: (a, b) => a.name.localeCompare(b.name, 'tr'), searchFields: (c) => [c.name, c.phone], columns: [{ key: 'name', label: 'Müşteri', render: (c) => `<b>${esc(c.name)}</b>` }, { key: 'phone', label: 'Telefon' }, { label: 'Cihaz', cls: 'right', render: (c) => db.all('tickets', (t) => t.customer === c.id).length }, { label: 'Harcama', cls: 'right', render: (c) => money(sum(db.all('tickets', (t) => t.customer === c.id && t.status === 'teslim'), total)) }] });
   }
   function smsPage(el) {
-    el.innerHTML = pageHead('Müşteri Bildirimleri', 'Teklif, parça bekleniyor ve teslime hazır durumlarında müşteriye otomatik SMS gider (demo: simüle)') + `<div class="card">${table({ rows: db.all('sms').slice().reverse(), empty: 'Henüz bildirim gönderilmedi', columns: [{ label: 'Zaman', render: (s) => NS.dt(s.at) }, { label: 'Alıcı', render: (s) => `${esc(s.name)}<div class="small faint">${esc(s.to)}</div>` }, { label: 'Mesaj', render: (s) => `<span class="small">${esc(s.text)}</span>` }] })}</div>`;
+    el.innerHTML = pageHead('Müşteri Bildirimleri', 'Teklif, parça bekleniyor ve teslime hazır durumlarında müşteriye SMS gider. SMS bağlantısı Entegrasyonlar sayfasından açılır.') + `<div class="card">${table({ rows: db.all('sms').slice().reverse(), empty: 'Henüz bildirim yok', columns: [{ label: 'Zaman', render: (s) => NS.dt(s.at) }, { label: 'Alıcı', render: (s) => `${esc(s.name)}<div class="small faint">${esc(s.to)}</div>` }, { label: 'Mesaj', render: (s) => `<span class="small">${esc(s.text)}</span>` }, { label: 'Durum', render: (s) => (s.status === 'gönderildi' ? badge('Gönderildi', 'ok') : String(s.status || '').startsWith('TEST') ? badge('TEST — gönderilmedi', 'warn') : s.status ? `<span class="small" style="color:var(--err)">${esc(s.status)}</span>` : badge('Durum bilinmiyor', '')) }] })}</div>`;
   }
 
   const ROLES = { admin: 'Yönetici', teknisyen: 'Teknisyen', kabul: 'Kabul / Danışma' };
   NS.shell({
     id: 'servis', integrations: ['sms', 'whatsapp', 'email', 'printer', 'label', 'barcode', 'pos', 'efatura', 'webhook', 'backup'], name: 'Teknik Servis', tagline: 'Servis Takip Sistemi', icon: 'wrench', accent: '#ea580c', db, home: 'pano', auth: { roles: ROLES }, titles: { kayit: 'Servis kaydı' },
     nav: [{ sec: 'Servis' }, { id: 'ozet', label: 'Özet', icon: 'home', roles: ['admin'] }, { id: 'pano', label: 'Servis Panosu', icon: 'kanban' }, { id: 'kayitlar', label: 'Servis Kayıtları', icon: 'list' }, { id: 'musteriler', label: 'Müşteriler', icon: 'users' }, { sec: 'Yönetim' }, { id: 'parcalar', label: 'Parça Stoku', icon: 'box' }, { id: 'teknisyenler', label: 'Teknisyenler', icon: 'user', roles: ['admin'] }, { id: 'bildirimler', label: 'SMS Bildirimleri', icon: 'message' }, { id: 'ayarlar', label: 'Ayarlar', icon: 'settings', roles: ['admin'] }],
-    routes: { ozet: dashboard, pano: boardPage, kayitlar: listPage, kayit: detailPage, musteriler: customersPage, parcalar: partsPage, teknisyenler: techsPage, bildirimler: smsPage, ayarlar: (el, p, a) => NS.settingsPage(el, a, { roles: ROLES, fields: [{ type: 'section', label: 'Servis ayarları' }, { name: 'warrantyDays', label: 'Garanti süresi (gün)', type: 'number' }, { name: 'terms', label: 'Kabul formu koşulları', type: 'textarea', full: true }] }) },
+    routes: { ozet: dashboard, pano: boardPage, kayitlar: listPage, kayit: detailPage, musteriler: customersPage, parcalar: partsPage, teknisyenler: techsPage, bildirimler: smsPage, ayarlar: (el, p, a) => NS.settingsPage(el, a, { roles: ROLES, fields: [{ type: 'section', label: 'Servis ayarları' }, { name: 'warrantyDays', label: 'Garanti süresi (gün)', type: 'number' }, { name: 'diagFee', label: 'Onarılamayan cihazda tespit ücreti (₺, yoksa 0)', type: 'number' }, { name: 'terms', label: 'Kabul formu koşulları', type: 'textarea', full: true }] }) },
   });
 })();
