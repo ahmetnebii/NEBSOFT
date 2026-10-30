@@ -230,6 +230,8 @@ const RULES = {
     } } },
   // apps/oto: yıkamacı yalnızca Yıkama Kuyruğu ve Araç Geçmişi ekranını görür. Abone kartı, abonelik ödemesi ve hizmet fiyat listesi değişmez; iptalde abonenin yıkama hakkı geri yazılır (izinli). Gişede yalnız menü farkı vardır, kural eklenmedi.
   oto: { yikama: { ad: 'Yıkamacı', kapat: ['subPays'], ekle: ['sms'], gizle: { subs: ['name', 'phone', 'price'] }, saltOkunur: ['subs', 'packages', 'workers'], izinli: { subs: ['washesLeft'] } } },
+  // apps/dernek: fin() sekreterde kapalı: aidat, tahsilat, gelir-gider görünmez. Sayman toplantı ve evrakı okur. Üye kaydı silinmez (üye kayıt defterinde çıkış tarihi tutulur).
+  dernek: { sayman: { ad: 'Sayman', saltOkunur: ['meetings', 'letters', 'posts'], silemez: ['members'] }, sekreter: { ad: 'Sekreter', kapat: ['dues', 'receipts', 'entries'], silemez: ['members'] } },
   // apps/fiyatrobotu: izleyici tüm ekranları görür, hiçbir şeyi değiştiremez (canEdit). Gizlenecek alan yoktur, yazma kapalıdır. Fiyat uzmanında yalnız menü farkı vardır, kural eklenmedi.
   fiyatrobotu: { izleyici: { ad: 'İzleyici', saltOkunur: ['products', 'listings', 'history', 'runs', 'channels', 'cargoOverride', 'comOverride', 'feeOverride', 'ratesOwn'] } },
   // apps/servis: ROLES var, ekranlarda rol denetimi yok. Teknisyen ve kabul Özet, Teknisyenler, Ayarlar menüsünü görmez; parça alış fiyatı Parça Stoku ekranında herkese açık. Yalnız menü farkı: kural eklenmedi.

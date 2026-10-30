@@ -987,5 +987,14 @@ RULES.adisyon = {
   },
 };
 
+// ---------- Dernek: üye portalı (uye.html) — telefon + giriş kodu. Yalnız okuma; TC, not ve başka üyenin kaydı gitmez ----------
+RULES.dernek = {
+  settings: ['bizName', 'bizPhone', 'bizAddress', 'iban', 'bank', 'orgType'],
+  pub: { posts: { fields: ['id', 'date', 'title', 'body'] }, meetings: { where: (r, x) => r.type === 'gk' && r.status === 'plan' && r.date >= x.today, fields: ['id', 'type', 'status', 'date', 'time', 'place', 'agenda'] } },
+  login: ownerOf('members'), loginError: 'Telefon veya giriş kodu hatalı',
+  view: (x) => { const m = x.get('members', me(x, 'o')); if (!m || m.status !== 'aktif') return {}; return { members: [x.pick(m, ['id', 'no', 'name', 'status', 'group'])], dues: x.col('dues').filter((d) => d.member === m.id), receipts: x.col('receipts').filter((r) => r.member === m.id && !r.canceled).map((r) => x.pick(r, ['id', 'member', 'amount', 'at', 'kind'])) }; },
+  write: {},
+};
+
 module.exports = RULES;
 module.exports._lib = { appendOnly, strip, bad, deny, val, clean, I, U, me, mergeByPhone, samePhone, digits, norm, overlap, toMin, nowIso };

@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Üye Portalı</title>
+<link rel="stylesheet" href="../../core/core.css">
+<link rel="stylesheet" href="../../core/track.css">
+<style>
+  :root { --app-accent: #0f766e; --app-accent-soft: #ccfbf1; --app-accent-soft-dark: #042f2e; }
+  .stat2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 16px; }
+  .stat2 div { border: 1px solid var(--border); border-radius: 12px; background: var(--surface); padding: 12px 14px; }
+  .stat2 b { display: block; font-size: 22px; font-variant-numeric: tabular-nums; }
+  .stat2 span { font-size: 12px; color: var(--text-3); }
+  .ln { display: flex; gap: 10px; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--border); font-size: 14px; }
+  .ln:last-child { border-bottom: 0; }
+  .ln .g { flex: 1; min-width: 0; }
+</style>
+</head>
+<body>
+<header class="tk-bar"><div class="in" id="bar"></div></header>
+<main class="tk-wrap" id="root" style="max-width:760px"></main>
+<script src="../../core/core.js"></script>
+<script>
+(function () {
+  const { esc, $, icon, money, toast, sum, today, badge } = NS;
+  const db = new NS.DB('dernek');
+  const S = () => db.settings({});
+  const KEY = 'nebsoft:dernek:uye';
+  const sget = () => { try { return sessionStorage.getItem(KEY); } catch (e) { return null; } };
+  const sset = (v) => { try { v ? sessionStorage.setItem(KEY, v) : sessionStorage.removeItem(KEY); } catch (e) { /* yok */ } };
+  const digits = (x) => String(x || '').replace(/\D/g, '').slice(-10);
+  const perName = (p) => (String(p).length === 7 ? `${NS.MONTHS[Number(p.slice(5)) - 1]} ${p.slice(0, 4)}` : p);
+
+  $('#bar').innerHTML = `<div class="tk-mark">${icon('users')}</div><div class="grow"><b>${esc(S().bizName || 'Dernek')}</b><span>Üye portalı</span></div><span id="out"></span><button class="btn ghost icon" id="th" data-theme-ico aria-label="Tema">${icon(NS.getTheme() === 'dark' ? 'sun' : 'moon')}</button>`;
+  $('#th').onclick = NS.toggleTheme;
+
+  function login() {
+    $('#out').innerHTML = '';
+    $('#root').innerHTML = `<div class="tk-view"><div class="tk-intro"><h1>Aidatınız ve duyurular</h1><p>Kayıtlı telefon numaranız ve yönetimden aldığınız giriş koduyla girin.</p></div>
+      <div class="tk-find"><input class="input" id="ph" type="tel" inputmode="tel" placeholder="05xx xxx xx xx" aria-label="Telefon" autocomplete="tel" style="text-transform:none;letter-spacing:.02em"><input class="input" id="cd" placeholder="Giriş kodu" aria-label="Giriş kodu" autocomplete="one-time-code" style="max-width:140px;text-transform:uppercase"><button class="btn primary lg" id="go">Giriş</button></div>
+      ${NS.pub ? '' : '<p class="small muted">Demo için <a href="#" id="hint">örnek üye bilgisi kullanın</a>.</p>'}
+      <div class="tk-how"><div>${icon('wallet')}<b>Aidat durumu</b>Hangi dönemin ödendiğini ve kalan borcu görün.</div><div>${icon('calendar')}<b>Genel kurul</b>Planlanan toplantının tarihi, yeri ve gündemi.</div><div>${icon('bell')}<b>Duyurular</b>Yönetimin paylaştığı son duyurular.</div></div></div>`;
+    const go = () => { const d = digits($('#ph').value); const code = $('#cd').value.trim().toUpperCase(); if (!code) return toast('Yönetimden aldığınız giriş kodunu yazın', 'err'); if (d.length !== 10 || db.lookup({ phone: d, code }) === null) db.load(); const m = d.length === 10 && db.all('members').find((x) => digits(x.phone) === d && (NS.pub || (x.portalCode && x.portalCode === code))); if (!m) return toast('Telefon veya giriş kodu hatalı', 'err'); sset(m.id); render(); };
+    $('#go').onclick = go; $('#ph').onkeydown = (e) => { if (e.key === 'Enter') go(); };
+    if ($('#hint')) $('#hint').onclick = (e) => { e.preventDefault(); const m = db.all('members', (x) => x.status === 'aktif' && x.phone)[0]; if (m) { $('#ph').value = m.phone; $('#cd').value = NS.portalCode(db, m); } };
+  }
+  function render() {
+    const id = sget(); const m = id && db.get('members', id); if (!m) return login();
+    $('#out').innerHTML = '<button class="btn ghost sm" id="lo">Çıkış</button>'; $('#lo').onclick = () => { sset(null); login(); };
+    const dues = db.all('dues', (d) => d.member === m.id).sort((a, b) => b.period.localeCompare(a.period)); const recs = db.all('receipts', (r) => r.member === m.id && !r.canceled).sort((a, b) => b.at.localeCompare(a.at));
+    const kalan = sum(dues, (d) => d.amount - (d.paid || 0)); const s = S(); const gk = db.all('meetings', (x) => x.type === 'gk' && x.status === 'plan' && x.date >= today()).sort((a, b) => a.date.localeCompare(b.date))[0];
+    $('#root').innerHTML = `<div class="tk-view"><h1 style="margin-top:0">${esc(m.name)}</h1><div class="stat2"><div><b>${money(kalan)}</b><span>Kalan aidat</span></div><div><b>${money(sum(recs, (r) => r.amount))}</b><span>Ödenen</span></div></div>
+      ${kalan > 0 && s.iban ? `<section class="tk-panel"><h3>${icon('card')} Ödeme</h3><div class="b small">IBAN: <b class="mono">${esc(s.iban)}</b><br>Açıklamaya adınızı yazın. Ödemeniz işlendiğinde burada görünür.</div></section>` : ''}
+      ${gk ? `<section class="tk-panel"><h3>${icon('calendar')} Genel kurul</h3><div class="b small"><b>${NS.date(gk.date)} ${esc(gk.time || '')}</b> · ${esc(gk.place || '')}<div class="muted mt" style="white-space:pre-line">${esc(gk.agenda || '')}</div></div></section>` : ''}
+      <section class="tk-panel"><h3>${icon('wallet')} Aidat dönemleri</h3><div class="b">${dues.map((d) => `<div class="ln"><span class="g">${esc(perName(d.period))}</span><b>${money(d.amount)}</b>${d.paid >= d.amount ? badge('Ödendi', 'ok') : d.paid > 0 ? badge('Kısmi', 'warn') : badge('Ödenmedi', 'err')}</div>`).join('') || '<div class="faint small">Kayıt yok</div>'}</div></section>
+      <section class="tk-panel"><h3>${icon('bell')} Duyurular</h3><div class="b">${db.all('posts').sort((a, b) => String(b.date).localeCompare(String(a.date))).slice(0, 10).map((p) => `<div class="ln"><span class="g"><b>${esc(p.title)}</b><div class="small muted">${esc(p.body || '')}</div></span><span class="small faint">${NS.date(p.date)}</span></div>`).join('') || '<div class="faint small">Duyuru yok</div>'}</div></section></div>`;
+  }
+  render();
+})();
+</script>
+</body>
+</html>

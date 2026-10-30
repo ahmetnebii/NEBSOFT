@@ -1,0 +1,16 @@
+// Dernek, Eğitim ve Danışan: rol ve portal kuralları (saf işlevler)
+//   node server/test/uyelik-kural.test.js
+const assert = require('assert'); const K = require('../cloud/rol-kural'); const R = require('../cloud/public-rules');
+let n = 0; const ok = (m) => { n++; console.log('✓ ' + m); };
+const kopya = (x) => JSON.parse(JSON.stringify(x));
+const mk = (doc, ident) => { const col = (k) => doc[k] || []; return { doc, ident: ident || null, q: {}, col, get: (k, id) => col(k).find((r) => r.id === id), pick: (o, f) => Object.fromEntries(f.filter((k) => k in o).map((k) => [k, o[k]])), today: '2026-10-30' }; };
+
+// Dernek
+const dernek = () => ({ _meta: {}, _settings: { bizName: 'D' }, users: [], members: [{ id: 'm1', name: 'Ali', phone: '05321112233', portalCode: 'K7P2QX', tc: '11111111110', note: 'gizli', status: 'aktif' }, { id: 'm2', name: 'Veli', phone: '05440000000', tc: '22222222220', status: 'aktif' }, { id: 'm3', name: 'Eski', phone: '05450000000', portalCode: 'AAAAAA', status: 'ayrildi' }], dues: [{ id: 'd1', member: 'm1', amount: 600, paid: 0 }, { id: 'd2', member: 'm2', amount: 600, paid: 600 }], receipts: [{ id: 'r1', member: 'm2', amount: 600, docNo: 'A1' }], entries: [{ id: 'e1', amount: 10 }], meetings: [{ id: 'k1', type: 'yk', status: 'plan', date: '2026-12-01', agenda: 'gizli gündem' }, { id: 'k2', type: 'gk', status: 'plan', date: '2026-12-01', agenda: 'gk' }], letters: [], posts: [] });
+{ const s = dernek(); const f = K.filtrele('dernek', 'sekreter', s); assert.deepEqual(f.dues, []); assert.deepEqual(f.receipts, []); assert.deepEqual(f.entries, []); assert.equal(f.members.length, 3); const g = kopya(f); g.dues = [{ id: 'sahte', member: 'm1', amount: 1 }]; g.members = g.members.filter((m) => m.id !== 'm1'); const o = K.geriKoy('dernek', 'sekreter', g, s); assert.equal(o.dues.length, 2); assert.ok(o.members.find((m) => m.id === 'm1')); ok('dernek sekreter: mali kayıt görmez, yazamaz, üye silemez'); }
+{ const s = dernek(); const f = K.filtrele('dernek', 'sayman', s); const g = kopya(f); g.meetings[0].agenda = 'değişti'; const o = K.geriKoy('dernek', 'sayman', g, s); assert.equal(o.meetings[0].agenda, 'gizli gündem'); ok('dernek sayman: toplantı kaydını değiştiremez'); }
+{ const L = R.dernek.login; const x = mk(dernek()); assert.equal(L(x, { phone: '05321112233', code: 'k7p2qx' }).i, 'm1'); assert.equal(L(x, { phone: '05321112233' }), null); assert.equal(L(x, { phone: '05440000000', code: 'undefined' }), null); ok('dernek portalı: telefon + kod gerekir'); }
+{ const v = R.dernek.view(mk(dernek(), { k: 'o', i: 'm1' })); assert.equal(v.members.length, 1); assert.ok(!('tc' in v.members[0]) && !('note' in v.members[0]) && !('portalCode' in v.members[0])); assert.deepEqual(v.dues.map((d) => d.id), ['d1']); assert.deepEqual(v.receipts, []); assert.deepEqual(R.dernek.view(mk(dernek(), { k: 'o', i: 'm3' })), {}); ok('dernek portalı: yalnız kendi aidatı; TC ve not gitmez; ayrılan üye göremez'); }
+{ const x = mk(dernek()); const w = R.dernek.pub.meetings.where; assert.equal(w(x.doc.meetings[0], x), false); assert.equal(w(x.doc.meetings[1], x), true); assert.deepEqual(Object.keys(R.dernek.write), []); ok('dernek portalı: yönetim kurulu toplantısı açılmaz, yazma yok'); }
+
+console.log(`${n} test geçti`);
