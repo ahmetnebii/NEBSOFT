@@ -60,7 +60,7 @@
   const digits = (x) => String(x || '').replace(/\D/g, '').slice(-10);
   const plan = (id) => db.get('plans', id) || { name: '-', months: 1, price: 0 };
   const trainer = (id) => db.get('trainers', id) || { name: '-', color: '#64748b' };
-  const status = (m) => (m.freezeUntil && m.freezeUntil >= today() ? 'donduruldu' : m.end < today() ? 'bitti' : daysBetween(new Date(), m.end) <= 7 ? 'bitiyor' : 'aktif');
+  const status = (m) => (m.canceled ? 'bitti' : m.freezeUntil && m.freezeUntil >= today() ? 'donduruldu' : m.end < today() ? 'bitti' : daysBetween(new Date(), m.end) <= 7 ? 'bitiyor' : 'aktif');
   const STS = { aktif: 'Aktif', bitiyor: 'Süresi bitiyor', bitti: 'Süresi doldu', donduruldu: 'Donduruldu' };
   let tab = 'dersler', day = today();
 
@@ -88,6 +88,7 @@
     const mine = myBookings(m).filter((b) => b.date >= today()).map((b) => ({ b, c: db.get('classes', b.cls) })).filter((x) => x.c).sort((a, b) => (a.b.date + a.c.time).localeCompare(b.b.date + b.c.time));
     return `${mine.length ? `<section class="tk-panel"><h3>${icon('check')} Rezervasyonlarım</h3><div class="b">${mine.map(({ b, c }) => `<div class="cls"><span class="tm">${esc(c.time)}</span><div><b>${esc(c.name)}</b><div class="small muted">${NS.dateLong(b.date)} · ${esc(trainer(c.trainer).name)}</div></div><button class="btn sm" data-cx="${b.id}">İptal</button></div>`).join('')}</div></section>` : ''}
       <section class="tk-panel"><h3>${icon('calendar')} Ders programı</h3><div class="b"><div class="days" role="group" aria-label="Gün">${days.map((d, i) => `<button data-day="${d}" aria-pressed="${d === day}"><small>${i === 0 ? 'Bugün' : NS.DAYS[new Date(d + 'T12:00').getDay()].slice(0, 3)}</small><b>${Number(d.slice(8))}</b></button>`).join('')}</div>
+        ${(m.freezes || []).length ? `<p class="small muted">Dondurma kayıtların: ${m.freezes.map((f) => `${NS.date(f.from)} – ${NS.date(f.to)} (${f.days} gün)`).join(', ')}</p>` : ''}
         ${['bitti', 'donduruldu'].includes(st) ? `<p class="small" style="color:var(--err)">Üyeliğin ${st === 'bitti' ? 'sona erdi' : 'dondurulmuş'}; ders rezervasyonu yapılamaz.</p>` : ''}
         ${list.map((c) => { const n = db.all('bookings', (b) => b.cls === c.id && b.date === day).length; const booked = myBookings(m).find((b) => b.cls === c.id && b.date === day); const past = day === today() && c.time <= nowHm; const full = n >= c.capacity; const t = trainer(c.trainer);
           return `<div class="cls"><span class="tm">${esc(c.time)}</span><div><b>${esc(c.name)}</b><div class="small muted">${esc(t.name)} · ${c.dur} dk · ${c.capacity - n} yer kaldı</div><div class="cap" style="--c:${t.color}"><i style="width:${Math.min(100, (n / c.capacity) * 100)}%"></i></div></div>

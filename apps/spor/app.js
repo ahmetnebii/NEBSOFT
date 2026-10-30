@@ -40,10 +40,17 @@
   const trainer = (id) => db.get('trainers', id) || { name: '-', color: '#64748b' };
   const mem = (id) => db.get('members', id) || { name: '-' };
   const daysLeft = (m) => daysBetween(new Date(), m.end);
-  const status = (m) => (m.freezeUntil && m.freezeUntil >= today() ? 'donduruldu' : m.end < today() ? 'bitti' : daysLeft(m) <= 7 ? 'bitiyor' : 'aktif');
-  const STS = { aktif: ['Aktif', 'ok'], bitiyor: ['Süresi bitiyor', 'warn'], bitti: ['Süresi doldu', 'err'], donduruldu: ['Donduruldu', 'info'] };
-  const debt = (m) => sum(m.installments.filter((i) => !i.paid && i.due <= today()), (i) => i.amount);
-  const totalDebt = (m) => sum(m.installments.filter((i) => !i.paid), (i) => i.amount);
+  const status = (m) => (m.canceled ? 'iptal' : m.freezeUntil && m.freezeUntil >= today() ? 'donduruldu' : m.end < today() ? 'bitti' : daysLeft(m) <= 7 ? 'bitiyor' : 'aktif');
+  const STS = { aktif: ['Aktif', 'ok'], bitiyor: ['Süresi bitiyor', 'warn'], bitti: ['Süresi doldu', 'err'], donduruldu: ['Donduruldu', 'info'], iptal: ['İptal edildi', 'err'] };
+  const debt = (m) => sum(m.installments.filter((i) => !i.paid && !i.canceled && i.due <= today()), (i) => i.amount);
+  const totalDebt = (m) => sum(m.installments.filter((i) => !i.paid && !i.canceled), (i) => i.amount);
+  // Üyelik iptali hesabı: kullanılan gün (dondurma hariç) oranında bedel + ayardaki iptal bedeli düşülür; kalan iade önerisidir, tutar elle değiştirilebilir
+  function cancelCalc(m) {
+    const total = sum(m.installments, (i) => i.amount); const paid = sum(m.installments.filter((i) => i.paid), (i) => i.amount); const fz = m.frozen || 0;
+    const days = Math.max(1, daysBetween(m.start, m.end) - fz); const used = NS.clamp(daysBetween(m.start, new Date()) - fz, 0, days);
+    const usedVal = Math.round(total * used / days * 100) / 100; const fee = Number(S().cancelFee) || 0;
+    return { total, paid, days, used, usedVal, fee, refund: Math.max(0, Math.round((paid - usedVal - fee) * 100) / 100), owe: Math.max(0, Math.round((usedVal + fee - paid) * 100) / 100) };
+  }
   const insideNow = () => { const lim = new Date(Date.now() - 90 * 60000).toISOString(); return new Set(db.all('entries', (e) => e.ok && e.at > lim).map((e) => e.member)).size; };
 
   // ---------- Giriş kontrol ----------
@@ -65,7 +72,8 @@
       if (!m) { NS.beep(200, 300); toast('Üye bulunamadı', 'err'); return; }
       const st = status(m);
       let ok = ['aktif', 'bitiyor'].includes(st), msg = '';
-      if (st === 'bitti') msg = `Üyelik ${NS.date(m.end)} tarihinde sona erdi`;
+      if (st === 'iptal') msg = `Üyelik ${NS.date(m.canceled.at)} tarihinde iptal edildi`;
+      else if (st === 'bitti') msg = `Üyelik ${NS.date(m.end)} tarihinde sona erdi`;
       else if (st === 'donduruldu') msg = `Üyelik ${NS.date(m.freezeUntil)} tarihine kadar dondurulmuş`;
       else if (debt(m) > 0) { ok = false; msg = `Vadesi geçmiş borç: ${money(debt(m))}`; }
       else if (m.sessionsLeft === 0) { ok = false; msg = 'Ders hakkı bitti'; }
@@ -122,11 +130,11 @@
         <div class="col center">${NS.qrSvg('MEMBER:' + m.no, 90)}<span class="small faint">Giriş kartı</span></div></div>
       <div class="grid g4 mb">${kpi('Durum', STS[st][0], 'shield', STS[st][1])}${kpi('Kalan gün', Math.max(0, daysLeft(m)), 'calendar', 'info')}${kpi('Bu ay giriş', ent.filter((e) => e.at.slice(0, 7) === today().slice(0, 7)).length, 'zap')}${kpi('Borç', money(totalDebt(m)), 'wallet', totalDebt(m) ? 'err' : 'ok')}</div>
       <div class="grid g-21"><div class="col" style="gap:16px">
-        <div class="card"><div class="card-h"><h3>Üyelik</h3><button class="btn sm" data-x="renew">${icon('refresh')} Yenile / paket değiştir</button><button class="btn sm" data-x="freeze">${icon('lock')} Dondur</button></div><div class="card-b">
+        <div class="card"><div class="card-h"><h3>Üyelik</h3><button class="btn sm" data-x="renew">${icon('refresh')} Yenile / paket değiştir</button>${st === 'donduruldu' ? `<button class="btn sm" data-x="unfreeze">${icon('refresh')} Dondurmayı bitir</button>` : st === 'iptal' ? '' : `<button class="btn sm" data-x="freeze">${icon('lock')} Dondur</button>`}${st === 'iptal' ? '' : `<button class="btn sm danger" data-x="cancel">${icon('x')} Üyeliği iptal et</button>`}</div><div class="card-b">
           <div class="list-item"><span class="grow muted">Paket</span><b>${esc(plan(m.plan).name)}</b></div><div class="list-item"><span class="grow muted">Dönem</span><b>${NS.date(m.start)} – ${NS.date(m.end)}</b></div>
-          ${m.sessionsLeft !== null && m.sessionsLeft !== undefined ? `<div class="list-item"><span class="grow muted">Kalan ders hakkı</span><b>${m.sessionsLeft}</b></div>` : ''}${m.freezeUntil ? `<div class="list-item"><span class="grow muted">Dondurma</span><b>${NS.date(m.freezeUntil)} tarihine kadar</b></div>` : ''}
+          ${m.sessionsLeft !== null && m.sessionsLeft !== undefined ? `<div class="list-item"><span class="grow muted">Kalan ders hakkı</span><b>${m.sessionsLeft}</b></div>` : ''}${m.freezeUntil >= today() ? `<div class="list-item"><span class="grow muted">Dondurma</span><b>${NS.date(m.freezeUntil)} tarihine kadar</b></div>` : ''}${(m.freezes || []).length || m.frozen ? `<div class="list-item"><span class="grow muted">Kullanılan dondurma</span><b>${m.frozen || 0} / ${S().maxFreeze} gün</b></div>${(m.freezes || []).map((f) => `<div class="small muted" style="padding:2px 0">${NS.date(f.from)} – ${NS.date(f.to)} · ${f.days} gün${f.reason ? ' · ' + esc(f.reason) : ''}${f.by ? ' · ' + esc(f.by) : ''}</div>`).join('')}` : ''}${m.canceled ? `<div class="list-item"><span class="grow muted">İptal</span><b>${NS.date(m.canceled.at)}${m.canceled.refund ? ' · iade ' + money(m.canceled.refund) : ''}</b></div><div class="small muted">${esc(m.canceled.reason || '')}</div>` : ''}
           <div class="progress mt"><i style="width:${NS.clamp((daysBetween(m.start, new Date()) / Math.max(1, daysBetween(m.start, m.end))) * 100, 0, 100)}%"></i></div></div></div>
-        <div class="card"><div class="card-h"><h3>Taksitler</h3></div>${table({ rows: m.installments, columns: [{ label: 'Vade', render: (i) => NS.date(i.due) }, { label: 'Tutar', cls: 'right', render: (i) => money(i.amount) }, { label: 'Durum', render: (i) => (i.paid ? badge('Ödendi', 'ok') : i.due < today() ? badge('Gecikti', 'err') : badge('Bekliyor', 'warn')) }], actions: [{ label: 'Tahsil et', act: 'pay', show: (i) => !i.paid }] })}</div>
+        <div class="card"><div class="card-h"><h3>Taksitler</h3></div>${table({ rows: m.installments, columns: [{ label: 'Vade', render: (i) => NS.date(i.due) }, { label: 'Tutar', cls: 'right', render: (i) => money(i.amount) }, { label: 'Durum', render: (i) => (i.paid ? badge('Ödendi', 'ok') : i.due < today() ? badge('Gecikti', 'err') : badge('Bekliyor', 'warn')) }], actions: [{ label: 'Tahsil et', act: 'pay', show: (i) => !i.paid && !i.canceled }] })}</div>
         <div class="card"><div class="card-h"><h3>Vücut ölçümleri</h3><button class="btn sm" data-x="meas">${icon('plus')} Ölçüm ekle</button></div><div class="card-b">${ms.length > 1 ? chart.line([{ name: 'Kilo (kg)', values: ms.map((x) => x.weight) }, { name: 'Yağ %', values: ms.map((x) => x.fat) }, { name: 'Kas (kg)', values: ms.map((x) => x.muscle) }], ms.map((x) => NS.date(x.date).slice(0, 5)), { height: 180 }) : ''}
           ${table({ rows: ms.slice().reverse().map((x, i) => ({ ...x, id: i })), empty: 'Ölçüm yok', columns: [{ label: 'Tarih', render: (x) => NS.date(x.date) }, { label: 'Kilo', cls: 'right', render: (x) => num(x.weight) }, { label: 'Yağ %', cls: 'right', render: (x) => num(x.fat) }, { label: 'Kas', cls: 'right', render: (x) => num(x.muscle) }, { label: 'Bel', cls: 'right', render: (x) => num(x.waist) }] })}</div></div>
       </div><div class="col" style="gap:16px">
@@ -144,14 +152,26 @@
     on(el, 'click', '[data-x]', async (e, b) => {
       const x = b.dataset.x;
       if (x === 'freeze') {
-        const v = await formModal({ title: 'Üyelik dondur', fields: [{ name: 'days', label: `Gün (en fazla ${S().maxFreeze})`, type: 'number', value: 14 }, { name: 'reason', label: 'Neden' }] });
-        if (!v) return; const d = NS.clamp(v.days || 0, 1, S().maxFreeze || 30);
-        m.freezeUntil = iso(addDays(new Date(), d)); m.end = iso(addDays(m.end, d)); m.frozen = (m.frozen || 0) + d; db.log('Dondurma', `${m.name} · ${d} gün`); db.save(); toast(`Üyelik ${d} gün donduruldu, bitiş ${NS.date(m.end)}`, 'ok'); re();
+        // Sınır üyelik başına toplamdır (tek seferlik değil); aşım yetkili onayı ister. Her dondurma kayda geçer.
+        const lim = Number(S().maxFreeze) || 30, usedF = m.frozen || 0; const v = await formModal({ title: 'Üyelik dondur', fields: [{ name: 'days', label: `Gün (kalan hak ${Math.max(0, lim - usedF)} / ${lim})`, type: 'number', value: Math.min(14, Math.max(1, lim - usedF)) }, { name: 'reason', label: 'Neden (sağlık, seyahat…)' }] });
+        if (!v) return; const d = Math.max(1, Math.floor(Number(v.days) || 0)); if (usedF + d > lim && !(await NS.approve(NS.app, `${m.name} dondurma hakkı aşımı (${usedF + d}/${lim} gün)`))) return;
+        const from = today(), to = iso(addDays(new Date(), d)); m.freezeUntil = to; m.end = iso(addDays(m.end, d)); m.frozen = usedF + d; (m.freezes = m.freezes || []).push({ from, to, days: d, reason: v.reason || '', by: (NS.currentUser || {}).name || '', at: new Date().toISOString() });
+        db.log('Dondurma', `${m.name} · ${d} gün`); db.save(); toast(`Üyelik ${d} gün donduruldu, bitiş ${NS.date(m.end)}`, 'ok'); re();
+      } else if (x === 'unfreeze') {
+        // Erken dönüş: kullanılmayan dondurma günleri üyelik süresinden ve dondurma hakkından geri düşülür
+        const left = Math.max(0, daysBetween(new Date(), m.freezeUntil)); const f = (m.freezes || []).slice(-1)[0]; if (f) { f.to = today(); f.days = Math.max(0, f.days - left); }
+        m.end = iso(addDays(m.end, -left)); m.frozen = Math.max(0, (m.frozen || 0) - left); m.freezeUntil = null; db.log('Dondurma bitirildi', `${m.name} · ${left} gün geri alındı`); db.save(); toast(`Dondurma bitti, ${left} gün geri alındı`, 'ok'); re();
+      } else if (x === 'cancel') {
+        const c = cancelCalc(m);
+        const v = await formModal({ title: `Üyelik iptali — ${m.name}`, size: 'wide', extra: `<div class="card pad mt small"><div class="row between"><span>Üyelik bedeli</span><b>${money(c.total)}</b></div><div class="row between"><span>Ödenen</span><b>${money(c.paid)}</b></div><div class="row between"><span>Kullanılan (${c.used} / ${c.days} gün, dondurma hariç)</span><b>${money(c.usedVal)}</b></div>${c.fee ? `<div class="row between"><span>İptal bedeli (ayar)</span><b>${money(c.fee)}</b></div>` : ''}${c.owe ? `<div class="row between" style="color:var(--err)"><span>Üyenin kalan borcu</span><b>${money(c.owe)}</b></div>` : ''}<p class="muted mt">Hesap öneridir; iade tutarını sözleşmenize göre değiştirebilirsiniz.</p></div>`, fields: [{ name: 'refund', label: 'İade tutarı (₺)', type: 'number', step: '0.01', value: c.refund }, { name: 'type', label: 'İade yöntemi', type: 'select', options: [{ value: 'kart', label: 'Kart' }, { value: 'nakit', label: 'Nakit' }, { value: 'havale', label: 'Havale' }] }, { name: 'reason', label: 'İptal nedeni', required: true, full: true }], submitLabel: 'İptal et' });
+        if (!v || !(await NS.approve(NS.app, `${m.name} üyelik iptali`))) return; const refund = Math.max(0, Number(v.refund) || 0);
+        m.installments.forEach((i) => { if (!i.paid) i.canceled = true; }); if (refund > 0) db.insert('payments', { member: m.id, amount: -refund, at: new Date().toISOString(), type: v.type, desc: `${plan(m.plan).name} üyelik iptali iadesi` });
+        m.canceled = { at: today(), reason: v.reason, refund, by: (NS.currentUser || {}).name || '' }; m.end = today(); m.freezeUntil = null; db.log('Üyelik iptali', `${m.name} · iade ${money(refund)}`); db.save(); toast(refund ? `Üyelik iptal edildi, ${money(refund)} iade kaydedildi` : 'Üyelik iptal edildi', 'ok'); re();
       } else if (x === 'renew') {
         const v = await formModal({ title: 'Üyelik yenile', fields: [{ name: 'plan', label: 'Paket', type: 'select', options: db.all('plans').map((p) => ({ value: p.id, label: `${p.name} — ${money(p.price)}` })), value: m.plan }, { name: 'inst', label: 'Taksit', type: 'select', options: ['1', '2', '3', '4', '6'] }, { name: 'disc', label: 'İndirim', type: 'number', value: 0 }, { name: 'type', label: 'İlk ödeme', type: 'select', options: [{ value: 'kart', label: 'Kart' }, { value: 'nakit', label: 'Nakit' }] }] });
         if (!v) return; const p = plan(v.plan); const start = m.end > today() ? m.end : today(); const n = Number(v.inst) || 1; const tot = p.price - (v.disc || 0);
         const inst = Array.from({ length: n }, (_, k) => ({ id: NS.uid(), due: iso(addDays(new Date(), k * 30)), amount: Math.round(tot / n), paid: k === 0 }));
-        Object.assign(m, { plan: p.id, start, end: iso(addDays(start, p.months * 30)), sessionsLeft: p.sessions || null, freezeUntil: null }); m.installments.push(...inst);
+        Object.assign(m, { canceled: null, plan: p.id, start, end: iso(addDays(start, p.months * 30)), sessionsLeft: p.sessions || null, freezeUntil: null }); m.installments.push(...inst);
         db.insert('payments', { member: m.id, amount: inst[0].amount, at: new Date().toISOString(), type: v.type, desc: `${p.name} yenileme` }); db.log('Yenileme', `${m.name} · ${p.name}`); toast('Üyelik yenilendi', 'ok'); re();
       } else if (x === 'meas') {
         const last = m.measurements[m.measurements.length - 1] || {};
@@ -212,6 +232,8 @@
   }
   function reportsPage(el) {
     const ms = db.all('members');
+    const lastIn = new Map(); db.all('entries', (e) => e.ok).forEach((e) => { if (!lastIn.has(e.member) || e.at > lastIn.get(e.member)) lastIn.set(e.member, e.at); });
+    const idle = ms.filter((m) => ['aktif', 'bitiyor'].includes(status(m))).map((m) => ({ id: m.id, m, last: lastIn.get(m.id) || m.start })).filter((x) => daysBetween(x.last, new Date()) >= 14).sort((a, b) => a.last.localeCompare(b.last));
     const months = Array.from({ length: 6 }, (_, i) => { const d = new Date(); d.setMonth(d.getMonth() - 5 + i); return d.toISOString().slice(0, 7); });
     const rev = months.map((mo) => sum(db.all('payments', (x) => x.at.slice(0, 7) === mo), (x) => x.amount));
     const newM = months.map((mo) => ms.filter((m) => m.start.slice(0, 7) === mo).length);
@@ -223,7 +245,9 @@
       <div class="grid g2 mb"><div class="card"><div class="card-h"><h3>Aylık gelir</h3></div><div class="card-b">${chart.bars(months.map((mo, i) => ({ label: NS.MONTHS[Number(mo.slice(5)) - 1].slice(0, 3), value: rev[i] })), { format: money })}</div></div>
       <div class="card"><div class="card-h"><h3>Yeni üye kazanımı</h3></div><div class="card-b">${chart.line([{ name: 'Yeni üye', values: newM }], months.map((mo) => NS.MONTHS[Number(mo.slice(5)) - 1].slice(0, 3)))}</div></div></div>
       <div class="grid g2"><div class="card"><div class="card-h"><h3>Günlere göre giriş</h3></div><div class="card-b">${chart.bars(dow)}</div></div>
+      <div class="card mb"><div class="card-h"><h3>Kayıp riski: 14+ gündür gelmeyen aktif üyeler (${idle.length})</h3>${idle.length ? `<button class="btn sm" id="idl">${icon('message')} Hepsine SMS</button>` : ''}</div>${table({ rows: idle.slice(0, 50), empty: 'Risk altında üye yok', columns: [{ label: 'Üye', render: (x) => `<a href="#/uye/${x.m.id}"><b>${esc(x.m.name)}</b></a><div class="small faint">${esc(x.m.phone)}</div>` }, { label: 'Son giriş', render: (x) => NS.date(x.last) }, { label: 'Gün', cls: 'right', render: (x) => daysBetween(x.last, new Date()) }, { label: 'Paket', render: (x) => esc(plan(x.m.plan).name) }] })}</div>
       <div class="card"><div class="card-h"><h3>Eğitmenler</h3></div>${table({ rows: tr.map((x) => ({ ...x, id: x.t.id })), columns: [{ label: 'Eğitmen', render: (x) => `<b style="color:${x.t.color}">${esc(x.t.name)}</b><div class="small faint">${esc(x.t.branch)}</div>` }, { label: 'Haftalık ders', cls: 'right', render: (x) => x.c }, { label: 'Toplam katılım', cls: 'right', render: (x) => x.n }] })}</div></div>`;
+    if ($('#idl', el)) $('#idl', el).onclick = async () => { if (!(await confirm(`${idle.length} üyeye “sizi özledik” SMS'i gönderilsin mi?`, { ok: 'Gönder', danger: false }))) return; NS.smsBatch(db, idle.map((x) => ({ to: x.m.phone, name: x.m.name, text: `Merhaba ${x.m.name.split(' ')[0]}, sizi bir süredir salonda göremedik. Programınızı birlikte güncelleyelim. ${S().bizName || ''}`, kind: 'geri-kazanma' })), 'geri kazanma mesajı'); };
   }
 
   const ROLES = { admin: 'Yönetici', danisma: 'Danışma', egitmen: 'Eğitmen' };
@@ -235,7 +259,7 @@
       paketler: (el, p, a) => NS.crud(el, a, { col: 'plans', title: 'Üyelik Paketleri', single: 'Paket', addLabel: 'Yeni paket', emptyIcon: 'gift', fields: [{ name: 'name', label: 'Paket adı', required: true }, { name: 'months', label: 'Süre (ay)', type: 'number', required: true }, { name: 'price', label: 'Fiyat (₺)', type: 'number', required: true }, { name: 'sessions', label: 'Ders hakkı (boş = sınırsız)', type: 'number' }, { name: 'color', label: 'Renk', type: 'color' }], columns: [{ key: 'name', label: 'Paket', render: (x) => `<div class="row nw"><span class="dot" style="background:${x.color};width:12px;height:12px"></span><b>${esc(x.name)}</b></div>` }, { key: 'months', label: 'Süre', render: (x) => x.months + ' ay' }, { key: 'sessions', label: 'Ders', render: (x) => x.sessions || 'Sınırsız' }, { key: 'price', label: 'Fiyat', cls: 'right', render: (x) => `<b>${money(x.price)}</b>` }, { label: 'Aylık', cls: 'right', render: (x) => money(x.price / x.months) }, { label: 'Üye', cls: 'right', render: (x) => db.all('members', (m) => m.plan === x.id && status(m) !== 'bitti').length }] }),
       egitmenler: (el, p, a) => NS.crud(el, a, { col: 'trainers', title: 'Eğitmenler', single: 'Eğitmen', addLabel: 'Yeni eğitmen', fields: [{ name: 'name', label: 'Ad', required: true }, { name: 'branch', label: 'Branş' }, { name: 'phone', label: 'Telefon' }, { name: 'color', label: 'Renk', type: 'color' }], columns: [{ key: 'name', label: 'Eğitmen', render: (x) => `<b style="color:${x.color}">${esc(x.name)}</b>` }, { key: 'branch', label: 'Branş' }, { label: 'Ders', cls: 'right', render: (x) => db.all('classes', (c) => c.trainer === x.id).length }] }),
       urunler: (el, p, a) => NS.crud(el, a, { col: 'products', title: 'Ürünler & Hizmetler', single: 'Ürün', addLabel: 'Yeni ürün', fields: [{ name: 'name', label: 'Ad', required: true }, { name: 'price', label: 'Fiyat', type: 'number', required: true }, { name: 'stock', label: 'Stok', type: 'number' }], columns: [{ key: 'name', label: 'Ürün', render: (x) => `<b>${esc(x.name)}</b>` }, { key: 'price', label: 'Fiyat', cls: 'right', render: (x) => money(x.price) }, { key: 'stock', label: 'Stok', cls: 'right' }] }),
-      ayarlar: (el, p, a) => NS.settingsPage(el, a, { roles: ROLES, fields: [{ type: 'section', label: 'Salon ayarları' }, { name: 'maxFreeze', label: 'En fazla dondurma (gün)', type: 'number' }] }),
+      ayarlar: (el, p, a) => NS.settingsPage(el, a, { roles: ROLES, fields: [{ type: 'section', label: 'Salon ayarları' }, { name: 'maxFreeze', label: 'Üyelik başına toplam dondurma hakkı (gün)', type: 'number' }, { name: 'cancelFee', label: 'Üyelik iptal bedeli (₺, yoksa boş)', type: 'number' }] }),
     },
   });
 })();
