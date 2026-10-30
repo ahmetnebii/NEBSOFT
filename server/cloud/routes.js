@@ -532,6 +532,7 @@ route('GET', '/api/team', { auth: 'user' }, async (c) => {
   if (!sahip) return { ok: true, users: users.map(temel) };
   const L = await licenses(c.user.tenant_id); const programlar = kural.programlar().filter((p) => L.some((l) => l.product === p.app && valid(l))).map((p) => ({ ...p, ad: pnameOf(p.app) }));
   const ik = programlar.find((p) => p.app === 'ik'); if (ik) { const r = await db.one("SELECT data FROM app_data WHERE tenant_id=? AND app='ik'", [c.user.tenant_id]); const d = await belge.oku(c.user.tenant_id, 'ik', r, {}); ik.departmanlar = [...new Set([...String((d._settings || {}).depts || '').split(',').map((x) => x.trim()), ...(Array.isArray(d.employees) ? d.employees.map((e) => e && e.dept) : [])].filter(Boolean))]; }
+  for (const p of programlar) if (p.roller.some((x) => x.kisi)) { const r = await db.one('SELECT data FROM app_data WHERE tenant_id=? AND app=?', [c.user.tenant_id, p.app]); p.kisiler = kural.kisiler(p.app, await belge.oku(c.user.tenant_id, p.app, r, {})); }
   return { ok: true, programlar, users: users.map((u, i) => ({ ...temel(u), sahip: i === 0, roller: J(u.team_roles, null) })) };
 });
 route('POST', '/api/team', { auth: 'user', limit: ['team', 20, 3600e3] }, async (c) => {
@@ -606,8 +607,8 @@ route('GET', '/api/data/:app', { auth: 'user' }, async (c) => {
   const k = await hesapRolu(c.user, app);
   const r = await db.one('SELECT data, version FROM app_data WHERE tenant_id=? AND app=?', [c.user.tenant_id, app]);
   if (HEALTH.includes(app)) { const k = `${c.user.id}:${app}`; if (Date.now() - (readLog.get(k) || 0) > 3600e3) { if (readLog.size > 50000) readLog.clear(); readLog.set(k, Date.now()); await audit(c, 'Sağlık verisi okundu', app); } }
-  const t = await tenantOf(c.user);
-  return { ok: true, data: r ? gorunum(app, k, await belge.oku(c.user.tenant_id, app, r)) : null, version: r ? r.version : 0, tenant: { name: t.name, phone: t.phone, address: t.address, slug: t.slug }, owner: { name: c.user.name }, ...(await isOwner(c.user) ? { hesapSahibi: true } : {}), ...rolAlani(k) };
+  const t = await tenantOf(c.user); const ham = r ? await belge.oku(c.user.tenant_id, app, r) : null; const kb = k && !k.ortak ? kural.kisiBilgi(app, k.rol, k.dept, ham) : null;
+  return { ok: true, data: r ? gorunum(app, k, ham) : null, version: r ? r.version : 0, tenant: { name: t.name, phone: t.phone, address: t.address, slug: t.slug }, owner: { name: c.user.name }, ...(await isOwner(c.user) ? { hesapSahibi: true } : {}), ...rolAlani(k), ...(kb ? { rolKisi: kb } : {}) };
 });
 route('GET', '/api/data/:app/v', { auth: 'user' }, async (c) => {
   const r = await db.one('SELECT version FROM app_data WHERE tenant_id=? AND app=?', [c.user.tenant_id || '-', String(c.params.app)]);

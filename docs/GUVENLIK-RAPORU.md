@@ -8,7 +8,7 @@ Tarih: 30.10.2026 · Dal: `guvenlik/denetim` (temel: `devir/hepsi` 4ec51e1) · K
 
 | # | Konu | Neden | Gereken |
 |---|---|---|---|
-| E1 | **Program rolleri sunucuda (A1): klinik, eczane, veteriner, ik için GİDERİLDİ** (dal `guvenlik/sunucu-rolleri`) | Ekip hesabına `team_roles` + `server/cloud/rol-kural.js`: okumada süzme, yazmada geri koyma, PIN sunucuda. Rol atanmamış ekip hesabı eskisi gibi tam yetkili ve PIN'leri görür. Diğer 27 programın rolleri yalnızca arayüzde. | Sağlık programı kullanan işletmelerde üyelere rol atayın; yeni programlar için `RULES`e kayıt ekleyin |
+| E1 | **Program rolleri sunucuda (A1): 20 programda GİDERİLDİ** (dallar `guvenlik/sunucu-rolleri`, `guvenlik/roller-tum`) | Ekip hesabına `team_roles` + `server/cloud/rol-kural.js`: okumada süzme, yazmada geri koyma, PIN sunucuda. Kural var: klinik, eczane, veteriner, ik, muhasebe, hukuk, musavir, crm, toptan, otoservis, pos, adisyon, kuyumcu, otel, randevu, kurs, anaokulu, site, galeri, eticaret. Rol atanmamış ekip hesabı eskisi gibi tam yetkili ve PIN'leri görür. Spor, kiralama: rol farkı yalnız menü, kural yok. Bilet, butik, emlak, fabrika, fiyatrobotu, kargo, oto, pazaryeri, servis: henüz kural yok, rol yalnızca arayüzde. | Üyelere rol atayın; kişiye bağlı rolde (temsilci, plasiyer, avukat, teknisyen, personel, öğretmen) kişiyi de seçin. Kalan 9 program için `RULES`e kayıt ekleyin |
 | ~~E2~~ | **Kapandı 30.10.2026 (A2):** telefon tek başına giriş açmıyor | Randevu kodu yalnız o randevuyu, işletmenin verdiği portal kodu tüm randevuları açar. Başkasının numarasıyla randevu alan kişi müşteri bilgisini göremez. | Kodu olmayan eski müşteriye program **Müşteriler → Randevu portalı kodu** ile kod verir |
 | ~~E3~~ | **Kapandı 30.10.2026:** mysql2 3.24.6, `npm audit --omit=dev` 0 açık | Masaüstü bağımlılıkları (Bölüm 3) ayrı duruyor. | exe yeniden derlenirken yükseltilecek |
 | ~~E4~~ | **Kapandı 30.10.2026:** `cloud.test.js` gerçek MariaDB ile geçiyor (43 test) | — | — |
@@ -177,7 +177,7 @@ Kalan teknik sınırlar:
 
 | # | Önem | Konu | Yer | Öneri |
 |---|---|---|---|---|
-| A1 | Yüksek → **4 programda giderildi** | Rolü atanan hesapta veri sunucuda süzülür, PIN inmez, yazma geri konur (`rol-kural.js`, `routes.js`). Kalan: PIN hâlâ düz metin `users[].pin`; rolsüz ekip hesabı ve sahip PIN'i görür; 27 programda rol yalnızca arayüzde; onay kararı (`NS.approve`) sunucuda zorlanmaz | `server/cloud/rol-kural.js`, `routes.js`, `core/core.js` | PIN özeti; yeni programlara kural |
+| A1 | Yüksek → **20 programda giderildi** | Rolü atanan hesapta veri sunucuda süzülür, PIN inmez, yazma geri konur (`rol-kural.js`, `routes.js`). Kalan: rolsüz ekip hesabı tam yetkili; 9 programda veri ayrımı henüz sunucuda değil (E1), 2 programda rol farkı yalnız menü; onay kararı (`NS.approve`) sunucuda zorlanmaz | `server/cloud/rol-kural.js`, `routes.js`, `core/core.js` | PIN özeti; yeni programlara kural |
 | A2 | Yüksek | Randevuda telefonla giriş | `public-rules.js:106` | SMS kodu veya portal kodu |
 | ~~A3~~ | Orta | **Kapandı 30.10.2026:** yer tutucu yalnız `core/integrations.js`, `integ-wizard.js`, `ubltr.js` içinde geçen sağlayıcı adresine veya o entegrasyonun kayıtlı adresine çözülür. Sınır: rolü atanmamış ekip üyesi entegrasyon adresini değiştirebilir | `secrets.js` | Rol atanan hesap `cfg` değiştiremez |
 | A4 | Orta | CSP `unsafe-inline`; `connect-src https:` veri çıkışına izin verir | `security.js:16` | Gömülü betikleri taşımak büyük iş, aşamalı |
