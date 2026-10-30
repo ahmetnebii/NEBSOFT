@@ -6,7 +6,7 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "test": "node server/test/kanal.test.js && node server/test/toptan-kural.test.js && node server/test/crm-kural.test.js && node server/test/site-kural.test.js && node server/test/musavir-kural.test.js && node server/test/proto.test.js && node server/test/takvim.test.js && node server/test/ubltr.test.js && node server/test/ubltr-xsd.test.js && node server/test/muhasebe-calc.test.js && node server/test/muhasebe-portal.test.js && node server/test/portal-kod.test.js && node server/test/bilet-kural.test.js && node server/test/otel-kural.test.js && node server/test/randevu-kural.test.js && node apps/hukuk/sure.test.js && node server/test/isletme-seo.test.js && node server/test/cloud.test.js",
+    "test": "node server/test/kanal.test.js && node server/test/toptan-kural.test.js && node server/test/crm-kural.test.js && node server/test/site-kural.test.js && node server/test/musavir-kural.test.js && node server/test/proto.test.js && node server/test/takvim.test.js && node server/test/ubltr.test.js && node server/test/ubltr-xsd.test.js && node server/test/muhasebe-calc.test.js && node server/test/muhasebe-portal.test.js && node server/test/portal-kod.test.js && node server/test/bilet-kural.test.js && node server/test/otel-kural.test.js && node server/test/randevu-kural.test.js && node apps/hukuk/sure.test.js && node server/test/isletme-seo.test.js && node server/test/shopier.test.js && node server/test/cloud.test.js",
     "build:sites": "node site/tools/build-sites.js"
   },
   "engines": { "node": ">=18" },
