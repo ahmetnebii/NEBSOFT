@@ -1,0 +1,33 @@
+{
+  "sablon": "usta/sozlesme-formlari",
+  "surum": 1,
+  "program": "usta",
+  "kaynak": "sablon",
+  "tur": "form",
+  "ad": "Usta formları",
+  "aciklama": "Örnek bakım sözleşmesi eki.",
+  "uyari": "Bu metin örnektir, hukuki danışmanlık değildir. Kullanmadan önce avukatınıza gösterin ve işinize göre düzenleyin.",
+  "kayitlar": [
+    {
+      "anahtar": "bakim",
+      "label": "Periyodik bakım eki",
+      "sign": [
+        "İşletme",
+        "Müşteri"
+      ],
+      "fields": [
+        {
+          "name": "cihaz",
+          "label": "Cihaz",
+          "type": "text"
+        },
+        {
+          "name": "aralik",
+          "label": "Bakım aralığı",
+          "type": "text"
+        }
+      ],
+      "body": "{{cihaz}} için bakım aralığı {{aralik}} olarak kararlaştırılmıştır."
+    }
+  ]
+}

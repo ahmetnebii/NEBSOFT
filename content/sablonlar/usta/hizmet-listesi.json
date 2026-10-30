@@ -1,0 +1,42 @@
+{
+  "sablon": "usta/hizmet-listesi",
+  "surum": 1,
+  "program": "usta",
+  "kaynak": "sablon",
+  "tur": "hizmet",
+  "ad": "Usta hizmetleri",
+  "aciklama": "Sık kullanılan işler. Fiyatı siz girin.",
+  "hedef": "services",
+  "fiyatAlan": "price",
+  "varsayilan": {
+    "price": 0,
+    "checks": ""
+  },
+  "kayitlar": [
+    {
+      "anahtar": "kombi",
+      "name": "Kombi bakımı",
+      "cat": "Bakım"
+    },
+    {
+      "anahtar": "klima",
+      "name": "Klima bakımı",
+      "cat": "Bakım"
+    },
+    {
+      "anahtar": "ariza",
+      "name": "Arıza tespiti",
+      "cat": "Servis"
+    },
+    {
+      "anahtar": "musluk",
+      "name": "Musluk değişimi",
+      "cat": "Tesisat"
+    },
+    {
+      "anahtar": "priz",
+      "name": "Sigorta ve priz arızası",
+      "cat": "Elektrik"
+    }
+  ]
+}
