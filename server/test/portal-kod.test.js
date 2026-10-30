@@ -55,4 +55,7 @@ for (const [prog, col] of [['veteriner', 'owners'], ['spor', 'members']]) {
   assert.strictEqual(L({ plate: '34ABC123' }), null); assert.strictEqual(L({ plate: '34ABC123', code: 'J9W8E' }), null); assert.strictEqual(L({ plate: '35AA1', code: 'XXXX' }), null);
   ok('oto: plaka + takip kodu gerekir; yalnızca plaka veya başka aracın kodu reddedilir'); }
 
+{ const x = mk({ flats: [{ id: 'A1', ownerPhone: '05321112233', portalCode: 'K7P2QX' }, { id: 'A2', ownerPhone: '05440000000' }] }); const L = R.site.login;
+  assert.strictEqual(L(x(), { flat: 'A1', code: 'k7p2qx' }).i, 'A1'); assert.strictEqual(L(x(), { flat: 'A1', pin: '2233' }), null); assert.strictEqual(L(x(), { flat: 'A1', code: '2233' }), null); assert.strictEqual(L(x(), { flat: 'A2', code: '0000' }), null);
+  ok('Site: telefonun son 4 hanesiyle giriş yok, yalnızca rastgele kod'); }
 console.log(`\n${n} test geçti`);

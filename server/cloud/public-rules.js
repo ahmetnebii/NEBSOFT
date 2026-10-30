@@ -427,8 +427,9 @@ RULES.site = {
     polls: { fields: true },
     bookings: { where: (r, x) => r.date >= x.today && r.status === 'aktif', fields: ['id', 'facility', 'date', 'slot', 'status'] },
   },
-  login: (x, q) => { const f = typeof q.flat === 'string' && x.get('flats', q.flat); const p = String(q.pin || '').replace(/\D/g, ''); return f && p.length === 4 && [f.ownerPhone, f.tenantPhone].filter(Boolean).some((t) => String(t).replace(/\D/g, '').endsWith(p)) ? { k: 'f', i: f.id } : null; },
-  loginError: 'Telefon numarası bu daireyle eşleşmedi',
+  // Telefonun son 4 hanesi komşular tarafından bilinebilir: giriş yalnızca yönetimin verdiği rastgele kodla
+  login: (x, q) => { const f = typeof q.flat === 'string' && x.get('flats', q.flat); const c = norm(q.code); return f && c && f.portalCode && norm(f.portalCode) === c ? { k: 'f', i: f.id } : null; },
+  loginError: 'Sakin kodu bu daireyle eşleşmedi',
   view: (x) => {
     const fid = me(x, 'f'); const own = (r) => r.flat === fid;
     const out = { polls: x.col('polls').map((p) => anonVotes(p, fid)), visitors: [], requests: [] };
@@ -447,7 +448,7 @@ RULES.site = {
       upd: U({ status: 'enum:iptal' }, (b, x) => b.flat === me(x, 'f') && b.status === 'aktif' && new Date(`${b.date}T${b.slot}:00+03:00`) - Date.now() >= 2 * 3600e3),
     },
     visitors: {
-      ins: I({ name: 'str:80', type: 'enum:misafir|kargo|servis|taksi|nakliye', plate: 'str:15?', date: 'date', time: 'str:20?', note: 'str:200?' }, (r, x) => ({ flat: me(x, 'f'), code: Math.random().toString(36).slice(2, 8).toUpperCase(), status: 'bekleniyor', at: nowIso() }), (r, x) => {
+      ins: I({ name: 'str:80', type: 'enum:misafir|kargo|servis|taksi|nakliye', plate: 'str:15?', date: 'date', time: 'str:20?', note: 'str:200?' }, (r, x) => ({ flat: me(x, 'f'), code: require('crypto').randomBytes(3).toString('hex').toUpperCase(), status: 'bekleniyor', at: nowIso() }), (r, x) => {
         if (!me(x, 'f')) deny(); if (r.date < x.today || r.date > addDay(x.today, 60)) bad('Geçersiz tarih'); r.plate = (r.plate || '').toLocaleUpperCase('tr');
         if (x.col('visitors').filter((v) => v.flat === me(x, 'f') && v.status === 'bekleniyor').length >= 30) bad('Çok fazla bekleyen bildiriminiz var');
       }),

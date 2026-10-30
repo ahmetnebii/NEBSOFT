@@ -2,7 +2,7 @@
 window.SITE = {
   seed(db) {
     const { rand, pick, addDays, iso } = NS;
-    db.data._settings = { bizName: 'Yeşilvadi Sitesi Yönetimi', bizPhone: '0216 555 90 90', bizAddress: 'Ataşehir, Yeşilvadi Sok. No:1', iban: 'TR55 0001 5001 5800 7300 1234 56', bank: 'Vakıfbank', baseDue: 1850, lateFee: 5, dueDay: 10, manager: 'Hakan Yılmaz' };
+    db.data._settings = { bizName: 'Yeşilvadi Sitesi Yönetimi', bizPhone: '0216 555 90 90', bizAddress: 'Ataşehir, Yeşilvadi Sok. No:1', iban: 'TR55 0001 5001 5800 7300 1234 56', bank: 'Vakıfbank', baseDue: 1850, lateFee: 5, dueDay: 10, manager: 'Hakan Yılmaz', openingCash: 900000 };
     db.data.users = [{ id: 'u1', name: 'Hakan Yılmaz', role: 'admin', pin: '1234', active: true }, { id: 'u2', name: 'Sevgi Muhasebe', role: 'muhasebe', pin: '1234', active: true }, { id: 'u3', name: 'Ramazan Görevli', role: 'gorevli', pin: '1234', active: true }];
     const flats = [];
     ['A', 'B', 'C'].forEach((bl) => { for (let f = 1; f <= 6; f++) for (let k = 1; k <= 2; k++) { const no = (f - 1) * 2 + k; const m2 = pick([95, 110, 125, 140]); const owner = pick(NS.NAMES); const rented = Math.random() < 0.3; flats.push({ id: `${bl}${no}`, block: bl, no, floor: f, m2, share: m2, owner, ownerPhone: NS.phone(), tenant: rented ? pick(NS.NAMES) : '', tenantPhone: rented ? NS.phone() : '', dueOverride: null, cars: rand(0, 2), plate: rand(0, 1) ? `34 ${String.fromCharCode(65 + rand(0, 25))}${String.fromCharCode(65 + rand(0, 25))} ${rand(100, 999)}` : '' }); } });
@@ -38,6 +38,16 @@ window.SITE = {
       { id: 'r3', flat: 'C2', title: 'Bahçe sulama', desc: 'C blok önü fıskiyeler çalışmıyor.', status: 'cozuldu', at: addDays(new Date(), -12).toISOString(), cat: 'Bahçe' },
     ];
   },
+  // Son ödeme günü ayın gün sayısını aşamaz (31 → şubatta 28/29)
+  dueDate(period, day) { const [y, m] = period.split('-').map(Number); const last = new Date(y, m, 0).getDate(); return new Date(y, m - 1, Math.min(Number(day) || 10, last), 12); },
+  // Gider paylaşımı — 634 KMK md. 20 (mevzuat.gov.tr/mevzuatmetin/1.5.634.htm, okundu 30.10.2026 — DOĞRULANDI): yönetim planında aksi yoksa
+  // kapıcı, kaloriferci, bahçıvan, bekçi gibi görevlilerin giderleri eşit; sigorta, bakım, onarım, yönetici ücreti ve diğer giderler arsa payına göre.
+  // Kuruş farkı kalmasın: toplam tam tutar çıkacak şekilde en büyük küsurlara dağıtılır.
+  split(flats, total, mode) {
+    const w = flats.map((f) => (mode === 'esit' ? 1 : mode === 'm2' ? Number(f.m2) || 0 : Number(f.share) || 0)); const W = w.reduce((a, b) => a + b, 0); if (!W) return null;
+    const kr = Math.round(total * 100); const raw = w.map((x) => (kr * x) / W); const base = raw.map(Math.floor); let left = kr - base.reduce((a, b) => a + b, 0);
+    raw.map((x, i) => [x - base[i], i]).sort((a, b) => b[0] - a[0]).forEach(([, i]) => { if (left > 0) { base[i]++; left--; } }); return Object.fromEntries(flats.map((f, i) => [f.id, base[i] / 100]));
+  },
   // Daire borcu ve gecikme faizi
   debt(db, flatId) { return db.all('dues', (d) => d.flat === flatId).reduce((t, d) => t + (d.amount - (d.paid || 0)), 0); },
   // Gecikme tazminatı — 634 sayılı Kat Mülkiyeti Kanunu md. 20 (mevzuat.gov.tr/mevzuatmetin/1.5.634.htm, okundu 30.10.2026 — DOĞRULANDI):
@@ -45,7 +55,7 @@ window.SITE = {
   // (ilk ay hiç tazminat çıkmıyordu). Bileşik değildir; tahsil edilen tazminat (type 'faiz') tekrar tazminata girmez.
   lateFee(db, flatId) {
     const s = db.settings({ lateFee: 5, dueDay: 10 }); const now = new Date();
-    return Math.round(db.all('dues', (d) => d.flat === flatId && d.amount > (d.paid || 0)).reduce((t, d) => { const due = new Date(d.period + '-' + NS.pad(s.dueDay) + 'T12:00'); const days = Math.max(0, Math.floor((now - due) / 864e5)); return t + (d.type === 'faiz' ? 0 : (d.amount - (d.paid || 0)) * (Number(s.lateFee) / 100) * days / 30); }, 0));
+    return Math.round(db.all('dues', (d) => d.flat === flatId && d.amount > (d.paid || 0)).reduce((t, d) => { const due = SITE.dueDate(d.period, s.dueDay); const days = Math.max(0, Math.floor((now - due) / 864e5)); return t + (d.type === 'faiz' ? 0 : (d.amount - (d.paid || 0)) * (Number(s.lateFee) / 100) * days / 30); }, 0));
   },
 };
 

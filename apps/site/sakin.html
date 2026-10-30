@@ -212,10 +212,10 @@
     $('#root').innerHTML = `<div class="gate"><section class="art"><div><div class="row nw" style="gap:10px;margin-bottom:36px"><div class="mk">${esc(initials(s().bizName))}</div><b style="color:#fff">${esc(s().bizName)}</b></div>
         <h1>Siteniz, cebinizde.</h1><p>Aidatınızı görün ve ödeyin, ortak alanları ayırtın, misafirinizi güvenliğe bildirin, arızayı fotoğrafla değil tek cümleyle iletin.</p></div>
         <div><div class="towers">${towers}</div><div class="ground"></div><p class="small" style="margin-top:40px;color:#6ee7b7">${icon('map')} ${esc(s().bizAddress)} · ${icon('phone')} ${esc(s().bizPhone)}</p></div></section>
-      <section class="form"><div><h2 style="margin:0 0 4px">Daire girişi</h2><p class="muted" style="margin:0">Bloğunuzu ve dairenizi seçin, kayıtlı telefonunuzun son 4 hanesiyle girin.</p>
+      <section class="form"><div><h2 style="margin:0 0 4px">Daire girişi</h2><p class="muted" style="margin:0">Bloğunuzu ve dairenizi seçin, yönetimin verdiği sakin kodunuzla girin.</p>
         <span class="lbl" id="lb">Blok</span><div class="seg2" role="group" aria-labelledby="lb">${blocks.map((b) => `<button type="button" data-bl="${esc(b)}">${esc(b)} Blok</button>`).join('')}</div>
         <span class="lbl" id="lf">Daire</span><div class="fgrid" id="fg" role="group" aria-labelledby="lf"></div>
-        <label class="lbl" for="p0">Telefonunuzun son 4 hanesi</label><div class="pin">${[0, 1, 2, 3].map((i) => `<input id="p${i}" inputmode="numeric" maxlength="1" autocomplete="off" aria-label="${i + 1}. hane">`).join('')}</div>
+        <label class="lbl" for="pc">Sakin kodu</label><div class="pin"><input id="pc" maxlength="8" autocomplete="off" autocapitalize="characters" style="text-transform:uppercase;letter-spacing:.2em"></div>
         <button class="btn primary lg block" style="margin-top:20px;height:50px" id="go">Giriş yap</button>
         ${NS.pub ? '' : '<p class="small faint mt center">Demo için <a href="#" id="hint">bu dairenin kodunu göster</a></p>'}</div></section></div>`;
     const light = () => $$('.tower i').forEach((w) => w.classList.toggle('lit', w.dataset.w === sel));
@@ -225,23 +225,17 @@
       light();
     };
     on($('.gate'), 'click', '[data-bl]', (e, b) => { bl = b.dataset.bl; sel = null; drawFlats(); });
-    on($('.gate'), 'click', '[data-f]', (e, b) => { sel = b.dataset.f; drawFlats(); $('#p0').focus(); });
-    const pins = [0, 1, 2, 3].map((i) => $('#p' + i));
-    pins.forEach((p, i) => {
-      p.oninput = () => { p.value = p.value.replace(/\D/g, '').slice(-1); if (p.value && pins[i + 1]) pins[i + 1].focus(); if (pins.every((x) => x.value)) submit(); };
-      p.onkeydown = (e) => { if (e.key === 'Backspace' && !p.value && pins[i - 1]) pins[i - 1].focus(); if (e.key === 'Enter') submit(); };
-      p.onpaste = (e) => { const t = (e.clipboardData.getData('text') || '').replace(/\D/g, '').slice(-4); if (t.length === 4) { e.preventDefault(); pins.forEach((x, k) => { x.value = t[k]; }); submit(); } };
-    });
+    on($('.gate'), 'click', '[data-f]', (e, b) => { sel = b.dataset.f; drawFlats(); $('#pc').focus(); });
     const submit = () => {
       if (!sel) return toast('Önce dairenizi seçin', 'err');
-      const p = pins.map((x) => x.value).join('');
-      const pr = p.length === 4 ? db.lookup({ flat: sel, pin: p }) : false; const f = db.get('flats', sel);
-      const ok = pr !== null ? pr : p.length === 4 && [f.ownerPhone, f.tenantPhone].filter(Boolean).some((x) => x.replace(/\D/g, '').endsWith(p));
-      if (!ok) { toast('Telefon numarası bu daireyle eşleşmedi', 'err'); pins.forEach((x) => { x.value = ''; }); pins[0].focus(); return; }
+      const p = $('#pc').value.trim().toLocaleUpperCase('tr-TR'); const pr = p ? db.lookup({ flat: sel, code: p }) : false; const f = db.get('flats', sel);
+      const ok = pr !== null ? pr : !!p && f.portalCode === p;
+      if (!ok) { toast('Sakin kodu bu daireyle eşleşmedi. Kodunuzu yönetimden alabilirsiniz.', 'err'); $('#pc').value = ''; $('#pc').focus(); return; }
       store.set(KEY, f.id); if (!location.hash) location.hash = '#/ozet'; render();
     };
+    $('#pc').onkeydown = (e) => { if (e.key === 'Enter') submit(); };
     $('#go').onclick = submit;
-    if ($('#hint')) $('#hint').onclick = (e) => { e.preventDefault(); if (!sel) return toast('Önce bir daire seçin'); const f = db.get('flats', sel); toast(`${f.block} Blok ${f.no}: ${f.ownerPhone.replace(/\D/g, '').slice(-4)}`); };
+    if ($('#hint')) $('#hint').onclick = (e) => { e.preventDefault(); if (!sel) return toast('Önce bir daire seçin'); const f = db.get('flats', sel); $('#pc').value = NS.portalCode(db, f); };
     drawFlats();
   }
 
@@ -291,7 +285,7 @@
   }
   function balance(f) {
     const d = SITE.debt(db, f.id), fee = SITE.lateFee(db, f.id);
-    const next = (() => { const n = new Date(); const due = new Date(n.getFullYear(), n.getMonth(), s().dueDay); if (n > due) due.setMonth(due.getMonth() + 1); return due; })();
+    const next = (() => { const n = new Date(); let due = SITE.dueDate(iso(n).slice(0, 7), s().dueDay); if (n > due) { const m = new Date(n.getFullYear(), n.getMonth() + 1, 1); due = SITE.dueDate(iso(m).slice(0, 7), s().dueDay); } return due; })();
     return `<div class="bal"><div class="l"><div class="small muted">Güncel borcunuz</div><div class="amt ${d > 0 ? 'due' : 'clear'}">${money(d)}</div>
         <div class="small muted">${d > 0 ? `${fee > 0 ? `Gecikme faizi: <b>${money(fee)}</b> (aylık %${s().lateFee}) · ` : ''}` : 'Borcunuz bulunmuyor, teşekkür ederiz. · '}Sıradaki son ödeme: <b>${NS.dateLong(iso(next))}</b></div>${strip(f)}</div>
       <div class="r">${d > 0 ? `<button class="btn primary lg block" data-pay>${icon('card')} ${NS.pub ? 'Ödeme bilgisi' : 'Kartla öde'} · ${money(d + fee)}</button>` : ''}
@@ -341,7 +335,7 @@
   // ---------- Sayfalar ----------
   const PAGES = {
     ozet(el, f) {
-      const ann = db.all('announcements').sort((a, b) => (b.pinned - a.pinned) || b.date.localeCompare(a.date)).slice(0, 3);
+      const ann = db.all('announcements').sort((a, b) => ((b.pinned ? 1 : 0) - (a.pinned ? 1 : 0)) || String(b.date).localeCompare(String(a.date))).slice(0, 3);
       const seen = store.lget(readKey(f)) || [];
       const myB = db.all('bookings', (b) => b.flat === f.id && b.status === 'aktif' && b.date >= today()).sort((a, b) => (a.date + a.slot).localeCompare(b.date + b.slot)).slice(0, 3);
       const myR = db.all('requests', (r) => r.flat === f.id && r.status !== 'cozuldu');
@@ -474,7 +468,7 @@
 
     duyuru(el, f) {
       const seen = store.lget(readKey(f)) || [];
-      const list = db.all('announcements').sort((a, b) => (b.pinned - a.pinned) || b.date.localeCompare(a.date));
+      const list = db.all('announcements').sort((a, b) => ((b.pinned ? 1 : 0) - (a.pinned ? 1 : 0)) || String(b.date).localeCompare(String(a.date)));
       el.innerHTML = head('Duyurular', `${esc(s().bizName)} yönetiminden`) + `<section class="panel"><div class="b">${list.map((n) => `<article class="ann"><h4>${n.pinned ? icon('star') : ''}${esc(n.title)} ${seen.includes(n.id) ? '' : '<span class="new">Yeni</span>'}</h4><div class="small muted">${NS.dateLong(n.date)}</div><p>${esc(n.text)}</p></article>`).join('') || '<div class="none">Duyuru yok</div>'}</div></section>`;
       store.lset(readKey(f), list.map((n) => n.id));
       $$('.dot').forEach((d) => { if (d.closest('a[href="#/duyuru"]')) d.remove(); });
