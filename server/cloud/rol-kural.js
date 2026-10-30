@@ -231,7 +231,7 @@ const RULES = {
       o.returns = o.returns.filter((r) => { if (!nesne(r) || eski.has(r.id)) return true; const f = fis.get(r.saleNo); return !f || (Date.now() - new Date(f.at)) / 864e5 <= g || onayla('degisim', 'returns'); });
     } } },
   // apps/oto: yıkamacı yalnızca Yıkama Kuyruğu ve Araç Geçmişi ekranını görür. Abone kartı, abonelik ödemesi ve hizmet fiyat listesi değişmez; iptalde abonenin yıkama hakkı geri yazılır (izinli). Gişede yalnız menü farkı vardır, kural eklenmedi.
-  oto: { yikama: { ad: 'Yıkamacı', kapat: ['subPays'], ekle: ['sms'], gizle: { subs: ['name', 'phone', 'price'] }, saltOkunur: ['subs', 'packages', 'workers'], izinli: { subs: ['washesLeft'] } } },
+  oto: { yikama: { ad: 'Yıkamacı', kapat: ['subPays', 'details', 'valet', 'valets', 'valetDamage'], ekle: ['sms'], gizle: { subs: ['name', 'phone', 'price'] }, saltOkunur: ['subs', 'packages', 'workers'], izinli: { subs: ['washesLeft'] } } },
   // apps/dernek: fin() sekreterde kapalı: aidat, tahsilat, gelir-gider görünmez. Sayman toplantı ve evrakı okur. Üye kaydı silinmez (üye kayıt defterinde çıkış tarihi tutulur).
   dernek: { sayman: { ad: 'Sayman', saltOkunur: ['meetings', 'letters', 'posts'], silemez: ['members'] }, sekreter: { ad: 'Sekreter', kapat: ['dues', 'receipts', 'entries'], silemez: ['members'] } },
   // apps/egitim: fin() eğitmende kapalı: ücret, taksit, ön kayıt görünmez. Eğitmen yalnız kendi grubunu görür, yoklama ve not yazar. Sertifika üretimi ve iptali yöneticide/kayıtta.
