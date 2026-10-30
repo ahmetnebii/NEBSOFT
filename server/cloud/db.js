@@ -51,6 +51,7 @@ const SCHEMA = [
   `CREATE TABLE IF NOT EXISTS mail_log (id BIGINT AUTO_INCREMENT PRIMARY KEY, at DATETIME NOT NULL, to_addr VARCHAR(190), subject VARCHAR(200), status VARCHAR(20), detail VARCHAR(255), INDEX (at)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
   `CREATE TABLE IF NOT EXISTS login_links (id CHAR(64) PRIMARY KEY, user_id CHAR(16) NOT NULL, created DATETIME NOT NULL, expires DATETIME NOT NULL, used DATETIME NULL, ip VARCHAR(64), INDEX (user_id)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
   // İki adımlı giriş (totp.js): secret şifreli, recovery yalnızca özet, last_step aynı kodun tekrarını engeller
+  `CREATE TABLE IF NOT EXISTS onay_harcanan (n VARCHAR(24) CHARACTER SET ascii COLLATE ascii_bin PRIMARY KEY, bitis BIGINT NOT NULL, INDEX (bitis))`,
   `CREATE TABLE IF NOT EXISTS user_totp (user_id CHAR(16) PRIMARY KEY, secret TEXT NOT NULL, enabled TINYINT NOT NULL DEFAULT 0, last_step BIGINT NOT NULL DEFAULT 0, failed INT NOT NULL DEFAULT 0, locked_until DATETIME NULL, recovery TEXT NULL, created DATETIME NOT NULL, enabled_at DATETIME NULL) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
   // Analitik: yalnızca toplu sayaçlar (ham olay yok). an_tekil günlük tuzlu özet tutar, gün dönünce silinir. log_kayit: uygulama kanalının uyarı ve hataları.
   `CREATE TABLE IF NOT EXISTS an_toplam (gun DATE NOT NULL, saat TINYINT NOT NULL, tur VARCHAR(16) NOT NULL, anahtar VARCHAR(100) NOT NULL DEFAULT '', ek VARCHAR(100) NOT NULL DEFAULT '', n INT NOT NULL DEFAULT 0, PRIMARY KEY (gun, saat, tur, anahtar, ek), KEY tg (tur, gun)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,

@@ -243,7 +243,7 @@
       if (a === 'd') { if (!(await confirm(`${t.code}: ${money(t.refund.amount)} iade ödemesi alıcıya yapıldı mı?`, { ok: 'Yapıldı', danger: false }))) return; t.refund.done = today(); db.log('İade ödendi', t.code); db.save(); return draw(); }
       if (a === 'r') {
         const days = NS.daysBetween(new Date(), ev(t.event).date); const late = days < (S().refundDays || 0);
-        if (late && !(await NS.approve(app, `Süresi geçmiş iade: ${t.code}`))) return;
+        if (late && !(await NS.approve(app, `Süresi geçmiş iade: ${t.code}`, ['admin'], 'iade'))) return;
         const v = await formModal({ title: `İade · ${t.code}`, submitLabel: 'İade et', fields: [
           ...(late ? [{ type: 'section', label: `Uyarı: etkinliğe ${days} gün kaldı, iade süresi (${S().refundDays} gün) geçti` }] : []),
           { name: 'amount', label: `İade tutarı (ödenen ${money(t.paid)}${fee(t) ? ' + hizmet bedeli ' + money(fee(t)) : ''})`, type: 'number', required: true, value: t.paid + (S().feeRefund ? fee(t) : 0) },

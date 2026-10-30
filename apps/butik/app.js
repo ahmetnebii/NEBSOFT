@@ -53,10 +53,10 @@
   const oldRef = (m) => { if (!(m.disc > 0)) return 0; const o = Math.min(m.price, low10(m)); return o > unit(m) ? o : 0; };
   const pctOff = (m) => { const o = oldRef(m); return o ? Math.round((1 - unit(m) / o) * 100) : 0; };
   // Yönetici onayı: yönetici oturumdaysa onay, değilse yönetici PIN'i
-  async function adminOk(msg) {
+  async function adminOk(msg, islem) {
     if ((NS.currentUser || {}).role === 'admin') return confirm(msg);
     const pin = await NS.prompt(`${msg} — yönetici PIN'i`, ''); if (pin === null) return false;
-    let ok = null; try { ok = await NS.pinKontrol(db, pin); } catch (x) { toast(x.message, 'err'); return false; } if (!ok) toast('PIN hatalı', 'err'); else db.log('Yönetici onayı', msg); return !!ok;
+    let ok = null; try { ok = await NS.pinKontrol(db, pin, { islem }); } catch (x) { toast(x.message, 'err'); return false; } if (!ok) toast('PIN hatalı', 'err'); else db.log('Yönetici onayı', msg); return !!ok;
   }
 
   // ---------- Matris (beden × renk) ----------
@@ -284,7 +284,7 @@
       $('#sale', el).innerHTML = `<div class="card"><div class="card-h"><b>${esc(s.no)}</b><span class="small muted">${NS.dt(s.at)} · ${money(s.total)}</span><span class="grow"></span>${late ? badge(`${Math.floor(age)} gün geçmiş — yönetici onayı gerekir`, 'err') : badge(`${Math.floor(age)}. gün`, 'ok')}</div>${table({ rows, columns: [{ label: 'Ürün', render: (l) => `<b>${esc(l.name)}</b><div class="small faint">${esc(l.color)} · ${esc(l.size)}${l.qty > 1 ? ` · ${l.qty} adet` : ''}</div>` }, { label: 'Ödenen', cls: 'right', render: (l) => money(l.price) }, { label: 'Durum', render: (l) => (l.left <= 0 ? badge('İade/değişim yapıldı') : l.left < l.qty ? badge(`${l.left} adet kaldı`, 'warn') : '') }], actions: [{ icon: 'refresh', act: 'ex', title: 'Değiştir', show: (l) => l.left > 0 }, { icon: 'cash', act: 'rf', title: 'İade et', show: (l) => l.left > 0 }] })}</div>`;
       const box = $('#sale', el); box.onclick = async (e) => {
         const b = e.target.closest('[data-act]'); if (!b) return; const i = Number(b.dataset.id); const l = s.lines[i]; const left = l.qty - done(s, i, l); if (left <= 0) return toast('Bu ürün için iade/değişim zaten yapıldı', 'err');
-        if (late && !(await adminOk(`${s.no} fişinin değişim süresi geçmiş (${Math.floor(age)} gün)`))) return;
+        if (late && !(await adminOk(`${s.no} fişinin değişim süresi geçmiş (${Math.floor(age)} gün)`, 'degisim'))) return;
         const f = findV(l.barcode); const cu = s.customer && cust(s.customer);
         if (b.dataset.act === 'rf') {
           const how = [{ value: 'nakit', label: 'Nakit iade' }, { value: 'kart', label: 'Karta iade' }, { value: 'cek', label: 'İade çeki ver (sonraki alışverişte)' }, ...(cu ? [{ value: 'puan', label: 'Puan olarak' }] : [])];
