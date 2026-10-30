@@ -15,5 +15,8 @@ window.CRMQ = {
     if (s === 'gonderildi' && q.valid && q.valid < new Date().toISOString().slice(0, 10)) return 'suresi';
     return s;
   },
-  token() { return Math.random().toString(36).slice(2, 10) + Math.random().toString(36).slice(2, 6); },
+  // Bağlantıdaki anahtar tahmin edilemez olmalı: tarayıcının güvenli rastgele üreticisi
+  token() { const b = crypto.getRandomValues(new Uint8Array(16)); return Array.from(b, (x) => x.toString(16).padStart(2, '0')).join(''); },
+  // Kabul edilen teklifin yanında açık kalan diğer sürümler artık yanıtlanamaz
+  closeOthers(quotes, q) { quotes.forEach((x) => { if (x.id !== q.id && x.deal === q.deal && (x.status || 'gonderildi') === 'gonderildi') x.status = 'revize'; }); },
 };

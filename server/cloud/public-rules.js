@@ -229,6 +229,7 @@ RULES.crm = {
         if (set.status === 'kabul') {
           const signer = val('str:120', set.signer, 'signer'); if (signer.length < 3) bad('Adınızı yazın');
           if (d) { if (!['kazanildi', 'kaybedildi'].includes(d.stage)) { d.stage = 'kazanildi'; d.closedAt = at.slice(0, 10); d.value = q.total; } d.lastActivity = at; }
+          x.col('quotes').forEach((o) => { if (o.id !== q.id && o.deal === q.deal && (o.status || 'gonderildi') === 'gonderildi') o.status = 'revize'; });
           act(`Teklif ${q.no} müşteri tarafından online kabul edildi (${signer})`);
           return { status: 'kabul', signer, respondedAt: at, updated: at };
         }

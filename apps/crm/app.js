@@ -3,6 +3,7 @@
   'use strict';
   const { esc, $, $$, on, icon, money, num, toast, modal, confirm, formModal, table, chart, badge, kpi, pageHead, sum, rand, pick, addDays, iso, today, daysBetween } = NS;
   const STAGES = [{ id: 'yeni', name: 'Yeni fırsat', p: 10, color: '#64748b' }, { id: 'gorusme', name: 'Görüşme', p: 25, color: '#0284c7' }, { id: 'teklif', name: 'Teklif verildi', p: 50, color: '#7c3aed' }, { id: 'pazarlik', name: 'Pazarlık', p: 75, color: '#d97706' }, { id: 'kazanildi', name: 'Kazanıldı', p: 100, color: '#16a34a' }, { id: 'kaybedildi', name: 'Kaybedildi', p: 0, color: '#dc2626' }];
+  const LOST = ['Fiyat yüksek', 'Rakip tercih edildi', 'Bütçe ertelendi', 'İhtiyaç değişti', 'Yanıt alınamadı', 'Diğer'];
   const ACT = { arama: ['Arama', 'phone'], toplanti: ['Toplantı', 'users'], eposta: ['E-posta', 'mail'], not: ['Not', 'edit'], gorev: ['Görev', 'check'] };
 
   function seed(db) {
@@ -42,7 +43,9 @@
     db.meta('demoQuotes', 1);
   }
   const S = () => db.settings({ target: 2000000 });
-  const comp = (id) => db.get('companies', id) || { name: '-' };
+  // Binlerce kayıtta tek çizim için kimlik dizini (bir sonraki adımda yenilenir)
+  const index = (col) => { let m = null; return (id) => { if (!m) { m = new Map(db.all(col).map((x) => [x.id, x])); setTimeout(() => { m = null; }, 0); } return m.get(id); }; };
+  const compIx = index('companies'); const comp = (id) => compIx(id) || { name: '-' };
   const ctc = (id) => db.get('contacts', id) || { name: '-' };
   const usr = (id) => db.get('users', id) || { name: '-' };
   const stage = (id) => STAGES.find((s) => s.id === id) || STAGES[0];
@@ -50,20 +53,28 @@
   const myDeals = () => db.all('deals', (d) => !mine() || d.owner === mine());
   const isOpen = (d) => !['kazanildi', 'kaybedildi'].includes(d.stage);
   const weighted = (d) => (d.value * stage(d.stage).p) / 100;
-  const stale = (d) => isOpen(d) && daysBetween(d.lastActivity, new Date()) > 14;
+  const stale = (d) => isOpen(d) && daysBetween(d.lastActivity || d.created, new Date()) > 14;
+  const canSee = (d) => !mine() || d.owner === mine();
+  const touch = (dealId) => { const d = db.get('deals', dealId); if (d) d.lastActivity = new Date().toISOString(); };
+  const dueCmp = (a, b) => String(a.due || '9').localeCompare(String(b.due || '9'));
 
   async function dealForm(app, rec = {}) {
-    const v = await formModal({ title: rec.id ? 'Fırsatı düzenle' : 'Yeni fırsat', size: 'wide', fields: [{ name: 'title', label: 'Fırsat adı', required: true, full: true }, { name: 'company', label: 'Firma', type: 'select', options: db.all('companies').sort((a, b) => a.name.localeCompare(b.name, 'tr')).map((c) => ({ value: c.id, label: c.name })) }, { name: 'contact', label: 'Yetkili', type: 'select', empty: '-', options: db.all('contacts').map((c) => ({ value: c.id, label: `${c.name} (${comp(c.company).name})` })) }, { name: 'value', label: 'Tutar (₺)', type: 'number', required: true }, { name: 'stage', label: 'Aşama', type: 'select', options: STAGES.map((s) => ({ value: s.id, label: s.name })) }, { name: 'expected', label: 'Tahmini kapanış', type: 'date' }, { name: 'owner', label: 'Sorumlu', type: 'select', options: db.all('users').map((u) => ({ value: u.id, label: u.name })) }, { name: 'source', label: 'Kaynak', type: 'select', options: ['Web formu', 'Referans', 'Fuar', 'Soğuk arama', 'LinkedIn', 'Mevcut müşteri'] }, { name: 'lostReason', label: 'Kayıp nedeni (kaybedildiyse)' }], values: { stage: 'yeni', expected: iso(addDays(new Date(), 30)), owner: (NS.currentUser || {}).id, ...rec } });
+    const v = await formModal({ title: rec.id ? 'Fırsatı düzenle' : 'Yeni fırsat', size: 'wide', fields: [{ name: 'title', label: 'Fırsat adı', required: true, full: true }, { name: 'company', label: 'Firma', type: 'select', options: db.all('companies').sort((a, b) => a.name.localeCompare(b.name, 'tr')).map((c) => ({ value: c.id, label: c.name })) }, { name: 'contact', label: 'Yetkili', type: 'select', empty: '-', options: db.all('contacts').map((c) => ({ value: c.id, label: `${c.name} (${comp(c.company).name})` })) }, { name: 'value', label: 'Tutar (₺)', type: 'number', required: true }, { name: 'stage', label: 'Aşama', type: 'select', options: STAGES.map((s) => ({ value: s.id, label: s.name })) }, { name: 'expected', label: 'Tahmini kapanış', type: 'date' }, { name: 'owner', label: 'Sorumlu', type: 'select', options: db.all('users').map((u) => ({ value: u.id, label: u.name })) }, { name: 'source', label: 'Kaynak', type: 'select', options: ['Web formu', 'Referans', 'Fuar', 'Soğuk arama', 'LinkedIn', 'Mevcut müşteri'] }, { name: 'lostReason', label: 'Kayıp nedeni (kaybedildiyse)', type: 'select', empty: '-', options: LOST }], values: { stage: 'yeni', expected: iso(addDays(new Date(), 30)), owner: (NS.currentUser || {}).id, ...rec },
+      // Yetkili listesi seçilen firmayla sınırlıdır: başka firmanın kişisi fırsata bağlanmasın
+      onOpen: (b) => { const f = $('[name=company]', b); const k = $('[name=contact]', b); const fill = () => { const cur = k.value; k.innerHTML = `<option value="">-</option>${db.all('contacts', (c) => c.company === f.value).map((c) => `<option value="${c.id}" ${c.id === cur ? 'selected' : ''}>${esc(c.name)}</option>`).join('')}`; }; f.onchange = fill; fill(); } });
     if (!v) return;
-    if (['kazanildi', 'kaybedildi'].includes(v.stage) && (!rec.id || rec.stage !== v.stage)) v.closedAt = today();
+    v.value = Number(v.value) || 0; if (v.value < 0) return toast('Tutar negatif olamaz', 'err'); if (v.stage === 'kaybedildi' && !v.lostReason) return toast('Kayıp nedenini seçin', 'err');
+    Object.assign(v, closing(rec, v.stage));
     if (rec.id) db.update('deals', rec.id, { ...v, lastActivity: new Date().toISOString() }); else { const d = db.insert('deals', { ...v, lastActivity: new Date().toISOString() }); db.log('Yeni fırsat', d.title); }
     toast('Kaydedildi', 'ok'); app.refresh();
   }
+  // Kapanış bilgisi: kapanınca tarih yazılır, yeniden açılınca kapanış ve kayıp nedeni silinir (raporlar kapalı saymasın)
+  const closing = (d, to) => { const cl = ['kazanildi', 'kaybedildi']; if (cl.includes(to)) return d.stage === to && d.closedAt ? {} : { closedAt: today(), ...(to === 'kazanildi' ? { lostReason: '' } : {}) }; return { closedAt: null, lostReason: '' }; };
   async function moveStage(app, d, to) {
     if (d.stage === to) return;
-    if (to === 'kaybedildi') { const r = await NS.prompt('Kayıp nedeni', 'Fiyat yüksek', { title: 'Fırsat kaybedildi' }); if (r === null) return app.refresh(); d.lostReason = r; }
+    if (to === 'kaybedildi') { const v = await formModal({ title: 'Fırsat kaybedildi', fields: [{ name: 'why', label: 'Kayıp nedeni', type: 'select', options: LOST, required: true }, { name: 'note', label: 'Açıklama', full: true }] }); if (!v) return app.refresh(); d.lostReason = v.why; if (v.note) db.insert('activities', { deal: d.id, type: 'not', date: new Date().toISOString(), text: `Kayıp notu: ${v.note}`, owner: (NS.currentUser || {}).id, done: true }, true); }
+    const was = d.lostReason; Object.assign(d, closing(d, to)); if (to === 'kaybedildi') d.lostReason = was;
     d.stage = to; d.lastActivity = new Date().toISOString();
-    if (['kazanildi', 'kaybedildi'].includes(to)) d.closedAt = today();
     db.insert('activities', { deal: d.id, type: 'not', date: new Date().toISOString(), text: `Aşama değişti: ${stage(to).name}`, owner: (NS.currentUser || {}).id, done: true }, true);
     db.save(); if (to === 'kazanildi') { toast(`🎉 ${d.title} kazanıldı: ${money(d.value)}`, 'ok'); NS.beep(1500, 200); } app.refresh();
   }
@@ -74,7 +85,7 @@
       const list = myDeals().filter((d) => (!own || d.owner === own) && NS.match(q, d.title, comp(d.company).name));
       const open = list.filter(isOpen);
       el.innerHTML = pageHead('Satış Hunisi', `${open.length} açık fırsat · ${money(sum(open, (d) => d.value))} · ağırlıklı ${money(sum(open, weighted))}`, `${NS.searchBox('q', 'Fırsat veya firma...', q)}${mine() ? '' : `<select class="input" id="own" style="max-width:180px"><option value="">Tüm temsilciler</option>${db.all('users').map((u) => `<option value="${u.id}" ${own === u.id ? 'selected' : ''}>${esc(u.name)}</option>`).join('')}</select>`}<button class="btn primary" id="nd">${icon('plus')} Fırsat</button>`) +
-        `<div class="pipe">${STAGES.map((s) => { const ds = list.filter((d) => d.stage === s.id).filter((d) => isOpen(d) || (d.closedAt || '') >= iso(addDays(new Date(), -30))).sort((a, b) => b.value - a.value); return `<div class="stage" data-st="${s.id}"><h4 style="color:${s.color}"><span class="dot" style="background:${s.color}"></span>${s.name} <span class="badge">${ds.length}</span></h4><div class="sum">${money(sum(ds, (d) => d.value))}${s.p && s.p < 100 ? ` · %${s.p}` : ''}${!isOpen({ stage: s.id }) ? ' · son 30 gün' : ''}</div>${ds.map((d) => `<div class="deal ${stale(d) ? 'stale' : ''}" draggable="true" data-d="${d.id}"><b>${esc(d.title)}</b><span class="small muted">${esc(comp(d.company).name)}</span><div class="v">${money(d.value)}</div><div class="row between small faint"><span>${esc(usr(d.owner).name.split(' ')[0])}</span><span>${stale(d) ? '⚠ ' + daysBetween(d.lastActivity, new Date()) + ' gündür sessiz' : NS.date(d.expected)}</span></div></div>`).join('')}</div>`; }).join('')}</div>`;
+        `<div class="pipe">${STAGES.map((s) => { const ds = list.filter((d) => d.stage === s.id).filter((d) => isOpen(d) || (d.closedAt || '') >= iso(addDays(new Date(), -30))).sort((a, b) => b.value - a.value); const more = ds.length - 100; return `<div class="stage" data-st="${s.id}"><h4 style="color:${s.color}"><span class="dot" style="background:${s.color}"></span>${s.name} <span class="badge">${ds.length}</span></h4><div class="sum">${money(sum(ds, (d) => d.value))}${s.p && s.p < 100 ? ` · %${s.p}` : ''}${!isOpen({ stage: s.id }) ? ' · son 30 gün' : ''}</div>${ds.slice(0, 100).map((d) => `<div class="deal ${stale(d) ? 'stale' : ''}" draggable="true" data-d="${d.id}"><b>${esc(d.title)}</b><span class="small muted">${esc(comp(d.company).name)}</span><div class="v">${money(d.value)}</div><div class="row between small faint"><span>${esc(usr(d.owner).name.split(' ')[0])}</span><span>${stale(d) ? '⚠ ' + daysBetween(d.lastActivity || d.created, new Date()) + ' gündür sessiz' : d.expected ? NS.date(d.expected) : ''}</span></div></div>`).join('')}${more > 0 ? `<div class="small faint" style="padding:6px">+${more} fırsat daha — aramayla daraltın</div>` : ''}</div>`; }).join('')}</div>`;
       $('#q', el).oninput = (e) => { q = e.target.value; const pos = e.target.selectionStart; draw(); const i = $('#q', el); i.focus(); i.setSelectionRange(pos, pos); };
       if ($('#own', el)) $('#own', el).onchange = (e) => { own = e.target.value; draw(); };
       $('#nd', el).onclick = () => dealForm(app);
@@ -100,13 +111,13 @@
     draw();
   }
   function dealPage(el, id, app) {
-    const d = db.get('deals', id); if (!d) return app.go('huni');
-    const acts = db.all('activities', (a) => a.deal === id).sort((a, b) => b.date.localeCompare(a.date));
+    const d = db.get('deals', id); if (!d || !canSee(d)) return app.go('huni');
+    const acts = db.all('activities', (a) => a.deal === id).sort((a, b) => String(b.date).localeCompare(String(a.date)));
     const c = comp(d.company), ct = ctc(d.contact), s = stage(d.stage);
     el.innerHTML = `<div class="row mb"><a class="btn" href="#/huni">${icon('back')} Huni</a><h1 class="grow">${esc(d.title)}</h1><button class="btn" id="qt">${icon('file')} Teklif hazırla</button><button class="btn" id="ed">${icon('edit')} Düzenle</button></div>
       <div class="card pad mb"><div class="row">${STAGES.map((x) => `<button class="btn sm ${x.id === d.stage ? '' : 'ghost'}" data-mv="${x.id}" style="${x.id === d.stage ? `background:${x.color};color:#fff;border-color:${x.color}` : ''}">${x.name}</button>`).join(icon('right'))}</div></div>
-      <div class="grid g4 mb">${kpi('Tutar', money(d.value), 'wallet')}${kpi('Olasılık', '%' + s.p, 'percent', 'info')}${kpi('Ağırlıklı', money(weighted(d)), 'trend', 'ok')}${kpi('Tahmini kapanış', NS.date(d.expected), 'calendar', d.expected < today() && isOpen(d) ? 'err' : 'warn')}</div>
-      <div class="grid g-21"><div class="card"><div class="card-h"><h3>Aktiviteler</h3>${Object.entries(ACT).map(([k, v]) => `<button class="btn sm" data-add="${k}">${icon(v[1])} ${v[0]}</button>`).join('')}</div><div class="card-b">${acts.map((a) => `<div class="act"><div class="ai">${icon(ACT[a.type][1])}</div><div class="grow"><div class="row between"><b>${ACT[a.type][0]}</b><span class="small faint">${NS.dt(a.date)} · ${esc(usr(a.owner).name)}</span></div><div>${esc(a.text)}</div>${a.type === 'gorev' ? `<label class="check small mt"><input type="checkbox" data-done="${a.id}" ${a.done ? 'checked' : ''}> Tamamlandı · son tarih ${NS.date(a.due)}</label>` : ''}</div></div>`).join('') || '<div class="faint small">Aktivite yok</div>'}</div></div>
+      <div class="grid g4 mb">${kpi('Tutar', money(d.value), 'wallet')}${kpi('Olasılık', '%' + s.p, 'percent', 'info')}${kpi('Ağırlıklı', money(weighted(d)), 'trend', 'ok')}${kpi('Tahmini kapanış', d.expected ? NS.date(d.expected) : '—', 'calendar', d.expected && d.expected < today() && isOpen(d) ? 'err' : 'warn')}</div>
+      <div class="grid g-21"><div class="card"><div class="card-h"><h3>Aktiviteler</h3>${Object.entries(ACT).map(([k, v]) => `<button class="btn sm" data-add="${k}">${icon(v[1])} ${v[0]}</button>`).join('')}</div><div class="card-b">${acts.map((a) => `<div class="act"><div class="ai">${icon(ACT[a.type][1])}</div><div class="grow"><div class="row between"><b>${ACT[a.type][0]}</b><span class="small faint">${NS.dt(a.date)} · ${esc(usr(a.owner).name)}</span></div><div>${esc(a.text)}</div>${a.type === 'gorev' ? `<label class="check small mt"><input type="checkbox" data-done="${a.id}" ${a.done ? 'checked' : ''}> Tamamlandı${a.due ? ` · son tarih ${NS.date(a.due)}` : ''}</label>` : ''}</div></div>`).join('') || '<div class="faint small">Aktivite yok</div>'}</div></div>
       <div class="col" style="gap:16px"><div class="card pad"><h3 class="mb">${icon('building')} ${esc(c.name)}</h3><div class="small muted">${esc(c.sector || '')} · ${esc(c.city || '')} · ${esc(c.size || '')} çalışan</div><div class="small mt">${esc(c.phone || '')} · ${esc(c.web || '')}</div>${ct.name !== '-' ? `<hr><b>${esc(ct.name)}</b><div class="small muted">${esc(ct.title || '')}</div><div class="small">${esc(ct.phone || '')}<br>${esc(ct.email || '')}</div><div class="row mt"><a class="btn sm" href="tel:${esc(String(ct.phone).replace(/\s/g, ''))}">${icon('phone')}</a><a class="btn sm" href="mailto:${esc(ct.email || '')}">${icon('mail')}</a><a class="btn sm" target="_blank" rel="noopener" href="https://wa.me/90${String(ct.phone).replace(/\D/g, '').replace(/^0/, '')}">${icon('message')}</a></div>` : ''}</div>
       <div class="card pad small"><div class="list-item"><span class="grow muted">Sorumlu</span><b>${esc(usr(d.owner).name)}</b></div><div class="list-item"><span class="grow muted">Kaynak</span>${esc(d.source || '-')}</div><div class="list-item"><span class="grow muted">Oluşturma</span>${NS.date(d.created)}</div>${d.lostReason ? `<div class="list-item"><span class="grow muted">Kayıp nedeni</span>${badge(d.lostReason, 'err')}</div>` : ''}</div>
       <div class="card"><div class="card-h"><h3>Teklifler</h3></div><div class="card-b">${db.all('quotes', (q) => q.deal === id).map((q) => { const st = Q.status(q); return `<div class="list-item small"><span class="grow"><b class="mono">${esc(q.no)}</b> · ${NS.date(q.date)}<br>${badge(Q.STATUS[st][0], Q.STATUS[st][1])}${q.viewedAt && st === 'gonderildi' ? ` <span class="faint">görüntülendi</span>` : ''}</span><b>${money(Q.calc(q).grand)}</b><button class="btn sm icon ghost" data-sq="${q.id}" aria-label="Gönder">${icon('send')}</button><button class="btn sm icon ghost" data-pq="${q.id}" aria-label="Yazdır">${icon('print')}</button></div>`; }).join('') || '<div class="faint small">Teklif yok</div>'}</div></div></div></div>`;
@@ -122,7 +133,7 @@
       if (v.due && NS.integ && NS.integ.isOn('takvim')) NS.integ.call('takvim', 'etkinlik-ekle', { calendar: usr(d.owner).name, title: `${d.title || d.name || 'Fırsat'}: ${v.text.slice(0, 60)}`, start: `${v.due}T10:00`, minutes: 30 }, { silent: true });
       app.refresh();
     });
-    on(el, 'change', '[data-done]', (e, b) => { db.update('activities', b.dataset.done, { done: b.checked }); });
+    on(el, 'change', '[data-done]', (e, b) => { db.update('activities', b.dataset.done, { done: b.checked, doneAt: b.checked ? new Date().toISOString() : null }); touch(id); db.save(); });
     $('#qt', el).onclick = () => quoteModal(app, d);
     on(el, 'click', '[data-pq]', (e, b) => printQuote(db.get('quotes', b.dataset.pq)));
     on(el, 'click', '[data-sq]', (e, b) => shareQuote(db.get('quotes', b.dataset.sq)));
@@ -135,7 +146,7 @@
     modal({
       title: from ? `Teklifi revize et — ${from.no}` : 'Teklif hazırla', size: 'wide',
       body: `<div class="row nw small muted mb" style="gap:8px"><span class="grow">Açıklama</span><span style="width:80px">Miktar</span><span style="width:130px">Birim fiyat</span><span style="width:36px"></span></div><div id="ql"></div><button class="btn sm" id="qa">${icon('plus')} Satır</button>
-        <div class="form-grid mt"><div class="field"><label>İskonto %</label><input class="input" type="number" id="qd" value="${from ? from.disc || 0 : 0}" min="0" max="100"></div><div class="field"><label>KDV</label><select class="input" id="qk">${[20, 10, 1, 0].map((v) => `<option value="${v}" ${(from ? Q.calc(from).vat : 20) === v ? 'selected' : ''}>%${v}</option>`).join('')}</select></div><div class="field"><label>Geçerlilik (gün)</label><input class="input" type="number" id="qv" value="15"></div><div class="field"><label>Ödeme</label><input class="input" id="qp" value="${esc(from ? from.payment || '' : 'Sipariş onayında %50, teslimde %50')}"></div><div class="field full"><label>Not</label><input class="input" id="qn" value="${esc(from ? from.note || '' : 'Kurulum ve 1 yıl destek dahildir.')}"></div></div>
+        <div class="form-grid mt"><div class="field"><label>İskonto %</label><input class="input" type="number" id="qd" value="${from ? from.disc || 0 : 0}" min="0" max="100" step="0.01"></div><div class="field"><label>KDV</label><select class="input" id="qk">${[20, 10, 1, 0].map((v) => `<option value="${v}" ${(from ? Q.calc(from).vat : 20) === v ? 'selected' : ''}>%${v}</option>`).join('')}</select></div><div class="field"><label>Geçerlilik (gün)</label><input class="input" type="number" id="qv" value="15"></div><div class="field"><label>Ödeme</label><input class="input" id="qp" value="${esc(from ? from.payment || '' : 'Sipariş onayında %50, teslimde %50')}"></div><div class="field full"><label>Not</label><input class="input" id="qn" value="${esc(from ? from.note || '' : 'Kurulum ve 1 yıl destek dahildir.')}"></div></div>
         <div class="card pad mt" id="qt"></div>`,
       onOpen: (b) => {
         const draw = () => { $('#ql', b).innerHTML = lines.map((l, i) => `<div class="row nw mb" style="gap:8px"><input class="input grow" data-i="${i}" data-f="name" value="${esc(l.name)}" placeholder="Ürün / hizmet"><input class="input" type="number" data-i="${i}" data-f="qty" value="${l.qty}" style="width:80px" min="0"><input class="input" type="number" data-i="${i}" data-f="price" value="${l.price}" style="width:130px" min="0"><button class="btn icon ghost" data-x="${i}" aria-label="Satırı sil">${icon('x')}</button></div>`).join(''); tot(); };
@@ -147,12 +158,12 @@
         draw();
       },
       actions: [{ label: 'Vazgeç' }, { label: 'Kaydet ve gönder', cls: 'primary', icon: 'send', onClick: (c, b) => {
-        const ls = lines.filter((l) => l.name && l.qty > 0); if (!ls.length) return toast('En az bir satır girin', 'err');
-        const base = { lines: ls, disc: Number($('#qd', b).value) || 0, vat: Number($('#qk', b).value) };
+        const ls = lines.filter((l) => l.name && l.qty > 0); if (!ls.length) return toast('En az bir satır girin', 'err'); const dv = Number($('#qd', b).value) || 0; if (dv < 0 || dv > 100) return toast('İskonto 0 ile 100 arasında olmalı', 'err'); if (ls.some((l) => l.price < 0)) return toast('Fiyat negatif olamaz', 'err');
+        const base = { lines: ls, disc: dv, vat: Number($('#qk', b).value) };
         const k = Q.calc(base);
         const rev = from ? (from.rev || 1) + 1 : 1;
         const q = db.insert('quotes', { deal: d.id, no: from ? `${from.no.split('/')[0]}/R${rev}` : db.nextNo('quotes', 'TKL-'), rev, date: today(), valid: iso(addDays(new Date(), Number($('#qv', b).value) || 15)), ...base, payment: $('#qp', b).value, note: $('#qn', b).value, total: k.net, grand: k.grand, status: 'gonderildi', token: Q.token(), owner: (NS.currentUser || {}).id }, true);
-        if (from) from.status = 'revize';
+        db.all('quotes', (x) => x.id !== q.id && x.deal === d.id && Q.status(x) === 'gonderildi').forEach((x) => { x.status = 'revize'; }); if (from) from.status = 'revize';
         if (['yeni', 'gorusme'].includes(d.stage)) d.stage = 'teklif';
         d.lastActivity = new Date().toISOString();
         db.insert('activities', { deal: d.id, type: 'eposta', date: new Date().toISOString(), text: `Teklif ${q.no} gönderildi (${money(k.grand)} KDV dahil)`, owner: (NS.currentUser || {}).id, done: true }, true);
@@ -167,11 +178,9 @@
       <div class="row mt" style="gap:8px"><a class="btn" target="_blank" rel="noopener" href="https://wa.me/${String(ct.phone || '').replace(/\D/g, '').replace(/^0/, '90')}?text=${encodeURIComponent(msg)}">${icon('message')} WhatsApp</a><a class="btn" href="mailto:${esc(ct.email || '')}?subject=${encodeURIComponent(`${S().bizName} teklifi ${q.no}`)}&body=${encodeURIComponent(msg)}">${icon('mail')} E-posta</a><a class="btn" target="_blank" rel="noopener" href="${esc(u)}">${icon('eye')} Önizle</a><button class="btn" id="pp">${icon('print')} PDF / yazdır</button></div>`,
       onOpen: (b) => { $('#cp', b).onclick = async () => { try { await navigator.clipboard.writeText(u); toast('Bağlantı kopyalandı', 'ok'); } catch (e) { $('#qu', b).select(); } }; $('#pp', b).onclick = () => printQuote(q); } });
   }
-  function printQuote(q) {
-    const d = db.get('deals', q.deal) || {}; const c = comp(d.company); const ct = ctc(d.contact); const k = Q.calc(q);
-    NS.printHtml(`<div class="doc"><table><tr><td><h2>${esc(S().bizName)}</h2></td><td style="text-align:right"><h2>TEKLİF</h2><div>${esc(q.no)} · ${NS.date(q.date)}</div><div>Geçerlilik: ${NS.date(q.valid)}</div></td></tr></table><hr><p><b>${esc(c.name)}</b><br>Sayın ${esc(ct.name)}${ct.title ? ', ' + esc(ct.title) : ''}</p><p>Konu: ${esc(d.title || '')}</p>
-      <table><tr><th>Açıklama</th><th>Miktar</th><th style="text-align:right">Birim</th><th style="text-align:right">Tutar</th></tr>${q.lines.map((l) => `<tr><td>${esc(l.name)}</td><td>${l.qty}</td><td style="text-align:right">${money(l.price)}</td><td style="text-align:right">${money(l.qty * l.price)}</td></tr>`).join('')}${k.disc ? `<tr><td colspan="3" style="text-align:right">İskonto %${q.disc}</td><td style="text-align:right">-${money(k.disc)}</td></tr>` : ''}<tr><td colspan="3" style="text-align:right">Ara toplam</td><td style="text-align:right">${money(k.net)}</td></tr><tr><td colspan="3" style="text-align:right">KDV %${k.vat}</td><td style="text-align:right">${money(k.vatAmt)}</td></tr><tr><td colspan="3" style="text-align:right"><b>GENEL TOPLAM</b></td><td style="text-align:right"><b>${money(k.grand)}</b></td></tr></table>${q.payment ? `<p>Ödeme: ${esc(q.payment)}</p>` : ''}<p><i>${esc(q.note || '')}</i></p>${q.status === 'kabul' && q.signer ? `<p>Müşteri onayı: <b>${esc(q.signer)}</b> · ${NS.dt(q.respondedAt)} (online)</p>` : ''}<p style="margin-top:40px">Saygılarımızla,<br>${esc(usr(d.owner).name)}</p></div>`, { title: q.no });
-  }
+  const quoteDoc = (q) => { const d = db.get('deals', q.deal) || {}; const c = comp(d.company); const ct = ctc(d.contact); const k = Q.calc(q); return { title: 'Teklif', no: q.no, date: q.date, party: { title: 'Sayın', name: c.name, lines: [ct.name !== '-' ? `${ct.name}${ct.title ? ', ' + ct.title : ''}` : ''] }, info: [['Konu', d.title || ''], ['Geçerlilik', NS.date(q.valid)], ['Ödeme', q.payment || ''], ['Hazırlayan', usr(d.owner).name]], lines: q.lines.map((l) => ({ name: l.name, qty: l.qty, price: l.price, total: l.qty * l.price })), totals: [['Ara toplam', k.gross], ...(k.disc ? [[`İskonto %${q.disc}`, -k.disc]] : []), [`KDV %${k.vat}`, k.vatAmt], ['Genel toplam', k.grand, true]], note: [q.note, q.status === 'kabul' && q.signer ? `Müşteri onayı: ${q.signer} · ${NS.dt(q.respondedAt)}` : ''].filter(Boolean).join('\n') }; };
+  const printQuote = (q) => NS.docs.print('teklif', quoteDoc(q));
+  if (NS.docs) NS.docs.define('crm', 'teklif', { label: 'Teklif', sample: () => { const q = db.all('quotes')[0]; return q ? quoteDoc(q) : {}; } });
   // Teklif yanıtı (müşteri sayfası veya temsilci): kabul fırsatı kazandırır
   function respond(app, q, st, reason) {
     const d = db.get('deals', q.deal);
@@ -179,7 +188,8 @@
     if (d) {
       db.insert('activities', { deal: d.id, type: 'not', date: q.respondedAt, text: st === 'kabul' ? `Teklif ${q.no} kabul edildi` : `Teklif ${q.no} reddedildi${reason ? ': ' + reason : ''}`, owner: (NS.currentUser || {}).id, done: true }, true);
       d.lastActivity = q.respondedAt;
-      if (st === 'kabul' && isOpen(d)) { d.stage = 'kazanildi'; d.closedAt = today(); d.value = q.total; }
+      if (st === 'kabul') Q.closeOthers(db.all('quotes'), q);
+      if (st === 'kabul' && isOpen(d)) { Object.assign(d, closing(d, 'kazanildi')); d.stage = 'kazanildi'; d.value = q.total; }
       if (st === 'red' && d.stage === 'teklif') d.stage = 'pazarlik';
     }
     db.save(); app.refresh();
@@ -208,6 +218,8 @@
     on(el, 'click', '[data-qf]', (e, b) => { flt = b.dataset.qf; draw(); });
     on(el, 'click', '[data-act]', async (e, b) => {
       const x = db.get('quotes', b.dataset.id); const d = db.get('deals', x.deal);
+      if (['ok', 'no'].includes(b.dataset.act) && !['gonderildi', 'suresi'].includes(Q.status(x))) return toast(`Bu teklif ${Q.STATUS[Q.status(x)][0].toLocaleLowerCase('tr-TR')}; değiştirilemez`, 'err');
+      if (b.dataset.act === 'rev' && Q.status(x) === 'kabul') return toast('Kabul edilen teklif revize edilemez', 'err');
       if (b.dataset.act === 'share') shareQuote(x);
       else if (b.dataset.act === 'print') printQuote(x);
       else if (b.dataset.act === 'rev') { if (!d) return; quoteModal(app, d, x); }
@@ -224,7 +236,7 @@
       db.load();
       const t0 = today(), wk = iso(addDays(new Date(), 7));
       const all = db.all('activities', (a) => a.type === 'gorev' && (!own || a.owner === own));
-      const open = all.filter((a) => !a.done).sort((a, b) => String(a.due).localeCompare(String(b.due)));
+      const open = all.filter((a) => !a.done).sort(dueCmp);
       const G = [['Gecikmiş', open.filter((a) => a.due && a.due < t0), 'err'], ['Bugün', open.filter((a) => a.due === t0), 'warn'], ['Bu hafta', open.filter((a) => a.due > t0 && a.due <= wk), 'info'], ['Daha sonra / tarihsiz', open.filter((a) => !a.due || a.due > wk), '']];
       const doneRecent = all.filter((a) => a.done).sort((a, b) => String(b.doneAt || b.date).localeCompare(String(a.doneAt || a.date))).slice(0, 8);
       const feed = db.all('activities', (a) => a.type !== 'gorev' && (!own || a.owner === own)).sort((a, b) => b.date.localeCompare(a.date)).slice(0, 12);
@@ -236,19 +248,19 @@
       if ($('#ow', el)) $('#ow', el).onchange = (e) => { own = e.target.value; draw(); };
       $('#nt', el).onclick = async () => {
         const v = await formModal({ title: 'Yeni görev', fields: [{ name: 'deal', label: 'Fırsat', type: 'select', options: myDeals().filter(isOpen).map((d) => ({ value: d.id, label: `${d.title} — ${comp(d.company).name}` })) }, { name: 'text', label: 'Görev', required: true, full: true }, { name: 'due', label: 'Son tarih', type: 'date', value: iso(addDays(new Date(), 1)) }, { name: 'owner', label: 'Sorumlu', type: 'select', options: db.all('users').map((u) => ({ value: u.id, label: u.name })) }], values: { owner: own || (NS.currentUser || {}).id } });
-        if (!v) return; db.insert('activities', { ...v, type: 'gorev', date: new Date().toISOString(), done: false }); toast('Görev eklendi', 'ok'); draw();
+        if (!v) return; if (!v.deal) return toast('Fırsat seçin', 'err'); db.insert('activities', { ...v, type: 'gorev', date: new Date().toISOString(), done: false }, true); touch(v.deal); db.save(); toast('Görev eklendi', 'ok'); draw();
       };
     };
-    on(el, 'change', '[data-tdone]', (e, b) => { db.update('activities', b.dataset.tdone, { done: true, doneAt: new Date().toISOString() }); toast('Görev tamamlandı', 'ok'); draw(); });
+    on(el, 'change', '[data-tdone]', (e, b) => { const a = db.update('activities', b.dataset.tdone, { done: true, doneAt: new Date().toISOString() }); touch((a || db.get('activities', b.dataset.tdone)).deal); db.save(); toast('Görev tamamlandı', 'ok'); draw(); });
     draw();
   }
 
   // Firma 360°: kişiler, fırsatlar, teklifler ve tüm temas geçmişi
   function companyPage(el, id, app) {
     const c = db.get('companies', id); if (!c) return app.go('firmalar');
-    const deals = db.all('deals', (d) => d.company === id).sort((a, b) => String(b.created || '').localeCompare(String(a.created || '')));
+    const deals = myDeals().filter((d) => d.company === id).sort((a, b) => String(b.created || '').localeCompare(String(a.created || '')));
     const ids = deals.map((d) => d.id);
-    const acts = db.all('activities', (a) => ids.includes(a.deal)).sort((a, b) => b.date.localeCompare(a.date));
+    const acts = db.all('activities', (a) => ids.includes(a.deal)).sort((a, b) => String(b.date).localeCompare(String(a.date)));
     const quotes = db.all('quotes', (q) => ids.includes(q.deal));
     const won = deals.filter((d) => d.stage === 'kazanildi'), open = deals.filter(isOpen);
     const last = acts[0];
@@ -267,29 +279,34 @@
     const wonM = ds.filter((d) => d.stage === 'kazanildi' && (d.closedAt || '').startsWith(mo));
     const closed90 = ds.filter((d) => !isOpen(d) && d.closedAt >= iso(addDays(new Date(), -90)));
     const winRate = closed90.length ? Math.round((closed90.filter((d) => d.stage === 'kazanildi').length / closed90.length) * 100) : 0;
-    const tasks = db.all('activities', (a) => a.type === 'gorev' && !a.done && (!mine() || a.owner === mine())).sort((a, b) => a.due.localeCompare(b.due));
+    const tasks = db.all('activities', (a) => a.type === 'gorev' && !a.done && (!mine() || a.owner === mine())).sort(dueCmp);
     const months = Array.from({ length: 4 }, (_, i) => { const d = new Date(); d.setDate(1); d.setMonth(d.getMonth() + i); return iso(d).slice(0, 7); });
-    const target = S().target, won = sum(wonM, (d) => d.value);
+    const target = Number(S().target) || 0, won = sum(wonM, (d) => d.value); const pct = target ? Math.round((won / target) * 100) : 0;
     el.innerHTML = pageHead('Satış Panosu', NS.dateLong(new Date()), `<a class="btn" href="#/huni">${icon('kanban')} Huni</a><button class="btn primary" id="nd">${icon('plus')} Fırsat</button>`) + `
-      <div class="grid g4 mb">${kpi('Bu ay kazanılan', money(won), 'award', 'ok', `<div class="progress mt"><i style="width:${Math.min(100, (won / target) * 100)}%;background:var(--ok)"></i></div><div class="small faint">Hedef ${money(target)} · %${Math.round((won / target) * 100)}</div>`)}${kpi('Açık huni', money(sum(open, (d) => d.value)), 'kanban', 'info', `<div class="small faint">${open.length} fırsat</div>`)}${kpi('Ağırlıklı tahmin', money(sum(open, weighted)), 'trend')}${kpi('Kazanma oranı (90 gün)', '%' + winRate, 'percent', 'warn')}</div>
-      <div class="grid g-21 mb"><div class="card"><div class="card-h"><h3>Aylara göre tahmini kapanış (ağırlıklı)</h3></div><div class="card-b">${chart.bars(months.map((m) => ({ label: NS.MONTHS[Number(m.slice(5)) - 1], value: sum(open.filter((d) => d.expected.startsWith(m)), weighted) })), { format: money })}</div></div>
-      <div class="card"><div class="card-h"><h3>${icon('check')} Görevlerim (${tasks.length})</h3></div><div class="card-b" style="max-height:300px;overflow:auto">${tasks.map((t) => `<div class="list-item small"><input type="checkbox" data-done="${t.id}"><div class="grow"><a href="#/firsat/${t.deal}">${esc(t.text)}</a><div class="faint">${esc((db.get('deals', t.deal) || {}).title || '')}</div></div>${badge(NS.date(t.due), t.due < today() ? 'err' : t.due === today() ? 'warn' : '')}</div>`).join('') || '<div class="faint small">Bekleyen görev yok</div>'}</div></div></div>
-      <div class="grid g2"><div class="card"><div class="card-h"><h3>${icon('alert')} 14+ gündür sessiz fırsatlar</h3></div>${table({ rows: open.filter(stale).sort((a, b) => b.value - a.value), empty: 'Yok', columns: [{ label: 'Fırsat', render: (d) => `<a href="#/firsat/${d.id}"><b>${esc(d.title)}</b></a><div class="small faint">${esc(comp(d.company).name)}</div>` }, { label: 'Tutar', cls: 'right', render: (d) => money(d.value) }, { label: 'Son temas', render: (d) => NS.ago(d.lastActivity) }] })}</div>
+      <div class="grid g4 mb">${kpi('Bu ay kazanılan', money(won), 'award', 'ok', `<div class="progress mt"><i style="width:${Math.min(100, pct)}%;background:var(--ok)"></i></div><div class="small faint">${target ? `Hedef ${money(target)} · %${pct}` : 'Hedef girilmedi (Ayarlar)'}</div>`)}${kpi('Açık huni', money(sum(open, (d) => d.value)), 'kanban', 'info', `<div class="small faint">${open.length} fırsat</div>`)}${kpi('Ağırlıklı tahmin', money(sum(open, weighted)), 'trend')}${kpi('Kazanma oranı (90 gün)', '%' + winRate, 'percent', 'warn')}</div>
+      <div class="grid g-21 mb"><div class="card"><div class="card-h"><h3>Aylara göre tahmini kapanış (ağırlıklı)</h3></div><div class="card-b">${chart.bars(months.map((m) => ({ label: NS.MONTHS[Number(m.slice(5)) - 1], value: sum(open.filter((d) => String(d.expected || '').startsWith(m)), weighted) })), { format: money })}</div></div>
+      <div class="card"><div class="card-h"><h3>${icon('check')} Görevlerim (${tasks.length})</h3></div><div class="card-b" style="max-height:300px;overflow:auto">${tasks.map((t) => `<div class="list-item small"><input type="checkbox" data-done="${t.id}"><div class="grow"><a href="#/firsat/${t.deal}">${esc(t.text)}</a><div class="faint">${esc((db.get('deals', t.deal) || {}).title || '')}</div></div>${t.due ? badge(NS.date(t.due), t.due < today() ? 'err' : t.due === today() ? 'warn' : '') : ''}</div>`).join('') || '<div class="faint small">Bekleyen görev yok</div>'}</div></div></div>
+      <div class="grid g2"><div class="card"><div class="card-h"><h3>${icon('alert')} 14+ gündür sessiz fırsatlar</h3></div>${table({ rows: open.filter(stale).sort((a, b) => b.value - a.value), empty: 'Yok', columns: [{ label: 'Fırsat', render: (d) => `<a href="#/firsat/${d.id}"><b>${esc(d.title)}</b></a><div class="small faint">${esc(comp(d.company).name)}</div>` }, { label: 'Tutar', cls: 'right', render: (d) => money(d.value) }, { label: 'Son temas', render: (d) => NS.ago(d.lastActivity || d.created) }] })}</div>
       <div class="card"><div class="card-h"><h3>Temsilci performansı (90 gün)</h3></div>${table({ rows: db.all('users').map((u) => ({ id: u.id, u, w: sum(closed90.filter((d) => d.owner === u.id && d.stage === 'kazanildi'), (d) => d.value), n: closed90.filter((d) => d.owner === u.id && d.stage === 'kazanildi').length, o: sum(open.filter((d) => d.owner === u.id), (d) => d.value) })), columns: [{ label: 'Temsilci', render: (r) => `<b>${esc(r.u.name)}</b>` }, { label: 'Kazanılan', cls: 'right', render: (r) => `${money(r.w)} <span class="faint small">(${r.n})</span>` }, { label: 'Açık huni', cls: 'right', render: (r) => money(r.o) }] })}</div></div>`;
     $('#nd', el).onclick = () => dealForm(app);
-    on(el, 'change', '[data-done]', (e, b) => { db.update('activities', b.dataset.done, { done: true }); toast('Görev tamamlandı', 'ok'); app.refresh(); });
+    on(el, 'change', '[data-done]', (e, b) => { const a = db.get('activities', b.dataset.done); db.update('activities', a.id, { done: true, doneAt: new Date().toISOString() }); touch(a.deal); db.save(); toast('Görev tamamlandı', 'ok'); app.refresh(); });
   }
   function companiesPage(el, p, app) {
+    const G = NS.groupBy(db.all('deals'), (d) => d.company); const K = NS.groupBy(db.all('contacts'), (x) => x.company); const of = (c) => G[c.id] || [];
     NS.crud(el, app, {
       col: 'companies', title: 'Firmalar', single: 'Firma', extraActions: [{ icon: 'eye', act: 'view', title: 'Firma kartı' }], onAction: (a, c) => app.go('firma', c.id), addLabel: 'Yeni firma', emptyIcon: 'building', sort: (a, b) => a.name.localeCompare(b.name, 'tr'),
       fields: [{ name: 'name', label: 'Firma adı', required: true, full: true }, { name: 'sector', label: 'Sektör' }, { name: 'city', label: 'Şehir' }, { name: 'phone', label: 'Telefon' }, { name: 'web', label: 'Web sitesi' }, { name: 'size', label: 'Çalışan sayısı', type: 'select', options: ['1-10', '10-50', '50-250', '250-1000', '1000+'] }],
-      columns: [{ key: 'name', label: 'Firma', render: (c) => `<b>${esc(c.name)}</b><div class="small faint">${esc(c.web || '')}</div>` }, { key: 'sector', label: 'Sektör' }, { key: 'city', label: 'Şehir' }, { label: 'Kişi', cls: 'right', render: (c) => db.all('contacts', (x) => x.company === c.id).length }, { label: 'Açık fırsat', cls: 'right', render: (c) => money(sum(db.all('deals', (d) => d.company === c.id && isOpen(d)), (d) => d.value)) }, { label: 'Kazanılan', cls: 'right', render: (c) => money(sum(db.all('deals', (d) => d.company === c.id && d.stage === 'kazanildi'), (d) => d.value)) }],
+      columns: [{ key: 'name', label: 'Firma', render: (c) => `<b>${esc(c.name)}</b><div class="small faint">${esc(c.web || '')}</div>` }, { key: 'sector', label: 'Sektör' }, { key: 'city', label: 'Şehir' }, { label: 'Kişi', cls: 'right', render: (c) => (K[c.id] || []).length }, { label: 'Açık fırsat', cls: 'right', render: (c) => money(sum(of(c).filter(isOpen), (d) => d.value)) }, { label: 'Kazanılan', cls: 'right', render: (c) => money(sum(of(c).filter((d) => d.stage === 'kazanildi'), (d) => d.value)) }],
+      searchFields: (c) => [c.name, c.city, c.sector, c.phone],
+      beforeSave: (v, rec) => { const n = NS.slug(v.name); if (db.find('companies', (x) => (!rec || x.id !== rec.id) && NS.slug(x.name) === n)) return 'Bu adla kayıtlı firma var'; },
+      canDelete: (c) => (db.find('deals', (d) => d.company === c.id) ? 'Bu firmanın fırsatı var; silinemez.' : db.find('contacts', (x) => x.company === c.id) ? 'Bu firmanın kişileri var; önce kişileri silin.' : true),
     });
   }
   function contactsPage(el, p, app) {
     NS.crud(el, app, {
       col: 'contacts', title: 'Kişiler', single: 'Kişi', addLabel: 'Yeni kişi', emptyIcon: 'users', sort: (a, b) => a.name.localeCompare(b.name, 'tr'), searchFields: (c) => [c.name, c.email, c.phone, comp(c.company).name],
-      fields: () => [{ name: 'name', label: 'Ad soyad', required: true }, { name: 'company', label: 'Firma', type: 'select', options: db.all('companies').map((c) => ({ value: c.id, label: c.name })) }, { name: 'title', label: 'Ünvan' }, { name: 'phone', label: 'Telefon' }, { name: 'email', label: 'E-posta', type: 'email' }],
+      canDelete: (k) => (db.find('deals', (d) => d.contact === k.id) ? 'Bu kişi bir fırsata bağlı; silinemez.' : true),
+      fields: () => [{ name: 'name', label: 'Ad soyad', required: true }, { name: 'company', label: 'Firma', type: 'select', options: db.all('companies').sort((a, b) => a.name.localeCompare(b.name, 'tr')).map((c) => ({ value: c.id, label: c.name })) }, { name: 'title', label: 'Ünvan' }, { name: 'phone', label: 'Telefon' }, { name: 'email', label: 'E-posta', type: 'email' }],
       columns: [{ key: 'name', label: 'Kişi', render: (c) => `<div class="row nw"><div class="avatar">${esc(NS.initials(c.name))}</div><div><b>${esc(c.name)}</b><div class="small faint">${esc(c.title || '')}</div></div></div>` }, { label: 'Firma', render: (c) => esc(comp(c.company).name) }, { key: 'phone', label: 'Telefon' }, { key: 'email', label: 'E-posta' }],
     });
   }

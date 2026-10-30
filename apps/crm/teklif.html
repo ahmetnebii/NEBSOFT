@@ -70,7 +70,7 @@
         const nm = $('#sg', b).value.trim(); if (nm.length < 3) return toast('Adınızı yazın', 'err'); if (!$('#sga', b).checked) return toast('Onay kutusunu işaretleyin', 'err');
         db.load(); const x = db.find('quotes', (y) => y.token === token); if (Q.status(x) !== 'gonderildi') { close(); return render(); }
         x.status = 'kabul'; x.signer = nm + ($('#sgt', b).value.trim() ? ', ' + $('#sgt', b).value.trim() : ''); x.respondedAt = new Date().toISOString();
-        const dd = db.get('deals', x.deal); if (dd) { if (!['kazanildi', 'kaybedildi'].includes(dd.stage)) { dd.stage = 'kazanildi'; dd.closedAt = x.respondedAt.slice(0, 10); dd.value = x.total; } dd.lastActivity = x.respondedAt; }
+        Q.closeOthers(db.all('quotes'), x); const dd = db.get('deals', x.deal); if (dd) { if (!['kazanildi', 'kaybedildi'].includes(dd.stage)) { dd.stage = 'kazanildi'; dd.closedAt = x.respondedAt.slice(0, 10); dd.value = x.total; } dd.lastActivity = x.respondedAt; }
         db.insert('activities', { deal: x.deal, type: 'not', date: x.respondedAt, text: `Teklif ${x.no} müşteri tarafından online kabul edildi (${x.signer})`, done: true }, true);
         db.save(); close(); toast('Teşekkürler, onayınız alındı', 'ok'); render();
       } }] });
