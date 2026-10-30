@@ -3,6 +3,7 @@
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
+const log = require('./log');
 
 const DATA = process.env.NEBSOFT_DATA || path.join(__dirname, '..', '..', 'data');
 const FILE = path.join(DATA, 'config.enc');
@@ -27,7 +28,7 @@ function decrypt(b64) {
   return JSON.parse(Buffer.concat([d.update(buf.subarray(28)), d.final()]).toString('utf8'));
 }
 function load() {
-  try { return fs.existsSync(FILE) ? decrypt(fs.readFileSync(FILE, 'utf8')) : null; } catch (e) { console.error('Ayar dosyası çözülemedi (NEBSOFT_SECRET değişmiş olabilir):', e.message); return null; }
+  try { return fs.existsSync(FILE) ? decrypt(fs.readFileSync(FILE, 'utf8')) : null; } catch (e) { log.uygulama.hata('ayar.cozulemedi', { mesaj: 'Ayar dosyası çözülemedi (NEBSOFT_SECRET değişmiş olabilir)', hata: e }); return null; }
 }
 function save(cfg) { ensureDir(); fs.writeFileSync(FILE, encrypt(cfg), { mode: 0o600 }); }
 // İlk kurulum belirteci: kurulum ekranını yalnızca sunucuya erişimi olan kişi kullanabilsin

@@ -214,6 +214,14 @@ Sistemde yerleşik olan korumalar:
 - e-Fatura/e-Arşiv, MEDULA/İTS, KBS ve pazaryeri entegrasyonları için ilgili entegratör sözleşmesi ve API bilgileri gerekir.
 - Yerel donanım (fiş yazıcısı, POS cihazı, terazi) bulut sunucusundan değil, işletmedeki bilgisayarda çalışan yerel köprüden (`node server.js`, veritabanısız mod) kullanılır.
 
+## Günlükler ve ziyaret analitiği
+
+- Uygulama günlüğü standart çıktıya tek satır JSON yazılır (`journalctl -u nebsoft -o cat | jq`). Uyarı ve hatalar ayrıca panelde **Analitik → Hata & Yavaşlık** sayfasındadır. Müşteriye gösterilen istek kodu ile kayıt bulunur.
+- Ziyaret analitiği birinci taraftır, çerez ve dış servis kullanmaz. Tanıtım sayfalarına `core/olay.js` sunucu tarafından eklenir, rıza bandını o gösterir. Panelden kapatılabilir.
+- Saklama süreleri ve alarm eşikleri aynı sayfadadır. Varsayılanlar **avukatla netleştirilecektir**. Şema, maskeleme kuralları ve açık sorular: `docs/LOG-YAPISI.md`.
+- nginx erişim günlüğü ham IP tutar ve bu ayarların dışındadır. Süresini `logrotate` ile sınırlayın. `/api/olay` için nginx `limit_req` önerilir.
+- Tek süreç kuralı burada da geçerlidir: sayaçlar ve alarm penceresi bellektedir. Düzgün kapanmada tampon veritabanına yazılır, ani kapanmada son 10 saniyelik sayaçlar kaybolur.
+
 ## 13. Testler
 
 ```bash

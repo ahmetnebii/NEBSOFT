@@ -26,9 +26,12 @@ const SHARED = ['entegrasyon', 'ebelge'];
 const VAT = 20;
 function price(items, couponPct = 0) {
   const lines = [];
+  const gecersiz = () => Object.assign(new Error('Geçersiz ürün veya paket'), { status: 400 }); // kötü sepet istemci hatasıdır: 500 dönüp hata alarmını şişirmesin
+  if (items && !Array.isArray(items)) throw gecersiz();
   for (const it of items || []) {
+    if (!it || typeof it !== 'object') throw gecersiz();
     const p = product(String(it.pid)); const plan = Number(it.plan); const period = it.period === 'yillik' ? 'yillik' : 'aylik'; const qty = Math.min(50, Math.max(1, Number(it.qty) || 1));
-    if (!p || ![0, 1, 2].includes(plan)) throw new Error('Geçersiz ürün veya paket');
+    if (!p || ![0, 1, 2].includes(plan)) throw gecersiz();
     lines.push({ pid: p.id, name: p.name, plan, period, qty, price: p.prices[plan] * (period === 'yillik' ? 10 : 1) * qty });
   }
   if (!lines.length) throw new Error('Sepet boş');

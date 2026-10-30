@@ -10,6 +10,8 @@ const katalog = require('./katalog');
 const secrets = require('./secrets');
 const cfgMod = require('./config');
 const bizsite = require('../../core/bizsite');
+const log = require('./log');
+const analitik = require('./analitik');
 
 const uid = auth.uid;
 const now = () => new Date();
@@ -25,7 +27,8 @@ async function setting(k, d) { const r = await db.one('SELECT v FROM settings WH
 async function setSetting(k, v) { await db.q('INSERT INTO settings (k, v) VALUES (?, ?) ON DUPLICATE KEY UPDATE v=VALUES(v)', [k, JSON.stringify(v)]); }
 const DEFAULTS = { trialDays: 7, siteName: 'NEBSOFT', phone: '0850 555 00 34', email: 'destek@nebsoft.com.tr', address: '', referralDays: 30, siteUrl: '' };
 async function site() { return { ...DEFAULTS, ...(await setting('site', {})) }; }
-async function audit(c, action, detail, tenant) { await db.q('INSERT INTO audit (at, user_id, tenant_id, ip, action, detail) VALUES (?,?,?,?,?,?)', [now(), c.user ? c.user.id : null, tenant || (c.user ? c.user.tenant_id : null), c.ip, action, String(detail || '').slice(0, 500)]).catch(() => {}); }
+// Denetim kaydı log.js üzerinden aynı audit tablosuna yazılır; ayrıntı alanı maskelenir (e-posta ve IP güvenlik kaydı için açık kalır)
+async function audit(c, action, detail, tenant) { await log.denetim(action, { kullanici: c.user ? c.user.id : null, isletme: tenant || (c.user ? c.user.tenant_id : null), ip: c.ip, mesaj: String(detail || '').slice(0, 500) }); }
 
 // Lisans geçerli mi (deneme veya aktif ve süresi dolmamış)
 const valid = (l) => l && ['deneme', 'aktif'].includes(l.status) && new Date(l.end) > now();
@@ -163,7 +166,7 @@ route('POST', '/api/setup/admin', { auth: 'none', limit: ['setupadm', 10, 600e3]
 route('GET', '/api/auth/me', { auth: 'none', db: false }, async (c) => {
   if (!db.ready()) return { ok: true, mode: cfg.load() ? 'offline' : 'setup' };
   const u = await auth.current(c.req); const s = await site();
-  const base = { ok: true, mode: 'cloud', trialDays: s.trialDays, site: { name: s.siteName, phone: s.phone, email: s.email, address: s.address }, catalog: cat.overrides(), platform: await setting('platform', { announcements: [], maintenance: {} }) };
+  const base = { ok: true, mode: 'cloud', trialDays: s.trialDays, site: { name: s.siteName, phone: s.phone, email: s.email, address: s.address }, catalog: cat.overrides(), platform: await setting('platform', { announcements: [], maintenance: {} }), analitik: await analitik.acik() };
   if (!u) return base;
   const t = await tenantOf(u);
   return { ...base, user: { id: u.id, email: u.email, name: u.name, phone: u.phone, role: u.role }, tenant: t ? { id: t.id, name: t.name, slug: t.slug, ref: t.ref_code, phone: t.phone, address: t.address, city: t.city } : null, licenses: t ? (await licenses(t.id)).map((l) => ({ ...l, valid: valid(l) })) : [], apps: t ? [...(await licenses(t.id)).filter(valid).map((l) => l.product), ...cat.SHARED] : [] };
@@ -649,7 +652,7 @@ A('POST', '/mail/campaign', async (c) => {
   const tpl = campaignTpl(b); const s = await mailSite(); let ok = 0, fail = 0;
   for (const r of list) { const x = await mail.send(r.email, sec.clean(b.subject, 160), { ...tpl, intro: tpl.intro.replace(/\{ad\}/g, String(r.name || '').split(' ')[0] || '') }, s); if (x.ok) ok++; else fail++; await new Promise((z) => setTimeout(z, 250)); }
   await audit(c, 'Toplu e-posta', `${b.subject} · ${ok}/${list.length}`); return { ok: true, sent: ok, failed: fail, total: list.length };
-});
+}, { uzun: true });
 // Duyurular ve bakım modu: programların üstünde bant; bakımda "erişimi kapat" seçilirse veri kaydı da durdurulur
 A('GET', '/platform', async () => ({ ok: true, platform: await setting('platform', { announcements: [], maintenance: {} }) }));
 A('PUT', '/platform', async (c) => {
@@ -676,4 +679,4 @@ A('PUT', '/settings', async (c) => {
 A('GET', '/audit', async () => ({ ok: true, rows: await db.q('SELECT a.*, u.email FROM audit a LEFT JOIN users u ON u.id=a.user_id ORDER BY a.id DESC LIMIT 500') }));
 A('GET', '/db', async () => ({ ok: true, info: db.info(), tables: await db.q('SELECT table_name AS name, table_rows AS rows_est, ROUND((data_length+index_length)/1024/1024, 2) AS mb FROM information_schema.tables WHERE table_schema = DATABASE() ORDER BY name') }));
 
-module.exports = { R, valid, canUseApp, err, site, audit, J, syncCatalog };
+module.exports = { R, route, A, valid, canUseApp, err, site, audit, J, syncCatalog };
