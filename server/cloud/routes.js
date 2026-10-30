@@ -19,6 +19,7 @@ const indirim = require('./indirim');
 const paket = require('./paket');
 const kural = require('./rol-kural');
 const totp = require('./totp');
+const isletim = require('./isletim');
 
 const uid = auth.uid;
 const now = () => new Date();
@@ -32,8 +33,10 @@ const slugify = (s) => String(s).toLocaleLowerCase('tr').replace(/ç/g, 'c').rep
 
 async function setting(k, d) { const r = await db.one('SELECT v FROM settings WHERE k=?', [k]); return r ? J(r.v, r.v) : d; }
 async function setSetting(k, v) { await db.q('INSERT INTO settings (k, v) VALUES (?, ?) ON DUPLICATE KEY UPDATE v=VALUES(v)', [k, JSON.stringify(v)]); }
-const DEFAULTS = { trialDays: 7, siteName: 'NEBSOFT', phone: '0850 555 00 34', email: 'destek@nebsoft.com.tr', address: '', referralDays: 30, siteUrl: '', googleVerify: '', whatsapp: '' };
-async function site() { return { ...DEFAULTS, ...(await setting('site', {})) }; }
+const DEFAULTS = { trialDays: 7, siteName: 'NEBSOFT', phone: '', email: '', address: '', referralDays: 30, siteUrl: '', googleVerify: '', whatsapp: '' };
+// Depodaki örnek iletişim bilgisi gerçek sayılmaz: yönetici Kurulum ekranından girip onaylamadıkça boş döner, sitede ve e-postada görünmez (eski kayıtlarda değer kalmış olabilir).
+const ORNEK = { phone: '0850 555 00 34', email: 'destek@nebsoft.com.tr' };
+async function site() { const s = { ...DEFAULTS, ...(await setting('site', {})) }; const o = s.onay || {}; Object.keys(ORNEK).forEach((k) => { if (s[k] === ORNEK[k] && o[k] !== s[k]) s[k] = ''; }); return s; }
 // Denetim kaydı log.js üzerinden aynı audit tablosuna yazılır; ayrıntı alanı maskelenir (e-posta ve IP güvenlik kaydı için açık kalır)
 async function audit(c, action, detail, tenant) { await log.denetim(action, { kullanici: c.user ? c.user.id : null, isletme: tenant || (c.user ? c.user.tenant_id : null), ip: c.ip, mesaj: String(detail || '').slice(0, 500) }); }
 
@@ -165,7 +168,7 @@ setInterval(() => slaTara().catch(() => {}), 5 * 60e3).unref();
 // ---------- Uç noktalar ----------
 const R = [];
 let catAt = 0;
-async function syncCatalog(force) { if (!db.ready() || (!force && Date.now() - catAt < 30e3)) return; catAt = Date.now(); try { cat.setOverrides(await setting('catalog', {})); } catch (e) { /* tablo yok */ } }
+async function syncCatalog(force) { if (!db.ready() || (!force && Date.now() - catAt < 30e3)) return; catAt = Date.now(); try { cat.setOverrides(await setting('catalog', {})); destek.panelAta(await setting('fiyat_destek', null)); indirim.panelAta(await setting('fiyat_indirim', null)); require('./vitrin').bayiPanelAta(await setting('bayi_komisyon', null)); isletim.ata(await setting('isletim', {}), await setting('canli_kilit', {})); } catch (e) { /* tablo yok */ } }
 const route = (method, path, opt, fn) => R.push({ method, re: new RegExp('^' + path.replace(/:(\w+)/g, '(?<$1>[^/]+)') + '$'), opt, fn: async (c) => { await syncCatalog(); return fn(c); } });
 
 // Kurulum
@@ -214,7 +217,7 @@ route('POST', '/api/setup/admin', { auth: 'none', limit: ['setupadm', 10, 600e3]
 route('GET', '/api/auth/me', { auth: 'none', db: false }, async (c) => {
   if (!db.ready()) return { ok: true, mode: cfg.load() ? 'offline' : 'setup' };
   const u = await auth.current(c.req); const s = await site();
-  const base = { ok: true, mode: 'cloud', trialDays: s.trialDays, site: { name: s.siteName, phone: s.phone, email: s.email, address: s.address }, catalog: cat.overrides(), platform: await setting('platform', { announcements: [], maintenance: {} }), analitik: await analitik.acik() };
+  const base = { ok: true, mode: 'cloud', trialDays: s.trialDays, site: { name: s.siteName, phone: s.phone, email: s.email, address: s.address, unvan: (await setting('sirket', {})).unvan || '' }, catalog: cat.overrides(), platform: await setting('platform', { announcements: [], maintenance: {} }), analitik: await analitik.acik() };
   if (!u) return base;
   const t = await tenantOf(u);
   return { ...base, user: { id: u.id, email: u.email, name: u.name, phone: u.phone, role: u.role }, tenant: t ? { id: t.id, name: t.name, slug: t.slug, ref: t.ref_code, phone: t.phone, address: t.address, city: t.city } : null, licenses: t ? (await licenses(t.id)).map((l) => ({ ...l, valid: valid(l) })) : [], apps: t ? [...(await licenses(t.id)).filter(valid).map((l) => l.product), ...cat.SHARED] : [] };
@@ -904,12 +907,17 @@ A('DELETE', '/catalog/:id', async (c) => { const ov = { ...(await setting('catal
 // Search Console kodu: yalnız kod ya da panelin verdiği meta etiketinin tamamı yapıştırılabilir
 const googleCode = (v) => { const raw = String(v || '').trim(); const code = (/content=["']([^"']+)["']/.exec(raw) || [])[1] || raw; if (code && !/^[A-Za-z0-9_-]{10,100}$/.test(code)) throw err(400, 'Google doğrulama kodu geçersiz. Search Console\'un verdiği kodu veya meta etiketini yapıştırın'); return code; };
 // WhatsApp numarası uluslararası biçimde saklanır: boş ise sitede düğme hiç görünmez, yanlış biçim kaydedilmez
+const telefon = (v) => { const x = sec.clean(v, 40); if (!x) return ''; if (!/^(90|0)?[2-58]\d{9}$/.test(x.replace(/\D/g, ''))) throw err(400, 'Telefon geçersiz. Alan koduyla yazın: 0212 000 00 00 veya 0850 000 00 00'); return x; };
+const eposta = (v) => { const x = sec.clean(v, 190).toLowerCase(); if (x && !sec.V.email(x)) throw err(400, `Geçerli bir e-posta yazın: ${x}`); return x; };
+const siteAdresi = (v) => { const x = sec.clean(v, 200).replace(/\/+$/, ''); if (x && !/^https?:\/\/[a-z0-9.-]+(:\d+)?$/i.test(x)) throw err(400, 'Site adresi https://www.alanadiniz.com biçiminde olmalı, sonunda yol olmamalı'); return x; };
 const waNumara = (v) => { const d = String(v || '').replace(/\D/g, ''); if (!d) return ''; const n = /^0\d{10}$/.test(d) ? '90' + d.slice(1) : /^5\d{9}$/.test(d) ? '90' + d : d; if (!/^[1-9]\d{10,14}$/.test(n)) throw err(400, 'WhatsApp numarası geçersiz. Ülke koduyla ya da 0 ile başlayan biçimde yazın.'); return n; };
+// Gövdede gelmeyen alan korunur: telefon, e-posta ve adres artık Kurulum ve ayarlar ekranındadır, bu uç onları silmez
 A('PUT', '/settings', async (c) => {
-  const b = c.body; const s = { trialDays: Math.min(60, Math.max(1, Number(b.trialDays) || 7)), siteName: sec.clean(b.siteName, 60) || 'NEBSOFT', phone: sec.clean(b.phone, 40), email: sec.clean(b.email, 190), address: sec.clean(b.address, 300), referralDays: Math.min(365, Math.max(0, Number(b.referralDays) || 0)), siteUrl: sec.clean(b.siteUrl, 200), googleVerify: googleCode(b.googleVerify), whatsapp: waNumara(b.whatsapp) };
-  await setSetting('site', s); await audit(c, 'Site ayarları', JSON.stringify(s).slice(0, 300)); return { ok: true };
+  const b = c.body; const eski = await setting('site', {}); const s = { ...eski, trialDays: Math.min(60, Math.max(1, Number(b.trialDays) || 7)), siteName: sec.clean(b.siteName, 60) || 'NEBSOFT', referralDays: Math.min(365, Math.max(0, Number(b.referralDays) || 0)) };
+  if (b.phone !== undefined) s.phone = telefon(b.phone); if (b.email !== undefined) s.email = eposta(b.email); if (b.address !== undefined) s.address = sec.clean(b.address, 300); if (b.siteUrl !== undefined) s.siteUrl = siteAdresi(b.siteUrl); if (b.googleVerify !== undefined) s.googleVerify = googleCode(b.googleVerify); if (b.whatsapp !== undefined) s.whatsapp = waNumara(b.whatsapp);
+  await setSetting('site', s); require('./seo').tazele(); await audit(c, 'Site ayarları', JSON.stringify({ ...s, onay: undefined }).slice(0, 300)); return { ok: true };
 });
 A('GET', '/audit', async () => ({ ok: true, rows: await db.q('SELECT a.*, u.email FROM audit a LEFT JOIN users u ON u.id=a.user_id ORDER BY a.id DESC LIMIT 500') }));
 A('GET', '/db', async () => ({ ok: true, info: db.info(), tables: await db.q('SELECT table_name AS name, table_rows AS rows_est, ROUND((data_length+index_length)/1024/1024, 2) AS mb FROM information_schema.tables WHERE table_schema = DATABASE() ORDER BY name') }));
 
-module.exports = { waNumara, R, valid, canUseApp, hesapRolu, err, site, audit, J, syncCatalog, route, A, setting, setSetting, applyOrder, paidMail, mailTo, fmtTL, mailSite, pnameOf, uid, slaTara };
+module.exports = { waNumara, googleCode, telefon, eposta, siteAdresi, ORNEK, R, valid, canUseApp, hesapRolu, err, site, audit, J, syncCatalog, route, A, setting, setSetting, applyOrder, paidMail, mailTo, fmtTL, mailSite, pnameOf, uid, slaTara };

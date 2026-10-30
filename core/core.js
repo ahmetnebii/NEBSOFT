@@ -1985,7 +1985,7 @@
     }
     const now = new Date().toISOString();
     const ann = (y.announcements || []).filter((a) => a.active && (!a.until || a.until >= now.slice(0, 10)) && (!a.products || !a.products.length || a.products.includes(pid)) && (!a.tenants || !a.tenants.length || (ins && a.tenants.includes(ins.tenant))));
-    return { y, ins, lic, lock, maint, ann, support: (y._settings || {}).supportPhone || (NS.cloud && NS.cloud.site && NS.cloud.site.phone) || '0850 555 00 34' };
+    return { y, ins, lic, lock, maint, ann, support: (y._settings || {}).supportPhone || (NS.cloud && NS.cloud.site && NS.cloud.site.phone) || 'Hesabım > Destek' };
   }
   function bandHtml(st) {
     const out = [];

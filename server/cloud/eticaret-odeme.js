@@ -4,7 +4,7 @@
 //  • Tutarı sunucu sipariş kaydından alır; müşteri yalnız kimlik numarasını gönderir, o da saklanmaz.
 //  • Dönüş ve webhook yalnızca tetikleyicidir: sonuç her zaman iyzico'dan sorgulanır, imza + sipariş + tutar tutmadan "ödendi" yazılmaz.
 //  • Test (sandbox) ödemesi payTest ile işaretlenir, her yerde TEST görünür, ciroya girmez.
-//  • Canlı mod IYZICO_CANLI=1 olmadan kapalıdır: test hesabıyla doğrulanana kadar gerçek kart çekilmez (CLAUDE.md §1).
+//  • Canlı mod panelden süper yönetici açmadan veya IYZICO_CANLI=1 verilmeden kapalıdır: test hesabıyla doğrulanana kadar gerçek kart çekilmez (CLAUDE.md §1).
 //  • Ödenmeyen siparişin stoğu TTL sonunda geri eklenir, önce iyzico'ya son kez sorulur.
 const db = require('./db');
 const sec = require('./security');
@@ -15,8 +15,9 @@ const iyz = require('./iyzico');
 const { route, err, site, hesapRolu, valid } = require('./routes');
 const { readToken } = require('./public');
 const APP = 'eticaret'; const J = (s) => { try { return JSON.parse(s); } catch (e) { return null; } };
-const TTL = () => Number(process.env.ETICARET_ODEME_TTL_MS) || 30 * 60e3;
-const canliAcik = () => process.env.IYZICO_CANLI === '1';
+const isletim = require('./isletim');
+const TTL = isletim.odemeMs;
+const canliAcik = isletim.iyzicoCanli;
 const trGun = (d) => new Date(new Date(d).getTime() + 3 * 3600e3).toISOString().slice(0, 10);
 
 async function ayar(tid) {

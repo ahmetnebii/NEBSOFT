@@ -45,8 +45,10 @@
   const S = () => {
     const s = db.settings({ siteName: 'NEBSOFT', adminPin: '1234' });
     const c = CL && CL.site; if (!c) return s;
-    return { ...s, ...(c.name && { siteName: c.name }), ...(c.phone && { phone: c.phone }), ...(c.email && { email: c.email }), ...(c.address && { address: c.address }) };
+    return { ...s, ...(c.name && { siteName: c.name }), phone: c.phone || '', email: c.email || '', address: c.address || '', unvan: c.unvan || '' };
   };
+  // Sık sorulanlardaki örnek e-posta: bulutta panel değeri, boşsa destek bölümü
+  const sss = (x) => (CL && CL.site ? String(x).split('destek@nebsoft.com.tr').join(S().email || 'Hesabım > Destek bölümü') : x);
   const ov = (pid) => ((CL && CL.catalog) || db.data.overrides || {})[pid] || {};
   const products = () => C.products.map((p) => ({ ...p, ...ov(p.id) })).filter((p) => !p.hidden);
   const prod = (id) => (id === 'bundle' ? { ...BUNDLE, ...ov('bundle') } : products().find((p) => p.id === id));
@@ -114,7 +116,7 @@
         <div><h4>Ürünler</h4>${products().filter((p) => p.ready).map((p) => `<a href="${urunHref(p)}">${esc(p.name)}</a>`).join('')}<a href="/programlar">Tüm ürünler →</a></div>
         <div><h4>Kurumsal</h4><a href="#/indir">Masaüstü sürümünü indir</a><a href="/paketler/">Hazır paketler</a><a href="/fiyatlar/">Fiyatlandırma</a><a href="/rehber/">Rehber</a><a href="#/sektorler">Sektörler</a><a href="#/yardim">Yardım merkezi</a><a href="/veri-tasima/">Veri taşıma</a><a href="/bayilik/">Bayilik ve mali müşavir</a><a href="/sistem-durumu/">Sistem durumu</a><a href="/yenilikler/">Yenilikler</a><a href="/yol-haritasi/">Yol haritası ve öneri</a><a href="#/iletisim">İletişim</a><a href="#/hesabim">Müşteri paneli</a><a href="admin/">Yönetim paneli</a></div>
         <div><h4>Yasal</h4><a href="/kvkk/">KVKK Aydınlatma</a><a href="/mesafeli-satis/">Mesafeli Satış Sözleşmesi</a><a href="/iade/">İptal ve İade</a><a href="/gizlilik/">Gizlilik Politikası</a><a href="/cerez/">Çerez Politikası</a>${CL && CL.analitik ? '<a href="#" data-olay-tercih>Analitik tercihleri</a>' : ''}</div>
-      </div><hr><div class="row between small faint"><span>© ${new Date().getFullYear()} ${esc(S().siteName)} Yazılım. Tüm hakları saklıdır.</span></div></div></footer>`;
+      </div><hr><div class="row between small faint"><span>© ${new Date().getFullYear()} ${esc(S().unvan || S().siteName)}. Tüm hakları saklıdır.</span></div></div></footer>`;
     on(document.body, 'click', '[data-theme]', NS.toggleTheme);
     $('#burger').onclick = () => $('#links').classList.toggle('open');
     on(document.body, 'click', '#links a', () => $('#links').classList.remove('open'));
@@ -322,7 +324,7 @@
 
       <section class="sec" style="padding-top:0"><div class="mk-wrap" style="max-width:820px">
         <div class="sec-h reveal"><span class="eyebrow">SSS</span><h2>Sık sorulan sorular</h2></div>
-        <div class="faq">${C.faq.map(([q, x]) => `<details class="reveal"><summary>${esc(q)}</summary><p>${esc(x)}</p></details>`).join('')}</div>
+        <div class="faq">${C.faq.map(([q, x]) => `<details class="reveal"><summary>${esc(q)}</summary><p>${esc(sss(x))}</p></details>`).join('')}</div>
         <div class="card pad center mt reveal"><h2>Hâlâ karar veremediniz mi?</h2><p class="muted mt">Uzmanımız sizi arasın, işletmenize en uygun programı birlikte seçelim.</p><div class="row mt" style="justify-content:center"><a class="btn primary lg" href="#/iletisim">${icon('phone')} Beni arayın</a><a class="btn lg" href="tel:${esc(String(S().phone || '').replace(/[^\d+]/g, ''))}">${esc(S().phone || '')}</a></div></div>
       </div></section>`;
     const filter = (cat) => { $$('[data-c]', el).forEach((x) => x.classList.toggle('active', x.dataset.c === cat)); $('#hp', el).innerHTML = ps.filter((p) => !cat || p.cat === cat).map(pcard).join(''); $$('#hp .reveal', el).forEach((x) => x.classList.add('in')); };
@@ -538,7 +540,7 @@
   }
   function printInvoice(o) {
     const c = custOf(o.customer), b = o.billing || c, s = S();
-    NS.printHtml(`<div class="doc"><table><tr><td><h2>${esc(s.siteName)} Yazılım A.Ş.</h2><div>${esc(s.address)}</div><div>${esc(s.phone)} · ${esc(s.email)}</div></td><td style="text-align:right"><h2>FATURA</h2><div>No: ${esc(o.no)}</div><div>Tarih: ${NS.date(o.at)}</div></td></tr></table><hr>
+    NS.printHtml(`<div class="doc"><table><tr><td><h2>${esc(s.unvan || s.siteName)}</h2><div>${esc(s.address)}</div><div>${esc([s.phone, s.email].filter(Boolean).join(' · '))}</div></td><td style="text-align:right"><h2>FATURA</h2><div>No: ${esc(o.no)}</div><div>Tarih: ${NS.date(o.at)}</div></td></tr></table><hr>
       <b>Sayın</b><div>${esc(b.company || '')}</div><div>${esc(b.name || c.name)}</div><div>${esc(b.address || '')}</div><div>VKN/TCKN: ${esc(b.taxNo || '-')} ${b.taxOffice ? '· ' + esc(b.taxOffice) : ''}</div><br>
       <table><tr><th>Ürün</th><th>Paket</th><th>Dönem</th><th style="text-align:right">Tutar</th></tr>${o.items.map((i) => `<tr><td>${esc(item(i.pid).name)}${i.qty > 1 ? ` (${i.qty} şube)` : ''}</td><td>${planName(i.plan)}</td><td>${i.period === 'yillik' ? 'Yıllık' : 'Aylık'}</td><td style="text-align:right">${money(i.price)}</td></tr>`).join('')}
       <tr><td colspan="3" style="text-align:right">Ara toplam</td><td style="text-align:right">${money(o.subtotal)}</td></tr>${o.discount ? `<tr><td colspan="3" style="text-align:right">İndirim</td><td style="text-align:right">-${money(o.discount)}</td></tr>` : ''}<tr><td colspan="3" style="text-align:right">KDV %${VAT}</td><td style="text-align:right">${money(o.vat)}</td></tr><tr><td colspan="3" style="text-align:right"><b>GENEL TOPLAM</b></td><td style="text-align:right"><b>${money(o.total)}</b></td></tr></table>

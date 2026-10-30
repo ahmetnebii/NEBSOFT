@@ -14,7 +14,7 @@
       const r = await api('GET', '/api/admin/deneme-takip'); const pz = r.pazarlama || {};
       el.innerHTML = pageHead('Deneme takibi', 'Süren denemeler, gerçek kurulum ilerlemesi ve e-posta sonuçları')
         + (!r.mailReady ? `<div class="card pad mb">${badge('E-posta gönderilmiyor', 'err')} <span class="small">E-posta ayarı yapılmadı; dizi başlamaz ve hiçbir kayıt "gönderildi" görünmez.</span></div>` : '')
-        + (!r.siteUrl ? `<div class="card pad mb">${badge('Site adresi yok', 'err')} <span class="small">Site Ayarları'nda site adresini girin; çıkış bağlantısı üretilemediği için e-posta gönderilmez.</span></div>` : '')
+        + (!r.siteUrl ? `<div class="card pad mb">${badge('Site adresi yok', 'err')} <span class="small">Kurulum ve ayarlar ekranında site adresini girin; çıkış bağlantısı üretilemediği için e-posta gönderilmez.</span></div>` : '')
         + `<div class="card">${table({ rows: r.rows, empty: 'Süren deneme yok', emptyIcon: 'key', columns: [
           { label: 'İşletme', render: (x) => `<b>${esc(x.biz || '-')}</b><div class="small faint">${esc(x.uname || '')} · ${esc(x.email || '')}</div>${x.cikti ? badge('E-posta çıkışı yaptı', 'warn') : ''}` },
           { label: 'Program', render: (x) => badge(pname(x.product), 'acc') }, { label: 'Kalan', render: (x) => `${x.kalan} gün` },

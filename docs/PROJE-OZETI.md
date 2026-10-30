@@ -42,7 +42,7 @@ Yazma yolları:
 | `market/`, `index.html` | Pazar yeri (hash yönlendirmeli tek sayfa), `market/catalog.js` ürün ve fiyat kaynağı, `market/paketler.js` hazır paket listesi |
 | `site/` | Üretilen statik SEO sayfaları. Elle düzenleme: `site/src/`, `site/tools/` |
 | `admin/` | Platform yönetim paneli |
-| `config/` | `destek-paketleri.json`, `toplu-indirim.json` (örnek fiyatlar), `bayi.json` (komisyon oranı, boş) |
+| `config/` | `destek-paketleri.json`, `toplu-indirim.json` (örnek fiyatlar), `bayi.json` (komisyon oranı, boş). Varsayılandır, panel kaydı önce gelir |
 | `content/sablonlar/` | Program şablonları |
 | `ic-araclar/nebsoftpazarlama/` | Özel araç, yayına çıkmaz |
 | `scripts/` | `hosting-paketi.js`, `belge-coz.js`, `totp-sifirla.js`, `katalog-off-al.js` |
@@ -75,6 +75,7 @@ Yazma yolları:
 | Bayilik, veri taşıma, sistem durumu, yenilikler, yol haritası, WhatsApp | `server/cloud/vitrin.js`, `site/tools/guven-sayfalari.js`, `admin/panel-guven.js`, `docs/GUVEN-SAYFALARI.md` |
 | Güvenlik durumu | `docs/GUVENLIK-RAPORU.md` |
 | Söylenebilir iddialar | `docs/IDDIA-LISTESI.md` |
+| Kurulum ve ayarlar, panele taşınan ayarlar | `server/cloud/kurulum.js`, `isletim.js`, `admin/panel-kurulum.js`, `docs/ADMIN-AYAR-DENETIMI.md` |
 | Kurulum | `DEPLOY.md`, klasör ayrımı `docs/KLASOR-YAPISI.md` |
 | Pazarlama | `docs/pazarlama/` |
 

@@ -35,7 +35,12 @@
   }
   const md = (s) => esc(s).replace(/\*\*(.+?)\*\*/g, '<b>$1</b>').replace(/\[([^\]]+)\]\(([^)\s]+)\)/g, (m, t, u) => /^(\/|https:\/\/|#|mailto:|tel:)/.test(u) ? `<a href="${u.replace(/&amp;/g, '&')}" ${/^https?:/.test(u) ? 'target="_blank" rel="noopener"' : ''}>${t}</a>` : t);
   const log = (kind, q, entry) => { try { fetch('/api/destek/kayit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ kind, q: String(q || '').slice(0, 300), app: APP || 'site', entry: entry || '', page: location.hash.slice(0, 60) }), keepalive: true }).catch(() => {}); } catch (e) { /* yok */ } };
-  const phone = () => (NS.cloud && NS.cloud.site && NS.cloud.site.phone) || '0850 555 00 34';
+  // İletişim bilgisi panelden gelir: programda NS.cloud, sitede sunucunun yazdığı meta etiketi (server/cloud/seo.js). Girilmemişse örnek değer gösterilmez
+  const ORN_T = '0850 555 00 34', ORN_E = 'destek@nebsoft.com.tr';
+  const ilet = () => { const c = NS.cloud && NS.cloud.site; if (c) return c; const m = document.querySelector('meta[name="ns-iletisim"]'); return m ? { phone: m.dataset.tel, email: m.dataset.eposta } : {}; };
+  const phone = () => ilet().phone || '';
+  const eposta = () => ilet().email || '';
+  const gercek = (t) => String(t || '').split(ORN_T).join(phone() || 'destek talebi').split(ORN_E).join(eposta() || 'destek talebi');
   const SUGGEST = { '': ['Ücretsiz deneme nasıl başlatılır?', 'Hangi ödeme yöntemleri var?', 'Paketler arasındaki fark nedir?', 'Telefona uygulama olarak nasıl eklerim?'], pos: ['Stok sayımı nasıl yapılır?', 'Hazır katalogdan ürün nasıl eklenir?', 'Etiket şablonu nasıl tasarlanır?', 'Barkod okuyucu nasıl bağlanır?'] };
 
   function mount() {
@@ -46,7 +51,7 @@
         <header class="nsd-h"><span class="nsd-av">${icon('message')}</span><div><b>NEBSOFT Destek</b><small><i></i> Asistan · anında yanıt</small></div><button class="nsd-c" data-nsd="close" aria-label="Kapat">${icon('x')}</button></header>
         <div class="nsd-log" aria-live="polite"></div>
         <form class="nsd-f"><input placeholder="Sorunuzu yazın…" aria-label="Sorunuz" maxlength="300" autocomplete="off"><button aria-label="Gönder">${icon('right')}</button></form>
-        <div class="nsd-foot"><a href="tel:${phone().replace(/\s/g, '')}">${icon('phone')} ${esc(phone())}</a><a href="mailto:destek@nebsoft.com.tr">${icon('mail')} E-posta</a></div>
+        <div class="nsd-foot">${phone() ? `<a href="tel:${phone().replace(/\s/g, '')}">${icon('phone')} ${esc(phone())}</a>` : ''}${eposta() ? `<a href="mailto:${esc(eposta())}">${icon('mail')} E-posta</a>` : ''}</div>
       </section>`;
     document.body.appendChild(w);
     const fab = w.querySelector('.nsd-fab'), pan = w.querySelector('.nsd-p'), L = w.querySelector('.nsd-log'), inp = w.querySelector('input');
@@ -54,7 +59,7 @@
     const scroll = () => requestAnimationFrame(() => { L.scrollTop = L.scrollHeight; });
     const bubble = (m) => {
       if (m.me) return `<div class="nsd-m me">${esc(m.t)}</div>`;
-      return `<div class="nsd-m bot">${md(m.t)}${m.e ? `<div class="nsd-fb" data-e="${esc(m.e)}" data-q="${esc(m.q || '')}">${m.fb ? `<span>${m.fb === 'ok' ? 'Teşekkürler!' : 'Not aldık, ekibimize ilettik.'}</span>` : `<span>İşe yaradı mı?</span><button data-fb="ok" aria-label="Evet">👍</button><button data-fb="no" aria-label="Hayır">👎</button>`}</div>` : ''}${m.rel && m.rel.length ? `<div class="nsd-rel">${m.rel.map((r) => `<button data-ask="${esc(r)}">${esc(r)}</button>`).join('')}</div>` : ''}${m.help ? `<div class="nsd-help"><a class="btn sm" href="tel:${phone().replace(/\s/g, '')}">${icon('phone')} Bizi arayın</a><a class="btn sm" href="${APP ? '/' : ''}#/hesabim">${icon('message')} Destek talebi</a></div>` : ''}</div>`;
+      return `<div class="nsd-m bot">${md(gercek(m.t))}${m.e ? `<div class="nsd-fb" data-e="${esc(m.e)}" data-q="${esc(m.q || '')}">${m.fb ? `<span>${m.fb === 'ok' ? 'Teşekkürler!' : 'Not aldık, ekibimize ilettik.'}</span>` : `<span>İşe yaradı mı?</span><button data-fb="ok" aria-label="Evet">👍</button><button data-fb="no" aria-label="Hayır">👎</button>`}</div>` : ''}${m.rel && m.rel.length ? `<div class="nsd-rel">${m.rel.map((r) => `<button data-ask="${esc(r)}">${esc(r)}</button>`).join('')}</div>` : ''}${m.help ? `<div class="nsd-help"><a class="btn sm" href="tel:${phone().replace(/\s/g, '')}">${icon('phone')} Bizi arayın</a><a class="btn sm" href="${APP ? '/' : ''}#/hesabim">${icon('message')} Destek talebi</a></div>` : ''}</div>`;
     };
     const render = () => {
       const intro = { t: `Merhaba! 👋 ${APP ? 'Bu programla' : 'NEBSOFT ile'} ilgili sorunuzu yazın, hemen yanıtlayayım. Yanıt bulamazsam sorunuzu ekibimize iletirim.`, rel: SUGGEST[APP] || (APP ? [] : SUGGEST['']) };
@@ -68,7 +73,7 @@
       const r = search(q);
       if (r.length && r[0].s >= 0.5) hist.push({ t: r[0].x.a, e: r[0].x.id, q, rel: r.slice(1).filter((y) => y.s >= 0.35).map((y) => y.x.q).slice(0, 3) });
       else if (r.length && r[0].s >= 0.3) { hist.push({ t: 'Tam emin olamadım; şunlardan biri mi?', rel: r.map((y) => y.x.q).slice(0, 4), help: 1 }); log('belirsiz', q); }
-      else { hist.push({ t: `Bu soruyu yanıtlayacak doğrulanmış bilgim yok, tahmin yürütmek istemem. Sorunuz kayda alındı; hızlı yanıt için ${phone()} numarasını arayabilir, destek@nebsoft.com.tr adresine yazabilir veya destek talebi açabilirsiniz. Kullanım rehberleri [Yardım merkezinde](/#/yardim${APP ? '/' + APP : ''}).`, help: 1 }); log('cevapsiz', q); }
+      else { hist.push({ t: `Bu soruyu yanıtlayacak doğrulanmış bilgim yok, tahmin yürütmek istemem. Sorunuz kayda alındı; ${phone() ? `hızlı yanıt için ${phone()} numarasını arayabilir, ` : ''}${eposta() ? `${eposta()} adresine yazabilir veya ` : ''}destek talebi açabilirsiniz. Kullanım rehberleri [Yardım merkezinde](/#/yardim${APP ? '/' + APP : ''}).`, help: 1 }); log('cevapsiz', q); }
       ss.set(hist); render();
     };
     const open = (v) => { pan.hidden = !v; w.classList.toggle('open', v); fab.setAttribute('aria-expanded', v); if (v) { render(); setTimeout(() => inp.focus(), 120); load(); } };

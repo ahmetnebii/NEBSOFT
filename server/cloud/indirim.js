@@ -1,4 +1,4 @@
-// Toplu alım indirimi: kademeler config/toplu-indirim.json dosyasından gelir, hesap yalnızca sunucuda yapılır.
+// Toplu alım indirimi: kademeler config/toplu-indirim.json dosyasından gelir, panelde kaydedilen ayar (settings: 'fiyat_indirim') dosyanın önüne geçer. Hesap yalnızca sunucuda yapılır.
 // Tutarlar kuruş olarak hesaplanır. Ölçütlerden en yüksek tek indirim uygulanır, kuponla birleşmez (büyük olan geçerli).
 // Destek paketi ve Hepsi Bir Arada indirime girmez; Hepsi Bir Arada program sayısına da eklenmez. KDV indirimden sonra hesaplanır.
 const fs = require('fs');
@@ -6,13 +6,15 @@ const path = require('path');
 
 const FILE = path.join(__dirname, '..', '..', 'config', 'toplu-indirim.json');
 const ADLAR = { programSayisi: 'program', subeSayisi: 'şube', lisansSayisi: 'lisans' };
-let cache = null; let mtime = 0;
+let cache = null; let mtime = 0; let panel = null;
 
 function check(c) {
   Object.keys(ADLAR).forEach((k) => { if (!Array.isArray(c[k])) throw new Error(`toplu-indirim.json: ${k} liste olmalı`); c[k].forEach((t) => { if (!Number.isInteger(t.min) || t.min < 1 || !(t.yuzde > 0) || t.yuzde >= 100) throw new Error(`toplu-indirim.json: ${k} kademesi hatalı`); }); });
   return c;
 }
-function load() { const m = fs.statSync(FILE).mtimeMs; if (!cache || m !== mtime) { cache = check(JSON.parse(fs.readFileSync(FILE, 'utf8'))); mtime = m; } return cache; }
+const panelAta = (c) => { try { panel = c ? check(c) : null; } catch (e) { panel = null; } };
+const dosya = () => check(JSON.parse(fs.readFileSync(FILE, 'utf8')));
+function load() { if (panel) return panel; const m = fs.statSync(FILE).mtimeMs; if (!cache || m !== mtime) { cache = check(JSON.parse(fs.readFileSync(FILE, 'utf8'))); mtime = m; } return cache; }
 const kr = (tl) => Math.round(Number(tl) * 100);
 const tl = (k) => Math.round(k) / 100;
 const adet = (x, min = 0) => { const n = Math.floor(Number(x)); return Number.isFinite(n) && n > min ? n : min; };
@@ -42,4 +44,4 @@ function sonraki(sonuc, c = load()) {
   return adaylar.reduce((b, a) => (!b || a.eksik < b.eksik || (a.eksik === b.eksik && a.yuzde > b.yuzde) ? a : b), null);
 }
 
-module.exports = { load, check, kademe, hesapla, sonraki };
+module.exports = { load, dosya, panelAta, check, kademe, hesapla, sonraki };

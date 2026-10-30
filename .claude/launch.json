@@ -62,6 +62,15 @@
         "process.env.PORT='5066';require('./server.js')"
       ],
       "port": 5066
+    },
+    {
+      "name": "kurulum-admin",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "-e",
+        "process.env.PORT='5141';process.env.NEBSOFT_DATA=process.env.TEMP+'/ns-kurulum-goz';require('fs').mkdirSync(process.env.NEBSOFT_DATA,{recursive:true});require('./server.js')"
+      ],
+      "port": 5141
     }
   ]
 }

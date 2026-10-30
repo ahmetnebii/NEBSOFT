@@ -16,7 +16,8 @@ const { route, err, canUseApp, hesapRolu, setting, audit } = require('./routes')
 const KOK = process.env.NEBSOFT_DOSYALAR || path.join(cfg.DATA, 'dosyalar');
 const MAX = 1e6; // tek dosya; tarayıcı 1280 px JPEG'e küçülttüğü için normalde 200-500 KB gelir
 const GECIS_MAX = 10e6; // eski belgede sınırsız kalmış görsel de taşınabilsin
-const KOTA = (Number(process.env.NEBSOFT_DOSYA_KOTA_MB) || 2048) * 1048576; // işletme başına
+const isletim = require('./isletim');
+const KOTA = () => isletim.kotaMb() * 1048576; // işletme başına, panelden değişir
 const BEKLEME = 7 * 864e5; // referansı kalkan dosya bu süre durur: yanlış silme geri alınabilir, belge geçmişi (48 saat) bu sürenin içinde kalır
 const TUR = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp' };
 const TID = /^[0-9a-f]{16}$/; const ID = /^[0-9a-f]{32}$/;
@@ -86,7 +87,7 @@ async function kaydet(tid, app, sinif, tur, b, yukleyen) {
     const kullanilan = await db.tx(async (t) => {
       await t.q('SELECT id FROM tenants WHERE id=? FOR UPDATE', [tid]);
       const r = (await t.q('SELECT COALESCE(SUM(boyut),0) AS hepsi, COALESCE(SUM(IF(yetim IS NULL, boyut, 0)),0) AS etkin FROM dosyalar WHERE tenant_id=?', [tid]))[0];
-      const etkin = Number(r.etkin); if (etkin + b.length > KOTA || Number(r.hepsi) + b.length > KOTA * 2) throw err(507, `Fotoğraf alanınız doldu (${gb(KOTA)}). Kullanılmayan fotoğrafları silin veya destek ile görüşün.`);
+      const etkin = Number(r.etkin); if (etkin + b.length > KOTA() || Number(r.hepsi) + b.length > KOTA() * 2) throw err(507, `Fotoğraf alanınız doldu (${gb(KOTA())}). Kullanılmayan fotoğrafları silin veya destek ile görüşün.`);
       await t.q('INSERT INTO dosyalar (id, tenant_id, app, sinif, tur, boyut, ozet, yukleyen, created) VALUES (?,?,?,?,?,?,?,?,?)', [id, tid, app, sinif, tur, b.length, ozet, yukleyen, new Date()]);
       return etkin + b.length;
     });
@@ -108,7 +109,7 @@ route('POST', '/api/dosya', { auth: 'user', raw: true, bodyMax: MAX, buyukHata: 
   const tur = turBul(c.raw); if (!tur) throw err(415, 'Yalnızca JPEG, PNG veya WebP fotoğraf yüklenebilir');
   const sinif = c.query.get('sinif') === 'gizli' ? 'gizli' : p.sinif; // kişisel içerikli program istemci isteğiyle herkese açık olamaz
   const k = await kaydet(c.user.tenant_id, app, sinif, tur, c.raw, c.user.id);
-  return { ok: true, id: k.id, url: adres(c.user.tenant_id, k.id), boyut: c.raw.length, kullanilan: k.kullanilan, kota: KOTA };
+  return { ok: true, id: k.id, url: adres(c.user.tenant_id, k.id), boyut: c.raw.length, kullanilan: k.kullanilan, kota: KOTA() };
 });
 
 // Fotoğrafı arayan: işletmenin güncel belgeleri (şifreli programlar dahil). Açılamayan belge varsa hata atar, çağıran hiçbir şey silmez.
