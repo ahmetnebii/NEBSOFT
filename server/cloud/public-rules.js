@@ -144,7 +144,8 @@ RULES.randevu = {
 // ---------- Teknik servis: cihaz takip (takip.html?kod=) ----------
 RULES.servis = {
   pub: {},
-  login: (x, q) => { const k = norm(q.kod); const t = k && x.col('tickets').find((t) => t.code === k || t.no === k); return t ? { k: 't', i: t.id } : null; },
+  // Yalnızca rastgele takip kodu: kayıt no (SRV-1001...) sıralı olduğu için tahmin edilebilir, başkasının cihazını gösterip onay verdirebiliyordu
+  login: (x, q) => { const k = norm(q.kod); const t = k && x.col('tickets').find((t) => t.code && norm(t.code) === k); return t ? { k: 't', i: t.id } : null; },
   loginError: 'Bu koda ait kayıt bulunamadı',
   view: (x) => {
     const t = x.get('tickets', me(x, 't')); if (!t) return { tickets: [], techs: [] };
@@ -534,6 +535,7 @@ RULES.oto = {
 
 // ---------- Eczane: reçete hazırlatma, takip ve stok sorgu (recete.html) ----------
 // Reçete takibi sağlık verisi içerdiği için telefon + takip kodu ister; reçeteyi gönderen tarayıcı otomatik görür
+const rxCode = () => { const A = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; return [...require('crypto').randomBytes(6)].map((b) => A[b % A.length]).join(''); };
 RULES.eczane = {
   pub: {
     drugs: { fields: ['id', 'name', 'active', 'form', 'rx', 'price'] },
@@ -542,16 +544,18 @@ RULES.eczane = {
   },
   login: (x, q) => { const code = norm(q.code); const o = code && x.col('rxOrders').find((r) => r.code === code && samePhone(r.phone, q.phone)); return o ? { k: 'p', i: digits(o.phone) } : null; },
   loginError: 'Telefon ve takip kodu eşleşmedi',
-  view: (x) => { const ph = me(x, 'p'); return { rxOrders: ph ? x.col('rxOrders').filter((o) => digits(o.phone) === ph) : [] }; },
+  // k:'p' telefon + takip koduyla giriş; k:'r' yalnızca az önce gönderilen tek reçete
+  view: (x) => { const ph = me(x, 'p'); const one = me(x, 'r'); return { rxOrders: ph ? x.col('rxOrders').filter((o) => digits(o.phone) === ph) : one ? x.col('rxOrders').filter((o) => o.id === one) : [] }; },
   write: {
     rxOrders: {
-      ins: I({ rxNo: 'str:12', name: 'str:80', phone: 'phone', pickup: 'str:40', note: 'str:400?' }, () => ({ code: 'R' + Math.random().toString(36).slice(2, 7).toUpperCase(), status: 'yeni', at: nowIso() }), (r, x) => {
+      ins: I({ rxNo: 'str:12', name: 'str:80', phone: 'phone', pickup: 'str:40', note: 'str:400?' }, () => ({ code: 'R' + rxCode(), status: 'yeni', at: nowIso() }), (r, x) => {
         r.rxNo = r.rxNo.replace(/\s/g, '').toUpperCase(); if (!/^[A-Z0-9]{6,10}$/.test(r.rxNo)) bad('E-reçete numarası 6-10 harf/rakam olmalı');
         if (x.col('rxOrders').filter((o) => samePhone(o.phone, r.phone) && o.status === 'yeni').length >= 5) bad('Bu numarayla bekleyen çok fazla reçete var');
       }),
     },
   },
-  grant: (x, list) => { const o = list.find(([n]) => n === 'rxOrders'); return o ? { k: 'p', i: digits(o[1].phone) } : null; },
+  // Reçete gönderen tarayıcı yalnızca kendi gönderdiği kaydı görür: telefona kimlik verilirse başkasının numarasıyla kayıt açıp o kişinin tüm reçetelerini okumak mümkün olur
+  grant: (x, list) => { const o = list.find(([n]) => n === 'rxOrders'); return o ? { k: 'r', i: o[1].id } : null; },
 };
 
 // ---------- Fabrika: bayi sipariş portalı (bayi.html) — vergi no/e-posta + telefonun son 4 hanesi ----------

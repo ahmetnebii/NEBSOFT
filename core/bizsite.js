@@ -74,7 +74,7 @@
       hours: DAYS.map((x, i) => { const h = (Array.isArray(d.hours) && d.hours[i]) || D.hours[i]; return { open: time(h.open, '09:00'), close: time(h.close, '19:00'), closed: !!h.closed }; }), hoursOk: !!d.hoursOk,
       slides: (Array.isArray(d.slides) ? d.slides : []).slice(0, 6).map((s) => ({ img: img(s.img), title: str(s.title, 90), text: str(s.text, 200), cta: str(s.cta, 30), link: url(s.link) })),
       campaigns: (Array.isArray(d.campaigns) ? d.campaigns : []).slice(0, 12).map((c) => ({ title: str(c.title, 90), text: str(c.text, 300), badge: str(c.badge, 20), img: img(c.img), until: /^\d{4}-\d{2}-\d{2}$/.test(c.until) ? c.until : '' })).filter((c) => c.title),
-      products: (Array.isArray(d.products) ? d.products : []).slice(0, 300).map((p, i) => ({ id: str(p.id, 24) || 'p' + i, name: str(p.name, 120), price: money(p.price), img: img(p.img), desc: str(p.desc, 300), cat: str(p.cat, 40) })).filter((p) => p.name),
+      products: (Array.isArray(d.products) ? d.products : []).slice(0, 300).map((p, i) => ({ id: str(p.id, 24).replace(/[^\w-]/g, '') || 'p' + i, name: str(p.name, 120), price: money(p.price), img: img(p.img), desc: str(p.desc, 300), cat: str(p.cat, 40) })).filter((p) => p.name),
       delivery: { min: money(d.delivery && d.delivery.min), fee: money(d.delivery && d.delivery.fee), note: str(d.delivery && d.delivery.note, 300) },
       seo: { title: str(d.seo && d.seo.title, 70), desc: str(d.seo && d.seo.desc, 170), keywords: str(d.seo && d.seo.keywords, 200), type: d.seo && BIZ_TYPES[d.seo.type] ? d.seo.type : '', gbp: gbpUrl(d.seo && d.seo.gbp), gsc: gscCode(d.seo && d.seo.gsc) },
       sections: Object.fromEntries(Object.keys(SECTIONS).map((k) => [k, !(d.sections && d.sections[k] === false)])),

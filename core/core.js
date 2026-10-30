@@ -1098,7 +1098,8 @@
 
   // Standart CRUD sayfası: liste + arama + ekle/düzenle/sil
   function crud(el, app, cfg) {
-    // cfg: {col, title, sub, fields, columns, searchFields:(r)=>[..], defaults, extraActions, onSave, filters, emptyIcon, canAdd, rowsFilter, sort, mobileCard}
+    // cfg: {col, title, sub, fields, columns, searchFields:(r)=>[..], defaults, extraActions, onSave, filters, emptyIcon, canAdd, rowsFilter, sort, mobileCard, exportRoles}
+    const canExport = !cfg.exportRoles || !app.can || app.can(...cfg.exportRoles); // toplu dışa aktarma rol ile sınırlanabilir (sağlık verisi)
     // Kancalar: beforeSave(v, rec) → false ya da metin dönerse kaydedilmez (metin uyarı olarak gösterilir; async olabilir)
     //          canDelete(rec) / beforeDelete(rec) → false ya da metin dönerse silinmez (bağlı kaydı olan ana kayıt silinmesin); null → sessizce durur
     let q = '';
@@ -1116,7 +1117,7 @@
       });
     };
     el.innerHTML = pageHead(cfg.title, cfg.sub || '', `
-      <button class="btn" data-export>${icon('download')} Excel (CSV)</button>
+      ${canExport ? `<button class="btn" data-export>${icon('download')} Excel (CSV)</button>` : ''}
       ${cfg.readonly || cfg.canAdd === false ? '' : `<button class="btn primary" data-add>${icon('plus')} ${esc(cfg.addLabel || 'Yeni Kayıt')}</button>`}`) +
       `<div class="card"><div class="card-h">${searchBox('q', 'Ara...')}${cfg.filters ? `<div class="seg" id="flt">${cfg.filters.map((f) => `<button data-f="${f.value}" class="${f.value === filter ? 'active' : ''}">${esc(f.label)}</button>`).join('')}</div>` : ''}</div><div id="tbl"></div></div>`;
     $('#q', el).oninput = (e) => { q = e.target.value; draw(); };
@@ -1132,13 +1133,13 @@
       draw();
     };
     $('[data-add]', el) && ($('[data-add]', el).onclick = () => edit(null));
-    $('[data-export]', el).onclick = () => csv(cfg.col, app.db.all(cfg.col), cfg.columns.filter((c) => c.key).map((c) => ({ key: c.key, label: c.label, value: c.csv })));
+    $('[data-export]', el) && ($('[data-export]', el).onclick = () => { csv(cfg.col, app.db.all(cfg.col), cfg.columns.filter((c) => c.key).map((c) => ({ key: c.key, label: c.label, value: c.csv }))); app.db.log('Dışa aktarıldı', `${cfg.title} · ${app.db.all(cfg.col).length} kayıt`); app.db.save(); });
     on(el, 'click', '[data-act]', async (e, t) => {
       const rec = app.db.get(cfg.col, t.dataset.id);
       if (t.dataset.act === 'edit') edit(rec);
       else if (t.dataset.act === 'del') {
         for (const hook of [cfg.canDelete, cfg.beforeDelete]) { if (!hook) continue; const ok = await hook(rec); if (ok === null) return; if (ok === false || typeof ok === 'string') return toast(typeof ok === 'string' ? ok : 'Bu kayıt silinemez — bağlı kayıtları var', 'err'); }
-        if (await confirm('Bu kayıt silinsin mi?')) { app.db.remove(cfg.col, rec.id); toast('Silindi'); draw(); }
+        if (await confirm('Bu kayıt silinsin mi?')) { app.db.remove(cfg.col, rec.id); app.db.log('Kayıt silindi', `${cfg.single || cfg.title} · ${rec.no || rec.id}`); app.db.save(); toast('Silindi'); draw(); }
       }
       else if (cfg.onAction) cfg.onAction(t.dataset.act, rec, draw);
     });
