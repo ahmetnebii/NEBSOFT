@@ -26,7 +26,7 @@ function hesapla(sepet, opt = {}) {
   const lines = (sepet.lines || []).map((l) => ({ ...l, kurus: kr(l.price) })); if (!lines.length) throw new Error('Sepet boş');
   if (lines.some((l) => !Number.isFinite(l.kurus) || l.kurus < 0)) throw new Error('Geçersiz tutar');
   const uygun = lines.filter(uygunMu); const taban = uygun.reduce((s, l) => s + l.kurus, 0);
-  const n = { programSayisi: new Set(uygun.map((l) => l.pid)).size, subeSayisi: adet(sepet.subeSayisi, 1), lisansSayisi: Math.max(adet(sepet.lisansSayisi, 0), uygun.reduce((s, l) => s + (adet(l.qty, 1)), 0)) };
+  const n = { programSayisi: new Set(uygun.filter((l) => !/^eklenti-/.test(l.pid)).map((l) => l.pid)).size, subeSayisi: adet(sepet.subeSayisi, 1), lisansSayisi: Math.max(adet(sepet.lisansSayisi, 0), uygun.reduce((s, l) => s + (adet(l.qty, 1)), 0)) };
   const adaylar = Object.keys(ADLAR).map((k) => { const t = kademe(c[k], n[k]); return t ? { kural: k, ad: `${n[k]} ${ADLAR[k]}`, yuzde: t.yuzde, min: t.min } : null; }).filter(Boolean);
   const enIyi = adaylar.reduce((b, a) => (!b || a.yuzde > b.yuzde ? a : b), null);
   const secilen = kupon > 0 && (!enIyi || kupon >= enIyi.yuzde) ? { kural: 'kupon', ad: 'Kupon', yuzde: kupon } : enIyi;
@@ -35,4 +35,11 @@ function hesapla(sepet, opt = {}) {
   return { lines: lines.map(({ kurus, ...l }) => l), subtotal: tl(ara), discount: tl(indirimK), indirim: secilen ? { ...secilen, tutar: tl(indirimK) } : null, adaylar, vat: tl(kdv), total: tl(matrah + kdv), olcut: n, kurumsal: n.lisansSayisi >= ((c.kurumsal || {}).formEsigi || Infinity) };
 }
 
-module.exports = { load, check, kademe, hesapla };
+// Bir sonraki kademe: uygulanan yüzdeyi geçen en yakın eşik. Sepette "2 lisans daha ekleyin, %10 olsun" bilgisi buradan gelir.
+function sonraki(sonuc, c = load()) {
+  const simdi = sonuc.indirim ? sonuc.indirim.yuzde : 0; const n = sonuc.olcut;
+  const adaylar = Object.keys(ADLAR).flatMap((k) => (c[k] || []).filter((t) => t.min > n[k] && t.yuzde > simdi).map((t) => ({ kural: k, ad: ADLAR[k], eksik: t.min - n[k], min: t.min, yuzde: t.yuzde })));
+  return adaylar.reduce((b, a) => (!b || a.eksik < b.eksik || (a.eksik === b.eksik && a.yuzde > b.yuzde) ? a : b), null);
+}
+
+module.exports = { load, check, kademe, hesapla, sonraki };

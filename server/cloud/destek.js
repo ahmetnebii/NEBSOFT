@@ -48,4 +48,16 @@ function state(t, now = new Date()) {
 }
 const paid = (tenant, now = new Date()) => { const c = load(); return tenant && c.paketler[tenant.support_plan] && (!tenant.support_until || new Date(tenant.support_until) >= new Date(now)) ? tenant.support_plan : c.varsayilan; };
 
-module.exports = { load, check, pack, packId, line, addWork, ticketFields, state, paid };
+// Müşteriye gösterilecek takvim metni: yalnızca yapılandırmadaki gün ve saatlerden üretilir
+const GUN = ['Paz', 'Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt'];
+function takvimMetni(cal) {
+  const g = [...cal.gunler].map((x) => (x === 0 ? 7 : x)).sort((a, b) => a - b); const ad = (x) => GUN[x % 7]; const ardisik = g.every((x, i) => !i || x === g[i - 1] + 1);
+  return `${ardisik && g.length > 1 ? `${ad(g[0])}-${ad(g[g.length - 1])}` : g.map(ad).join(', ')} ${String(cal.bas).padStart(2, '0')}:00-${String(cal.bit).padStart(2, '0')}:00`;
+}
+// Sepet ve müşteri ekranı için paket listesi: rakamların tek kaynağı yapılandırma dosyasıdır
+function pub(c = load()) {
+  return Object.entries(c.paketler).map(([id, p]) => ({ id, ad: p.ad, kanallar: p.kanallar, ilkYanitSaat: p.ilkYanitSaat, cozumSaat: p.cozumSaat, takvim: takvimMetni(c.takvimler[p.takvim]), aylik: p.aylik, yillik: p.aylik * 10, oncelik: p.oncelik })).sort((a, b) => b.oncelik - a.oncelik);
+}
+const has = (id, c = load()) => typeof id === 'string' && Object.prototype.hasOwnProperty.call(c.paketler, id);
+
+module.exports = { load, check, pack, packId, line, addWork, ticketFields, state, paid, pub, has, takvimMetni };

@@ -1,7 +1,7 @@
 /* NEBSOFT service worker — uygulama kabuğunu önbelleğe alır: telefonda/masaüstünde "uygulama gibi" açılır, bağlantı
    koptuğunda son açılan ekran yine gelir. Veriler (API) asla önbellekten verilmez; çevrimdışı kayıtlar core.js kuyruğundadır. */
-const V = 'nebsoft-v3-65';
-const SHELL = ['/', '/index.html', '/core/core.css', '/core/core.js', '/core/notify.js', '/core/docs.js', '/core/forms.js', '/core/auth.js', '/core/pwa.js', '/core/scan.js', '/core/labels.js', '/core/support.js', '/core/integ-guides.js', '/core/integ-guides-ek.js', '/core/integ-wizard.js', '/core/integrations.js', '/core/kvkk.js', '/core/olay.js', '/core/kurulum-adimlari.js', '/core/kurulum.js', '/core/yardim.json', '/market/yardim.js', '/market/market.css', '/market/market.js', '/market/catalog.js', '/market/eklentiler.js', '/core/bizsite.js', '/assets/favicon.svg'];
+const V = 'nebsoft-v3-66';
+const SHELL = ['/', '/index.html', '/core/core.css', '/core/core.js', '/core/notify.js', '/core/docs.js', '/core/forms.js', '/core/auth.js', '/core/pwa.js', '/core/scan.js', '/core/labels.js', '/core/support.js', '/core/integ-guides.js', '/core/integ-guides-ek.js', '/core/integ-wizard.js', '/core/integrations.js', '/core/kvkk.js', '/core/olay.js', '/core/kurulum-adimlari.js', '/core/kurulum.js', '/core/yardim.json', '/market/yardim.js', '/market/market.css', '/market/sepet-ek.js', '/market/market.js', '/market/catalog.js', '/market/eklentiler.js', '/core/bizsite.js', '/assets/favicon.svg'];
 
 self.addEventListener('install', (e) => { e.waitUntil(caches.open(V).then((c) => c.addAll(SHELL.map((u) => new Request(u, { cache: 'reload' })))).catch(() => {}).then(() => self.skipWaiting())); });
 self.addEventListener('activate', (e) => { e.waitUntil(caches.keys().then((ks) => Promise.all(ks.filter((k) => k !== V).map((k) => caches.delete(k)))).then(() => self.clients.claim())); });

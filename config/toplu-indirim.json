@@ -3,5 +3,5 @@
   "programSayisi": [{ "min": 2, "yuzde": 5 }, { "min": 3, "yuzde": 10 }, { "min": 5, "yuzde": 15 }],
   "subeSayisi": [{ "min": 2, "yuzde": 5 }, { "min": 5, "yuzde": 10 }, { "min": 10, "yuzde": 15 }],
   "lisansSayisi": [{ "min": 5, "yuzde": 5 }, { "min": 10, "yuzde": 10 }, { "min": 25, "yuzde": 20 }],
-  "kurumsal": { "formEsigi": 25, "turler": { "oda": "Meslek odası", "dernek": "Dernek", "bayi": "Bayi", "sirket": "Şirket" } }
+  "kurumsal": { "formEsigi": 50, "turler": { "oda": "Meslek odası", "dernek": "Dernek", "bayi": "Bayi", "sirket": "Şirket" } }
 }

@@ -59,8 +59,21 @@ const SCHEMA = [
   `CREATE TABLE IF NOT EXISTS mail_prefs (user_id CHAR(16) PRIMARY KEY, trial_off TINYINT NOT NULL DEFAULT 0, marketing TINYINT NOT NULL DEFAULT 0, marketing_at DATETIME NULL, marketing_src VARCHAR(40), marketing_ip VARCHAR(64), updated DATETIME NOT NULL) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
   `CREATE TABLE IF NOT EXISTS reviews (id CHAR(16) PRIMARY KEY, product VARCHAR(40) NULL, author VARCHAR(120) NOT NULL, biz VARCHAR(160), city VARCHAR(60), text VARCHAR(1200) NOT NULL, review_at DATE NOT NULL, consent TINYINT NOT NULL, consent_at DATE NOT NULL, proof VARCHAR(200), published TINYINT NOT NULL DEFAULT 0, created DATETIME NOT NULL, INDEX (product, published)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
   `CREATE TABLE IF NOT EXISTS case_studies (id CHAR(16) PRIMARY KEY, product VARCHAR(40) NULL, biz VARCHAR(160) NOT NULL, sector VARCHAR(80), city VARCHAR(60), title VARCHAR(200) NOT NULL, problem VARCHAR(1500) NOT NULL, solution VARCHAR(1500) NOT NULL, result VARCHAR(1500) NOT NULL, period VARCHAR(80) NOT NULL, case_at DATE NOT NULL, consent TINYINT NOT NULL, consent_at DATE NOT NULL, proof VARCHAR(200), published TINYINT NOT NULL DEFAULT 0, created DATETIME NOT NULL, INDEX (product, published)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
+  // Kurumsal teklif: oda, dernek, bayi ve toplu alım talepleri. kvkk_at aydınlatma onayıdır; ticari_izin ayrı ve isteğe bağlıdır.
+  `CREATE TABLE IF NOT EXISTS quotes (id CHAR(16) PRIMARY KEY, no VARCHAR(20) NOT NULL UNIQUE, kurum VARCHAR(160) NOT NULL, tur VARCHAR(20) NOT NULL, yetkili VARCHAR(120) NOT NULL, eposta VARCHAR(190) NOT NULL, telefon VARCHAR(40) NOT NULL, program_listesi TEXT NOT NULL, lisans INT NOT NULL DEFAULT 1, sube INT NOT NULL DEFAULT 1, \`not\` TEXT, durum VARCHAR(20) NOT NULL DEFAULT 'yeni', teklif_tutari DECIMAL(12,2) NULL, gecerlilik DATE NULL, kvkk_at DATETIME NOT NULL, ticari_izin TINYINT NOT NULL DEFAULT 0, ticari_izin_at DATETIME NULL, order_id CHAR(16) NULL, created DATETIME NOT NULL, INDEX (durum), INDEX (created)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
 ];
-async function migrate() { for (const s of SCHEMA) await q(s); }
+// Var olan kurulumlara sütun ekleme: CREATE TABLE IF NOT EXISTS eski tabloyu değiştirmez. Sütun varsa dokunulmaz, eski satırlar NULL/varsayılan kalır.
+const COLUMNS = [
+  ['tenants', 'support_plan', 'VARCHAR(20) NULL'], ['tenants', 'support_until', 'DATETIME NULL'], ['orders', 'indirim', 'TEXT NULL'],
+  ['tickets', 'plan', 'VARCHAR(20) NULL'], ['tickets', 'priority', 'TINYINT NULL'], ['tickets', 'first_due', 'DATETIME NULL'], ['tickets', 'resolve_due', 'DATETIME NULL'], ['tickets', 'first_reply_at', 'DATETIME NULL'], ['tickets', 'closed_at', 'DATETIME NULL'], ['tickets', 'breached', 'TINYINT NOT NULL DEFAULT 0'],
+];
+async function addColumns() {
+  for (const [tablo, sutun, tip] of COLUMNS) {
+    if ((await q('SELECT 1 FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name=? AND column_name=?', [tablo, sutun])).length) continue;
+    try { await q(`ALTER TABLE \`${tablo}\` ADD COLUMN \`${sutun}\` ${tip}`); } catch (e) { if (e.code !== 'ER_DUP_FIELDNAME') throw e; } // iki süreç aynı anda açılırsa ikincisi hata vermesin
+  }
+}
+async function migrate() { for (const s of SCHEMA) await q(s); await addColumns(); }
 
 // Yöneticinin MySQL sunucusunda çalıştıracağı veritabanı + kullanıcı + yetki SQL'i
 function setupSql({ database = 'nebsoft', user = 'nebsoft_app', host = '%', password }) {

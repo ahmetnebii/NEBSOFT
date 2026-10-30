@@ -2,12 +2,12 @@
   "_aciklama": "Örnek değerlerdir; yayından önce fiyat ve süreleri gerçek kapasiteye göre değiştirin. Saatler çalışma saati olarak sayılır. Tutarlar TL, KDV hariç, aylıktır; yıllık alımda 10 ay ödenir.",
   "takvimler": {
     "hafta-ici-09-18": { "gunler": [1, 2, 3, 4, 5], "bas": 9, "bit": 18 },
-    "hafta-ici-09-21": { "gunler": [1, 2, 3, 4, 5, 6], "bas": 9, "bit": 21 }
+    "pazartesi-cumartesi-09-21": { "gunler": [1, 2, 3, 4, 5, 6], "bas": 9, "bit": 21 }
   },
   "varsayilan": "standart",
   "paketler": {
     "standart": { "ad": "Standart", "kanallar": ["Destek talebi"], "ilkYanitSaat": 24, "cozumSaat": 72, "takvim": "hafta-ici-09-18", "aylik": 0, "oncelik": 3 },
     "orta": { "ad": "Orta", "kanallar": ["Destek talebi", "E-posta"], "ilkYanitSaat": 8, "cozumSaat": 40, "takvim": "hafta-ici-09-18", "aylik": 490, "oncelik": 2 },
-    "ust": { "ad": "Üst", "kanallar": ["Destek talebi", "E-posta", "Telefon"], "ilkYanitSaat": 4, "cozumSaat": 16, "takvim": "hafta-ici-09-21", "aylik": 1490, "oncelik": 1 }
+    "ust": { "ad": "Üst", "kanallar": ["Destek talebi", "E-posta", "Telefon"], "ilkYanitSaat": 4, "cozumSaat": 16, "takvim": "pazartesi-cumartesi-09-21", "aylik": 1490, "oncelik": 1 }
   }
 }

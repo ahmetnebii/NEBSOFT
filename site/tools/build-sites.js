@@ -368,6 +368,7 @@ ${ld(WEBSITE)}`;
   HARITA.unshift({ yol: '/', lastmod: sonDegisim('/', `<title>${title}</title><meta name="description" content="${desc}"><main>${body}</main>`) });
 }
 
+HARITA.push({ yol: '/kurumsal-teklif', lastmod: '2026-10-30' });
 // Ücretsiz araçlar ayrı üretilir (build-araclar.js): yalnızca dizine alınabilir olanlar haritaya yazılır
 { const f = path.join(SITE, 'araclar', 'liste.json'); if (fs.existsSync(f)) { const L = JSON.parse(fs.readFileSync(f, 'utf8')); HARITA.push({ yol: L.dizin, lastmod: L.guncelleme }); L.araclar.filter((x) => x.index).forEach((x) => HARITA.push({ yol: x.yol, lastmod: x.guncelleme })); } }
 

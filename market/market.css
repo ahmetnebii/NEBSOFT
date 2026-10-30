@@ -429,3 +429,7 @@ body.mk-auth { background: #06060c; }
 :root[data-palette="kurumsal"] .bundle { background: linear-gradient(120deg, #0b1f45, #123f95 45%, #1f5fd6 80%, #2b6eea); }
 :root[data-palette="kurumsal"] .mk-acc .btn.primary { background: linear-gradient(135deg, #2b6eea, #1f5fd6 50%, #174bb0); box-shadow: 0 10px 26px -10px rgba(31, 95, 214, .8), inset 0 1px 0 rgba(255, 255, 255, .25); }
 :root[data-palette="kurumsal"] .hm-aurora { background: radial-gradient(34% 32% at 20% 30%, rgba(31, 95, 214, .55), transparent 70%), radial-gradient(30% 28% at 80% 20%, rgba(14, 165, 233, .32), transparent 70%), radial-gradient(36% 34% at 62% 85%, rgba(37, 99, 235, .30), transparent 70%); }
+/* Sepet: destek paketi seçimi */
+.sp-paket { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 12px; }
+.sp-p { display: flex; flex-direction: column; gap: 6px; cursor: pointer; min-width: 0; }
+.sp-p.on { border-color: var(--brand); box-shadow: 0 0 0 1px var(--brand); }

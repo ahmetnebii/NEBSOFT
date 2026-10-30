@@ -57,7 +57,9 @@ function kurus(v) {
 const tl = (k) => (Number.isNaN(k) ? '?' : (k / 100).toFixed(2));
 
 // Tek adetlik ödeme ürünü. Fiyat KDV dahil sipariş toplamıdır; vatPercent gönderilmez (üstüne KDV ekleyip eklemediği belgelenmemiş).
-const productBody = (o, imageUrl) => ({ title: `NEBSOFT yazılım lisansı ${o.no}`, description: `NEBSOFT sipariş no: ${o.no}. Bu ödeme bağlantısı yalnızca bu sipariş içindir.`, type: 'digital', media: [{ type: 'image', url: imageUrl, placement: 1 }], priceData: { currency: 'TRY', price: tl(kurus(o.total)) }, stockQuantity: 1, shippingPayer: 'sellerPays' });
+// Tutara dahil destek paketi ödeme sayfasında ayrı yazılır
+const destekNotu = (o) => { let l = null; try { l = JSON.parse(o.items || '[]').find((i) => i.type === 'support'); } catch (e) { /* kalem okunamadı */ } return l ? ` Tutara ${l.name} (${l.period === 'yillik' ? 'yıllık' : 'aylık'}) ${Number(l.price).toFixed(2)} TL + KDV dahildir.` : ''; };
+const productBody = (o, imageUrl) => ({ title: `NEBSOFT yazılım lisansı ${o.no}`, description: `NEBSOFT sipariş no: ${o.no}.${destekNotu(o)} Bu ödeme bağlantısı yalnızca bu sipariş içindir.`, type: 'digital', media: [{ type: 'image', url: imageUrl, placement: 1 }], priceData: { currency: 'TRY', price: tl(kurus(o.total)) }, stockQuantity: 1, shippingPayer: 'sellerPays' });
 
 // Müşterinin yönlendirileceği adres yalnızca Shopier alan adı olabilir (test modunda sahte sunucu)
 function safeUrl(u) {

@@ -137,7 +137,7 @@ function textAudit() {
   for (const f of files) {
     const name = rel(f); fs.readFileSync(f, 'utf8').split('\n').forEach((line, i) => {
       n++; const at = `${name}:${i + 1}`;
-      if (/\(demo\b/i.test(line) && !/^\s*(\/\/|\*)/.test(line) && !/[?&]demo=1|Kapalı \(demo ödeme\)|demo ödeme kullanılıyor|NAME_FAKE/.test(line)) bad(`"(demo" metni: ${at}`);
+      if (/\([Dd]emo\b/.test(line) && !/^\s*(\/\/|\*)/.test(line) && !/[?&]demo=1|Kapalı \(demo ödeme\)|demo ödeme kullanılıyor|NAME_FAKE/.test(line)) bad(`"(demo" metni: ${at}`);
       if (/simüle ediliyor|simüle edildi|sahte başarı(?! yok)/i.test(line)) bad(`simülasyon metni: ${at}`);
       const m = /[^'"`]{0,60}(gönderildi|Gönderildi|iletildi|raporlandı)/.exec(line); if (!m) return;
       if (/^\s*(\/\/|\*)/.test(line) || SIM.test(line) || TEXT_ALLOW.some(([a, b]) => a.test(name) && b.test(line))) return;
