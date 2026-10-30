@@ -62,10 +62,10 @@ window.PZR = {
       o.status = 'yeni';
       if (Math.random() < 0.035 && age > 0.3) step('iptal', 2, 'Müşteri iptal etti');
       else if (age > 1.2) {
-        step('toplaniyor', rand(2, 8), 'Toplama listesine alındı'); step('paketlendi', 10, 'Paketlendi, fatura kesildi'); o.invoice = 'EAR2026' + String(rand(100000, 999999));
+        step('toplaniyor', rand(2, 8), 'Toplama listesine alındı'); step('paketlendi', 10, 'Paketlendi, fatura kesildi'); o.invoice = 'EAR2026' + String(rand(100000, 999999)); o.invoiceTest = true;
         o.tracking = String(rand(700000000000, 799999999999)); step('kargoda', 14, `${o.carrier} · ${o.tracking}`);
         if (age > 3.5) { o.deliveredAt = new Date(at.getTime() + rand(48, 80) * 3600e3).toISOString(); step('teslim', rand(48, 80), 'Alıcıya teslim edildi'); }
-      } else if (age > 0.7) { step('toplaniyor', 2, 'Toplama listesine alındı'); if (Math.random() < 0.6) { step('paketlendi', 5, 'Barkodla doğrulandı'); o.invoice = 'EAR2026' + String(rand(100000, 999999)); o.tracking = String(rand(700000000000, 799999999999)); } } else if (age > 0.3 && Math.random() < 0.35) step('toplaniyor', 2, 'Toplama listesine alındı');
+      } else if (age > 0.7) { step('toplaniyor', 2, 'Toplama listesine alındı'); if (Math.random() < 0.6) { step('paketlendi', 5, 'Barkodla doğrulandı'); o.invoice = 'EAR2026' + String(rand(100000, 999999)); o.invoiceTest = true; o.tracking = String(rand(700000000000, 799999999999)); } } else if (age > 0.3 && Math.random() < 0.35) step('toplaniyor', 2, 'Toplama listesine alındı');
       orders.push(o);
     }
     // Bugünün geciken / son gün siparişleri
@@ -75,11 +75,11 @@ window.PZR = {
     db.data.returns = orders.filter((o) => o.status === 'teslim').filter((_, i) => i % 14 === 3).map((o, i) => {
       const at = new Date(new Date(o.deliveredAt).getTime() + rand(1, 5) * 864e5); const st = at > addDays(new Date(), -2) ? pick(['talep', 'yolda']) : pick(['geldi', 'onay', 'onay', 'onay', 'red']);
       o.status = 'iade'; o.history.push({ at: at.toISOString(), st: 'iade', note: 'Müşteri iade talebi oluşturdu' });
-      return { id: NS.uid(), no: 'IA' + (10240 + i), oid: o.id, ch: o.ch, at: (at > new Date() ? new Date() : at).toISOString(), reason: pick(PZR.REASONS), items: o.items.slice(0, 1).map((x) => ({ ...x })), status: st, condition: ['onay', 'red'].includes(st) ? (st === 'red' ? 'hasarli' : 'saglam') : '', note: st === 'red' ? 'Ürün kullanılmış, etiketi sökülmüş — fotoğraflı itiraz açıldı' : '' };
+      return { id: NS.uid(), no: 'IA' + (10240 + i), oid: o.id, ch: o.ch, at: (at > new Date() ? new Date() : at).toISOString(), reason: pick(PZR.REASONS), items: o.items.slice(0, 1).map((x) => ({ ...x })), status: st, condition: ['onay', 'red'].includes(st) ? (st === 'red' ? 'hasarli' : 'saglam') : '', note: st === 'red' ? 'Ürün kullanılmış, etiketi sökülmüş' : '' };
     });
     const Q = ['Ürünün ölçüleri nedir?', 'Pamuk oranı yüzde kaç?', 'Bugün sipariş verirsem ne zaman kargoya verilir?', 'Makinede yıkanabilir mi, çeker mi?', 'Gri rengi tekrar gelecek mi?', 'Çift kişilik yatağa uyar mı (160x200)?', 'Faturalı mı gönderiyorsunuz?', 'Hediye paketi yapılıyor mu?'];
     db.data.questions = Q.map((t, i) => { const p = pick(prods); const at = new Date(Date.now() - rand(1, 50) * 3600e3); const done = i > 4; return { id: NS.uid(), ch: pick(['trendyol', 'trendyol', 'hepsiburada', 'amazon', 'n11']), pid: p.id, text: t, customer: pick(['A*** K***', 'M*** T***', 'S*** Y***', 'E*** D***', 'B*** Ö***']), at: at.toISOString(), answer: done ? 'Merhaba, ürünümüz stoklarımızda mevcuttur, siparişiniz aynı gün kargoya verilir. İyi alışverişler dileriz.' : '', answeredAt: done ? new Date(at.getTime() + 2 * 3600e3).toISOString() : null }; });
     db.data.picklists = [];
-    db.data.synclog = Object.keys(PZR.CH).filter((k) => db.data.channels[k].connected).flatMap((k) => [{ id: NS.uid(), at: addDays(new Date(), 0).toISOString(), ch: k, action: 'Stok senkronu', detail: `${rand(30, 48)} ürün güncellendi`, ok: true }, { id: NS.uid(), at: new Date(Date.now() - 9e5).toISOString(), ch: k, action: 'Sipariş çekme', detail: `${rand(0, 3)} yeni sipariş`, ok: true }]);
+    db.data.synclog = []; // Yapılmamış senkron işlemi günlüğe yazılmaz
   },
 };

@@ -1,0 +1,7 @@
+{
+  "_aciklama": "Örnek kademelerdir; yayından önce değiştirin. Her ölçütte eşiği geçen en yüksek kademe alınır, ölçütler arasından en yüksek tek indirim uygulanır. Kupon ile birleşmez, büyük olan geçerlidir. Destek paketi ve Hepsi Bir Arada indirime girmez.",
+  "programSayisi": [{ "min": 2, "yuzde": 5 }, { "min": 3, "yuzde": 10 }, { "min": 5, "yuzde": 15 }],
+  "subeSayisi": [{ "min": 2, "yuzde": 5 }, { "min": 5, "yuzde": 10 }, { "min": 10, "yuzde": 15 }],
+  "lisansSayisi": [{ "min": 5, "yuzde": 5 }, { "min": 10, "yuzde": 10 }, { "min": 25, "yuzde": 20 }],
+  "kurumsal": { "formEsigi": 25, "turler": { "oda": "Meslek odası", "dernek": "Dernek", "bayi": "Bayi", "sirket": "Şirket" } }
+}

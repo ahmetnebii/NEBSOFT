@@ -10,6 +10,9 @@ const katalog = require('./katalog');
 const secrets = require('./secrets');
 const cfgMod = require('./config');
 const bizsite = require('../../core/bizsite');
+const odeme = () => require('./odeme'); // döngüsel bağımlılık olmasın diye çağrı anında yüklenir
+const log = require('./log');
+const analitik = require('./analitik');
 
 const uid = auth.uid;
 const now = () => new Date();
@@ -23,9 +26,10 @@ const slugify = (s) => String(s).toLocaleLowerCase('tr').replace(/ç/g, 'c').rep
 
 async function setting(k, d) { const r = await db.one('SELECT v FROM settings WHERE k=?', [k]); return r ? J(r.v, r.v) : d; }
 async function setSetting(k, v) { await db.q('INSERT INTO settings (k, v) VALUES (?, ?) ON DUPLICATE KEY UPDATE v=VALUES(v)', [k, JSON.stringify(v)]); }
-const DEFAULTS = { trialDays: 7, siteName: 'NEBSOFT', phone: '0850 555 00 34', email: 'destek@nebsoft.com.tr', address: '', referralDays: 30, siteUrl: '' };
+const DEFAULTS = { trialDays: 7, siteName: 'NEBSOFT', phone: '0850 555 00 34', email: 'destek@nebsoft.com.tr', address: '', referralDays: 30, siteUrl: '', googleVerify: '' };
 async function site() { return { ...DEFAULTS, ...(await setting('site', {})) }; }
-async function audit(c, action, detail, tenant) { await db.q('INSERT INTO audit (at, user_id, tenant_id, ip, action, detail) VALUES (?,?,?,?,?,?)', [now(), c.user ? c.user.id : null, tenant || (c.user ? c.user.tenant_id : null), c.ip, action, String(detail || '').slice(0, 500)]).catch(() => {}); }
+// Denetim kaydı log.js üzerinden aynı audit tablosuna yazılır; ayrıntı alanı maskelenir (e-posta ve IP güvenlik kaydı için açık kalır)
+async function audit(c, action, detail, tenant) { await log.denetim(action, { kullanici: c.user ? c.user.id : null, isletme: tenant || (c.user ? c.user.tenant_id : null), ip: c.ip, mesaj: String(detail || '').slice(0, 500) }); }
 
 // Lisans geçerli mi (deneme veya aktif ve süresi dolmamış)
 const valid = (l) => l && ['deneme', 'aktif'].includes(l.status) && new Date(l.end) > now();
@@ -61,6 +65,9 @@ async function applyOrder(t, order) {
   }
 }
 
+// Ödeme onayı e-postası (havale elle onayı ve Shopier otomatik onayı aynı metni kullanır)
+async function paidMail(id) { const o = await db.one('SELECT o.*, u.email, u.name FROM orders o JOIN users u ON u.id=o.user_id WHERE o.id=?', [id]); const s = await site(); if (o) mailTo(o.email, `Ödemeniz onaylandı — ${o.no}`, { title: 'Ödemeniz onaylandı, lisansınız aktif', intro: `Teşekkürler ${String(o.name).split(' ')[0]}! ${fmtTL(o.total)} tutarındaki ödemeniz alındı.`, blocks: [{ type: 'kv', rows: J(o.items, []).map((l) => [l.name || pnameOf(l.pid), `${l.period === 'yillik' ? '12' : '1'} ay`]) }, { type: 'button', label: 'Programlarıma git', url: `${s.siteUrl || ''}/#/programlarim` }, { type: 'p', text: 'Faturanız yasal süre içinde e-Arşiv / e-Fatura olarak iletilecektir.' }] }); }
+
 async function nextOrderNo(t) {
   const r = (await t.q("SELECT v FROM settings WHERE k='order_seq' FOR UPDATE"))[0];
   const n = (r ? Number(J(r.v, 24000)) : 24000) + 1;
@@ -88,16 +95,16 @@ async function sendCode(email, purpose, name, title, intro) {
   if (!r.ok) throw err(503, 'Doğrulama e-postası gönderilemedi. Lütfen daha sonra tekrar deneyin.');
   return ticket;
 }
-// Lisans bitiş hatırlatmaları: 7, 3 ve 1 gün kala (6 saatte bir kontrol)
+// Lisans bitiş hatırlatmaları: 7, 3 ve 1 gün kala (6 saatte bir kontrol). Deneme lisansları server/cloud/deneme.js dizisindedir.
 async function licenseReminders() {
   if (!db.ready() || !(await mail.ready())) return;
-  const sent = await setting('lic_mail', {}); const rows = await db.q("SELECT l.id, l.product, l.status, l.end, t.name AS biz, (SELECT email FROM users u WHERE u.tenant_id=t.id AND u.role='customer' ORDER BY created LIMIT 1) AS email, (SELECT name FROM users u WHERE u.tenant_id=t.id AND u.role='customer' ORDER BY created LIMIT 1) AS uname FROM licenses l JOIN tenants t ON t.id=l.tenant_id WHERE l.status IN ('deneme','aktif') AND l.end BETWEEN UTC_TIMESTAMP() AND DATE_ADD(UTC_TIMESTAMP(), INTERVAL 8 DAY)");
+  const sent = await setting('lic_mail', {}); const rows = await db.q("SELECT l.id, l.product, l.status, l.end, t.name AS biz, (SELECT email FROM users u WHERE u.tenant_id=t.id AND u.role='customer' ORDER BY created LIMIT 1) AS email, (SELECT name FROM users u WHERE u.tenant_id=t.id AND u.role='customer' ORDER BY created LIMIT 1) AS uname FROM licenses l JOIN tenants t ON t.id=l.tenant_id WHERE l.status='aktif' AND l.end BETWEEN UTC_TIMESTAMP() AND DATE_ADD(UTC_TIMESTAMP(), INTERVAL 8 DAY)");
   const s = await site(); let ch = false;
   for (const l of rows) {
     const d = Math.ceil((new Date(l.end) - Date.now()) / 864e5); const step = d <= 1 ? 1 : d <= 3 ? 3 : d <= 7 ? 7 : 0; const k = `${l.id}:${step}`;
     if (!step || sent[k] || !l.email) continue; sent[k] = new Date().toISOString().slice(0, 10); ch = true;
     mailTo(l.email, `${pnameOf(l.product)} ${l.status === 'deneme' ? 'denemeniz' : 'lisansınız'} ${d} gün içinde bitiyor`, { title: `${d} gün kaldı`, intro: `Merhaba ${l.uname || ''}, ${l.biz} için ${pnameOf(l.product)} ${l.status === 'deneme' ? 'ücretsiz deneme süreniz' : 'lisansınız'} ${new Date(l.end).toLocaleDateString('tr-TR')} tarihinde sona eriyor.`,
-      blocks: [{ type: 'p', text: 'Süre dolduğunda verileriniz silinmez; yalnızca yeni kayıt girişi durur. Kesintisiz devam etmek için paketinizi şimdi seçebilirsiniz.' }, { type: 'button', label: l.status === 'deneme' ? 'Paketimi seç' : 'Lisansı uzat', url: `${s.siteUrl || ''}/#/hesabim` }, { type: 'note', tone: 'warn', text: 'Yıllık ödemede 2 ay ücretsiz.' }] });
+      blocks: [{ type: 'p', text: 'Süre dolduğunda verileriniz silinmez; yalnızca yeni kayıt girişi durur. Kesintisiz devam etmek için paketinizi şimdi seçebilirsiniz.' }, { type: 'button', label: l.status === 'deneme' ? 'Paketimi seç' : 'Lisansı uzat', url: `${s.siteUrl || ''}/#/hesabim` }] });
   }
   if (ch) { Object.keys(sent).forEach((k) => { if (sent[k] < new Date(Date.now() - 60 * 864e5).toISOString().slice(0, 10)) delete sent[k]; }); await setSetting('lic_mail', sent); }
 }
@@ -122,7 +129,8 @@ const route = (method, path, opt, fn) => R.push({ method, re: new RegExp('^' + p
 route('GET', '/api/setup/status', { auth: 'none' }, async () => {
   const conf = cfg.load(); let hasAdmin = false;
   if (db.ready()) hasAdmin = !!(await db.one("SELECT id FROM users WHERE role='superadmin' LIMIT 1"));
-  return { ok: true, configured: !!conf, db: db.ready() ? db.info() : null, hasAdmin, needsToken: !hasAdmin };
+  // Veritabanı adresi ve adı yalnızca kurulum sırasında (yönetici yokken) gösterilir; kurulumdan sonra herkese açık bu uçtan çıkmaz
+  return { ok: true, configured: !!conf, db: db.ready() && !hasAdmin ? db.info() : null, hasAdmin, needsToken: !hasAdmin };
 });
 route('POST', '/api/setup/sql', { auth: 'none', limit: ['setup', 30, 600e3] }, async (c) => {
   const pw = crypto.randomBytes(18).toString('base64url');
@@ -163,7 +171,7 @@ route('POST', '/api/setup/admin', { auth: 'none', limit: ['setupadm', 10, 600e3]
 route('GET', '/api/auth/me', { auth: 'none', db: false }, async (c) => {
   if (!db.ready()) return { ok: true, mode: cfg.load() ? 'offline' : 'setup' };
   const u = await auth.current(c.req); const s = await site();
-  const base = { ok: true, mode: 'cloud', trialDays: s.trialDays, site: { name: s.siteName, phone: s.phone, email: s.email, address: s.address }, catalog: cat.overrides(), platform: await setting('platform', { announcements: [], maintenance: {} }) };
+  const base = { ok: true, mode: 'cloud', trialDays: s.trialDays, site: { name: s.siteName, phone: s.phone, email: s.email, address: s.address }, catalog: cat.overrides(), platform: await setting('platform', { announcements: [], maintenance: {} }), analitik: await analitik.acik() };
   if (!u) return base;
   const t = await tenantOf(u);
   return { ...base, user: { id: u.id, email: u.email, name: u.name, phone: u.phone, role: u.role }, tenant: t ? { id: t.id, name: t.name, slug: t.slug, ref: t.ref_code, phone: t.phone, address: t.address, city: t.city } : null, licenses: t ? (await licenses(t.id)).map((l) => ({ ...l, valid: valid(l) })) : [], apps: t ? [...(await licenses(t.id)).filter(valid).map((l) => l.product), ...cat.SHARED] : [] };
@@ -196,8 +204,9 @@ route('POST', '/api/auth/register', { auth: 'none', limit: ['reg', 5, 3600e3] },
   });
   await auth.createSession(c.req, c.res, u, true);
   await audit({ ...c, user: u }, 'Kayıt', `${u.email} · ${b.company}${ref ? ' · davet' : ''}`, tid);
+  if (b.pazarlama === true) await db.q('INSERT INTO mail_prefs (user_id, marketing, marketing_at, marketing_src, marketing_ip, updated) VALUES (?,1,?,?,?,?)', [u.id, now(), 'kayit', c.ip, now()]).catch(() => {});
   if (b.product && cat.product(b.product)) notifyTrialRequest(sec.clean(b.company, 160), u, b.product);
-  mailTo(email, `${s.siteName} hesabınız hazır`, { title: 'Hoş geldiniz! Hesabınız hazır', intro: `Merhaba ${u.name.split(' ')[0]}, ${sec.clean(b.company, 160)} için hesabınız oluşturuldu.`, blocks: [...(b.product && cat.product(b.product) ? [{ type: 'kv', rows: [['Program', pnameOf(b.product)], ['Deneme', `${trialLen(s)} gün ücretsiz, hemen başladı`], ['Hesap', 'Süresiz ve ücretsiz']] }] : []), { type: 'list', items: ['Ürün ve müşterilerinizi Excel ile aktarın', 'Ekibinizi davet edin, her birine yetki verin', 'Telefonunuza uygulama olarak ekleyin'] }, { type: 'button', label: 'Programımı aç', url: `${s.siteUrl || ''}/#/programlarim` }, { type: 'p', text: 'Kurulum ve veri aktarımında ücretsiz destek veriyoruz; bu e-postayı yanıtlamanız yeterli.' }] });
+  mailTo(email, `${s.siteName} hesabınız hazır`, { title: 'Hoş geldiniz! Hesabınız hazır', intro: `Merhaba ${u.name.split(' ')[0]}, ${sec.clean(b.company, 160)} için hesabınız oluşturuldu.`, blocks: [...(b.product && cat.product(b.product) ? [{ type: 'kv', rows: [['Program', pnameOf(b.product)], ['Deneme', `${trialLen(s)} gün ücretsiz, hemen başladı`], ['Hesap', 'Süresiz ve ücretsiz']] }] : []), { type: 'list', items: ['Ürün ve müşterilerinizi Excel ile aktarın', 'Ekibinizi davet edin, her birine yetki verin', 'Telefonunuza uygulama olarak ekleyin'] }, { type: 'button', label: 'Programımı aç', url: `${s.siteUrl || ''}/#/programlarim` }, { type: 'p', text: 'Kurulum veya veri aktarımında takılırsanız bu e-postayı yanıtlayabilirsiniz.' }] });
   return { ok: true };
 });
 route('POST', '/api/auth/login', { auth: 'none', limit: ['login', 10, 600e3] }, async (c) => {
@@ -279,11 +288,16 @@ route('POST', '/api/auth/reset', { auth: 'none', limit: ['reset', 10, 600e3] }, 
 // Hazır ürün kataloğu (havuz + Open Food Facts); yerel demo modunda da çalışır
 route('GET', '/api/katalog/ara', { auth: 'none', db: false, limit: ['kat', 120, 60e3] }, async (c) => { try { return { ok: true, ...(await katalog.search({ q: c.query.get('q') || '', cat: c.query.get('kat') || '', page: c.query.get('sayfa') || 1 })) }; } catch (e) { throw err(502, 'Ürün kataloğuna şu an ulaşılamıyor. Biraz sonra tekrar deneyin veya ürünü elle ekleyin.'); } });
 route('GET', '/api/katalog/barkod/:code', { auth: 'none', db: false, limit: ['katb', 240, 60e3] }, async (c) => ({ ok: true, item: await katalog.barcode(c.params.code) }));
-route('POST', '/api/katalog/katki', { auth: 'none', db: false, limit: ['katk', 30, 60e3] }, async (c) => ({ ok: true, added: await katalog.contribute(c.body.items) }));
+// Ortak havuza yalnızca oturum açmış işletme yazar (herkese açıkken kim olduğu belli olmayan biri bütün işletmelerin ürün aramasını kirletebiliyordu)
+route('POST', '/api/katalog/katki', { auth: 'none', db: false, limit: ['katk', 30, 60e3] }, async (c) => { if (!db.ready()) return { ok: true, added: 0 }; const u = await auth.current(c.req); if (!u || !u.tenant_id) throw err(401, 'Oturum açmanız gerekiyor', { code: 'auth' }); return { ok: true, added: await katalog.contribute(c.body.items) }; });
 
 // İşletme web sitesi eklentisi: düzenleme, yayınlama, özel alan adı ve siparişler
 const addonOn = async (tid, pid) => !!(await db.one("SELECT id FROM licenses WHERE tenant_id=? AND product=? AND status IN ('aktif','deneme') AND end>UTC_TIMESTAMP()", [tid, pid]));
-const DOMAIN = /^(?!-)[a-z0-9-]{1,63}(\.[a-z0-9-]{1,63})+$/;
+const DOMAIN = /^(?!-)[a-z0-9-]{1,63}(\.[a-z0-9-]{1,63})*\.[a-z][a-z0-9-]{1,62}$/; // son etiket harfle başlar: IP adresi alan adı sayılmaz
+// Platformun kendi adresi veya alt alan adı işletmeye verilemez: aksi halde bir işletme ana sayfayı kendi sitesiyle değiştirebilirdi
+const bare = (h) => String(h || '').toLowerCase().replace(/:\d+$/, '').replace(/^www\./, '');
+const urlHost = (u) => { try { return new URL(u).hostname; } catch (e) { return ''; } };
+const platformDomain = (domain, ...hosts) => { const d = bare(domain); return hosts.map(bare).filter(Boolean).some((h) => d === h || d.endsWith('.' + h)); };
 route('GET', '/api/websitem', { auth: 'user' }, async (c) => {
   if (!c.user.tenant_id) throw err(400, 'İşletme hesabı gerekli');
   const t = await db.one('SELECT slug, name, phone, address, city FROM tenants WHERE id=?', [c.user.tenant_id]);
@@ -296,13 +310,16 @@ route('PUT', '/api/websitem', { auth: 'user', bodyMax: 4e6, limit: ['ws', 120, 3
   if (pub && !(await addonOn(c.user.tenant_id, 'eklenti-web'))) throw err(402, 'Sitenizi yayınlamak için Eklenti Mağazası’ndan “İşletme Web Sitesi” eklentisini etkinleştirin. Taslağınız kaydedildi.');
   let domain = String(c.body.domain || '').trim().toLowerCase().replace(/^https?:\/\//, '').replace(/\/.*$/, '') || null;
   if (domain && !DOMAIN.test(domain)) throw err(400, 'Alan adı geçersiz. Örnek: www.isletmeniz.com');
+  if (domain && platformDomain(domain, c.req.headers.host, urlHost((await site()).siteUrl))) throw err(400, 'Bu alan adı kullanılamaz');
   if (domain) { const ex = await db.one('SELECT tenant_id FROM biz_sites WHERE domain=? AND tenant_id<>?', [domain, c.user.tenant_id]); if (ex) throw err(409, 'Bu alan adı başka bir işletmede kayıtlı'); }
   await db.q('INSERT INTO biz_sites (tenant_id, data, published, domain, updated) VALUES (?,?,?,?,?) ON DUPLICATE KEY UPDATE data=VALUES(data), published=VALUES(published), domain=VALUES(domain), updated=VALUES(updated)', [c.user.tenant_id, JSON.stringify(data), pub ? 1 : 0, domain, now()]);
   await audit(c, 'Web sitesi kaydedildi', pub ? 'yayında' : 'taslak');
   return { ok: true, published: pub };
 });
 // Ziyaretçi siparişi → işletmenin gelen kutusu (POS > Online Siparişler, "Web siteniz" kanalı)
-route('POST', '/api/w/:slug/siparis', { auth: 'none', limit: ['wsip', 8, 600e3] }, async (c) => {
+// Ziyaretçinin oturumu yoktur (çerez yetkisi kullanılmaz); site sayfası özel başlık göndermez, yalnızca kaynak denetlenir
+route('POST', '/api/w/:slug/siparis', { auth: 'none', csrf: false, limit: ['wsip', 8, 600e3] }, async (c) => {
+  if (!sec.originOk(c.req)) throw err(403, 'İstek reddedildi (kaynak doğrulanamadı)');
   const t = await db.one("SELECT t.id, t.name FROM tenants t WHERE t.slug=? AND t.status='active'", [String(c.params.slug)]); if (!t) throw err(404, 'İşletme bulunamadı');
   const s = await db.one('SELECT data, published FROM biz_sites WHERE tenant_id=?', [t.id]); const d = s && bizsite.clean(J(s.data, {}));
   if (!s || !s.published || d.mode !== 'siparis' || !(await addonOn(t.id, 'eklenti-web')) || !(await addonOn(t.id, 'eklenti-siparis'))) throw err(403, 'Bu işletme şu an online sipariş almıyor');
@@ -324,7 +341,7 @@ route('POST', '/api/w/:slug/siparis', { auth: 'none', limit: ['wsip', 8, 600e3] 
 // Takvim aboneliği (iCal): Google / Outlook / Apple takvimine "URL ile abone ol" denerek eklenir, takvim uygulaması
 // adresi düzenli aralıklarla yeniden okur. Adres işletmeye (ve isteğe bağlı personele / hekime) özel imzalıdır; imza sunucu anahtarından türetilir.
 // Kaynaklar: Randevu (randevular), Klinik (hasta randevuları), CRM (son tarihli görevler, tüm gün etkinliği).
-// Gizlilik: kişi adı yalnızca ad + soyadın baş harfiyle yazılır; telefon / not eklenmez.
+// Gizlilik: kişi adı yalnızca ad + soyadın baş harfiyle yazılır; telefon / not eklenmez. Klinikte randevu nedeni (sağlık verisi) dış takvim servisine gitmez.
 const icsEsc = (s) => String(s || '').replace(/\\/g, '\\\\').replace(/;/g, '\\;').replace(/,/g, '\\,').replace(/\r?\n/g, '\\n');
 const icsTime = (date, hm, plusMin = 0) => { const [y, mo, d] = String(date).split('-').map(Number); const [h, mi] = String(hm || '00:00').split(':').map(Number); const t = new Date(Date.UTC(y, mo - 1, d, h, mi) - 3 * 3600e3 + plusMin * 60e3); return t.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, ''); }; // Türkiye UTC+3
 const icsDay = (date, plusDays = 0) => new Date(Date.parse(String(date).slice(0, 10) + 'T00:00:00Z') + plusDays * 864e5).toISOString().slice(0, 10).replace(/-/g, '');
@@ -343,7 +360,7 @@ route('GET', '/api/takvim-adres', { auth: 'user' }, async (c) => {
 route('GET', '/api/takvim/:file', { auth: 'none', limit: ['ics', 120, 60e3] }, async (c) => {
   const slug = String(c.params.file).replace(/\.ics$/, ''); const staffId = String(c.query.get('p') || ''); const k = String(c.query.get('k') || '');
   const app = CAL_APPS[c.query.get('a')] ? c.query.get('a') : 'randevu';
-  const t = await db.one("SELECT id, name FROM tenants WHERE slug=? AND status='active'", [slug]); if (!t || k !== calSig(t.id, staffId, app)) throw err(404, 'Takvim bulunamadı');
+  const t = await db.one("SELECT id, name FROM tenants WHERE slug=? AND status='active'", [slug]); if (!t || !sec.safeEq(k, calSig(t.id, staffId, app))) throw err(404, 'Takvim bulunamadı');
   const r = await db.one('SELECT data FROM app_data WHERE tenant_id=? AND app=?', [t.id, app]); const d = r ? J(r.data, {}) : {};
   const by = (arr) => Object.fromEntries((arr || []).map((x) => [x.id, x]));
   const from = new Date(Date.now() - 30 * 864e5).toISOString().slice(0, 10); const to = new Date(Date.now() + 180 * 864e5).toISOString().slice(0, 10);
@@ -356,7 +373,7 @@ route('GET', '/api/takvim/:file', { auth: 'none', limit: ['ics', 120, 60e3] }, a
   } else if (app === 'klinik') {
     const pat = by(d.patients); const doc = by(d.doctors); const slot = Number((d._settings || {}).slot) || 30; who = staffId && doc[staffId] ? doc[staffId].name : '';
     ev = (d.appts || []).filter((a) => inRange(a.date) && a.status !== 'iptal' && (!staffId || a.doctor === staffId)).slice(0, 5000).map((a) => ['BEGIN:VEVENT', `UID:${a.id}@nebsoft-${slug}-klinik`, `DTSTAMP:${stamp}`, `DTSTART:${icsTime(a.date, a.time)}`, `DTEND:${icsTime(a.date, a.time, slot)}`,
-      `SUMMARY:${icsEsc(`${a.reason || 'Muayene'} — ${shortName((pat[a.patient] || {}).name)}`)}`, `DESCRIPTION:${icsEsc(`Hekim: ${(doc[a.doctor] || {}).name || '-'}${a.status ? ' · Durum: ' + a.status : ''}`)}`, 'STATUS:CONFIRMED', 'END:VEVENT']);
+      `SUMMARY:${icsEsc(`Hasta randevusu — ${shortName((pat[a.patient] || {}).name)}`)}`, `DESCRIPTION:${icsEsc(`Hekim: ${(doc[a.doctor] || {}).name || '-'}${a.status ? ' · Durum: ' + a.status : ''}`)}`, 'STATUS:CONFIRMED', 'END:VEVENT']);
   } else {
     const deals = by(d.deals);
     ev = (d.activities || []).filter((a) => a.type === 'gorev' && a.due && inRange(String(a.due).slice(0, 10))).slice(0, 5000).map((a) => ['BEGIN:VEVENT', `UID:${a.id}@nebsoft-${slug}-crm`, `DTSTAMP:${stamp}`, `DTSTART;VALUE=DATE:${icsDay(a.due)}`, `DTEND;VALUE=DATE:${icsDay(a.due, 1)}`,
@@ -403,13 +420,14 @@ route('POST', '/api/trial', { auth: 'user', limit: ['trial', 20, 3600e3] }, asyn
   mailTo(c.user.email, `${pnameOf(pid)} denemeniz başladı`, { title: `${pnameOf(pid)} hazır`, intro: `${s.trialDays} günlük ücretsiz denemeniz başladı. Tüm özellikleri sınırsız kullanabilirsiniz.`, blocks: [{ type: 'kv', rows: [['Program', pnameOf(pid)], ['Deneme bitişi', addDays(now(), s.trialDays).toLocaleDateString('tr-TR')]] }, { type: 'button', label: 'Programı aç', url: `${s.siteUrl || ''}/#/programlarim` }] });
   return { ok: true, license: await db.one('SELECT * FROM licenses WHERE tenant_id=? AND product=?', [c.user.tenant_id, pid]) };
 });
-route('POST', '/api/orders/quote', { auth: 'none' }, async (c) => { const k = await couponPct(c.body.coupon); return { ok: true, coupon: k.code, ...cat.price(c.body.items, k.pct) }; });
+route('POST', '/api/orders/quote', { auth: 'none', limit: ['quote', 60, 600e3] }, async (c) => { const k = await couponPct(c.body.coupon); return { ok: true, coupon: k.code, ...cat.price(c.body.items, k.pct) }; });
 route('POST', '/api/orders', { auth: 'user', limit: ['order', 20, 3600e3] }, async (c) => {
   if (!c.user.tenant_id) throw err(400, 'Yönetici hesabıyla sipariş verilemez');
   const k = await couponPct(c.body.coupon); const p = cat.price(c.body.items, k.pct);
   const b = c.body.billing || {};
   if (!sec.V.str(b.name, 120, 3) || !sec.V.str(b.taxNo, 20, 10) || !sec.V.str(b.address, 300, 5)) throw err(400, 'Fatura bilgileri (ad, VKN/TCKN, adres) eksik');
-  if (!(await banks()).length) throw err(503, 'Ödeme hesabı tanımlı değil. Lütfen destek ile iletişime geçin.');
+  const shop = c.body.method === 'shopier'; if (shop && !(await odeme().usable(c.user))) throw err(400, 'Bu ödeme yöntemi şu anda kullanılamıyor');
+  if (!shop && !(await banks()).length) throw err(503, 'Ödeme hesabı tanımlı değil. Lütfen destek ile iletişime geçin.');
   const billing = { name: sec.clean(b.name, 120), company: sec.clean(b.company, 160), taxNo: sec.clean(b.taxNo, 20), taxOffice: sec.clean(b.taxOffice, 80), address: sec.clean(b.address, 300), city: sec.clean(b.city, 60), email: c.user.email, phone: sec.clean(b.phone, 40) };
   const o = await db.tx(async (t) => {
     const no = await nextOrderNo(t); const id = uid();
@@ -418,7 +436,11 @@ route('POST', '/api/orders', { auth: 'user', limit: ['order', 20, 3600e3] }, asy
     await t.q('UPDATE tenants SET tax_no=?, tax_office=?, address=?, city=? WHERE id=?', [billing.taxNo, billing.taxOffice, billing.address, billing.city, c.user.tenant_id]);
     return (await t.q('SELECT * FROM orders WHERE id=?', [id]))[0];
   });
-  await audit(c, 'Sipariş (havale bekliyor)', `${o.no} · ${o.total} TL`);
+  await audit(c, shop ? 'Sipariş (Shopier)' : 'Sipariş (havale bekliyor)', `${o.no} · ${o.total} TL`);
+  if (shop) {
+    mailTo(c.user.email, `Siparişiniz alındı — ${o.no}`, { title: 'Siparişiniz alındı', intro: `${o.no} numaralı siparişiniz oluşturuldu. Ödemenizi Shopier güvenli ödeme sayfasında tamamladığınızda ödeme kontrol edilir, onaylanınca lisansınız aktifleşir.`, blocks: [{ type: 'kv', rows: [...p.lines.map((l) => [`${l.name} · ${l.period === 'yillik' ? 'Yıllık' : 'Aylık'}`, fmtTL(l.price)]), ...(p.discount ? [['İndirim', '-' + fmtTL(p.discount)]] : []), ['KDV', fmtTL(p.vat)], ['Ödenecek', fmtTL(p.total)]] }] });
+    return { ok: true, order: pubOrder(o), banks: await banks(), shopier: await odeme().start(o) };
+  }
   { const B = await banks(); mailTo(c.user.email, `Siparişiniz alındı — ${o.no}`, { title: 'Siparişiniz alındı', intro: `${o.no} numaralı siparişiniz oluşturuldu. Havale / EFT ödemeniz hesabımıza geçtiğinde lisansınız otomatik aktifleşir.`, blocks: [{ type: 'kv', rows: [...p.lines.map((l) => [`${l.name} · ${l.period === 'yillik' ? 'Yıllık' : 'Aylık'}`, fmtTL(l.price)]), ...(p.discount ? [['İndirim', '-' + fmtTL(p.discount)]] : []), ['KDV', fmtTL(p.vat)], ['Ödenecek', fmtTL(p.total)]] }, ...B.map((x) => ({ type: 'kv', rows: [['Banka', x.bank], ['Alıcı', x.holder], ['IBAN', String(x.iban).replace(/(.{4})/g, '$1 ').trim()]] })), { type: 'note', tone: 'warn', text: `Açıklamaya mutlaka ${o.no} yazın. Ödeme onaylanana kadar deneme süreniz devam eder.` }] }); }
   return { ok: true, order: pubOrder(o), banks: await banks() };
 });
@@ -426,17 +448,21 @@ route('GET', '/api/orders', { auth: 'user' }, async (c) => ({ ok: true, orders: 
 route('POST', '/api/orders/:id/cancel', { auth: 'user' }, async (c) => {
   const r = await db.q("UPDATE orders SET status='iptal' WHERE id=? AND tenant_id=? AND status='odeme-bekliyor'", [c.params.id, c.user.tenant_id || '-']);
   if (!r.affectedRows) throw err(400, 'Yalnızca ödeme bekleyen sipariş iptal edilebilir');
-  await audit(c, 'Sipariş iptal (müşteri)', c.params.id); return { ok: true };
+  odeme().closeLater(c.params.id); await audit(c, 'Sipariş iptal (müşteri)', c.params.id); return { ok: true };
 });
+// Hesabın sahibi işletmenin ilk kullanıcısıdır; ekip üyeleri işletme bilgilerini ve ekibi değiştiremez
+const isOwner = async (u) => { if (!u.tenant_id) return false; const o = await db.one('SELECT id FROM users WHERE tenant_id=? ORDER BY created, id LIMIT 1', [u.tenant_id]); return !!o && o.id === u.id; };
+const ownerOnly = async (c) => { if (!(await isOwner(c.user))) throw err(403, 'Bu işlemi yalnızca hesap sahibi yapabilir'); };
 route('PUT', '/api/account', { auth: 'user' }, async (c) => {
   const b = c.body; if (!sec.V.str(b.name, 120, 3)) throw err(400, 'Ad soyad gerekli');
+  if (b.company) await ownerOnly(c);
   await db.q('UPDATE users SET name=?, phone=? WHERE id=?', [sec.clean(b.name, 120), sec.clean(b.phone, 40), c.user.id]);
   if (c.user.tenant_id && b.company) await db.q('UPDATE tenants SET name=?, address=?, city=?, tax_no=?, tax_office=? WHERE id=?', [sec.clean(b.company, 160), sec.clean(b.address, 300), sec.clean(b.city, 60), sec.clean(b.taxNo, 20), sec.clean(b.taxOffice, 80), c.user.tenant_id]);
   return { ok: true };
 });
 route('GET', '/api/team', { auth: 'user' }, async (c) => ({ ok: true, users: await db.q('SELECT id, email, name, phone, status, last_login FROM users WHERE tenant_id=? ORDER BY created', [c.user.tenant_id || '-']) }));
 route('POST', '/api/team', { auth: 'user', limit: ['team', 20, 3600e3] }, async (c) => {
-  const b = c.body; if (!c.user.tenant_id) throw err(400, 'İşletme hesabı yok');
+  const b = c.body; if (!c.user.tenant_id) throw err(400, 'İşletme hesabı yok'); await ownerOnly(c);
   if (!sec.V.email(b.email) || !sec.V.str(b.name, 120, 2) || !sec.V.password(b.pass)) throw err(400, 'Ad, e-posta ve en az 8 karakterli (harf+rakam) şifre gerekli');
   if (await db.one('SELECT id FROM users WHERE email=?', [b.email.toLowerCase()])) throw err(400, 'Bu e-posta başka bir hesapta kayıtlı');
   const n = await db.one('SELECT COUNT(*) AS n FROM users WHERE tenant_id=?', [c.user.tenant_id]); if (n.n >= 50) throw err(400, 'Kullanıcı sınırına ulaşıldı');
@@ -445,6 +471,7 @@ route('POST', '/api/team', { auth: 'user', limit: ['team', 20, 3600e3] }, async 
 });
 route('DELETE', '/api/team/:id', { auth: 'user' }, async (c) => {
   if (c.params.id === c.user.id) throw err(400, 'Kendinizi silemezsiniz');
+  await ownerOnly(c);
   const r = await db.q('DELETE FROM users WHERE id=? AND tenant_id=?', [c.params.id, c.user.tenant_id || '-']); if (r.affectedRows) await db.q('DELETE FROM sessions WHERE user_id=?', [c.params.id]);
   await audit(c, 'Ekip üyesi silindi', c.params.id); return { ok: true };
 });
@@ -470,10 +497,12 @@ route('GET', '/api/referral', { auth: 'user' }, async (c) => {
 });
 
 // Uygulama verisi (işletme bazlı; lisans kontrollü; iyimser sürüm kontrolüyle çakışma önleme)
+const HEALTH = ['klinik', 'eczane', 'veteriner']; const readLog = new Map();
 route('GET', '/api/data/:app', { auth: 'user' }, async (c) => {
   const app = c.params.app; if (!sec.V.app(app)) throw err(400, 'Geçersiz uygulama');
   if (!(await canUseApp(c.user, app))) throw err(402, 'Bu uygulama için geçerli lisans veya deneme yok', { code: 'license', app });
   const r = await db.one('SELECT data, version FROM app_data WHERE tenant_id=? AND app=?', [c.user.tenant_id, app]);
+  if (HEALTH.includes(app)) { const k = `${c.user.id}:${app}`; if (Date.now() - (readLog.get(k) || 0) > 3600e3) { if (readLog.size > 50000) readLog.clear(); readLog.set(k, Date.now()); await audit(c, 'Sağlık verisi okundu', app); } }
   const t = await tenantOf(c.user);
   return { ok: true, data: r ? secrets.mask(app, J(r.data, null)) : null, version: r ? r.version : 0, tenant: { name: t.name, phone: t.phone, address: t.address, slug: t.slug }, owner: { name: c.user.name } };
 });
@@ -522,8 +551,8 @@ A('GET', '/summary', async () => {
   return { ok: true, tenants: t.n, lic: l, pending: o, paid30: p, leads: lead.n, tickets: tk.n, daily, signups, ending, db: db.info() };
 });
 A('GET', '/orders', async (c) => {
-  const st = c.query.get('status'); const rows = await db.q(`SELECT o.*, t.name AS tenant_name, t.phone AS tenant_phone, u.email AS user_email FROM orders o JOIN tenants t ON t.id=o.tenant_id JOIN users u ON u.id=o.user_id ${st ? 'WHERE o.status=?' : ''} ORDER BY o.created DESC LIMIT 300`, st ? [st] : []);
-  return { ok: true, orders: rows.map((o) => ({ ...pubOrder(o), tenant: o.tenant_name, phone: o.tenant_phone, email: o.user_email, note: o.note })) };
+  const st = c.query.get('status'); const rows = await db.q(`SELECT o.*, t.name AS tenant_name, t.phone AS tenant_phone, u.email AS user_email, sp.status AS pay_status, sp.alert AS pay_alert FROM orders o JOIN tenants t ON t.id=o.tenant_id JOIN users u ON u.id=o.user_id LEFT JOIN shopier_payments sp ON sp.order_id=o.id ${st ? 'WHERE o.status=?' : ''} ORDER BY o.created DESC LIMIT 300`, st ? [st] : []);
+  return { ok: true, orders: rows.map((o) => ({ ...pubOrder(o), tenant: o.tenant_name, phone: o.tenant_phone, email: o.user_email, note: o.note, shopier: o.pay_status ? { status: o.pay_status, alert: o.pay_alert } : null })) };
 });
 A('POST', '/orders/:id/approve', async (c) => {
   await db.tx(async (t) => {
@@ -533,12 +562,12 @@ A('POST', '/orders/:id/approve', async (c) => {
     await applyOrder(t, o);
   });
   await audit(c, 'Havale onaylandı', c.params.id);
-  { const o = await db.one('SELECT o.*, u.email, u.name FROM orders o JOIN users u ON u.id=o.user_id WHERE o.id=?', [c.params.id]); const s = await site(); if (o) mailTo(o.email, `Ödemeniz onaylandı — ${o.no}`, { title: 'Ödemeniz onaylandı, lisansınız aktif', intro: `Teşekkürler ${String(o.name).split(' ')[0]}! ${fmtTL(o.total)} tutarındaki ödemeniz alındı.`, blocks: [{ type: 'kv', rows: J(o.items, []).map((l) => [l.name || pnameOf(l.pid), `${l.period === 'yillik' ? '12' : '1'} ay`]) }, { type: 'button', label: 'Programlarıma git', url: `${s.siteUrl || ''}/#/programlarim` }, { type: 'p', text: 'Faturanız yasal süre içinde e-Arşiv / e-Fatura olarak iletilecektir.' }] }); }
+  await paidMail(c.params.id); odeme().closeLater(c.params.id);
   return { ok: true };
 });
 A('POST', '/orders/:id/reject', async (c) => {
   const r = await db.q("UPDATE orders SET status='iptal', note=? WHERE id=? AND status='odeme-bekliyor'", [sec.clean(c.body.note, 255) || 'Ödeme alınmadı', c.params.id]);
-  if (!r.affectedRows) throw err(400, 'Sipariş ödeme beklemiyor'); await audit(c, 'Sipariş reddedildi', c.params.id); return { ok: true };
+  if (!r.affectedRows) throw err(400, 'Sipariş ödeme beklemiyor'); odeme().closeLater(c.params.id); await audit(c, 'Sipariş reddedildi', c.params.id); return { ok: true };
 });
 A('GET', '/banks', async () => ({ ok: true, banks: await db.q('SELECT * FROM bank_accounts ORDER BY created') }));
 A('POST', '/banks', async (c) => {
@@ -638,18 +667,22 @@ A('GET', '/mail', async () => { const s = await mail.settings(); return { ok: tr
 A('PUT', '/mail', async (c) => { const b = c.body || {}; if (b.user && !sec.V.email(b.user)) throw err(400, 'Geçerli bir gönderen e-posta adresi girin'); const r = await mail.saveConfig(b); await audit(c, 'E-posta ayarları', `${r.host} · ${r.user}`); return { ok: true, mail: r }; });
 A('POST', '/mail/test', async (c) => { const to = String(c.body.to || c.user.email); if (!sec.V.email(to)) throw err(400, 'Geçerli bir alıcı girin'); const r = await mail.send(to, 'NEBSOFT e-posta testi', { title: 'E-posta ayarlarınız çalışıyor', intro: 'Bu bir deneme e-postasıdır. Doğrulama kodları, sipariş ve lisans bildirimleri bu adresten gönderilecek.', blocks: [{ type: 'kv', rows: [['Gönderim', new Date().toLocaleString('tr-TR')], ['Alıcı', to]] }, { type: 'note', text: 'Her şey yolunda görünüyor.' }] }, await mailSite()); if (!r.ok) throw err(400, r.error || 'Gönderilemedi'); return { ok: true }; });
 A('GET', '/mail/log', async () => ({ ok: true, rows: await db.q('SELECT * FROM mail_log ORDER BY id DESC LIMIT 300') }));
-const campaignTpl = (b) => ({ title: sec.clean(b.title || b.subject, 140), intro: sec.clean(b.intro, 300), preheader: sec.clean(b.intro || b.subject, 140), footer: 'Bu e-postayı NEBSOFT müşterisi olduğunuz için aldınız. Almak istemiyorsanız bu e-postayı yanıtlayarak bildirin.', blocks: [...String(b.body || '').split(/\n{2,}/).filter(Boolean).map((t) => ({ type: 'p', text: sec.clean(t, 4000) })), ...(b.btnLabel && /^https?:\/\//.test(b.btnUrl || '') ? [{ type: 'button', label: sec.clean(b.btnLabel, 40), url: String(b.btnUrl).slice(0, 300) }] : [])] });
+const campaignTpl = (b) => ({ title: sec.clean(b.title || b.subject, 140), intro: sec.clean(b.intro, 300), preheader: sec.clean(b.intro || b.subject, 140), footer: 'Tanıtım: bu e-postayı izin verdiğiniz için aldınız.', blocks: [...String(b.body || '').split(/\n{2,}/).filter(Boolean).map((t) => ({ type: 'p', text: sec.clean(t, 4000) })), ...(b.btnLabel && /^https?:\/\//.test(b.btnUrl || '') ? [{ type: 'button', label: sec.clean(b.btnLabel, 40), url: String(b.btnUrl).slice(0, 300) }] : [])] });
 A('POST', '/mail/preview', async (c) => ({ ok: true, html: mail.render({ ...campaignTpl(c.body || {}), site: await mailSite() }).html }));
 A('POST', '/mail/campaign', async (c) => {
   const b = c.body || {}; if (!sec.V.str(b.subject, 160, 3) || !sec.V.str(b.body, 8000, 5)) throw err(400, 'Konu ve metin gerekli');
   if (!(await mail.ready())) throw err(400, 'Önce e-posta ayarlarını yapın');
+  const pz = await setting('pazarlama', {}); if (!(await site()).siteUrl) throw err(400, 'Çıkış bağlantısı için önce Site Ayarları\'nda site adresini girin'); if (!(pz.iys && pz.unvan && pz.mersis)) throw err(400, 'Toplu e-posta ticari iletidir. Önce Deneme Takibi sayfasından İYS kaydını, ticaret unvanını ve MERSİS numarasını girin.');
   const Q = { all: "SELECT DISTINCT u.email, u.name FROM users u WHERE u.role='customer' AND u.status='active'", trial: "SELECT DISTINCT u.email, u.name FROM users u JOIN licenses l ON l.tenant_id=u.tenant_id WHERE u.role='customer' AND l.status='deneme' AND l.end>UTC_TIMESTAMP()", active: "SELECT DISTINCT u.email, u.name FROM users u JOIN licenses l ON l.tenant_id=u.tenant_id WHERE u.role='customer' AND l.status='aktif' AND l.end>UTC_TIMESTAMP()", expired: "SELECT DISTINCT u.email, u.name FROM users u WHERE u.role='customer' AND NOT EXISTS (SELECT 1 FROM licenses l WHERE l.tenant_id=u.tenant_id AND l.status IN ('deneme','aktif') AND l.end>UTC_TIMESTAMP())" };
-  let list = b.target === 'emails' ? String(b.emails || '').split(/[\s,;]+/).filter((e) => sec.V.email(e)).map((email) => ({ email })) : Q[b.target] ? await db.q(Q[b.target]) : [];
-  list = list.slice(0, 1000); if (!list.length) throw err(400, 'Seçilen kitlede alıcı yok');
+  let list = b.target === 'emails' ? String(b.emails || '').split(/[\s,;]+/).filter((e) => sec.V.email(e)).map((email) => ({ email: email.toLowerCase() })) : Q[b.target] ? await db.q(Q[b.target]) : [];
+  // Yalnızca kayıtlı ve izin vermiş müşteriye gider
+  const izinli = new Map((await db.q("SELECT u.email, u.id, u.name FROM users u JOIN mail_prefs p ON p.user_id=u.id WHERE u.role='customer' AND u.status='active' AND p.marketing=1")).map((x) => [String(x.email).toLowerCase(), x]));
+  const toplam = list.length; list = list.filter((r) => izinli.has(String(r.email).toLowerCase())).map((r) => izinli.get(String(r.email).toLowerCase())).slice(0, 1000);
+  if (!list.length) throw err(400, `Seçilen kitlede pazarlama izni olan alıcı yok (${toplam} kişi izinsiz, gönderilmedi)`);
   const tpl = campaignTpl(b); const s = await mailSite(); let ok = 0, fail = 0;
-  for (const r of list) { const x = await mail.send(r.email, sec.clean(b.subject, 160), { ...tpl, intro: tpl.intro.replace(/\{ad\}/g, String(r.name || '').split(' ')[0] || '') }, s); if (x.ok) ok++; else fail++; await new Promise((z) => setTimeout(z, 250)); }
-  await audit(c, 'Toplu e-posta', `${b.subject} · ${ok}/${list.length}`); return { ok: true, sent: ok, failed: fail, total: list.length };
-});
+  for (const r of list) { const x = await mail.send(r.email, sec.clean(b.subject, 160), { ...tpl, footer: `${tpl.footer} ${pz.unvan} · MERSİS ${pz.mersis}`, unsub: require('./deneme').cikisUrl(r.id, (await site()).siteUrl), intro: tpl.intro.replace(/\{ad\}/g, String(r.name || '').split(' ')[0] || '') }, s); if (x.ok) ok++; else fail++; await new Promise((z) => setTimeout(z, 250)); }
+  await audit(c, 'Toplu e-posta', `${b.subject} · ${ok}/${list.length}`); return { ok: true, sent: ok, failed: fail, total: list.length, skipped: toplam - list.length };
+}, { uzun: true });
 // Duyurular ve bakım modu: programların üstünde bant; bakımda "erişimi kapat" seçilirse veri kaydı da durdurulur
 A('GET', '/platform', async () => ({ ok: true, platform: await setting('platform', { announcements: [], maintenance: {} }) }));
 A('PUT', '/platform', async (c) => {
@@ -669,11 +702,13 @@ A('PUT', '/catalog/:id', async (c) => {
   await setSetting('catalog', ov); await syncCatalog(true); await audit(c, 'Ürün güncellendi', `${id} ${pr.join('/')}`); return { ok: true };
 });
 A('DELETE', '/catalog/:id', async (c) => { const ov = { ...(await setting('catalog', {})) }; delete ov[String(c.params.id)]; await setSetting('catalog', ov); await syncCatalog(true); await audit(c, 'Ürün varsayılana döndü', c.params.id); return { ok: true }; });
+// Search Console kodu: yalnız kod ya da panelin verdiği meta etiketinin tamamı yapıştırılabilir
+const googleCode = (v) => { const raw = String(v || '').trim(); const code = (/content=["']([^"']+)["']/.exec(raw) || [])[1] || raw; if (code && !/^[A-Za-z0-9_-]{10,100}$/.test(code)) throw err(400, 'Google doğrulama kodu geçersiz. Search Console\'un verdiği kodu veya meta etiketini yapıştırın'); return code; };
 A('PUT', '/settings', async (c) => {
-  const b = c.body; const s = { trialDays: Math.min(60, Math.max(1, Number(b.trialDays) || 7)), siteName: sec.clean(b.siteName, 60) || 'NEBSOFT', phone: sec.clean(b.phone, 40), email: sec.clean(b.email, 190), address: sec.clean(b.address, 300), referralDays: Math.min(365, Math.max(0, Number(b.referralDays) || 0)), siteUrl: sec.clean(b.siteUrl, 200) };
+  const b = c.body; const s = { trialDays: Math.min(60, Math.max(1, Number(b.trialDays) || 7)), siteName: sec.clean(b.siteName, 60) || 'NEBSOFT', phone: sec.clean(b.phone, 40), email: sec.clean(b.email, 190), address: sec.clean(b.address, 300), referralDays: Math.min(365, Math.max(0, Number(b.referralDays) || 0)), siteUrl: sec.clean(b.siteUrl, 200), googleVerify: googleCode(b.googleVerify) };
   await setSetting('site', s); await audit(c, 'Site ayarları', JSON.stringify(s).slice(0, 300)); return { ok: true };
 });
 A('GET', '/audit', async () => ({ ok: true, rows: await db.q('SELECT a.*, u.email FROM audit a LEFT JOIN users u ON u.id=a.user_id ORDER BY a.id DESC LIMIT 500') }));
 A('GET', '/db', async () => ({ ok: true, info: db.info(), tables: await db.q('SELECT table_name AS name, table_rows AS rows_est, ROUND((data_length+index_length)/1024/1024, 2) AS mb FROM information_schema.tables WHERE table_schema = DATABASE() ORDER BY name') }));
 
-module.exports = { R, valid, canUseApp, err, site, audit, J, syncCatalog };
+module.exports = { R, valid, canUseApp, err, site, audit, J, syncCatalog, route, A, setting, setSetting, applyOrder, paidMail, mailTo, fmtTL, mailSite, pnameOf, uid };

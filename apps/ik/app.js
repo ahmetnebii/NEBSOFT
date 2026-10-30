@@ -196,7 +196,7 @@
     NS.crud(el, app, {
       col: 'employees', title: 'Personel', sub: sef ? 'Departmanınızın personeli' : 'Özlük bilgileri, kıdem ve izin hakları', single: 'Personel', addLabel: 'Yeni personel', emptyIcon: 'users', fields: EF, defaults: () => ({ start: today(), active: true, dept: deptList()[0] }), readonly: sef,
       sort: (a, b) => a.name.localeCompare(b.name, 'tr'), searchFields: (e) => (sef ? [e.name, e.dept, e.title] : [e.name, e.tc, e.dept, e.title]),
-      rowsFilter: inScope,
+      rowsFilter: inScope, exportRoles: ['admin'],
       filters: [{ value: 'all', label: 'Aktif', test: (e) => e.active !== false }, { value: 'x', label: 'Ayrılanlar', test: (e) => e.active === false }],
       extraActions: sef ? [] : [{ icon: 'file', act: 'sev', title: 'Kıdem / ihbar tazminatı hesapla' }, { icon: 'award', act: 'wrk', title: 'Çalışma belgesi' }, { icon: 'globe', act: 'ptl', title: 'Çalışan portalı kodu', show: (e) => e.active !== false && !!e.phone }, { icon: 'x', act: 'out', title: 'İşten çıkış', show: (e) => e.active !== false }, { icon: 'refresh', act: 'back', title: 'Yeniden işe al', show: (e) => e.active === false }],
       onAction: async (a, e) => {
@@ -214,8 +214,6 @@
       },
       columns: [{ key: 'name', label: 'Personel', render: (e) => `<div class="row nw"><div class="avatar">${esc(NS.initials(e.name))}</div><div><b>${esc(e.name)}</b><div class="small faint">${esc(e.title || '')}${e.end ? ' · çıkış ' + NS.date(e.end) : ''}${e.sgkIn ? ' · SGK giriş ✓' : e.sgkInTest ? ' · SGK giriş TEST (bildirilmedi)' : ''}${e.sgkOut ? ' · SGK çıkış ✓' : e.sgkOutTest ? ' · SGK çıkış TEST (bildirilmedi)' : ''}</div></div></div>` }, { key: 'dept', label: 'Departman', render: (e) => badge(e.dept, 'acc') }, { key: 'start', label: 'Kıdem', render: (e) => `${NS.date(e.start)}<div class="small faint">${seniority(e)} yıl</div>` }, { label: 'Kalan izin', cls: 'right', render: (e) => { const b = balance(e); return `${b.left} gün<div class="small faint">yıllık ${b.yearly}</div>`; } }, ...(sef ? [] : [{ key: 'salary', label: 'Maaş', cls: 'right', render: (e) => `${money(e.salary)}<div class="small faint">${isNet(e) ? 'net' : 'brüt'}</div>` }])],
     });
-    // Çekirdek dışa aktarma tüm kaydı verir: şefte kapalı (bkz. CEKIRDEK-ISTEKLERI)
-    if (sef) { const x = $('[data-export]', el); if (x) x.remove(); }
   }
 
   // İşten çıkışta ödenecek kıdem, ihbar ve kullanılmayan izin ücreti

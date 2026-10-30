@@ -1,15 +1,18 @@
 // Arama motoru görünürlüğü ve "kendi kendini pazarlayan" sistem:
 //  • Alan adı yönetim panelindeki "Site adresi" ayarından gelir (tanıtım sitelerindeki yer tutucu sunarken değiştirilir)
-//  • /sitemap.xml dinamiktir: ürün siteleri + /programlar + NEBSOFT kullanan her işletmenin herkese açık sayfası (/t/<işletme>/)
-//  • /t/<işletme>/ : işletmenin müşterilerine açık hizmetlerini listeleyen, LocalBusiness şemalı sayfa (alt kısmında tavsiye bağlantısı)
+//  • /sitemap.xml dinamiktir: site/sitemap.xml (ürün siteleri, /programlar, /fiyatlar/, yasal metinler, /rehber/) + NEBSOFT kullanan her işletmenin herkese açık sayfası (/t/<işletme>/)
+//  • /t/<işletme>/ : yayındaki işletme sitesi (core/bizsite.js) veya yalnızca online hizmet bağlantılarını gösteren noindex yalın sayfa
+//  • /t/<işletme>/hizmet/<slug>/ ve /t/<işletme>/sitemap.xml : hizmet sayfaları ve işletme site haritası (kendi alan adında kökten)
 //  • IndexNow: yeni/değişen adresler Bing, Yandex, Seznam vb. arama motorlarına anında bildirilir
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 const db = require('./db');
+const sec = require('./security');
 const { R, site, valid, J, syncCatalog } = require('./routes');
 const cat = require('./catalog');
 const bizsite = require('../../core/bizsite');
+const analitik = require('./analitik');
 const tlf = (n) => new Intl.NumberFormat('tr-TR').format(n);
 
 const PLACEHOLDER = 'https://www.domain.com';
@@ -46,6 +49,8 @@ const BUILT = require('../../site/src/site.config');
 const telOf = (p) => '+90' + String(p || '').replace(/\D/g, '').replace(/^(90)?0?/, '');
 async function rewrite(text, req) {
   const s = await settings();
+  // Google Search Console doğrulama etiketi (panel: Site Ayarları). Biçimi kayıtta denetlenir, burada yine de yalnız geçerli kod basılır
+  if (/^[A-Za-z0-9_-]{10,100}$/.test(String(s.googleVerify || ''))) text = text.replace('</head>', `<meta name="google-site-verification" content="${s.googleVerify}">\n</head>`);
   if (text.includes('www.domain.com')) { const B = await base(req); text = text.split(PLACEHOLDER).join(B).split('www.domain.com').join(B.replace(/^https?:\/\//, '')); }
   if (s.phone && s.phone !== BUILT.phone) text = text.split(telOf(BUILT.phone)).join(telOf(s.phone)).split(BUILT.phone).join(s.phone);
   if (s.email && s.email !== BUILT.email) text = text.split(BUILT.email).join(s.email);
@@ -54,6 +59,12 @@ async function rewrite(text, req) {
     // Arama motoru şeması (JSON-LD) da aynı fiyatı göstersin
     const pid = (text.match(/data-p="([a-z]+):\d"/) || [])[1]; const pr = pid && ov[pid] && ov[pid].prices;
     if (pr) text = text.replace(/"lowPrice":\d+(\.\d+)?/, `"lowPrice":${pr[0]}`).replace(/"highPrice":\d+(\.\d+)?/, `"highPrice":${pr[2]}`); }
+  // Analitik yalnızca bulut modunda ve açıksa yüklenir: rıza bandı ve olay gönderimi core/olay.js içindedir (kaynak dosyalar değişmez)
+  if (await analitik.acik().catch(() => false)) {
+    const pid = (text.match(/data-p="([a-z]+):\d"/) || [])[1]; const body = text.lastIndexOf('</body>'); const foot = text.lastIndexOf('</footer>');
+    if (foot > -1) text = `${text.slice(0, foot)}<p style="margin:10px 0 0;font-size:13px"><a href="#" data-olay-tercih>Analitik tercihleri</a></p>${text.slice(foot)}`;
+    if (body > -1) { const b = text.lastIndexOf('</body>'); text = `${text.slice(0, b)}<script src="/core/olay.js"${pid ? ` data-program="${pid}"` : ''} defer></script>${text.slice(b)}`; }
+  }
   return text;
 }
 
@@ -74,7 +85,9 @@ async function sitemap(req) {
   const pts = await publicTenants(); const seen = new Set(pts.map((t) => t.slug));
   const sites = await db.q("SELECT t.slug, b.updated FROM biz_sites b JOIN tenants t ON t.id=b.tenant_id JOIN licenses l ON l.tenant_id=t.id AND l.product='eklenti-web' AND l.status IN ('aktif','deneme') AND l.end>UTC_TIMESTAMP() WHERE b.published=1 AND t.status='active'").catch(() => []);
   sites.forEach((x) => { if (!seen.has(x.slug)) { seen.add(x.slug); pts.push({ slug: x.slug, updated: x.updated }); } });
-  const extra = pts.map((t) => `  <url><loc>${B}/t/${t.slug}/</loc><lastmod>${new Date(t.updated).toISOString().slice(0, 10)}</lastmod></url>`).join('\n');
+  // Yalnızca dizine girmesi istenen adresler: noindex işletme ve kendi alan adındaki siteler ana haritaya yazılmaz
+  const satir = []; for (const t of pts) { const r = await tenantUrls(req, t.slug).catch(() => null); if (!r || r.domain || !r.urls.length) continue; const m = new Date(r.updated || t.updated).toISOString().slice(0, 10); r.urls.forEach((u) => satir.push(`  <url><loc>${esc(u)}</loc><lastmod>${m}</lastmod></url>`)); }
+  const extra = satir.join('\n');
   return extra ? xml.replace('</urlset>', extra + '\n</urlset>') : xml;
 }
 async function robots(req) {
@@ -102,46 +115,78 @@ async function pingIndexNow(req, urls) {
 // İşletme sayfası: /t/<işletme>/
 // Web sitesi eklentisi etkin ve yayında ise işletmenin tam web sitesi
 async function liveSite(t) {
-  const s = await db.one('SELECT data, published, domain FROM biz_sites WHERE tenant_id=?', [t.id]); if (!s || !s.published) return null;
+  const s = await db.one('SELECT data, published, domain, updated FROM biz_sites WHERE tenant_id=?', [t.id]); if (!s || !s.published) return null;
   const on = async (p) => !!(await db.one("SELECT id FROM licenses WHERE tenant_id=? AND product=? AND status IN ('aktif','deneme') AND end>UTC_TIMESTAMP()", [t.id, p]));
   if (!(await on('eklenti-web'))) return null;
-  return { data: J(s.data, {}), domain: s.domain, orderable: await on('eklenti-siparis') };
+  const apps = (await db.q("SELECT product FROM licenses WHERE tenant_id=? AND status IN ('aktif','deneme') AND end>UTC_TIMESTAMP()", [t.id])).map((r) => r.product);
+  return { data: await dropSample(t.id, J(s.data, {})), domain: s.domain, updated: s.updated, apps, orderable: apps.includes('eklenti-siparis') };
 }
+// Programın "örnek veri" ile başlayan kaydından içe aktarılmış ürünler yayınlanmaz (örnek veriler temizlenince bu denetim boşa düşer)
+async function dropSample(tid, data) {
+  if (!Array.isArray(data.products) || !data.products.length) return data;
+  const rows = await db.q("SELECT data FROM app_data WHERE tenant_id=? AND app IN ('pos','butik','eticaret','toptan','eczane') AND data LIKE '%\"sample\":true%'", [tid]).catch(() => []);
+  const names = new Set(); rows.forEach((r) => { const d = J(r.data, {}); if (d._meta && d._meta.sample) (d.products || d.urunler || []).forEach((p) => p && p.name && names.add(String(p.name).slice(0, 120))); });
+  return names.size ? { ...data, products: data.products.filter((p) => !names.has(p.name)) } : data;
+}
+// İşletme sitesinin kanonik kök adresi: kendi alan adı varsa o, yoksa /t/<işletme>/
+const homeUrl = async (req, t, live) => (live.domain ? `https://${live.domain}/` : `${await base(req)}/t/${t.slug}/`);
+const sitemapXml = (urls, updated) => { const m = updated ? new Date(updated).toISOString().slice(0, 10) : ''; return `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls.map((u) => `  <url><loc>${esc(u)}</loc>${m ? `<lastmod>${m}</lastmod>` : ''}</url>`).join('\n')}\n</urlset>\n`; };
+const siteCtx = (t, live, url) => ({ url, slug: t.slug, sector: t.sector, apps: live.apps, orderable: live.orderable, ref: `/?ref=${t.ref_code || ''}#/eklentiler` });
 // Google Haritalar gömülü haritası için yalnızca bu sayfalarda çerçeve izni
 const SITE_CSP = "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com data:; img-src 'self' data: https:; connect-src 'self'; frame-src https://www.google.com https://maps.google.com; frame-ancestors 'self'; form-action 'self'; base-uri 'self'; object-src 'none'";
-async function siteHtml(req, t, live, url) { const s = await settings(); return bizsite.render(live.data, { url, slug: t.slug, orderable: live.orderable, ref: `/?ref=${t.ref_code || ''}#/eklentiler` }); }
+const siteHtml = (t, live, url) => bizsite.render(live.data, siteCtx(t, live, url));
 // Özel alan adı: Host başlığı bir işletmenin alan adıysa o işletmenin sitesi sunulur
 const domCache = new Map();
 async function domainSite(req, p) {
   if (!db.ready()) return null; const host = String(req.headers.host || '').toLowerCase().replace(/:\d+$/, ''); if (!host || !/^[a-z0-9.-]+$/.test(host)) return null;
-  let hit = domCache.get(host); if (!hit || Date.now() - hit.at > 60e3) { const r = await db.one("SELECT t.id, t.name, t.slug, t.ref_code FROM biz_sites b JOIN tenants t ON t.id=b.tenant_id WHERE (b.domain=? OR b.domain=?) AND t.status='active'", [host, host.replace(/^www\./, '')]); hit = { at: Date.now(), t: r || null }; domCache.set(host, hit); }
+  const own = await settings(); let own0 = ''; try { own0 = new URL(own.siteUrl).hostname.toLowerCase(); } catch (e) { /* ayar yok */ }
+  if (own0 && host.replace(/^www\./, '') === own0.replace(/^www\./, '')) return null; // platformun kendi adresi hiçbir işletmeye ait olamaz
+  let hit = domCache.get(host); if (!hit || Date.now() - hit.at > 60e3) { if (domCache.size > 5000) domCache.clear(); const r = await db.one("SELECT t.id, t.name, t.slug, t.sector, t.ref_code FROM biz_sites b JOIN tenants t ON t.id=b.tenant_id WHERE (b.domain=? OR b.domain=?) AND t.status='active'", [host, host.replace(/^www\./, '')]); hit = { at: Date.now(), t: r || null }; domCache.set(host, hit); }
   if (!hit.t) return null; const live = await liveSite(hit.t); if (!live) return null;
-  const B = (req.headers['x-forwarded-proto'] === 'https' || req.socket.encrypted ? 'https://' : 'http://') + req.headers.host;
-  if (p === '/' || p === '/index.html') return { type: 'text/html; charset=utf-8', csp: SITE_CSP, body: await siteHtml(req, hit.t, live, B + '/') };
-  if (p === '/sitemap.xml') return { type: 'application/xml; charset=utf-8', body: `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"><url><loc>${B}/</loc></url></urlset>\n` };
-  if (p === '/robots.txt') return { type: 'text/plain; charset=utf-8', body: `User-agent: *\nAllow: /\nSitemap: ${B}/sitemap.xml\n` };
+  // Kanonik adres sabittir: alan adı Host başlığından türetilmez, www'lu/www'suz çift adres oluşmaz
+  const B = `https://${live.domain}`; if (live.domain !== host) return { redirect: `${B}${p}` };
+  const sm = /^\/hizmet\/([a-z0-9-]{1,80})\/?$/.exec(p);
+  if (sm) { if (!p.endsWith('/')) return { redirect: `${B}${p}/` }; const body = bizsite.renderService(live.data, sm[1], siteCtx(hit.t, live, B + '/')); return body ? { type: 'text/html; charset=utf-8', csp: SITE_CSP, body } : null; }
+  if (p === '/' || p === '/index.html') return { type: 'text/html; charset=utf-8', csp: SITE_CSP, body: siteHtml(hit.t, live, B + '/') };
+  if (p === '/sitemap.xml') return { type: 'application/xml; charset=utf-8', body: sitemapXml(bizsite.sitemapUrls(live.data, siteCtx(hit.t, live, B + '/')), live.updated) };
+  if (p === '/robots.txt') return { type: 'text/plain; charset=utf-8', body: `User-agent: *\nAllow: /\nDisallow: /api/\nDisallow: /admin/\nDisallow: /apps/\nSitemap: ${B}/sitemap.xml\n` };
   return null;
 }
+const SLUG = /^[a-z0-9-]{1,80}$/;
+const tenantOf = (slug) => db.one("SELECT id, name, slug, sector, ref_code FROM tenants WHERE slug=? AND status='active'", [slug]);
+// Hizmet/ürün sayfası: /t/<işletme>/hizmet/<slug>/ (yayında olmayan sitede yoktur)
+async function tenantService(req, slug, svc) {
+  if (!db.ready() || !SLUG.test(slug) || !SLUG.test(svc)) return null; const t = await tenantOf(slug); if (!t) return null;
+  const live = await liveSite(t).catch(() => null); if (!live) return null;
+  const html = bizsite.renderService(live.data, svc, siteCtx(t, live, await homeUrl(req, t, live))); return html ? { html, csp: SITE_CSP } : null;
+}
+// İşletme site haritası: dizine açık ana sayfa + açıklamalı hizmet sayfaları. Kendi alan adı varsa harita oradadır.
+async function tenantUrls(req, slug) {
+  if (!db.ready() || !SLUG.test(slug)) return null; const t = await tenantOf(slug); if (!t) return null;
+  const live = await liveSite(t).catch(() => null); if (!live) return { urls: [], updated: null, home: null };
+  const home = await homeUrl(req, t, live); return { urls: bizsite.sitemapUrls(live.data, siteCtx(t, live, home)), updated: live.updated, home, domain: live.domain || null };
+}
+async function tenantSitemap(req, slug) { const r = await tenantUrls(req, slug); if (!r) return null; if (r.domain) return { redirect: `${r.home}sitemap.xml` }; return { body: sitemapXml(r.urls, r.updated) }; }
+// Sitesi yayında olmayan işletmenin yalın sayfası: içerik zayıftır, noindex. Kayıt bilgileri (telefon, adres) burada gösterilmez:
+// kayıt telefonu işletme sahibinin kişisel numarası olabilir; yayınlanacak bilgi Web sitem ekranından bilerek girilir.
 async function tenantPage(req, slug) {
-  if (!db.ready() || !/^[a-z0-9-]{1,80}$/.test(slug)) return null;
-  const t = await db.one("SELECT id, name, slug, phone, address, city, sector, ref_code FROM tenants WHERE slug=? AND status='active'", [slug]);
+  if (!db.ready() || !SLUG.test(slug)) return null;
+  const t = await tenantOf(slug);
   if (!t) return null;
   const live = await liveSite(t).catch(() => null);
-  if (live) { const B0 = await base(req); return { html: await siteHtml(req, t, live, live.domain ? `https://${live.domain}/` : `${B0}/t/${t.slug}/`), csp: SITE_CSP }; }
+  if (live) return { html: siteHtml(t, live, await homeUrl(req, t, live)), csp: SITE_CSP };
   const pt = (await publicTenants()).find((x) => x.slug === slug);
   const apps = pt ? pt.apps : [];
   const B = await base(req); const s = await settings(); const brand = s.siteName || 'NEBSOFT';
   const url = `${B}/t/${t.slug}/`;
-  const title = `${t.name}${t.city ? ' · ' + t.city : ''} — Online hizmetler`;
-  const desc = `${t.name} online hizmetleri: ${apps.map((a) => PAGES[a][1]).join(', ') || 'iletişim bilgileri'}.${t.phone ? ' Telefon: ' + t.phone + '.' : ''}`;
-  const schema = { '@context': 'https://schema.org', '@type': 'LocalBusiness', name: t.name, url, telephone: t.phone || undefined, address: t.address || t.city ? { '@type': 'PostalAddress', streetAddress: t.address || undefined, addressLocality: t.city || undefined, addressCountry: 'TR' } : undefined };
+  const title = `${t.name} — Online hizmetler`;
+  const desc = `${t.name} online hizmetleri${apps.length ? ': ' + apps.map((a) => PAGES[a][1]).join(', ') : ''}.`;
   const firstApp = apps[0] || 'pos';
   return `<!doctype html>
 <html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>${esc(title)}</title><meta name="description" content="${esc(desc)}"><link rel="canonical" href="${esc(url)}">
+<title>${esc(title)}</title><meta name="description" content="${esc(desc)}"><meta name="robots" content="noindex,follow"><link rel="canonical" href="${esc(url)}">
 <meta property="og:type" content="website"><meta property="og:title" content="${esc(title)}"><meta property="og:description" content="${esc(desc)}"><meta property="og:url" content="${esc(url)}">
 <link rel="icon" href="/assets/favicon.svg" type="image/svg+xml">
-<script type="application/ld+json">${JSON.stringify(schema).replace(/</g, '\\u003c')}</script>
 <style>
 :root{color-scheme:light dark;--bg:#f6f7f9;--card:#fff;--t:#0f172a;--m:#64748b;--b:#e2e8f0;--a:#1d7bf5}
 @media (prefers-color-scheme:dark){:root{--bg:#0b1220;--card:#111a2e;--t:#e5e7eb;--m:#94a3b8;--b:#1f2a44}}
@@ -152,8 +197,6 @@ a.c:hover{border-color:var(--a)}a.c span{color:var(--a)}.k{display:flex;flex-wra
 .p{margin-top:56px;padding-top:18px;border-top:1px solid var(--b);font-size:13px;color:var(--m)}.p a{color:var(--a)}
 </style></head><body><main class="w">
 <h1>${esc(t.name)}</h1>
-<div class="m">${esc([t.address, t.city].filter(Boolean).join(', '))}</div>
-<div class="k">${t.phone ? `<a href="tel:${esc(String(t.phone).replace(/[^\d+]/g, ''))}">${esc(t.phone)}</a>` : ''}${t.address || t.city ? `<a target="_blank" rel="noopener" href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent([t.name, t.address, t.city].filter(Boolean).join(' '))}">Yol tarifi</a>` : ''}</div>
 <div class="g">${apps.map((a) => `<a class="c" href="/t/${t.slug}/apps/${a}/${PAGES[a][0]}">${esc(PAGES[a][1])}<span>→</span></a>`).join('') || '<p class="m">Online hizmetler yakında burada.</p>'}</div>
 <p class="p">Bu sayfa <a href="/?ref=${esc(t.ref_code)}#/urun/${firstApp}">${esc(brand)}</a> ile hazırlandı. İşletmeniz için <a href="/?ref=${esc(t.ref_code)}#/urunler">${Number(s.trialDays) || 7} gün ücretsiz deneyin</a>.</p>
 </main></body></html>`;
@@ -163,4 +206,26 @@ a.c:hover{border-color:var(--a)}a.c span{color:var(--a)}.k{display:flex;flex-wra
 R.push({ method: 'POST', re: /^\/api\/admin\/seo\/ping$/, opt: { auth: 'admin', cloudOnly: true, limit: ['seo', 10, 3600e3] }, fn: async (c) => pingIndexNow(c.req) });
 R.push({ method: 'GET', re: /^\/api\/admin\/seo$/, opt: { auth: 'admin', cloudOnly: true }, fn: async (c) => ({ ok: true, base: await base(c.req), tenants: (await publicTenants()).length, key: await indexnowKey() }) });
 
-module.exports = { base, rewrite, sitemap, robots, indexnowKey, pingIndexNow, tenantPage, domainSite, SITE_CSP, publicTenants, PAGES, PLACEHOLDER };
+// Web sitem → arama hazırlığı: yayındaki sayfa gerçekten üretilip okunur; sonuç tahmin değildir.
+// Alan adı sınaması: https://<alan>/robots.txt bu sunucunun ürettiği Sitemap satırını döndürüyorsa bağlıdır.
+async function domainProbe(domain) {
+  const u = `https://${domain}/robots.txt`;
+  if (!(await sec.publicUrl(u))) return { ok: false, error: 'Alan adı DNS’te bulunamadı veya dış adrese çözülmüyor.' };
+  try {
+    const r = await fetch(u, { redirect: 'manual', signal: AbortSignal.timeout(6000) }); const x = r.status === 200 ? (await r.text()).slice(0, 2000) : '';
+    if (x.includes(`Sitemap: https://${domain}/sitemap.xml`)) return { ok: true };
+    return { ok: false, error: `Alan adı yanıt verdi (HTTP ${r.status}) ama bu siteye yönlenmiyor. DNS kaydını kontrol edin.` };
+  } catch (e) { return { ok: false, error: 'https ile bağlanılamadı: DNS kaydı veya SSL sertifikası eksik olabilir.' }; }
+}
+R.push({ method: 'GET', re: /^\/api\/websitem\/hazirlik$/, opt: { auth: 'user', limit: ['wsh', 60, 3600e3] }, fn: async (c) => {
+  if (!c.user.tenant_id) return { ok: false, error: 'İşletme hesabı gerekli' };
+  const t = await db.one('SELECT id, name, slug, sector, ref_code FROM tenants WHERE id=?', [c.user.tenant_id]); const row = await db.one('SELECT domain FROM biz_sites WHERE tenant_id=?', [t.id]);
+  const lic = (await db.q("SELECT product FROM licenses WHERE tenant_id=? AND status IN ('aktif','deneme') AND end>UTC_TIMESTAMP()", [t.id])).map((r) => r.product);
+  const live = await liveSite(t); const out = { ok: true, sector: t.sector || '', apps: lic, live: null };
+  if (live) { const url = await homeUrl(c.req, t, live); const ctx = siteCtx(t, live, url); const html = bizsite.render(live.data, ctx); const chk = bizsite.seoCheck(live.data, ctx); const urls = bizsite.sitemapUrls(live.data, ctx);
+    out.live = { index: /<meta name="robots" content="index,follow">/.test(html), reasons: chk.reasons, url, sitemap: `${url}sitemap.xml`, urls: urls.length }; }
+  if (row && row.domain) { const d = await domainProbe(row.domain); out.live = { ...(out.live || {}), domain: d }; }
+  return out;
+} });
+
+module.exports = { base, rewrite, sitemap, robots, indexnowKey, pingIndexNow, tenantPage, tenantService, tenantSitemap, tenantUrls, domainSite, SITE_CSP, publicTenants, PAGES, PLACEHOLDER };

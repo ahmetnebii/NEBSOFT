@@ -14,7 +14,7 @@ Bu rehber, sistemi gerçek müşterilere satışa açmak için sunucuya kurmayı
 - `server.js`: web sitesi, satış sayfası (pazar), 31 uygulama, yönetim paneli (`/admin/`) ve bulut API'si.
 - Veritabanı bağlantı bilgileri **yönetim panelinden** girilir ve diskte **AES-256-GCM ile şifreli** saklanır (`data/config.enc`).
 - Her işletmenin uygulama verisi MySQL'de tutulur. İşletmenin müşterilerine açık sayfaları `/t/<işletme>/` altında çalışır.
-- Ödeme yöntemi **havale/EFT**dir. Müşteri sipariş verir, admin panelinde **"Ödendi"** dendiğinde lisans açılır.
+- Ödeme yöntemi **havale/EFT**dir. Müşteri sipariş verir, admin panelinde **"Ödendi"** dendiğinde lisans açılır. İsteğe bağlı **Shopier** ile kart ödemesi için bkz. `docs/SHOPIER-DOGRULAMA.md`.
 - Her ürün **7 gün ücretsiz** denenir. Süre, panelde Site Ayarları'ndan değiştirilebilir.
 
 ## 2. Sunucu hazırlığı
@@ -150,7 +150,8 @@ Bu noktadan sonra tüm uygulamalar, satış sitesi ve müşteri sayfaları bu My
 - **Kuponlar** (isteğe bağlı) ve **Yöneticiler**: personeliniz için ayrı hesaplar açın, ortak şifre kullanmayın.
 - **Arama motorları:**
   - Ayarlar sayfasındaki **"Arama motorlarına bildir"** düğmesine basın (IndexNow: Bing, Yandex vb.).
-  - Google Search Console'a `https://www.alanadiniz.com/sitemap.xml` adresini bir kez ekleyin.
+  - Google Search Console'da HTML etiketi yöntemini seçin, kodu **Site Ayarları → Google Search Console doğrulama kodu** alanına yapıştırıp kaydedin, sonra `https://www.alanadiniz.com/sitemap.xml` adresini bir kez ekleyin.
+  - Yeni sayfa kuralları: `docs/SEO-KURALLARI.md`. Metin değişince `node site/tools/build-sites.js`, görsel değişince önce `node site/tools/kucult.js` çalıştırılır.
 - Yasal metinler (KVKK, mesafeli satış, iade) **örnek şablondur**. Yayından önce hukukçunuza onaylatın.
 
 ### Satış akışı
@@ -163,8 +164,9 @@ Bu noktadan sonra tüm uygulamalar, satış sitesi ve müşteri sayfaları bu My
 ### Sistemin kendini pazarlaması
 
 - Her işletmenin `/t/<işletme>/` sayfası (online randevu, takip, portal bağlantıları) site haritasına **otomatik** eklenir.
+- İşletme sitesi yayında ve içeriği yeterliyse dizine açıktır; `/t/<işletme>/hizmet/<slug>/` hizmet sayfaları ve `/t/<işletme>/sitemap.xml` sunucuda üretilir (kendi alan adında `/hizmet/<slug>/`, `/sitemap.xml`, `/robots.txt`). Sitesi yayında olmayan işletmenin yalın sayfası `noindex`tir ve kayıt telefonu/adresi göstermez.
 - Müşteri sayfalarının altında, işletmenin tavsiye koduyla **"NEBSOFT ile hazırlandı · 7 gün ücretsiz deneyin"** bağlantısı bulunur. Bu bağlantıdan kayıt olan her işletme tavsiye programına girer.
-- 31 ürün tanıtım sitesi (`/randevusistemi`, `/adisyonprogrami` …) ve `/programlar` merkez sayfası şema (SoftwareApplication, FAQ, Organization) içerir.
+- 31 ürün tanıtım sitesi (`/randevusistemi`, `/adisyonprogrami` …), `/programlar`, `/fiyatlar/`, yasal metinler (`/kvkk/`, `/gizlilik/`, `/mesafeli-satis/`, `/iade/`, `/cerez/`) ve `/rehber/` sunucudan tam HTML döner, şema içerir.
 
 ## 9. Yedekleme
 
@@ -209,10 +211,18 @@ Sistemde yerleşik olan korumalar:
 
 ## 12. Bilmeniz gerekenler (sınırlar)
 
-- **Kartla ödeme yoktur.** Satış havale/EFT ile yapılır. İşletmelerin müşteri sayfalarında kart formları bulutta kapalıdır. Ödeme işletmeye elden, kapıda veya havale ile yapılır; online bilet satışları **"ödeme bekliyor"** rezervasyonu olarak oluşur.
+- **Kart bilgisi bu sistemde alınmaz.** Satış havale/EFT ile yapılır; panelden (Kartla Ödeme) Shopier anahtarı girilip gerçek hesapla denendikten sonra müşteri Shopier'in kendi ödeme sayfasında da ödeyebilir. İşletmelerin müşteri sayfalarında kart formları bulutta kapalıdır. Ödeme işletmeye elden, kapıda veya havale ile yapılır; online bilet satışları **"ödeme bekliyor"** rezervasyonu olarak oluşur.
 - **SMS / e-posta gönderimi**, uygulamalarda Entegrasyon Merkezi'nden bir SMS sağlayıcısı (Netgsm, İleti Merkezi vb.) bağlanana kadar yalnızca kayda geçer, gerçekten gönderilmez.
 - e-Fatura/e-Arşiv, MEDULA/İTS, KBS ve pazaryeri entegrasyonları için ilgili entegratör sözleşmesi ve API bilgileri gerekir.
-- Yerel donanım (fiş yazıcısı, POS cihazı, terazi) bulut sunucusundan değil, işletmedeki bilgisayarda çalışan yerel köprüden (`node server.js`, veritabanısız mod) kullanılır.
+- Yerel donanım (fiş yazıcısı, POS cihazı, terazi) bulut sunucusundan değil, işletmedeki bilgisayarda çalışan yerel köprüden (`node server.js`, veritabanısız mod) kullanılır. Veritabanı yapılandırılmış sunucuda ve `TRUST_PROXY=1` iken köprü uçları kapalıdır (403); yerel köprü de yalnızca aynı bilgisayardan ve aynı kaynaktan gelen isteği kabul eder.
+
+## Günlükler ve ziyaret analitiği
+
+- Uygulama günlüğü standart çıktıya tek satır JSON yazılır (`journalctl -u nebsoft -o cat | jq`). Uyarı ve hatalar ayrıca panelde **Analitik → Hata & Yavaşlık** sayfasındadır. Müşteriye gösterilen istek kodu ile kayıt bulunur.
+- Ziyaret analitiği birinci taraftır, çerez ve dış servis kullanmaz. Tanıtım sayfalarına `core/olay.js` sunucu tarafından eklenir, rıza bandını o gösterir. Panelden kapatılabilir.
+- Saklama süreleri ve alarm eşikleri aynı sayfadadır. Varsayılanlar **avukatla netleştirilecektir**. Şema, maskeleme kuralları ve açık sorular: `docs/LOG-YAPISI.md`.
+- nginx erişim günlüğü ham IP tutar ve bu ayarların dışındadır. Süresini `logrotate` ile sınırlayın. `/api/olay` için nginx `limit_req` önerilir.
+- Tek süreç kuralı burada da geçerlidir: sayaçlar ve alarm penceresi bellektedir. Düzgün kapanmada tampon veritabanına yazılır, ani kapanmada son 10 saniyelik sayaçlar kaybolur.
 
 ## 13. Testler
 

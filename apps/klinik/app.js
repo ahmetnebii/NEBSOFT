@@ -51,6 +51,7 @@
   const myDoc = () => (NS.currentUser && NS.currentUser.role === 'hekim' ? NS.currentUser.doctor : null);
   // Muayene notu, tanı ve reçete yalnızca hekimlere görünür (sağlık verisi — sekreter görmez)
   const clinical = () => !NS.currentUser || NS.currentUser.role !== 'sekreter';
+  const KV = { col: 'patients', link: 'patient' }; // kişi bazında dışa aktarma ve anonimleştirme planı
   const ASTAT = { bekliyor: ['Bekleniyor', 'info'], geldi: ['Geldi', 'ok'], gelmedi: ['Gelmedi', 'err'], iptal: ['İptal', ''] };
   const aBadge = (s) => badge((ASTAT[s] || [s])[0], (ASTAT[s] || [0, 'info'])[1]);
   // Resmî sistem / e-belge sonucu: yalnızca gerçek başarı kalıcı kayıt bırakır; simülasyon TEST olarak bildirilir
@@ -77,12 +78,12 @@
     const toothState = (n) => { if ((p.missing || []).includes(n)) return 'missing'; const ps = plans.filter((x) => x.tooth === n); if (!ps.length) return ''; return ps.some((x) => x.status === 'planned') ? 'planned' : 'done'; };
     const toothLabel = (n) => { const ps = plans.filter((x) => x.tooth === n); return ps.length ? trt(ps[ps.length - 1].treatment).name.split(' ')[0] : ''; };
     const jaw = (arr, low) => `<div class="jaw">${arr.map((n) => `<div class="tooth ${low ? 'low' : ''} ${toothState(n)}" data-tooth="${n}">${n}<span class="tt">${esc(toothLabel(n))}</span></div>`).join('')}</div>`;
-    const bal = balance(id);
+    const bal = balance(id); if (NS.kvkk) NS.kvkk.viewed(db, 'Hasta kartı', p);
     const apps = db.all('appts', (a) => a.patient === id).sort((a, b) => (b.date + b.time).localeCompare(a.date + a.time));
     el.innerHTML = `<div class="row mb"><a class="btn" href="#/hastalar">${icon('back')} Hastalar</a></div>
       <div class="card pad mb row pt-head"><div class="avatar lg" style="width:60px;height:60px;font-size:20px">${esc(NS.initials(p.name))}</div><div class="grow"><h1>${esc(p.name)}</h1><div class="muted">Dosya #${esc(p.no)} · ${age(p)} yaş · ${p.gender === 'K' ? 'Kadın' : 'Erkek'} · ${esc(p.blood || '')} · ${esc(p.phone)}</div>
-        <div class="row mt gap-s">${(p.anamnez || []).map((a) => badge(a, 'err')).join('') || badge('Anamnezde risk yok', 'ok')}</div>
-        <div class="row mt gap-s">${p.kvkk ? badge('KVKK onamı ' + NS.date(p.kvkk.at), 'ok') : `<button class="btn sm" data-x="kvkk" style="color:var(--warn)">${icon('alert')} KVKK onamı al</button>`} ${p.kps ? badge('Kimlik doğrulandı', 'ok') : `<button class="btn sm" data-x="kps">${icon('shield')} Kimlik doğrula (KPS)</button>`} ${p.enabizAt ? badge('e-Nabız: ' + NS.date(p.enabizAt), 'info') : ''}</div></div>
+        <div class="row mt gap-s">${!clinical() ? badge('Anamnez yalnızca hekime açık', '') : (p.anamnez || []).map((a) => badge(a, 'err')).join('') || badge('Anamnezde risk yok', 'ok')}</div>
+        <div class="row mt gap-s">${p.kvkk ? badge('KVKK onamı ' + NS.date(p.kvkk.at), 'ok') : `<button class="btn sm" data-x="kvkk" style="color:var(--warn)">${icon('alert')} KVKK onamı al</button>`} ${p.kps ? badge('Kimlik doğrulandı', 'ok') : `<button class="btn sm" data-x="kps">${icon('shield')} Kimlik doğrula (KPS)</button>`} ${p.enabizAt ? badge('e-Nabız: ' + NS.date(p.enabizAt), 'info') : ''}${NS.kvkk && app.can('admin') ? ` <button class="btn sm" data-x="kvexp">${icon('download')} Verisini dışa aktar</button> <button class="btn sm" data-x="kvanon">${icon('shield')} Anonimleştir</button>` : ''}</div></div>
         <div class="col" style="flex:none;min-width:190px"><button class="btn primary" data-x="appt">${icon('calendar')} Randevu ver</button><button class="btn" data-x="anam">${icon('heart')} Anamnez</button><button class="btn" data-x="rx">${icon('pill')} Reçete</button><button class="btn" data-x="enb">${icon('send')} e-Nabız’a gönder</button></div></div>
       <div class="grid g4 mb">${kpi('Planlanan tedavi', money(planTotal(id, 'planned')), 'clock', 'warn')}${kpi('Yapılan tedavi', money(planTotal(id, 'done')), 'check', 'ok')}${kpi('Ödenen', money(sum(db.all('payments', (x) => x.patient === id), (x) => x.amount)), 'wallet', 'info')}${kpi('Bakiye', money(bal), 'alert', bal > 0 ? 'err' : 'ok')}</div>
       <div class="card mb"><div class="card-h"><h3>${icon('tooth')} Diş şeması ve tedavi planı</h3><span class="small muted">Dişe tıklayarak tedavi ekleyin</span><span class="grow"></span>${badge('Planlandı', 'warn')} ${badge('Yapıldı', 'ok')} <span class="badge">Eksik diş</span><button class="btn sm" data-x="gen">${icon('plus')} Genel tedavi</button></div>
@@ -116,8 +117,10 @@
         if (v.print) NS.printHtml(`<div class="doc" style="max-width:600px"><h2>${esc(S().bizName)}</h2><h3>TAHSİLAT MAKBUZU</h3><p>${NS.dt(pay.at)}</p><p>Sayın <b>${esc(p.name)}</b>, ${money(v.amount)} (${esc(pay.type)}) tahsil edilmiştir.</p>${pay.ebelge ? `<p>${esc(pay.ebelge)}</p>` : ''}<p>Kalan bakiye: ${money(balance(id))}</p><p style="margin-top:40px;text-align:right">Kaşe / imza</p></div>`, { title: 'Makbuz' });
         re();
       }
-      else if (x === 'note') { const v = await formModal({ title: 'Muayene notu', fields: [{ name: 'text', label: 'Bulgular / yapılan işlem', type: 'textarea', required: true, full: true }, { name: 'icd', label: 'Tanı (ICD-10 kodu)', placeholder: 'K04.4' }, { name: 'doctor', label: 'Hekim', type: 'select', options: db.all('doctors').map((d) => ({ value: d.id, label: d.name })), value: myDoc() || 'd1' }, { name: 'enabiz', label: 'e-Nabız’a gönder', type: 'checkbox', value: NS.integ && NS.integ.isOn('enabiz') }] }); if (v) { const send = v.enabiz; delete v.enabiz; const vis = db.insert('visits', { ...v, patient: id, at: new Date().toISOString() }); if (send && NS.integ) { const r = await NS.integ.call('enabiz', 'muayene', { tc: p.tc, name: p.name, icd: v.icd, text: v.text, doctor: doc(v.doctor).name, at: vis.at }); if (realOk(r, 'e-Nabız')) { vis.enabiz = r.ref; p.enabizAt = new Date().toISOString(); db.save(); } } re(); } }
-      else if ((x === 'note' || x === 'rx' || x === 'enb') && !clinical()) toast('Bu işlem yalnızca hekimlere açıktır', 'err');
+      else if (x === 'kvexp') NS.kvkk.exportPerson(app, KV, p);
+      else if (x === 'kvanon') { if (await NS.kvkk.anonymize(app, KV, p)) app.go('hastalar'); }
+      else if (x === 'note' && clinical()) { const v = await formModal({ title: 'Muayene notu', fields: [{ name: 'text', label: 'Bulgular / yapılan işlem', type: 'textarea', required: true, full: true }, { name: 'icd', label: 'Tanı (ICD-10 kodu)', placeholder: 'K04.4' }, { name: 'doctor', label: 'Hekim', type: 'select', options: db.all('doctors').map((d) => ({ value: d.id, label: d.name })), value: myDoc() || 'd1' }, { name: 'enabiz', label: 'e-Nabız’a gönder', type: 'checkbox', value: NS.integ && NS.integ.isOn('enabiz') }] }); if (v) { const send = v.enabiz; delete v.enabiz; const vis = db.insert('visits', { ...v, patient: id, at: new Date().toISOString() }); if (send && NS.integ) { const r = await NS.integ.call('enabiz', 'muayene', { tc: p.tc, name: p.name, icd: v.icd, text: v.text, doctor: doc(v.doctor).name, at: vis.at }); if (realOk(r, 'e-Nabız')) { vis.enabiz = r.ref; p.enabizAt = new Date().toISOString(); db.save(); } } re(); } }
+      else if ((x === 'note' || x === 'rx' || x === 'enb' || x === 'anam') && !clinical()) toast('Bu işlem yalnızca hekimlere açıktır', 'err');
       else if (x === 'kvkk') {
         if (!S().kvkkText) return toast('Önce Ayarlar > KVKK onam metnini girin (metni kliniğiniz hazırlar)', 'err');
         const sg = await NS.sign({ title: 'KVKK aydınlatma ve açık rıza — hasta imzası', label: 'Hasta (veya veli) adı soyadı', name: p.name, text: S().kvkkText });
@@ -190,6 +193,7 @@
         if (await confirm(`${x.name} hastasının tedavi / ödeme / randevu kayıtları var; silinemez. Pasif yapılsın mı? (Kayıtlar korunur, listede "Pasif" filtresinde görünür.)`, { ok: 'Pasif yap', danger: false })) { x.passive = true; db.log('Hasta pasif yapıldı', x.name); db.save(); app.refresh(); toast('Hasta pasif yapıldı (silinmedi)', 'ok'); }
         return null;
       },
+      exportRoles: ['admin'], canDelete: () => app.can('admin') || 'Hasta kaydını yalnızca yönetici silebilir',
       col: 'patients', title: 'Hastalar', sub: 'Hasta dosyaları, bakiyeler ve risk uyarıları', single: 'Hasta', addLabel: 'Yeni hasta', emptyIcon: 'users', fields: PF,
       beforeSave: (v, rec) => { if (!rec) { v.no = String(20000 + db.all('patients').length + rand(100, 999)); v.anamnez = []; v.missing = []; } },
       onSave: (v, rec) => { if (!rec) { const n = db.all('patients').slice(-1)[0]; app.go('hasta', n.id); } },

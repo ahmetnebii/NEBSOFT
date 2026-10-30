@@ -175,7 +175,7 @@
         });
         db.save(); toast('Yoklama kaydedildi', 'ok'); if (sms.length) NS.smsBatch(db, sms, 'devamsızlık bildirimi');
         // MEB e-Yaygın / MEBBİS devam bildirimi
-        if (NS.integ && NS.integ.isOn('meb')) NS.integ.call('meb', 'devam-bildirimi', { cls: cls(L.cls).name, subject: L.subject, date, time: L.time, teacher: tch(L.teacher).name, list: db.all('attendance', (a) => a.lesson === L.id && a.date === date).map((a) => ({ tc: stu(a.student).tc, name: stu(a.student).name, st: a.st })) }, { silent: true }).then((r) => { if (r) toast(r.ok ? 'Devam bilgisi MEB sistemine iletildi' : 'MEB bildirimi gönderilemedi', r.ok ? 'ok' : 'err'); });
+        if (NS.integ && NS.integ.isOn('meb')) NS.integ.call('meb', 'devam-bildirimi', { cls: cls(L.cls).name, subject: L.subject, date, time: L.time, teacher: tch(L.teacher).name, list: db.all('attendance', (a) => a.lesson === L.id && a.date === date).map((a) => ({ tc: stu(a.student).tc, name: stu(a.student).name, st: a.st })) }, { silent: true }).then((r) => { if (r) toast(r.simulated ? 'TEST — devam bilgisi MEB sistemine gönderilmedi (simülasyon)' : r.ok ? 'Devam bilgisi MEB sistemine iletildi' : 'MEB bildirimi gönderilemedi', r.simulated ? 'warn' : r.ok ? 'ok' : 'err'); });
       };
       if (!$('#ol', el)) $('#sv', el).insertAdjacentHTML('beforebegin', `<button class="btn sm" id="ol">${icon('play')} Online ders</button>`);
       $('#ol', el).onclick = async () => {

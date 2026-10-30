@@ -15,10 +15,13 @@ const fs = require('fs');
 const net = require('net');
 const path = require('path');
 const crypto = require('crypto');
+const zlib = require('zlib');
 const kanal = require('./server/connectors');
 const proto = require('./server/bridge-proto');
 const cloud = require('./server/cloud');
 const sec = require('./server/cloud/security');
+const log = require('./server/cloud/log');
+const cfg = require('./server/cloud/config');
 
 const ROOT = __dirname;
 const PORT = Number(process.env.PORT) || 5050;
@@ -34,8 +37,6 @@ const readBody = (req) => new Promise((resolve, reject) => {
   req.on('data', (c) => { size += c.length; if (size > 5e6) { reject(new Error('İstek çok büyük')); req.destroy(); } else chunks.push(c); });
   req.on('end', () => { try { resolve(JSON.parse(Buffer.concat(chunks).toString('utf8') || '{}')); } catch (e) { reject(new Error('Geçersiz JSON')); } });
 });
-// Köprü yalnızca bu bilgisayardan kullanılabilir
-const isLocal = (req) => ['127.0.0.1', '::1', '::ffff:127.0.0.1'].includes(req.socket.remoteAddress);
 
 async function api(req, res, p) {
   // Pazaryeri bildirimleri dışarıdan gelir; belirteçle korunur
@@ -44,7 +45,8 @@ async function api(req, res, p) {
     const r = kanal.pushIn(p.slice('/api/webhook/'.length).replace(/\/$/, ''), new URL(req.url, 'http://x').searchParams.get('token') || req.headers['x-nebsoft-token'], body);
     return json(res, r.code, r.body);
   }
-  if (!isLocal(req)) return json(res, 403, { ok: false, error: 'Köprü yalnızca yerel bilgisayardan kullanılabilir' });
+  // Köprü yalnızca bu bilgisayardan ve veritabanısız yerel kurulumda kullanılabilir (bulut sunucusunda hiç açılmaz; veritabanı geçici koptuğunda da)
+  if (sec.bridgeDenied(req, cloud.db.ready() || cfg.configured())) return json(res, 403, { ok: false, error: 'Köprü yalnızca yerel bilgisayardan kullanılabilir' });
   if (p === '/api/durum') return json(res, 200, { ok: true, version: '1.1', node: process.version, kanal: kanal.info() });
   if (p === '/api/kanal' && req.method === 'GET') return json(res, 200, { ok: true, ...kanal.info(), webhook: `/api/webhook/<kanal>?token=${kanal.token()}` });
   if (req.method !== 'POST') return json(res, 405, { ok: false, error: 'POST bekleniyor' });
@@ -107,27 +109,34 @@ async function api(req, res, p) {
   if (p === '/api/inbox') return json(res, 200, { ok: true, items: kanal.drain(String(b.channel || '')) });
 
   if (p === '/api/pos/satis') {
-    // Demo terminal: 1,5 sn sonra onaylar. 13,13 ₺ gibi ",13" ile biten tutarlar test için reddedilir.
+    // Test terminali: gerçek çekim yapmaz, sonuç her yerde TEST görünür. 1,5 sn sonra onaylar. 13,13 ₺ gibi ",13" ile biten tutarlar test için reddedilir.
     await new Promise((r) => setTimeout(r, 1500));
     const amount = Number(b.amount) || 0;
     if (Math.round(amount * 100) % 100 === 13) return json(res, 200, { ok: false, error: 'Kart reddedildi (demo: yetersiz bakiye)' });
-    return json(res, 200, { ok: true, ref: 'DEMO' + Date.now().toString().slice(-8), authCode: String(Math.floor(100000 + Math.random() * 899999)), card: '**** **** **** ' + String(Math.floor(1000 + Math.random() * 8999)) });
+    return json(res, 200, { ok: true, test: true, ref: 'TEST' + Date.now().toString().slice(-8), authCode: 'TEST', card: 'TEST kart' });
   }
   return json(res, 404, { ok: false, error: 'Bilinmeyen uç nokta' });
 }
 
 const SITES = new Set(fs.existsSync(path.join(ROOT, 'site')) ? fs.readdirSync(path.join(ROOT, 'site')).filter((d) => fs.existsSync(path.join(ROOT, 'site', d, 'index.html'))) : []);
 // Dışarıya asla sunulmayacak yollar (sunucu kodu, veriler, gizli dosyalar, araçlar)
-const DENY = /^\/(data|server|node_modules|site\/tools|site\/src|awesome-claude-design|docs|desktop|\.[^/]*)(\/|$)|^\/(package(-lock)?\.json|skills-lock\.json|baslat\.bat|DESIGN\.md|README\.md|DEPLOY\.md)$|\/\.[^/]+$/i;
+const DENY = /^\/(data|config|server|node_modules|site\/tools|site\/src|awesome-claude-design|docs|desktop|android|scripts|yayin|ic-araclar|\.[^/]*)(\/|$)|^\/(server\.js|sunucu\.json|package(-lock)?\.json|skills-lock\.json|baslat\.bat)$|\.(md|bat|sh|test\.js)$|\/\.[^/]+$/i;
 const LONG = /\.(jpg|jpeg|png|webp|svg|ico|woff2?)$/i;
+// Adresi sonda / ile biten statik sayfalar (program sayfaları ve /programlar eski biçimde kalır: sonda / yok)
+const SLASHED = new Set(['fiyatlar', 'kvkk', 'gizlilik', 'mesafeli-satis', 'iade', 'cerez', 'kayit', 'rehber']);
+const GZ = /^(text\/|application\/(json|xml|manifest\+json)|image\/svg)/; // sıkıştırılacak türler
+const canGz = (req, type, size) => size >= 1024 && GZ.test(type) && /\bgzip\b/.test(String(req.headers['accept-encoding'] || ''));
 
 function handle(req, res) {
   sec.headers(req, res);
   let p;
   try { p = decodeURIComponent(req.url.split('?')[0]); } catch (e) { res.writeHead(400); return res.end('Geçersiz adres'); }
   if (p.includes('\0')) { res.writeHead(400); return res.end('Geçersiz adres'); }
+  if (/[?&]demo=1(&|$)/.test(req.url)) res.setHeader('X-Robots-Tag', 'noindex, nofollow'); // demo verisi dizine girmez
+  // API dışındaki adreslerde ham ".." ve ters bölü kabul edilmez; nginx de isteği ham iletir (proxy_pass URI'siz)
+  if (!p.startsWith('/api/') && !sec.safePath(p)) { res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' }); return res.end('Bulunamadı'); }
   if (p.startsWith('/api/')) {
-    return cloud.handle(req, res, p).then((done) => { if (!done) return api(req, res, p); }).catch((e) => { console.error(e); json(res, 500, { ok: false, error: 'Beklenmeyen bir hata oluştu' }); });
+    return cloud.handle(req, res, p).then((done) => { if (!done) return api(req, res, p); }).catch((e) => { log.uygulama.hata('sunucu.istek', { hata: e }); json(res, 500, { ok: false, error: 'Beklenmeyen bir hata oluştu' }); });
   }
   if (!['GET', 'HEAD'].includes(req.method)) { res.writeHead(405, { Allow: 'GET, HEAD' }); return res.end(); }
   if (p === '/.well-known/assetlinks.json') { const f = path.join(ROOT, 'data', 'assetlinks.json'); return fs.readFile(f, 'utf8', (e, t) => { if (e) { res.writeHead(404); return res.end(); } sendText(req, res, t, 'application/json; charset=utf-8', 'public, max-age=3600'); }); }
@@ -147,7 +156,13 @@ function handle(req, res) {
       if (!tm[2]) { res.writeHead(301, { Location: `/t/${tm[1]}/` }); return res.end(); }
       return cloud.seo.tenantPage(req, tm[1]).then((r) => { const html = r && typeof r === 'object' ? r.html : r; if (r && r.csp) res.setHeader('Content-Security-Policy', r.csp); if (!html) { res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' }); return res.end('Bulunamadı'); } sendText(req, res, html, 'text/html; charset=utf-8', 'no-cache'); }).catch(() => { res.writeHead(500); res.end(); });
     }
+    // İşletme sitemap'i ve hizmet sayfaları sunucuda üretilir (ana sitemap'e düşmez)
+    const NF = () => { res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' }); res.end('Bulunamadı'); };
+    if (tm[2] === '/sitemap.xml') return cloud.seo.tenantSitemap(req, tm[1]).then((r) => { if (!r) return NF(); if (r.redirect) { res.writeHead(301, { Location: r.redirect }); return res.end(); } sendText(req, res, r.body, 'application/xml; charset=utf-8', 'public, max-age=3600'); }).catch(() => { res.writeHead(500); res.end(); });
+    const sv = /^\/hizmet\/([a-z0-9-]{1,80})(\/?)$/.exec(tm[2]);
+    if (sv) { if (!sv[2]) { res.writeHead(301, { Location: `/t/${tm[1]}${tm[2]}/` }); return res.end(); } return cloud.seo.tenantService(req, tm[1], sv[1]).then((r) => { if (!r) return NF(); res.setHeader('Content-Security-Policy', r.csp); sendText(req, res, r.html, 'text/html; charset=utf-8', 'no-cache'); }).catch(() => { res.writeHead(500); res.end(); }); }
     p = tm[2]; if (DENY.test(p)) { res.writeHead(404); return res.end(); }
+    if (/^\/apps\/[a-z0-9]+\/(index\.html)?$/.test(p)) res.setHeader('X-Robots-Tag', 'noindex'); // programın giriş ekranı arama sonucuna girmez
   }
   // PWA manifest: ?app=pos gibi programa özel ad, renk ve açılış adresi (ana ekrana eklenince doğrudan o program açılır)
   if (p === '/manifest.webmanifest') {
@@ -166,50 +181,63 @@ function handle(req, res) {
 // İşletmenin kendi alan adı (web sitesi eklentisi): kök sayfa, site haritası ve robots o işletmeye aittir; diğer her şey normal akar
 const server = http.createServer((req, res) => {
   const p0 = req.url.split('?')[0];
-  if (req.method === 'GET' && cloud.db.ready() && ['/', '/index.html', '/sitemap.xml', '/robots.txt'].includes(p0)) {
+  if (['GET', 'HEAD'].includes(req.method) && cloud.db.ready() && (['/', '/index.html', '/sitemap.xml', '/robots.txt'].includes(p0) || /^\/hizmet\/[a-z0-9-]{1,80}\/?$/.test(p0))) {
     sec.headers(req, res);
-    return cloud.seo.domainSite(req, p0).then((x) => { if (!x) return handle(req, res); if (x.csp) res.setHeader('Content-Security-Policy', x.csp); sendText(req, res, x.body, x.type, 'no-cache'); }).catch(() => handle(req, res));
+    return cloud.seo.domainSite(req, p0).then((x) => { if (!x) return handle(req, res); if (x.redirect) { res.writeHead(301, { Location: x.redirect }); return res.end(); } if (x.csp) res.setHeader('Content-Security-Policy', x.csp); sendText(req, res, x.body, x.type, 'no-cache'); }).catch(() => handle(req, res));
   }
   handle(req, res);
 });
 
 function sendText(req, res, text, type, cache) {
   const etag = `W/"${crypto.createHash('sha1').update(text).digest('base64url').slice(0, 20)}"`;
-  const h = { 'Content-Type': type, ETag: etag, 'Cache-Control': cache };
+  const h = { 'Content-Type': type, ETag: etag, 'Cache-Control': cache, Vary: 'Accept-Encoding' };
   if (req.headers['if-none-match'] === etag) { res.writeHead(304, h); return res.end(); }
-  res.writeHead(200, { ...h, 'Content-Length': Buffer.byteLength(text) }); res.end(req.method === 'HEAD' ? undefined : text);
+  const gz = canGz(req, type, Buffer.byteLength(text)) ? zlib.gzipSync(text) : null; const body = gz || text;
+  res.writeHead(200, { ...h, ...(gz ? { 'Content-Encoding': 'gzip' } : {}), 'Content-Length': Buffer.byteLength(body) }); res.end(req.method === 'HEAD' ? undefined : body);
 }
 
 // Statik dosyalar ve tanıtım siteleri
 function serve(req, res, p) {
   // Tanıtım siteleri: /randevusistemi → site/randevusistemi/index.html (görseller /randevusistemi/img/…)
   const seg = p.split('/')[1] || '';
-  if (/^[a-z0-9-]+$/.test(seg) && SITES.has(seg)) {
+  const q = req.url.includes('?') ? req.url.slice(req.url.indexOf('?')) : '';
+  // Aynı sayfanın /site/... kopyası ayrı adres olarak görünmesin
+  const dup = /^\/site\/([a-z0-9-]+)\/(?:([a-z0-9-]+)\/)?(index\.html)?$/.exec(p);
+  if (dup && SITES.has(dup[1]) && (!dup[2] || dup[1] === 'rehber')) { res.writeHead(301, { Location: `/${dup[1]}${dup[2] ? '/' + dup[2] : ''}${SLASHED.has(dup[1]) ? '/' : ''}${q}` }); return res.end(); }
+  if (SLASHED.has(seg) && SITES.has(seg)) {
+    if (p === '/' + seg || /^\/rehber\/[a-z0-9-]+$/.test(p)) { res.writeHead(301, { Location: p + '/' + q }); return res.end(); }
+    p = '/site' + p;
+  } else if (/^[a-z0-9-]+$/.test(seg) && SITES.has(seg)) {
     if (p === '/' + seg + '/') { res.writeHead(301, { Location: '/' + seg }); return res.end(); }
+    if (seg === 'araclar' && /^\/araclar\/[a-z0-9-]+$/.test(p)) { res.writeHead(301, { Location: p + '/' }); return res.end(); }
     p = '/site' + (p === '/' + seg ? p + '/index.html' : p);
   }
   if (p.endsWith('/')) p += 'index.html';
   const file = path.normalize(path.join(ROOT, p));
-  if (!file.startsWith(ROOT + path.sep)) { res.writeHead(403); return res.end('Yasak'); }
+  if (!file.startsWith(ROOT + path.sep) || DENY.test('/' + path.relative(ROOT, file).split(path.sep).join('/'))) { res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' }); return res.end('Bulunamadı'); }
   fs.stat(file, (e, st) => {
     if (e || !st.isFile()) { res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' }); return res.end('Bulunamadı'); }
     const ext = path.extname(file).toLowerCase();
     const etag = `W/"${st.size.toString(16)}-${Math.floor(st.mtimeMs).toString(16)}"`;
-    const h = { 'Content-Type': TYPES[ext] || 'application/octet-stream', ETag: etag, 'Cache-Control': ext === '.html' ? 'no-cache' : LONG.test(ext) ? 'public, max-age=604800' : 'public, max-age=300, must-revalidate' };
+    const type = TYPES[ext] || 'application/octet-stream'; const gz = canGz(req, type, st.size);
+    // Sürüm parametreli CSS (?v=<özet>) içerik değişince adresi de değiştiği için uzun süre önbellekte kalabilir
+    const cache = ext === '.html' ? 'no-cache' : ext === '.css' && /[?&]v=[0-9a-f]{6,}/.test(req.url) ? 'public, max-age=31536000, immutable' : LONG.test(ext) ? 'public, max-age=604800' : 'public, max-age=300, must-revalidate';
+    const h = { 'Content-Type': type, ETag: etag, 'Cache-Control': cache, ...(GZ.test(type) ? { Vary: 'Accept-Encoding' } : {}) };
     // Tanıtım sitelerinde alan adı yer tutucusu panel ayarındaki adresle değiştirilir
-    if (ext === '.html' && (p.startsWith('/site/') || p === '/index.html')) return fs.readFile(file, 'utf8', (er, txt) => { if (er) { res.writeHead(500); return res.end(); } cloud.seo.rewrite(txt, req).then((t) => sendText(req, res, t, h['Content-Type'], h['Cache-Control'])); });
+    if (ext === '.html' && (p.startsWith('/site/') || p === '/index.html')) return fs.readFile(file, 'utf8', (er, txt) => { if (er) { res.writeHead(500); return res.end(); } cloud.seo.rewrite(txt, req).then((t) => cloud.guven.inject(t, p)).then((t) => sendText(req, res, t, h['Content-Type'], h['Cache-Control'])); });
     if (req.headers['if-none-match'] === etag) { res.writeHead(304, h); return res.end(); }
-    res.writeHead(200, { ...h, 'Content-Length': st.size });
+    res.writeHead(200, gz ? { ...h, 'Content-Encoding': 'gzip' } : { ...h, 'Content-Length': st.size });
     if (req.method === 'HEAD') return res.end();
+    if (gz) return fs.createReadStream(file).pipe(zlib.createGzip()).pipe(res);
     fs.createReadStream(file).pipe(res);
   });
 }
 server.requestTimeout = 60000; server.headersTimeout = 20000; server.keepAliveTimeout = 65000;
-if (process.env.NODE_ENV === 'production' && !process.env.NEBSOFT_SECRET) console.warn('UYARI: NEBSOFT_SECRET tanımlı değil — şifreleme anahtarı data/secret.key dosyasında; bu dosyayı yedekleyin (kaybolursa veritabanı bağlantı ayarı çözülemez).');
-process.on('unhandledRejection', (e) => console.error('[hata] işlenmemiş söz:', e));
-process.on('uncaughtException', (e) => { console.error('[hata] yakalanmamış istisna, yeniden başlatılmak üzere çıkılıyor:', e); setTimeout(() => process.exit(1), 200); }); // systemd/pm2 otomatik yeniden başlatır
+if (process.env.NODE_ENV === 'production' && !process.env.NEBSOFT_SECRET) log.uygulama.uyari('sunucu.anahtar', { mesaj: 'NEBSOFT_SECRET tanımlı değil — şifreleme anahtarı data/secret.key dosyasında; bu dosyayı yedekleyin (kaybolursa veritabanı bağlantı ayarı çözülemez).' });
+process.on('unhandledRejection', (e) => log.uygulama.hata('sunucu.soz', { mesaj: 'İşlenmemiş söz', hata: e }));
+process.on('uncaughtException', (e) => { log.uygulama.hata('sunucu.istisna', { mesaj: 'Yakalanmamış istisna, yeniden başlatılmak üzere çıkılıyor', hata: e }); setTimeout(() => process.exit(1), 200); }); // systemd/pm2 otomatik yeniden başlatır
 // Düzgün kapanma (systemd / pm2 yeniden başlatmalarında yarım kalan istek olmasın)
-const stop = (sig) => { console.log(`${sig} alındı, kapanıyor…`); server.close(() => { cloud.db.close().finally(() => process.exit(0)); }); setTimeout(() => process.exit(0), 10000).unref(); };
+const stop = (sig) => { log.uygulama.bilgi('sunucu.kapaniyor', { mesaj: `${sig} alındı, kapanıyor…` }); server.close(() => { cloud.analitik.bosalt().catch(() => {}).finally(() => cloud.db.close().finally(() => process.exit(0))); }); setTimeout(() => process.exit(0), 10000).unref(); };
 process.on('SIGTERM', () => stop('SIGTERM')); process.on('SIGINT', () => stop('SIGINT'));
-cloud.init().catch((e) => console.error('Bulut başlatılamadı:', e.message));
+cloud.init().catch((e) => log.uygulama.hata('sunucu.bulut', { mesaj: 'Bulut başlatılamadı', hata: e }));
 server.listen(PORT, process.env.HOST || '0.0.0.0', () => console.log(`NEBSOFT çalışıyor: http://localhost:${PORT}`));

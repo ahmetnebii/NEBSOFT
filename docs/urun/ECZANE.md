@@ -64,7 +64,7 @@ Satıcı tanıtımlarıdır; iddialar bağımsız doğrulanmadı. Yalnızca hang
 | B10 | İmha/iade yalnızca adedi sıfırlıyor, kaydı kalmıyordu; sayım yoktu | Kısmi adet, stok hareketleri, tutanak (`NS.docs`), sayım düzeltmesi | Tarayıcı |
 | B11 | **Sağlık verisi aracı servislere gidiyordu:** eksik ilaç SMS'inde ve WhatsApp hatırlatmasında ilaç adı vardı | Mesajlarda ilaç adı yok; işlem geçmişine hasta adı, TC, reçete no yazılmaz | Tarayıcı: SMS metni ve `_log` tarandı, sızıntı yok |
 | B12 | SMS sonucu gizliydi ("Güncellendi") | Gerçek sonuç gösterilir, varsayılan "Yarın 14:00" kalktı | Tarayıcı: "TEST — gönderilmedi" |
-| B13 | Reçete takip kodu `Math.random` ile 5 karakterdi | Sunucuda 7 karakter `crypto` | `eczane-kural.test.js` |
+| B13 | Reçete takip kodu `Math.random` ile 5 karakterdi | Sunucuda `rxCode()`: 6 karakter `crypto`; gönderen tarayıcı yalnızca kendi kaydını görür (güvenlik denetimi düzeltmesi) | `eczane-kural.test.js` |
 | B14 | Hasta sayfasında uydurma açık saatler ve "depodan aynı gün temin" sözü vardı; satış ekranında demo barkod yazısı vardı | Saat ayardan, yoksa iddia yok; söz ve yazı kalktı; muadil bilgisi dozla | Tarayıcı |
 | B15 | Depo eklenemiyordu (yeni eczanede sipariş verilemiyordu) | Depo yönetimi; örnekteki gerçek firma adları kaldırıldı | Kod incelendi (ekran açıldı) |
 | B16 | Kurum tahsilatında kesinti yoktu; TEST reçeteler "provizyonlu" sayılıyordu | Tahsil edilen tutar, kesinti, TEST "doğrulanmadı" | Tarayıcı: 100 ₺ kesinti |
@@ -83,5 +83,7 @@ Satıcı tanıtımlarıdır; iddialar bağımsız doğrulanmadı. Yalnızca hang
 | F6 | Gün sonu | Nakit, kart, kurum, iade | Tarayıcı |
 
 **Yapılmadı:** gerçek MEDULA/İTS/ÜTS/ÖKC; yarıda kalan satışı saklama; satış sonrası reçete görüntüsü; raf/depo ayrımı; cari hesap; hasta bazlı ilaç etkileşimi (kaynak ve veri yok, tıbbi içerik uydurulmadı); alerjinin etken maddeyle otomatik eşleşmesi (yalnızca hatırlatma); yetkilerin sunucuda zorlanması.
+
+Birleştirme notu: KVKK araçları (`core/kvkk.js`: hasta verisi dışa aktarma, anonimleştirme, `exportRoles`) korundu. Anonimleştirme `sales` ve `ctrl` kayıtlarındaki kişi alanlarını kapsar; `rxOrders` hasta kimliğine bağlı değildir, kapsam dışında kalır (bkz. çekirdek istekleri).
 
 Kalite kapısı: 13 ekran + hasta sayfası açıldı, konsol hatası yok; 375 px genişlikte yatay taşma yok; boş liste bakıldı. Koyu tema yalnızca İK'da görsel olarak bakıldı, Eczane'de ayrıca bakılmadı. Kâğıda basım denenmedi.

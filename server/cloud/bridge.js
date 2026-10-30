@@ -38,11 +38,8 @@ route('POST', '/api/istek', { auth: 'user', limit: ['istek', 120, 60e3], bodyMax
   if (b.headers && b.headers['X-Nebsoft-Sign']) { const k = String(b.headers['X-Nebsoft-Sign']); delete b.headers['X-Nebsoft-Sign']; if (k && !/__nsg_/.test(k)) b.headers['X-Nebsoft-Signature'] = require('crypto').createHmac('sha256', k).update(String(b.body || '')).digest('hex'); }
   if (!(await sec.publicUrl(b.url))) throw err(400, 'Yalnızca internetteki (iç ağ olmayan) http/https adreslerine istek atılabilir');
   try {
-    const ctrl = new AbortController(); const tm = setTimeout(() => ctrl.abort(), 15000);
-    const method = String(b.method || 'POST').toUpperCase();
-    const r = await fetch(b.url, { method, headers: b.headers || {}, body: ['GET', 'HEAD'].includes(method) ? undefined : b.body, signal: ctrl.signal, redirect: 'manual' });
-    clearTimeout(tm); const text = await r.text();
-    return { ok: r.ok, status: r.status, body: text.slice(0, 500000) };
+    const r = await sec.safeFetch(b.url, { method: String(b.method || 'POST').toUpperCase(), headers: b.headers, body: b.body });
+    return { ok: r.ok, status: r.status, body: r.text.slice(0, 500000) };
   } catch (e) { throw err(502, 'Servise ulaşılamadı: ' + e.message + (e.cause && e.cause.code ? ' (' + e.cause.code + ')' : '')); }
 });
 route('GET', '/api/durum', { auth: 'none' }, async () => ({ ok: true, version: '2.0', cloud: true, kanal: kanal.info() }));

@@ -289,6 +289,17 @@
       db.data._meta.ownerPin = pin;
     }
     db.data._meta.sample = true;
+    // Kurulum ilerlemesi yalnızca işletmenin eklediği kayıtları saysın diye açılıştaki örnek sayıları saklanır
+    db.data._meta.sampleBase = Object.fromEntries(Object.entries(db.data).filter(([k, v]) => Array.isArray(v) && !k.startsWith('_')).map(([k, v]) => [k, v.length]));
+  }
+  // İlk kurulum kartı: yalnızca bulutta ve deneme lisansında yüklenir (demo ve ücretli hesaplar etkilenmez)
+  function kurulumYukle(app) {
+    if (!CLOUD || !app.db || !app.db.cloud) return;
+    const L = (CLOUD.licenses || []).find((l) => l.product === app.db.name); if (!L || L.status !== 'deneme' || !L.valid) return;
+    const go = () => { if (NS.kurulum) NS.kurulum.mount(app, { pid: app.db.name }); };
+    if (NS.kurulum) return go();
+    const add = (src, cb) => { const s = document.createElement('script'); s.src = src; s.onload = cb; document.head.appendChild(s); };
+    add('/core/kurulum-adimlari.js', () => add('/core/kurulum.js', go));
   }
 
   // ---------- Veri katmanı (localStorage / bulut) ----------
@@ -861,6 +872,14 @@
 
   // ---------- Uygulama iskeleti ----------
   // opts: {id, name, tagline, icon, accent, nav:[{id,label,icon,sec,roles}], routes:{id:(el,param,app)=>{}}, db, auth:{roles:{rol:'Etiket'}}, topActions:(app)=>html, home:'dashboard', productId}
+  // Analitik: yalnızca geçerli denemedeki işletmenin hangi bölümü açtığı sayılır (sunucu kimliği ve lisansı yeniden doğrular). Veri değil, bölüm adı gider. Ayrıntı: docs/LOG-YAPISI.md
+  const modulSon = {};
+  const modulSay = (m) => {
+    if (!CLOUD || !CLOUD.user || !IS_APP_PAGE || !CLOUD.analitik || !(CLOUD.licenses || []).some((l) => l.product === APP_ID && l.status === 'deneme' && l.valid)) return;
+    try { if (/"k":"red"/.test(localStorage.getItem('nebsoft:riza') || '')) return; } catch (e) { /* yok */ }
+    if (Date.now() - (modulSon[m] || 0) < 60e3) return; modulSon[m] = Date.now();
+    fetch('/api/olay', { method: 'POST', headers: { 'Content-Type': 'application/json' }, keepalive: true, body: JSON.stringify({ tur: 'modul', program: APP_ID, modul: String(m).toLowerCase().slice(0, 40) }) }).catch(() => {});
+  };
   function shell(opts) {
     const app = { opts, db: opts.db, route: null, param: null };
     NS.app = app;
@@ -1008,13 +1027,14 @@
           actions: [{ label: 'Kapat' }, { label: 'Çıkış yap', cls: 'danger', icon: 'logout', onClick: (c) => { c(); app.logout(); } }],
         });
       });
+      kurulumYukle(app);
     }
 
     function render() {
       const [, r, p] = (location.hash.match(/^#\/([^/]+)\/?(.*)$/) || []);
       const home = opts.home || opts.nav.find((n) => n.id).id;
       const route = opts.routes[r] ? r : home;
-      app.route = route; app.param = p ? decodeURIComponent(p) : null;
+      app.route = route; app.param = p ? decodeURIComponent(p) : null; modulSay(route);
       const nav = opts.nav.find((n) => n.id === route);
       if (nav && !app.navVisible(nav)) { $('#view').innerHTML = `<div class="empty">${icon('eye')}<div>Bu bölüm menüden gizlendi. Açmak için Ayarlar &gt; Menü ve modüller.</div></div>`; return; }
       if (nav && nav.roles && !app.can(...nav.roles) && route === home) { const alt = opts.nav.find((n) => n.id && (!n.roles || app.can(...n.roles)) && app.navVisible(n)); if (alt) return app.go(alt.id); }
@@ -1078,7 +1098,8 @@
 
   // Standart CRUD sayfası: liste + arama + ekle/düzenle/sil
   function crud(el, app, cfg) {
-    // cfg: {col, title, sub, fields, columns, searchFields:(r)=>[..], defaults, extraActions, onSave, filters, emptyIcon, canAdd, rowsFilter, sort, mobileCard}
+    // cfg: {col, title, sub, fields, columns, searchFields:(r)=>[..], defaults, extraActions, onSave, filters, emptyIcon, canAdd, rowsFilter, sort, mobileCard, exportRoles}
+    const canExport = !cfg.exportRoles || !app.can || app.can(...cfg.exportRoles); // toplu dışa aktarma rol ile sınırlanabilir (sağlık verisi)
     // Kancalar: beforeSave(v, rec) → false ya da metin dönerse kaydedilmez (metin uyarı olarak gösterilir; async olabilir)
     //          canDelete(rec) / beforeDelete(rec) → false ya da metin dönerse silinmez (bağlı kaydı olan ana kayıt silinmesin); null → sessizce durur
     let q = '';
@@ -1096,7 +1117,7 @@
       });
     };
     el.innerHTML = pageHead(cfg.title, cfg.sub || '', `
-      <button class="btn" data-export>${icon('download')} Excel (CSV)</button>
+      ${canExport ? `<button class="btn" data-export>${icon('download')} Excel (CSV)</button>` : ''}
       ${cfg.readonly || cfg.canAdd === false ? '' : `<button class="btn primary" data-add>${icon('plus')} ${esc(cfg.addLabel || 'Yeni Kayıt')}</button>`}`) +
       `<div class="card"><div class="card-h">${searchBox('q', 'Ara...')}${cfg.filters ? `<div class="seg" id="flt">${cfg.filters.map((f) => `<button data-f="${f.value}" class="${f.value === filter ? 'active' : ''}">${esc(f.label)}</button>`).join('')}</div>` : ''}</div><div id="tbl"></div></div>`;
     $('#q', el).oninput = (e) => { q = e.target.value; draw(); };
@@ -1112,13 +1133,13 @@
       draw();
     };
     $('[data-add]', el) && ($('[data-add]', el).onclick = () => edit(null));
-    $('[data-export]', el).onclick = () => csv(cfg.col, app.db.all(cfg.col), cfg.columns.filter((c) => c.key).map((c) => ({ key: c.key, label: c.label, value: c.csv })));
+    $('[data-export]', el) && ($('[data-export]', el).onclick = () => { csv(cfg.col, app.db.all(cfg.col), cfg.columns.filter((c) => c.key).map((c) => ({ key: c.key, label: c.label, value: c.csv }))); app.db.log('Dışa aktarıldı', `${cfg.title} · ${app.db.all(cfg.col).length} kayıt`); app.db.save(); });
     on(el, 'click', '[data-act]', async (e, t) => {
       const rec = app.db.get(cfg.col, t.dataset.id);
       if (t.dataset.act === 'edit') edit(rec);
       else if (t.dataset.act === 'del') {
         for (const hook of [cfg.canDelete, cfg.beforeDelete]) { if (!hook) continue; const ok = await hook(rec); if (ok === null) return; if (ok === false || typeof ok === 'string') return toast(typeof ok === 'string' ? ok : 'Bu kayıt silinemez — bağlı kayıtları var', 'err'); }
-        if (await confirm('Bu kayıt silinsin mi?')) { app.db.remove(cfg.col, rec.id); toast('Silindi'); draw(); }
+        if (await confirm('Bu kayıt silinsin mi?')) { app.db.remove(cfg.col, rec.id); app.db.log('Kayıt silindi', `${cfg.single || cfg.title} · ${rec.no || rec.id}`); app.db.save(); toast('Silindi'); draw(); }
       }
       else if (cfg.onAction) cfg.onAction(t.dataset.act, rec, draw);
     });

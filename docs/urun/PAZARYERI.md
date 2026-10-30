@@ -1,6 +1,51 @@
 # Pazaryeri Satıcı Paneli — Ürün Spesifikasyonu
 
-> **Durum (29.10.2026):** Kullanıcı dalgaları önceden onayladı. **1. dalga tamamlandı.** 2. ve 3. dalga sırada.
+> **Durum (30.10.2026):** Kullanıcı dalgaları önceden onayladı. 1., 2. ve 3. dalga yapıldı; "tedarik edilemedi" bildirimi resmî kaynak yüzünden yapılmadı.
+
+## CANLIYA ÇIKMAYI ENGELLEYENLER
+- **Trendyol "tedarik edilemedi":** `reasonId` 500–506 anlamları resmî sayfada yok (developers.trendyol.com/reference/cancelorderpackageitem, 30.10.2026) — DOĞRULANAMADI. Panelden çağrı yapılmaz; iptal penceresi pazaryeri panelini gösterir.
+- **Trendyol iade ve durum çekme:** resmî alanlara göre yazıldı (E-ticaret §6), yalnızca taklit sunucuyla denendi. Satıcı test hesabıyla denenmeden canlıya çıkılamaz.
+- **Hepsiburada:** doküman doğrulanamadı, canlı seçilemez. **Amazon, Pazarama, Çiçeksepeti, İdefix:** adaptör yok, yalnızca demo (TEST).
+- **n11:** sipariş ve stok canlı seçilebilir; takip, kargo, iade ve soru bildirimi yok, panelden yapılır.
+- **Fiyat tabanı:** kanal ayarındaki komisyonla hesaplanır; kampanya ve kategori komisyonu hesaba girmez. Tahmindir.
+- **İade faturası:** gerçek satış faturası olan siparişte çıkar; sağlayıcıyla denenmedi, düğme tarayıcıda görülmedi.
+
+## 2-3. dalga — yapılanlar (30.10.2026)
+Kanıt: **Tarayıcı** = başsız Chrome'da sayfa gerçekten çalıştırıldı (`?demo=1`); **Test** = otomatik test; **Kod incelendi** = çalıştırılmadı.
+
+### Kırık temel
+| # | Sorun | Sonuç | Kanıt |
+|---|---|---|---|
+| P10 | İptalde stok pazaryerlerine gitmiyordu; toplanan sipariş iptal edilemiyordu | Stok gönderilir; yeni + toplanıyor iptal edilir | Tarayıcı: stok 1 → 2, günlükte TEST |
+| P11 | Stok yetmeyen sipariş sessizce 0'a düşüyor, iptalde olmayan stok ekleniyordu | `taken`/`short`, "Stok yetmedi" uyarısı | Kod incelendi |
+| P12 | Aynı siparişin ikinci paketi düşüyordu | Tekrar denetimi paket numarasıyla | Kod incelendi |
+| P13 | Reddedilen iade sipariş "iade" kalıyor, kâr ve ciroda yanlış görünüyordu; iade edilen sipariş ciroda sayılıyordu | Ret satışa döndürür, onay iade yapar; özet, rapor, zarar tablosu iade hariç | Tarayıcı: red → teslim |
+| P14 | "Elle onayla" geçmişe "Barkodla doğrulandı" yazıyordu | Gerçek yöntem yazılır | Tarayıcı |
+| P15 | Kargo bildirimi gitmeyen kanal için başarı mesajı | Kanal adıyla "pazaryerine bildirilmedi, panelden girin" | Tarayıcı: Amazon TR |
+| P16 | Eşleşmeyen ürünlü sipariş toplama listesine giriyordu | Eşleşmeden listeye girmez | Kod incelendi |
+| P17 | Stok hareketinde eksi adet, stoktan fazla çıkış | Reddedilir | Tarayıcı: −5 reddedildi |
+| P18 | Depo ve destek maliyet, kâr görüyor; destek stok ve iptal yapabiliyordu | Kâr, maliyet, stok değeri yalnızca yöneticide; destek iptal/iade kararı veremez | Tarayıcı (destek rolü sayfada taklit edilerek); PIN girişiyle denenmedi |
+| P19 | Ürün silme yoktu | Siparişi olmayan ürün silinir, siparişi olan silinemez | Tarayıcı: engel |
+| P20 | Demo verisinde yapılmamış senkron günlüğü, açılmamış itiraz notu, gerçek görünen fatura | Günlük boş; not düzeltildi; demo faturası TEST | Tarayıcı: günlükte yalnızca gerçek işlemler |
+| P21 | Kâr hesabı her kalemde ürün dizisini tarıyordu | Dizin; ürün listesi 300 satır | Tarayıcı: 4.000 sipariş, 2.500 ürün: ürünler 157 ms, hakediş 49 ms, siparişler 11 ms |
+
+### 2. dalga — beklenenler
+| # | Özellik | Sonuç | Kanıt |
+|---|---|---|---|
+| B1 | Müşteri iptali ve teslim çekme | Trendyol `Cancelled`, `Delivered`; durum geri kaymaz; paketlenmiş iptal uyarısı | Kod incelendi (adaptör filtresi resmî); canlı denenmedi |
+| B2 | Tedarik edilemedi | **Yapılmadı** — DOĞRULANAMADI | §üst |
+| B3 | Excel aktarımı | Barkod/stok koduyla güncelleme, yeni ürün, özet onayı, tekrar kod ve hatalı satır atlanır | Tarayıcı (`NS.readSheet` taklit edilerek); gerçek dosyayla denenmedi |
+| B4 | Kritik stok, tükenme | Ürüne özel sınır, 30 günlük hızla "kaç günde biter" | Tarayıcı (sütun) |
+
+### 3. dalga — fark yaratanlar
+| # | Özellik | Sonuç | Kanıt |
+|---|---|---|---|
+| F1 | İade çekme | "Trendyol iadelerini çek"; kalem başına adet, iade talebi olarak düşer | `kanal.test.js` (taklit sunucu); ekran canlı modda açılmadı |
+| F2 | Model grubu | Ürün başına tek barkod kalır; gruplu görünüm ve gruba toplu fiyat | Tarayıcı: 2 varyant 777 ₺. Sipariş ve stok varyant bazında kalır |
+| F3 | Fiyat kuralı | Hedef marj, taban hesabı, tabana çekme; demo kanala gönderilmez | Tarayıcı: maliyet 5.000 ₺ olunca satır çıktı, tabana çekildi, TEST uyarısı |
+| F4 | İade faturası | `NS.ebelge.create` iade | Kod incelendi |
+
+Kalite kapısı: 12 ekran konsol hatasız; 375 px koyu temada 8 ekran taşmasız; boş liste görüldü. `NS.smsBatch`: bu programda SMS gönderimi yok. Yapılmadı: ürün başına çok varyantlı stok modeli (ürün = tek barkod korundu).
 
 Tarih: 29.10.2026 · Dal: `claude/urun-eticaret-uretim-38c2a2` · Yöntem: `CLAUDE.md` §2 · Program: `apps/pazaryeri`
 (E-ticaret içindeki "Pazaryeri Merkezi" kendi vitrini olan mağaza içindir; bu program yalnızca pazaryerinde satan satıcının depo/operasyon panelidir.)

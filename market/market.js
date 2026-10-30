@@ -94,7 +94,7 @@
     if (EMBED) { document.body.innerHTML = '<main id="page"></main>'; document.body.classList.add('mk-embed'); return; }
     document.body.innerHTML = `<header class="mk-nav"><div class="mk-wrap">
         <a class="mk-logo" href="#/">${NS.logoMark(LOGO(), 36)}${brandName()}</a>
-        <nav class="mk-links" id="links"><a href="#/urunler" data-l="urunler">Ürünler</a><a href="#/fiyatlar" data-l="fiyatlar">Fiyatlar</a><a href="#/sektorler" data-l="sektorler">Sektörler</a><a href="#/indir" data-l="indir">Masaüstü & Mobil</a><a href="#/iletisim" data-l="iletisim">İletişim</a><div class="mk-only-m" id="accm"></div></nav>
+        <nav class="mk-links" id="links"><a href="/programlar" data-l="urunler">Ürünler</a><a href="/fiyatlar/" data-l="fiyatlar">Fiyatlar</a><a href="/rehber/">Rehber</a><a href="/araclar">Ücretsiz araçlar</a><a href="#/sektorler" data-l="sektorler">Sektörler</a><a href="#/indir" data-l="indir">Masaüstü & Mobil</a><a href="#/iletisim" data-l="iletisim">İletişim</a><div class="mk-only-m" id="accm"></div></nav>
         <span class="grow mk-hide-m"></span>
         <button class="btn ghost icon" data-theme title="Tema" data-theme-ico>${icon(NS.getTheme() === 'dark' ? 'sun' : 'moon')}</button>
         <a class="btn ghost icon cart-btn" href="#/sepet" title="Sepet">${icon('cart')}<span class="cnt hide" id="cc"></span></a>
@@ -104,10 +104,10 @@
       <main id="page"></main>
       <footer class="mk-foot"><div class="mk-wrap"><div class="cols">
         <div><a class="mk-logo" href="#/">${NS.logoMark(LOGO(), 36)}${brandName()}</a><p class="muted small mt">Türkiye'deki işletmeler için bulut tabanlı işletme yazılımları. Kurulum yok, taahhüt yok.</p><p class="small mt">${icon('phone')} ${esc(S().phone)}<br>${icon('mail')} ${esc(S().email)}<br>${icon('map')} ${esc(S().address)}</p></div>
-        <div><h4>Ürünler</h4>${products().filter((p) => p.ready).map((p) => `<a href="#/urun/${p.id}">${esc(p.name)}</a>`).join('')}<a href="#/urunler">Tüm ürünler →</a></div>
-        <div><h4>Kurumsal</h4><a href="#/indir">Masaüstü sürümünü indir</a><a href="#/fiyatlar">Fiyatlandırma</a><a href="#/sektorler">Sektörler</a><a href="#/iletisim">İletişim</a><a href="#/hesabim">Müşteri paneli</a><a href="admin/">Yönetim paneli</a></div>
-        <div><h4>Yasal</h4><a href="#/yasal/kvkk">KVKK Aydınlatma</a><a href="#/yasal/sozlesme">Mesafeli Satış Sözleşmesi</a><a href="#/yasal/iade">İptal ve İade</a><a href="#/yasal/gizlilik">Gizlilik Politikası</a></div>
-      </div><hr><div class="row between small faint"><span>© ${new Date().getFullYear()} ${esc(S().siteName)} Yazılım. Tüm hakları saklıdır.</span><span>${icon('shield')} 256-bit SSL · KVKK uyumlu · Türkiye'de barındırılır</span></div></div></footer>`;
+        <div><h4>Ürünler</h4>${products().filter((p) => p.ready).map((p) => `<a href="${urunHref(p)}">${esc(p.name)}</a>`).join('')}<a href="/programlar">Tüm ürünler →</a></div>
+        <div><h4>Kurumsal</h4><a href="#/indir">Masaüstü sürümünü indir</a><a href="/fiyatlar/">Fiyatlandırma</a><a href="/rehber/">Rehber</a><a href="#/sektorler">Sektörler</a><a href="#/yardim">Yardım merkezi</a><a href="#/iletisim">İletişim</a><a href="#/hesabim">Müşteri paneli</a><a href="admin/">Yönetim paneli</a></div>
+        <div><h4>Yasal</h4><a href="/kvkk/">KVKK Aydınlatma</a><a href="/mesafeli-satis/">Mesafeli Satış Sözleşmesi</a><a href="/iade/">İptal ve İade</a><a href="/gizlilik/">Gizlilik Politikası</a><a href="/cerez/">Çerez Politikası</a>${CL && CL.analitik ? '<a href="#" data-olay-tercih>Analitik tercihleri</a>' : ''}</div>
+      </div><hr><div class="row between small faint"><span>© ${new Date().getFullYear()} ${esc(S().siteName)} Yazılım. Tüm hakları saklıdır.</span></div></div></footer>`;
     on(document.body, 'click', '[data-theme]', NS.toggleTheme);
     $('#burger').onclick = () => $('#links').classList.toggle('open');
     on(document.body, 'click', '#links a', () => $('#links').classList.remove('open'));
@@ -215,10 +215,10 @@
         </button>
         ${a.valid && ok.length > 1 ? `<button class="appcard-star${def === a.pid ? ' on' : ''}" data-def="${a.pid}" title="${def === a.pid ? 'Varsayılan program (girişte doğrudan açılır)' : 'Girişte doğrudan bu program açılsın'}" aria-pressed="${def === a.pid}">${icon('star')}</button>` : ''}
       </div>`; };
-    const pop = products().filter((p) => p.ready).sort((a, b) => (b.users || 0) - (a.users || 0)).slice(0, 8);
+    const pop = products().filter((p) => p.ready).slice(0, 8);
     el.innerHTML = `<section class="sec apps-sec"><div class="mk-wrap">
       <div class="apps-h"><div><p class="eyebrow">${esc(u.company || S().siteName)}</p><h1>Merhaba ${esc(u.name.split(' ')[0])}, ${L.length ? 'hangi programla çalışmak istersiniz?' : 'hoş geldiniz!'}</h1>
-        <p class="muted">${L.length ? (ok.length > 1 ? 'Bir program seçin. Yıldızladığınız program bir dahaki girişte doğrudan açılır. Klavyeden 1–9 tuşlarıyla da açabilirsiniz.' : 'Programınızı açın veya yeni bir program deneyin.') : `Hesabınız hazır ve süresiz ücretsiz. Denemek istediğiniz programı seçin; talebiniz onaylandığında ${TRIAL()} gün ücretsiz kullanırsınız.`}</p></div>
+        <p class="muted">${L.length ? (ok.length > 1 ? 'Bir program seçin. Yıldızladığınız program bir dahaki girişte doğrudan açılır. Klavyeden 1–9 tuşlarıyla da açabilirsiniz.' : 'Programınızı açın veya yeni bir program deneyin.') : `Hesabınız hazır ve süresiz ücretsiz. Denemek istediğiniz programı seçin; ${TRIAL()} günlük denemeniz hemen başlar.`}</p></div>
         <div class="row">${NS.pwa && !NS.pwa.installed() ? `<button class="btn" data-install>${icon('download')} Uygulamayı yükle</button>` : ''}${CL ? `<button class="btn" data-phone>${icon('phone')} Telefonumda aç</button>` : ''}<a class="btn" href="#/hesabim">${icon('key')} Lisans ve abonelik</a></div></div>
       ${L.length ? `<div class="apps-grid">${L.map(card).join('')}<a class="appcard add" href="#/urunler"><span class="appcard-ic">${icon('plus', 'ico-lg')}</span><span class="appcard-t"><b>Yeni program ekle</b><span>${TRIAL()} gün ücretsiz deneyin</span></span></a></div>`
         : `<div class="center mb"><img src="assets/empty/baslayalim.png" alt="" width="120" height="86" class="empty-art" style="width:120px;height:auto"></div><div class="apps-grid">${pop.map((p) => `<div class="appcard" style="--pc:${p.accent}"><button class="appcard-main" data-trial="${p.id}"><span class="appcard-ic">${icon(p.icon, 'ico-lg')}</span><span class="appcard-t"><b>${esc(p.name)}</b><span>${esc(p.tagline || '')}</span></span><span class="appcard-go">Deneme talep et ${icon('right')}</span></button></div>`).join('')}</div><p class="center mt"><a href="#/urunler">Tüm programları görün →</a></p>`}
@@ -239,10 +239,12 @@
   }
   // Programların gerçek ekran görüntüleri (site/<tanıtım>/img)
   const SLUG = { randevu: 'randevusistemi', adisyon: 'adisyonprogrami', pos: 'marketprogrami', eticaret: 'eticaretpaketi', pazaryeri: 'pazaryeriprogrami', otel: 'otelprogrami', servis: 'teknikservisprogrami', spor: 'sporsalonuprogrami', muhasebe: 'onmuhasebeprogrami', klinik: 'klinikprogrami', emlak: 'emlakprogrami', kurs: 'kursprogrami', oto: 'otoyikamaprogrami', kiralama: 'arackiralamaprogrami', site: 'siteyonetimprogrami', crm: 'crmprogrami', ik: 'personeltakipprogrami', veteriner: 'veterinerprogrami', eczane: 'eczaneprogrami', kargo: 'kargotakipprogrami', bilet: 'biletsatisprogrami', fabrika: 'fabrikaerp', butik: 'butikprogrami', otoservis: 'otoservisprogrami', musavir: 'malimusavirprogrami', toptan: 'toptanciprogrami', fiyatrobotu: 'pazaryerikarhesaplama', kuyumcu: 'kuyumcuprogrami', galeri: 'otogaleriprogrami', hukuk: 'hukukburosuprogrami', anaokulu: 'anaokuluprogrami' };
+  // Ürün bağlantısı: tanıtım sayfası varsa gerçek adres (arama motoru izler), yoksa uygulama içi sayfa
+  const urunHref = (p) => (SLUG[p.id] ? '/' + SLUG[p.id] : '#/urun/' + p.id);
   const shot = (id, n = 1, kind = 'pc') => (SLUG[id] ? `site/${SLUG[id]}/img/${kind}-${n}.jpg` : '');
-  const pcard = (p) => `<a class="pcard reveal" href="#/urun/${p.id}" style="--pc:${p.accent}">${p.ready ? '' : `<span class="badge warn soon">Yakında</span>`}
+  const pcard = (p) => `<a class="pcard reveal" href="${urunHref(p)}" style="--pc:${p.accent}">${p.ready ? '' : `<span class="badge warn soon">Yakında</span>`}
       ${shot(p.id) ? `<div class="shot"><img src="${shot(p.id)}" alt="${esc(p.name)} ekranı" loading="lazy" decoding="async" width="1440" height="900"><span class="pic-badge">${icon(p.icon)}</span></div>` : `<div class="pic">${icon(p.icon, 'ico-lg')}</div>`}<h3>${esc(p.name)}</h3><p>${esc(p.tagline)}</p>
-      <div class="meta">${p.reviews ? `${stars(p.rating)} <b>${p.rating}</b> <span>(${num(p.reviews)})</span><span class="grow"></span>${icon('users')} ${num(p.users)}+` : '<span class="badge acc">Yeni ürün</span>'}</div>
+      
       <div class="row between"><div class="price">Başlangıç <b>${money(p.prices[0]).replace(',00', '')}</b>/ay</div><span class="btn sm ${p.ready ? 'primary' : ''}">${p.ready ? 'İncele' : 'Haber ver'} ${icon('right')}</span></div></a>`;
 
   // ---------- Ana sayfa ----------
@@ -251,16 +253,16 @@
     const ready = ps.filter((p) => p.ready);
     const u = me();
     const serie = Array.from({ length: 12 }, (_, i) => 30 + i * 6 + rand(-8, 12));
-    const popular = ready.slice().sort((x, y) => (y.users || 0) - (x.users || 0)).slice(0, 6);
+    const popular = ready.slice(0, 6);
     el.innerHTML = `
       ${u ? `<div class="hm-back"><div class="mk-wrap row"><span class="avatar">${esc(NS.initials(u.name))}</span><span class="grow">Tekrar hoş geldiniz, <b>${esc(u.name.split(' ')[0])}</b>. Programlarınız sizi bekliyor.</span><a class="btn primary sm" href="#/programlarim">${icon('grid')} Programlarıma git</a></div></div>` : ''}
       <section class="hm-hero"><div class="hm-aurora" aria-hidden="true"></div><div class="hm-grid" aria-hidden="true"></div><div class="mk-wrap hm-hero-in">
         <div class="hm-copy">
           <span class="hm-pill">${icon('sparkles')} ${ready.length} sektörel program · Web, masaüstü ve mobil</span>
           <h1>İşletmenizi <span class="grad">tek hesaptan</span> yönetin.</h1>
-          <p class="lead">Market, restoran, kuaför, otel, oto servis… Sektörünüze özel bulut yazılımlarıyla satışı hızlandırın, stoğu kontrol edin, müşterinizi kaybetmeyin.</p>
+          <p class="lead">Market, restoran, kuaför, otel, oto servis… Sektörünüze özel bulut yazılımlarıyla satış, stok ve müşteri takibi tek yerde.</p>
           <form class="hm-find" id="hf" onsubmit="return false" role="search"><span>${icon('search')}</span><input id="hq" placeholder="İşletmeniz ne iş yapıyor? (ör. kafe, kuaför, oto sanayi)" autocomplete="off" aria-label="Sektör veya program ara"><button class="btn primary">Program bul</button></form>
-          <div class="hm-quick">${popular.map((p) => `<a href="#/urun/${p.id}" style="--pc:${p.accent}">${icon(p.icon)} ${esc(p.name)}</a>`).join('')}</div>
+          <div class="hm-quick">${popular.map((p) => `<a href="${urunHref(p)}" style="--pc:${p.accent}">${icon(p.icon)} ${esc(p.name)}</a>`).join('')}</div>
           <div class="row hm-cta"><a class="btn primary lg" href="#/kayit">${icon('rocket')} Ücretsiz hesap oluştur</a><a class="btn lg ghost-w" href="apps/pos/index.html?demo=1" target="_blank" rel="noopener">${icon('play')} Kayıt olmadan demoyu dene</a></div>
           <ul class="hm-facts"><li>${icon('check')} Hesap süresiz ve ücretsiz</li><li>${icon('check')} Her program ${TRIAL()} gün ücretsiz deneme</li><li>${icon('check')} Kredi kartı gerekmez</li></ul>
         </div>
@@ -284,12 +286,12 @@
       <section class="sec hm-bento-sec"><div class="mk-wrap">
         <div class="sec-h reveal"><span class="eyebrow">Neden ${esc(S().siteName)}?</span><h2>Sadece program değil, işinizi yürüten bir sistem</h2><p>Tüm programlar aynı güçlü altyapıyı, aynı hesabı ve aynı entegrasyon merkezini paylaşır.</p></div>
         <div class="hm-bento">
-          <div class="hm-b big reveal"><div class="hm-b-ic">${icon('bell')}</div><h3>Hiçbir siparişi kaçırmayın</h3><p>Garson çağrısı, yeni paket sipariş, online randevu, müşteri onayı… Her olay için ayrı ses, onaylanana kadar tekrar, sessiz saatler. Telefonda titreşim, bilgisayarda masaüstü bildirimi.</p>
+          <div class="hm-b big reveal"><div class="hm-b-ic">${icon('bell')}</div><h3>Bildirimler tek yerde</h3><p>Garson çağrısı, yeni paket sipariş, online randevu, müşteri onayı… Her olay için ayrı ses, onaylanana kadar tekrar, sessiz saatler. Telefonda titreşim, bilgisayarda masaüstü bildirimi.</p>
             <div class="hm-notes"><span>${icon('bell')} Masa 7 garson çağırıyor</span><span>${icon('bag')} Yeni Getir siparişi</span><span>${icon('check')} Müşteri teklifi onayladı</span></div></div>
           <div class="hm-b reveal"><div class="hm-b-ic">${icon('edit')}</div><h3>Kendi belgeniz, dijital imza</h3><p>Fiş, iş emri, teslim formu: logonuz, renginiz, metinleriniz. Müşteriye ekranda imzalatın.</p></div>
-          <div class="hm-b reveal"><div class="hm-b-ic">${icon('zap')}</div><h3>Entegrasyonlar hazır</h3><p>e-Fatura, yazarkasa POS, SMS, WhatsApp, pazaryerleri, KBS, MEDULA… Her programda yalnızca işinize yarayanlar.</p></div>
-          <div class="hm-b reveal"><div class="hm-b-ic">${icon('globe')}</div><h3>İnternet gitse de çalışır</h3><p>Kayıtlar cihazda tutulur, bağlantı gelince buluta eşitlenir. Veri kaybı yok.</p></div>
-          <div class="hm-b reveal"><div class="hm-b-ic">${icon('shield')}</div><h3>KVKK uyumlu, yedekli</h3><p>Rol ve yetki, işlem günlüğü, günlük yedek. Verileriniz Türkiye'de.</p></div>
+          <div class="hm-b reveal"><div class="hm-b-ic">${icon('zap')}</div><h3>Entegrasyon merkezi</h3><p>Her programda işinize yarayan bağlantılar tek sayfada. Kullanım için ilgili sağlayıcıdaki hesabınız gerekir.</p></div>
+          <div class="hm-b reveal"><div class="hm-b-ic">${icon('globe')}</div><h3>İnternet gitse de çalışır</h3><p>Kayıtlar cihazda tutulur, bağlantı gelince buluta eşitlenir.</p></div>
+          <div class="hm-b reveal"><div class="hm-b-ic">${icon('shield')}</div><h3>Yetki ve kayıt</h3><p>Rol ve yetki, işlem günlüğü, son 48 saatin değişiklik geçmişi.</p></div>
         </div>
       </div></section>
 
@@ -301,7 +303,7 @@
 
       <section class="sec" style="padding-top:0"><div class="mk-wrap">
         <div class="sec-h reveal"><span class="eyebrow">Nasıl çalışır?</span><h2>Üç adımda hazırsınız</h2></div>
-        <div class="steps3">${[['Ücretsiz hesap açın', `Bir dakikada kayıt olun. Hesabınız süresizdir; seçtiğiniz programın ${TRIAL()} günlük deneme lisansı hemen başlar.`], ['Verilerinizi aktarın', 'Ürün, müşteri ve stoklarınızı Excel ile yükleyin; ücretsiz kurulum ve aktarım desteği bizden.'], ['Paketinizi seçin', 'Deneme bitince aylık ya da yıllık (2 ay bedava) paketinizi seçin; verileriniz olduğu gibi kalır.']].map(([h, p], i) => `<div class="card reveal hm-step"><span class="hm-step-n">${i + 1}</span><h3 class="mb">${h}</h3><p class="muted">${p}</p></div>`).join('')}</div>
+        <div class="steps3">${[['Ücretsiz hesap açın', `Kısa bir formla kayıt olun. Hesabınız süresizdir; seçtiğiniz programın ${TRIAL()} günlük deneme lisansı hemen başlar.`], ['Verilerinizi aktarın', 'Ürün, müşteri ve stoklarınızı Excel ile yükleyin; takıldığınız yerde destek ekibimize yazın.'], ['Paketinizi seçin', 'Deneme bitince aylık ya da yıllık (2 ay bedava) paketinizi seçin; verileriniz olduğu gibi kalır.']].map(([h, p], i) => `<div class="card reveal hm-step"><span class="hm-step-n">${i + 1}</span><h3 class="mb">${h}</h3><p class="muted">${p}</p></div>`).join('')}</div>
       </div></section>
 
       <section class="sec" style="padding-top:0"><div class="mk-wrap"><div class="bundle reveal">
@@ -325,6 +327,7 @@
       $$('#hp .reveal', el).forEach((x) => x.classList.add('in')); $('#urunler', el).scrollIntoView({ behavior: 'smooth' }); return false;
     };
     on(el, 'click', '[data-bundle]', () => { addCart('bundle', 1, 'aylik'); location.hash = '#/sepet'; });
+    el.insertAdjacentHTML('beforeend', '<div id="guven-slot" hidden></div>'); window.NB_GUVEN.mount($('#guven-slot', el));
     reveal(el);
   }
 
@@ -333,12 +336,12 @@
     let q = '', c = cat || '', sort = 'pop';
     el.innerHTML = `<section class="sec" style="padding-top:40px"><div class="mk-wrap">
       <div class="page-h"><div class="grow"><h1>Tüm ürünler</h1><p>${products().length} sektörel yazılım · her biri için ücretsiz canlı demo</p></div>
-        ${NS.searchBox('q', 'Ürün veya sektör ara... (ör. kuaför)')}<select class="input" id="so" style="max-width:180px"><option value="pop">En popüler</option><option value="rate">En yüksek puan</option><option value="price">En uygun fiyat</option><option value="new">Önce canlı olanlar</option></select></div>
+        ${NS.searchBox('q', 'Ürün veya sektör ara... (ör. kuaför)')}<select class="input" id="so" style="max-width:180px"><option value="pop">Önerilen sıra</option><option value="price">En uygun fiyat</option><option value="new">Önce canlı olanlar</option></select></div>
       <div class="chips" style="justify-content:flex-start"><button class="chip ${!c ? 'active' : ''}" data-c="">Tümü</button>${C.categories.map((x) => `<button class="chip ${c === x.id ? 'active' : ''}" data-c="${x.id}">${icon(x.icon)} ${esc(x.name)}</button>`).join('')}</div>
       <div class="pgrid" id="pg"></div></div></section>`;
     const draw = () => {
       let list = products().filter((p) => (!c || p.cat === c) && NS.match(q, p.name, p.tagline, p.desc, ...(p.sectors || [])));
-      list.sort(sort === 'rate' ? (a, b) => (b.rating || 0) - (a.rating || 0) : sort === 'price' ? (a, b) => a.prices[0] - b.prices[0] : sort === 'new' ? (a, b) => b.ready - a.ready : (a, b) => (b.users || 0) - (a.users || 0));
+      list.sort(sort === 'price' ? (a, b) => a.prices[0] - b.prices[0] : sort === 'new' ? (a, b) => b.ready - a.ready : () => 0);
       $('#pg', el).innerHTML = list.map(pcard).join('') || `<div class="empty">${icon('search')}<div>Sonuç bulunamadı. <a href="#/iletisim">Bize yazın</a>, ihtiyacınız olan yazılımı birlikte planlayalım.</div></div>`;
       $$('.reveal', el).forEach((x) => x.classList.add('in'));
     };
@@ -359,7 +362,7 @@
       <div class="sx-grid" id="sg"></div></div></section>`;
     const draw = () => {
       const L = list.filter((x) => (!cat || x.ps.some((p) => p.cat === cat)) && (!q || NS.match(q, x.name, ...x.ps.map((p) => p.name))));
-      $('#sg', el).innerHTML = L.length ? L.map((x) => { const p = x.ps[0]; return `<a class="sx-card" href="#/urun/${p.id}" style="--pc:${p.accent}"><div class="sx-img">${shot(p.id) ? `<img src="${shot(p.id, 1, (x.name.length % 3 === 0 && SLUG[p.id]) ? 'mobil' : 'pc')}" alt="${esc(p.name)} ekranı" loading="lazy" decoding="async" onerror="this.src='${shot(p.id)}'">` : ''}<span class="sx-ic">${icon(p.icon)}</span></div>
+      $('#sg', el).innerHTML = L.length ? L.map((x) => { const p = x.ps[0]; return `<a class="sx-card" href="${urunHref(p)}" style="--pc:${p.accent}"><div class="sx-img">${shot(p.id) ? `<img src="${shot(p.id, 1, (x.name.length % 3 === 0 && SLUG[p.id]) ? 'mobil' : 'pc')}" alt="${esc(p.name)} ekranı" loading="lazy" decoding="async" onerror="this.src='${shot(p.id)}'">` : ''}<span class="sx-ic">${icon(p.icon)}</span></div>
           <div class="sx-body"><b>${esc(x.name)}</b><div class="sx-ps">${x.ps.slice(0, 3).map((pp) => `<span style="--pc:${pp.accent}">${esc(pp.name)}</span>`).join('')}${x.ps.length > 3 ? `<span>+${x.ps.length - 3}</span>` : ''}</div><span class="sx-go">İncele ${icon('right')}</span></div></a>`; }).join('')
         : `<div class="card pad empty" style="grid-column:1/-1">${icon('search')}<div>"${esc(q)}" için sektör bulunamadı</div><a class="btn mt" href="#/iletisim">Bize sorun, uygun çözümü bulalım</a></div>`;
     };
@@ -382,7 +385,6 @@
           <div class="row nw mb"><div class="pcard" style="--pc:${p.accent};padding:0;border:0;background:none;box-shadow:none"><div class="pic" style="width:64px;height:64px">${icon(p.icon, 'ico-lg')}</div></div>
             <div><h1 style="font-size:36px">${esc(p.name)}</h1><div class="muted">${esc(p.tagline)}</div></div></div>
           <p style="font-size:16px" class="mb">${esc(p.desc)}</p>
-          <div class="row mb">${p.reviews ? `${stars(p.rating)} <b>${p.rating}</b> <span class="muted">${num(p.reviews)} değerlendirme</span> · <span class="muted">${icon('users')} ${num(p.users)}+ işletme</span>` : '<span class="badge acc">Yeni ürün</span>'}</div>
           <div class="row">${p.ready ? `<button class="btn primary lg" data-trial>${icon('rocket')} ${TRIAL()} gün ücretsiz dene</button><a class="btn lg" href="${demo}" target="_blank">${icon('play')} Canlı demo</a><button class="btn lg" data-buy="1">${icon('cart')} Satın al</button>` : `<button class="btn primary lg" data-notify>${icon('bell')} Çıkınca haber ver</button><span class="badge warn">Geliştirme aşamasında</span>`}</div>
           ${(p.extraDemos || []).map((d) => `<a class="btn ghost mt" href="${d.url}" target="_blank">${icon('eye')} ${esc(d.label)}</a>`).join('')}
         </div>
@@ -399,7 +401,7 @@
     const drawPlans = () => {
       $('#plans', el).innerHTML = C.plans.map((pl, i) => {
         const feats = i === 0 ? p.features.slice(0, 5) : i === 1 ? p.features.slice(0, 9) : p.features;
-        return `<div class="plan ${pl.popular ? 'pop' : ''}">${pl.popular ? '<span class="badge acc" style="position:absolute;top:-11px;left:50%;transform:translateX(-50%);background:var(--brand);color:#fff">En çok tercih edilen</span>' : ''}
+        return `<div class="plan ${pl.popular ? 'pop' : ''}">${pl.popular ? '<span class="badge acc" style="position:absolute;top:-11px;left:50%;transform:translateX(-50%);background:var(--brand);color:#fff">Önerilen</span>' : ''}
           <div><h3>${esc(pl.name)}</h3><div class="small muted">${esc(pl.desc)}</div></div>
           <div><span class="pp">${money(price(p, i, period)).replace(',00', '')}</span><span class="muted">/${period === 'yillik' ? 'yıl' : 'ay'}</span>${period === 'yillik' ? `<div class="small" style="color:var(--ok)">${money(p.prices[i] * 2)} tasarruf</div>` : ''}</div>
           <ul><li>${icon('users')} ${esc(pl.users)}</li>${i === 2 ? `<li>${icon('check')} Çoklu şube yönetimi</li><li>${icon('check')} API erişimi ve entegrasyonlar</li><li>${icon('check')} Öncelikli destek & kurulum</li>` : ''}${feats.map((f) => `<li>${icon('check')} ${esc(f)}</li>`).join('')}</ul>
@@ -415,6 +417,7 @@
       if (v) { if (CL) { try { await NS.api('POST', '/api/leads', { ...v, product: p.id, type: 'bekleme', msg: 'Ürün çıkınca haber verilsin' }); } catch (x) { return toast(x.message, 'err'); } } else db.insert('leads', { ...v, product: p.id, type: 'bekleme', status: 'yeni', msg: 'Ürün çıkınca haber verilsin' }); toast('Kaydınız alındı, ürün çıkınca sizi arayacağız', 'ok'); }
     });
     drawPlans();
+    el.insertAdjacentHTML('beforeend', '<div id="guven-slot" hidden></div>'); window.NB_GUVEN.mount($('#guven-slot', el), p.id);
     // Gerçek ekran görüntüleri: masaüstü ve telefon
     if (SLUG[p.id]) { const first = el.querySelector('section'); if (first) first.insertAdjacentHTML('afterend', `<section class="sec pg-sec"><div class="mk-wrap"><div class="sec-h"><span class="eyebrow">Ekranlar</span><h2>${esc(p.name)} nasıl görünüyor?</h2><p>Programın gerçek ekranları; kayıt olmadan demoda kendiniz deneyebilirsiniz.</p></div><div class="pg-grid">${[1, 2, 3].map((n) => `<figure class="pg-shot"><img src="${shot(p.id, n)}" alt="${esc(p.name)} ekran ${n}" loading="lazy" decoding="async" onerror="this.closest('figure').remove()"></figure>`).join('')}<figure class="pg-shot pg-phone"><img src="${shot(p.id, 1, 'mobil')}" alt="${esc(p.name)} telefon ekranı" loading="lazy" decoding="async" onerror="this.closest('figure').remove()"></figure></div></div></section>`); }
     $$('.reveal', el).forEach((x) => x.classList.add('in'));
@@ -425,7 +428,7 @@
     const ps = products();
     el.innerHTML = `<section class="sec" style="padding-top:40px"><div class="mk-wrap"><div class="sec-h"><span class="eyebrow">Fiyatlandırma</span><h2>Şeffaf fiyatlar, gizli ücret yok</h2><p>Tüm fiyatlar aylık ve KDV hariçtir. Yıllık ödemede 2 ay bedava.</p></div>
       <div class="bundle mb"><div><h2>Hepsi Bir Arada</h2><p style="opacity:.9;margin-top:8px">Tüm ürünler + gelecekte çıkacak ürünler, tek abonelik.</p></div><div class="row" style="justify-content:center">${C.plans.map((pl, i) => `<div class="center" style="padding:0 12px"><div class="small" style="opacity:.85">${pl.name}</div><div style="font-size:26px;font-weight:800">${money(BUNDLE.prices[i]).replace(',00', '')}</div><button class="btn sm mt" data-bp="${i}">Seç</button></div>`).join('')}</div></div>
-      <div class="card">${table({ rows: ps, columns: [{ label: 'Ürün', render: (p) => `<a href="#/urun/${p.id}" class="row nw" style="color:inherit"><span class="avatar" style="background:${p.accent}22;color:${p.accent}">${icon(p.icon)}</span><div><b>${esc(p.name)}</b> ${p.ready ? '' : badge('Yakında', 'warn')}<div class="small faint">${esc(p.tagline)}</div></div></a>` }, ...C.plans.map((pl, i) => ({ label: pl.name, cls: 'right', render: (p) => `<b>${money(p.prices[i]).replace(',00', '')}</b><span class="faint small">/ay</span>` }))], actions: [{ label: 'İncele', act: 'go' }] })}</div>
+      <div class="card">${table({ rows: ps, columns: [{ label: 'Ürün', render: (p) => `<a href="${urunHref(p)}" class="row nw" style="color:inherit"><span class="avatar" style="background:${p.accent}22;color:${p.accent}">${icon(p.icon)}</span><div><b>${esc(p.name)}</b> ${p.ready ? '' : badge('Yakında', 'warn')}<div class="small faint">${esc(p.tagline)}</div></div></a>` }, ...C.plans.map((pl, i) => ({ label: pl.name, cls: 'right', render: (p) => `<b>${money(p.prices[i]).replace(',00', '')}</b><span class="faint small">/ay</span>` }))], actions: [{ label: 'İncele', act: 'go' }] })}</div>
       <div class="grid g3 mt">${[['shield', `${TRIAL()} gün ücretsiz deneme`, 'Kredi kartı gerekmez.'], ['refresh', 'İstediğiniz zaman iptal', 'Aylık planlarda taahhüt yok.'], ['users', 'Ücretsiz kurulum desteği', 'Uzmanlarımız verilerinizi aktarır.']].map(([i, h, p]) => `<div class="card pad row nw"><div class="kpi" style="padding:0"><div class="ic">${icon(i)}</div></div><div><b>${h}</b><div class="small muted">${p}</div></div></div>`).join('')}</div></div></section>`;
     on(el, 'click', '[data-act=go]', (e, t) => { location.hash = '#/urun/' + t.dataset.id; });
     on(el, 'click', '[data-bp]', (e, t) => { addCart('bundle', Number(t.dataset.bp), 'aylik'); location.hash = '#/sepet'; });
@@ -474,7 +477,7 @@
       <div class="card pad"><h3 class="mb">Ödeme yöntemi</h3>
         
         <label class="opt card pad row nw" style="cursor:pointer"><input type="radio" name="pay" value="havale" checked> <div class="grow"><b>${icon('building')} Havale / EFT</b><div class="small muted">${esc(S().bank)} · ${esc(S().iban)} — ödemeniz onaylanınca lisansınız aktifleşir.</div></div></label>
-        <label class="check small mt"><input type="checkbox" id="agree"> <span><a href="#/yasal/sozlesme" target="_blank">Mesafeli satış sözleşmesini</a> ve <a href="#/yasal/kvkk" target="_blank">KVKK aydınlatma metnini</a> okudum, kabul ediyorum.</span></label></div></div>
+        <label class="check small mt"><input type="checkbox" id="agree"> <span><a href="/mesafeli-satis/" target="_blank">Mesafeli satış sözleşmesini</a> ve <a href="/kvkk/" target="_blank">KVKK aydınlatma metnini</a> okudum, kabul ediyorum.</span></label></div></div>
       <div><div class="card pad" style="position:sticky;top:86px"><h3 class="mb">Sipariş özeti</h3>${t.lines.map((l) => `<div class="list-item small"><span class="grow"><b>${esc(l.p.name)}</b><div class="faint">${planName(l.plan)} · ${l.period === 'yillik' ? 'Yıllık' : 'Aylık'}${l.qty > 1 ? ` · ${l.qty} şube` : ''}</div></span><b>${money(l.line)}</b></div>`).join('')}
         ${t.discount ? `<div class="list-item small" style="color:var(--ok)"><span class="grow">İndirim</span><b>-${money(t.discount)}</b></div>` : ''}<div class="list-item small"><span class="grow muted">KDV</span><b>${money(t.vat)}</b></div><div class="list-item"><span class="grow"><b>Ödenecek</b></span><b style="font-size:22px">${money(t.total)}</b></div>
         <button class="btn primary lg block mt" id="pay">${icon('lock')} Siparişi tamamla</button><p class="small faint center mt">Demo modu: gerçek ödeme alınmaz.</p></div></div>
@@ -514,7 +517,7 @@
     const lic = db.all('licenses', (l) => l.order === o.id);
     el.innerHTML = `<section class="sec"><div class="mk-wrap" style="max-width:760px"><div class="card pad center"><div class="kpi" style="justify-content:center"><div class="ic ok" style="width:70px;height:70px">${icon('check', 'ico-lg')}</div></div>
       <h1 class="mt">${o.status === 'odendi' ? 'Siparişiniz tamamlandı!' : 'Siparişiniz alındı'}</h1><p class="muted mt">Sipariş no: <b>${esc(o.no)}</b> · ${money(o.total)}</p>
-      ${o.status === 'odendi' ? `<p class="mt">Lisanslarınız aktif. Bilgiler <b>${esc(custOf(o.customer).email)}</b> adresine gönderildi.</p>` : `<div class="card pad mt" style="background:var(--warn-soft);border:0;text-align:left"><b>Havale bilgileri</b><div class="small mt">${esc(S().bank)} · IBAN: <span class="mono">${esc(S().iban)}</span><br>Açıklama: <b>${esc(o.no)}</b><br>Ödemeniz onaylandığında lisansınız otomatik aktifleşir.</div></div>`}</div>
+      ${o.status === 'odendi' ? `<p class="mt">Lisanslarınız aktif.</p>` : `<div class="card pad mt" style="background:var(--warn-soft);border:0;text-align:left"><b>Havale bilgileri</b><div class="small mt">${esc(S().bank)} · IBAN: <span class="mono">${esc(S().iban)}</span><br>Açıklama: <b>${esc(o.no)}</b><br>Ödemeniz onaylandığında lisansınız otomatik aktifleşir.</div></div>`}</div>
       ${lic.length ? `<h2 class="mt mb">Lisanslarınız</h2>${lic.map((l) => { const p = prod(l.pid); return `<div class="card pad row mb"><span class="avatar lg" style="background:${p.accent}22;color:${p.accent}">${icon(p.icon)}</span><div class="grow"><b>${esc(p.name)}</b> ${badge(planName(l.plan), 'acc')}<div class="lic mt">${esc(l.key)}</div></div><a class="btn primary" href="apps/${l.pid}/index.html" target="_blank">${icon('play')} Uygulamayı aç</a></div>`; }).join('')}` : ''}
       <div class="row mt" style="justify-content:center"><a class="btn" href="#/hesabim">${icon('user')} Hesabıma git</a><button class="btn" id="inv">${icon('print')} Faturayı yazdır</button></div></div></section>`;
     $('#inv', el).onclick = () => printInvoice(o);
@@ -584,7 +587,7 @@
         <div class="ax-tile t1"><div class="row1"><span class="i" style="--c:#34d399">${icon('trend')}</span><div><small>Bugünkü ciro</small><div class="num">₺48.320</div></div><span class="badge ok" style="margin-left:auto">+%12</span></div>${spark([6, 9, 7, 13, 12, 17, 15, 21, 19, 26])}</div>
         <div class="ax-tile t2"><span class="i" style="--c:#f87171">${icon('bell')}</span><div><b>Masa 7 garson çağırıyor</b><small>Adisyon · şimdi</small></div></div>
         <div class="ax-tile t3"><span class="i" style="--c:#a5b4fc">${icon('edit')}</span><div><b>Müşteri teslim formunu imzaladı</b><small>Oto Servis · 34 ABC 123</small></div></div></div>
-      <div class="ax-trust"><span>${icon('shield')} 256-bit SSL</span><span>${icon('check')} KVKK uyumlu</span><span>${icon('globe')} Türkiye'de barındırılır</span></div></section>`;
+      </section>`;
   }
   function authShell(el, kind, card) {
     document.body.classList.add('mk-auth');
@@ -666,7 +669,8 @@
           <form class="ax-form" id="af" novalidate><div class="ax-err" hidden></div><div class="ax-grid2">${A.field('name', 'Ad soyad', { value: v.name || '', ac: 'name', extra: 'autofocus' })}${A.field('phone', 'Cep telefonu', { type: 'tel', value: v.phone || '', ac: 'tel' })}</div>
             ${A.field('email', 'E-posta adresiniz', { type: 'email', value: v.email || '', ac: 'email' })}${A.field('pass', 'Şifre belirleyin', { type: 'password', ac: 'new-password', hint: 'En az 8 karakter; harf ve rakam içersin' })}
             <input name="website" tabindex="-1" autocomplete="off" style="position:absolute;left:-9999px" aria-hidden="true">
-            <label class="ax-check" style="font-size:13px;color:#a3a5c0"><input type="checkbox" id="kv"> <span><a class="ax-a" href="#/yasal/kvkk" target="_blank">KVKK aydınlatma metnini</a> ve <a class="ax-a" href="#/yasal/sozlesme" target="_blank">kullanım koşullarını</a> okudum, kabul ediyorum.</span></label>
+            <label class="ax-check" style="font-size:13px;color:#a3a5c0"><input type="checkbox" id="kv"> <span><a class="ax-a" href="/kvkk/" target="_blank">KVKK aydınlatma metnini</a> ve <a class="ax-a" href="/mesafeli-satis/" target="_blank">kullanım koşullarını</a> okudum, kabul ediyorum.</span></label>
+            <label class="ax-check" style="font-size:13px;color:#a3a5c0"><input type="checkbox" id="pz"> <span>Kampanya ve yeniliklerden e-posta ile haberdar olmak istiyorum (isteğe bağlı)</span></label>
             ${A.button('go', 'Hesabımı oluştur', 'rocket')}<div class="ax-row"><a href="#" data-back>${icon('back')} İşletme bilgileri</a><a href="#/giris">Zaten hesabım var</a></div></form>`;
       authShell(el, 'kayit', `${A.halo(NS.logoMark(LOGO_L(), 44))}${card}`);
       $('#af', el).onsubmit = submit;
@@ -685,6 +689,7 @@
       if (!okEmail(v.email)) return A.err(el, 'Geçerli bir e-posta adresi yazın');
       if (!/^(?=.*[A-Za-zÇĞİÖŞÜçğıöşü])(?=.*\d).{8,}$/.test(v.pass || '')) return A.err(el, 'Şifre en az 8 karakter olmalı, harf ve rakam içermeli');
       if (!$('#kv', el).checked) return A.err(el, 'Devam etmek için KVKK metnini onaylayın');
+      v.pazarlama = !!$('#pz', el).checked;
       A.busy(b, true);
       let ref = null; try { ref = sessionStorage.getItem('nebsoft:ref'); } catch (x) { /* yok */ }
       try {
@@ -747,17 +752,8 @@
       $('#cf', el).innerHTML = `<div class="center" style="padding:40px 0"><div class="kpi" style="justify-content:center"><div class="ic ok">${icon('check', 'ico-lg')}</div></div><h2 class="mt">Mesajınız alındı</h2><p class="muted mt">En kısa sürede sizinle iletişime geçeceğiz.</p></div>`;
     };
   }
-  function legalPage(el, which) {
-    const T = { kvkk: 'KVKK Aydınlatma Metni', sozlesme: 'Mesafeli Satış Sözleşmesi', iade: 'İptal ve İade Koşulları', gizlilik: 'Gizlilik Politikası' };
-    const s = S();
-    const body = {
-      kvkk: `<p>${esc(s.siteName)} Yazılım ("Şirket") olarak, 6698 sayılı Kişisel Verilerin Korunması Kanunu kapsamında veri sorumlusu sıfatıyla kişisel verilerinizi aşağıda açıklanan amaçlarla işlemekteyiz.</p><h3 class="mt">İşlenen veriler</h3><p>Kimlik, iletişim, fatura ve işlem güvenliği verileri.</p><h3 class="mt">Amaçlar</h3><p>Sözleşmenin kurulması ve ifası, faturalandırma, destek hizmetleri, yasal yükümlülüklerin yerine getirilmesi.</p><h3 class="mt">Haklarınız</h3><p>KVKK m.11 kapsamındaki taleplerinizi ${esc(s.email)} adresine iletebilirsiniz.</p>`,
-      sozlesme: `<p>İşbu sözleşme, ${esc(s.siteName)} Yazılım ile web sitesi üzerinden abonelik satın alan alıcı arasında, 6502 sayılı Tüketicinin Korunması Hakkında Kanun ve Mesafeli Sözleşmeler Yönetmeliği hükümleri uyarınca düzenlenmiştir.</p><h3 class="mt">Konu</h3><p>Alıcının elektronik ortamda siparişini verdiği yazılım aboneliğinin satışı ve ifasıdır.</p><h3 class="mt">İfa</h3><p>Lisans anahtarı ödeme onayının ardından elektronik ortamda derhal teslim edilir.</p>`,
-      iade: `<p>Yeni aboneliklerde ilk 14 gün içinde koşulsuz iade hakkınız vardır. Aylık aboneliklerinizi dilediğiniz zaman iptal edebilirsiniz; iptal, mevcut dönemin sonunda geçerli olur. Yıllık aboneliklerde kalan aylar için kısmi iade yapılır.</p>`,
-      gizlilik: `<p>Uygulamalara girdiğiniz işletme verileri yalnızca size aittir; üçüncü kişilerle paylaşılmaz, reklam amacıyla kullanılmaz. Veriler Türkiye'deki veri merkezlerinde şifreli saklanır ve günlük yedeklenir.</p>`,
-    };
-    el.innerHTML = `<section class="sec" style="padding-top:40px"><div class="mk-wrap" style="max-width:820px"><div class="card pad"><h1 class="mb">${T[which] || 'Yasal'}</h1>${body[which] || ''}<p class="small faint mt">Son güncelleme: ${NS.date(new Date())} — Bu metin örnek şablondur; yayına almadan önce hukuk danışmanınıza kontrol ettiriniz.</p></div></div></section>`;
-  }
+  // Yasal metinler kendi adreslerinde (site/tools/build-sites.js üretir); eski #/yasal/... bağlantıları oraya gider
+  function legalPage(el, which) { location.replace({ kvkk: '/kvkk/', sozlesme: '/mesafeli-satis/', iade: '/iade/', gizlilik: '/gizlilik/', cerez: '/cerez/' }[which] || '/kvkk/'); }
 
   // ---------- Yönetim paneli ----------
   function adminPage(el, sub) {
@@ -891,30 +887,40 @@
     if (!t.lines.length) { location.hash = '#/sepet'; return; }
     if (!CL.user) { toast('Sipariş için önce giriş yapın veya ücretsiz hesap açın', ''); location.hash = '#/giris'; return; }
     let banks = []; try { banks = (await NS.api('GET', '/api/banks')).banks; } catch (e) { /* yok */ }
+    let cardOn = false; try { cardOn = !!(await NS.api('GET', '/api/odeme/yontemler')).shopier; } catch (e) { /* kart seçeneği görünmez */ }
     const ten = CL.tenant || {};
     el.innerHTML = `<section class="sec" style="padding-top:40px"><div class="mk-wrap"><h1 class="mb">Ödeme</h1><div class="grid g-21">
       <div class="col" style="gap:16px"><div class="card pad" id="bf"><h3 class="mb">Fatura bilgileri</h3><div class="form-grid">${NS.fieldsHtml([{ name: 'name', label: 'Ad soyad', required: true }, { name: 'company', label: 'Firma / işletme', required: true }, { name: 'phone', label: 'Telefon', type: 'tel', required: true }, { name: 'taxType', label: 'Fatura tipi', type: 'select', options: [{ value: 'kurumsal', label: 'Kurumsal (Vergi no)' }, { value: 'bireysel', label: 'Bireysel (TCKN)' }] }, { name: 'taxNo', label: 'Vergi no / TCKN', required: true }, { name: 'taxOffice', label: 'Vergi dairesi' }, { name: 'city', label: 'İl', required: true }, { name: 'address', label: 'Fatura adresi', full: true, required: true }], { name: CL.user.name, phone: CL.user.phone, company: ten.name, city: ten.city, address: ten.address })}</div></div>
-        <div class="card pad"><h3 class="mb">Ödeme yöntemi</h3><div class="card pad row nw" style="border-color:var(--brand)"><span style="color:var(--brand)">${icon('building')}</span><div class="grow"><b>Havale / EFT</b><div class="small muted">Siparişten sonra IBAN ve açıklama bilgisi gösterilir. Ödemeniz onaylanınca lisansınız aktifleşir.</div></div></div>
-        ${banks.length ? '' : `<p class="small mt" style="color:var(--err)">${icon('alert')} Şu an tanımlı ödeme hesabı yok; lütfen bizimle iletişime geçin.</p>`}
-        <label class="check small mt"><input type="checkbox" id="agree"> <span><a href="#/yasal/sozlesme" target="_blank">Mesafeli satış sözleşmesini</a> ve <a href="#/yasal/kvkk" target="_blank">KVKK aydınlatma metnini</a> okudum, kabul ediyorum.</span></label></div></div>
+        <div class="card pad"><h3 class="mb">Ödeme yöntemi</h3>${cardOn ? `<label class="card pad row nw mb" style="cursor:pointer"><input type="radio" name="paym" value="shopier" ${banks.length ? '' : 'checked'}><div class="grow"><b>${icon('card')} Banka / kredi kartı (Shopier)</b><div class="small muted">Shopier güvenli ödeme sayfasına yönlendirileceksiniz. Kart bilgileriniz bu sitede alınmaz ve saklanmaz.</div></div></label>${banks.length ? `<label class="card pad row nw" style="cursor:pointer"><input type="radio" name="paym" value="havale" checked><div class="grow"><b>${icon('building')} Havale / EFT</b><div class="small muted">Siparişten sonra IBAN ve açıklama bilgisi gösterilir. Ödemeniz onaylanınca lisansınız aktifleşir.</div></div></label>` : ''}` : `<div class="card pad row nw" style="border-color:var(--brand)"><span style="color:var(--brand)">${icon('building')}</span><div class="grow"><b>Havale / EFT</b><div class="small muted">Siparişten sonra IBAN ve açıklama bilgisi gösterilir. Ödemeniz onaylanınca lisansınız aktifleşir.</div></div></div>`}
+        ${banks.length || cardOn ? '' : `<p class="small mt" style="color:var(--err)">${icon('alert')} Şu an tanımlı ödeme hesabı yok; lütfen bizimle iletişime geçin.</p>`}
+        <label class="check small mt"><input type="checkbox" id="agree"> <span><a href="/mesafeli-satis/" target="_blank">Mesafeli satış sözleşmesini</a> ve <a href="/kvkk/" target="_blank">KVKK aydınlatma metnini</a> okudum, kabul ediyorum.</span></label></div></div>
       <div><div class="card pad" style="position:sticky;top:86px"><h3 class="mb">Sipariş özeti</h3>${t.lines.map((l) => `<div class="list-item small"><span class="grow"><b>${esc(l.p.name)}</b><div class="faint">${planName(l.plan)} · ${l.period === 'yillik' ? 'Yıllık' : 'Aylık'}${l.qty > 1 ? ` · ${l.qty} şube` : ''}</div></span><b>${money(l.line)}</b></div>`).join('')}
         ${t.discount ? `<div class="list-item small" style="color:var(--ok)"><span class="grow">İndirim</span><b>-${money(t.discount)}</b></div>` : ''}<div class="list-item small"><span class="grow muted">KDV</span><b>${money(t.vat)}</b></div><div class="list-item"><span class="grow"><b>Ödenecek</b></span><b style="font-size:22px">${money(t.total)}</b></div>
-        <button class="btn primary lg block mt" id="pay" ${banks.length ? '' : 'disabled'}>${icon('check')} Siparişi oluştur</button><p class="small faint center mt">Tutar sunucuda yeniden hesaplanır.</p></div></div></div></div></section>`;
+        <button class="btn primary lg block mt" id="pay" ${banks.length || cardOn ? '' : 'disabled'}>${icon('check')} Siparişi oluştur</button><p class="small faint center mt">Tutar sunucuda yeniden hesaplanır.</p></div></div></div></div></section>`;
     $('#pay', el).onclick = async () => {
       const f = $('#bf', el); if (!NS.validate(f)) return; if (!$('#agree', el).checked) return toast('Sözleşmeyi onaylayın', 'err');
+      const pm = $('input[name="paym"]:checked', el); const card = !!pm && pm.value === 'shopier'; const btn = $('#pay', el); btn.disabled = true;
       try {
-        const r = await NS.api('POST', '/api/orders', { items: cart().items.map((i) => ({ pid: i.pid, plan: i.plan, period: i.period, qty: i.qty || 1 })), coupon: cart().coupon, billing: NS.readForm(f) });
-        db.data.cart = { items: [], coupon: null }; db.save(); drawNav(); location.hash = '#/basarili/' + r.order.id;
-      } catch (e) { toast(e.message, 'err'); }
+        const r = await NS.api('POST', '/api/orders', { items: cart().items.map((i) => ({ pid: i.pid, plan: i.plan, period: i.period, qty: i.qty || 1 })), coupon: cart().coupon, billing: NS.readForm(f), ...(card ? { method: 'shopier' } : {}) });
+        db.data.cart = { items: [], coupon: null }; db.save(); drawNav(); if (r.shopier && !r.shopier.ok) toast(r.shopier.error, 'err'); location.hash = '#/basarili/' + r.order.id;
+      } catch (e) { btn.disabled = false; toast(e.message, 'err'); }
     };
   }
   async function cloudSuccess(el, id) {
     let r; try { r = await NS.api('GET', '/api/orders'); } catch (e) { location.hash = '#/giris'; return; }
     const o = r.orders.find((x) => x.id === id); if (!o) { location.hash = '#/hesabim/siparisler'; return; }
-    el.innerHTML = `<section class="sec"><div class="mk-wrap" style="max-width:760px"><div class="card pad center"><div class="kpi" style="justify-content:center"><div class="ic ${o.status === 'odendi' ? 'ok' : 'warn'}" style="width:70px;height:70px">${icon(o.status === 'odendi' ? 'check' : 'clock', 'ico-lg')}</div></div>
-      <h1 class="mt">${o.status === 'odendi' ? 'Ödemeniz onaylandı' : 'Siparişiniz alındı'}</h1><p class="muted mt">Sipariş no: <b class="mono">${esc(o.no)}</b> · ${money(o.total)}</p>
-      ${o.status === 'odeme-bekliyor' ? `<div class="mt">${bankBox(r.banks, o.no, o.total)}</div>` : ''}
-      <div class="row mt" style="justify-content:center"><a class="btn primary" href="#/hesabim">${icon('user')} Hesabıma git</a></div></div></div></section>`;
+    let p = null; try { p = await NS.api('GET', `/api/orders/${id}/odeme`); } catch (e) { /* durum alınamazsa havale görünümü */ }
+    const sp = p && p.shopier; const paid = (p ? p.status : o.status) === 'odendi'; const pending = (p ? p.status : o.status) === 'odeme-bekliyor';
+    const live = sp && pending && sp.state !== 'kapandi'; // Shopier'de açık ödeme: ödeme doğrulanana kadar "kontrol ediliyor" görünür, başarı gösterilmez
+    el.innerHTML = `<section class="sec"><div class="mk-wrap" style="max-width:760px"><div class="card pad center"><div class="kpi" style="justify-content:center"><div class="ic ${paid ? 'ok' : 'warn'}" style="width:70px;height:70px">${icon(paid ? 'check' : 'clock', 'ico-lg')}</div></div>
+      <h1 class="mt">${paid ? 'Ödemeniz onaylandı' : live ? (sp.state === 'inceleme' ? 'Ödemeniz inceleniyor' : 'Ödeme kontrol ediliyor') : 'Siparişiniz alındı'}</h1><p class="muted mt">Sipariş no: <b class="mono">${esc(o.no)}</b> · ${money(o.total)}</p>
+      ${live && sp.state === 'inceleme' ? `<div class="card pad mt" style="background:var(--warn-soft);border:0;text-align:left">Ödemeniz otomatik olarak eşleştirilemedi. Ekibimiz kontrol ediyor; sonuç size bildirilecek. Lütfen yeniden ödeme yapmayın.</div>` : ''}
+      ${live && sp.state !== 'inceleme' ? `<div class="card pad mt" style="text-align:left"><b>${icon('card')} Banka / kredi kartı (Shopier)</b><p class="small muted mt">Shopier güvenli ödeme sayfasına yönlendirileceksiniz. Kart bilgileriniz bu sitede alınmaz ve saklanmaz.</p>${sp.url ? `<a class="btn primary lg block mt" href="${esc(sp.url)}" target="_blank" rel="noopener noreferrer">${icon('card')} Shopier'de ödemeye geç</a>` : ''}<div class="small mt row nw">${icon('clock')}<span>Ödemeyi tamamladıysanız bu sayfayı açık bırakın. Ödeme doğrulanana kadar burada <b>kontrol ediliyor</b> yazar; lisansınız ancak doğrulamadan sonra açılır.</span></div></div>` : ''}
+      ${pending && !live ? `<div class="mt">${bankBox(r.banks, o.no, o.total)}</div>${sp ? `<button class="btn mt" id="repay">${icon('card')} Yeni kart ödemesi bağlantısı al</button>` : ''}` : ''}
+      <div class="row mt" style="justify-content:center"><a class="btn ${live ? '' : 'primary'}" href="#/hesabim">${icon('user')} Hesabıma git</a></div></div></div></section>`;
+    if ($('#repay', el)) $('#repay', el).onclick = async () => { try { await NS.api('POST', `/api/orders/${id}/shopier`); cloudSuccess(el, id); } catch (x) { toast(x.message, 'err'); } };
+    if (live) setTimeout(() => { if (location.hash === '#/basarili/' + id && el.isConnected) cloudSuccess(el, id); }, 6000);
+    if (paid && sp) refreshMe();
   }
   async function cloudAccount(el, tab) {
     if (!CL.user) return authPage(el, 'giris');
@@ -928,6 +934,7 @@
     $('#lo', el).onclick = async () => { await NS.api('POST', '/api/auth/logout').catch(() => {}); CL.user = null; drawNav(); location.hash = '#/'; };
     on(el, 'click', '[data-tab]', (e, t) => { location.hash = ['eklentiler', 'websitem'].includes(t.dataset.tab) ? '#/' + t.dataset.tab : '#/hesabim/' + t.dataset.tab; });
     const tb = $('#tb', el); if (NS.skeleton) tb.innerHTML = NS.skeleton(3);
+    if (CL.analitik) tb.insertAdjacentHTML('afterend', `<p class="small faint mt">${icon('info')} Deneme süresince programların hangi bölümlerinin açıldığı toplu olarak sayılır; girdiğiniz veriler bu sayıma dahil değildir. Ayrıntı: <a href="#/yasal/kvkk">Aydınlatma metni</a></p>`);
     if (tab === 'lisanslar') {
       const pageUrl = CL.tenant ? `${location.origin}/t/${CL.tenant.slug}/` : '';
       tb.innerHTML = (pageUrl ? `<div class="card pad mb row" style="gap:12px;flex-wrap:wrap"><div class="grow"><b>${icon('globe')} İşletme sayfanız</b><div class="small muted">Müşterileriniz online randevu, takip ve portal sayfalarınıza buradan ulaşır. Sosyal medya ve Google İşletme profilinize ekleyin.</div><a class="mono small" href="${esc(pageUrl)}" target="_blank" rel="noopener">${esc(pageUrl)}</a></div><button class="btn" id="cpu">${icon('copy')} Kopyala</button></div>` : '') + (L.length ? `<div class="grid g2">${L.map((l) => { const p = prod(l.product) || { name: l.product, icon: 'box', accent: '#64748b' }; const left = Math.ceil((new Date(l.end) - Date.now()) / 864e5); return `<div class="card pad"><div class="row nw mb"><span class="avatar lg" style="background:${p.accent}22;color:${p.accent}">${icon(p.icon)}</span><div class="grow"><b>${esc(p.name)}</b><div class="small muted">${l.status === 'deneme' ? 'Ücretsiz deneme' : planName(l.plan) + ' · ' + (l.period === 'yillik' ? 'Yıllık' : 'Aylık')}</div></div>${l.valid ? badge(LST2[l.status][0], LST2[l.status][1]) : badge('Süresi doldu', 'err')}</div>
@@ -936,8 +943,9 @@
       if ($('#cpu', tb)) $('#cpu', tb).onclick = async () => { try { await navigator.clipboard.writeText(pageUrl); toast('Kopyalandı', 'ok'); } catch (x) { NS.prompt('İşletme sayfanız', pageUrl); } };
       on(tb, 'click', '[data-buy]', (e, t) => { addCart(t.dataset.buy, 1, 'aylik'); location.hash = '#/sepet'; });
     } else if (tab === 'siparisler') {
-      const r = await NS.api('GET', '/api/orders');
-      tb.innerHTML = r.orders.length ? r.orders.map((o) => `<div class="card pad mb"><div class="row"><b class="mono">${esc(o.no)}</b>${badge(OST[o.status][0], OST[o.status][1])}<span class="grow small muted">${NS.dt(o.created)}</span><b>${money(o.total)}</b></div><div class="small muted mt">${o.items.map((i) => `${esc(prod(i.pid) ? prod(i.pid).name : i.pid)} · ${planName(i.plan)} · ${i.period === 'yillik' ? 'yıllık' : 'aylık'}`).join(' · ')}</div>${o.status === 'odeme-bekliyor' ? `<div class="mt">${bankBox(r.banks, o.no, o.total)}</div><button class="btn sm ghost mt" data-cancel="${o.id}">Siparişi iptal et</button>` : ''}</div>`).join('') : '<div class="card pad empty">Sipariş yok</div>';
+      const r = await NS.api('GET', '/api/orders'); let cardOn = false; try { cardOn = !!(await NS.api('GET', '/api/odeme/yontemler')).shopier; } catch (e) { /* kart seçeneği görünmez */ }
+      tb.innerHTML = r.orders.length ? r.orders.map((o) => `<div class="card pad mb"><div class="row"><b class="mono">${esc(o.no)}</b>${badge(OST[o.status][0], OST[o.status][1])}<span class="grow small muted">${NS.dt(o.created)}</span><b>${money(o.total)}</b></div><div class="small muted mt">${o.items.map((i) => `${esc(prod(i.pid) ? prod(i.pid).name : i.pid)} · ${planName(i.plan)} · ${i.period === 'yillik' ? 'yıllık' : 'aylık'}`).join(' · ')}</div>${o.status === 'odeme-bekliyor' ? `<div class="mt">${bankBox(r.banks, o.no, o.total)}</div><div class="row mt">${cardOn ? `<button class="btn sm primary" data-card="${o.id}">${icon('card')} Kartla öde (Shopier)</button>` : ''}<button class="btn sm ghost" data-cancel="${o.id}">Siparişi iptal et</button></div>` : ''}</div>`).join('') : '<div class="card pad empty">Sipariş yok</div>';
+      on(tb, 'click', '[data-card]', async (e, t) => { t.disabled = true; try { await NS.api('POST', `/api/orders/${t.dataset.card}/shopier`); location.hash = '#/basarili/' + t.dataset.card; } catch (x) { t.disabled = false; toast(x.message, 'err'); } });
       on(tb, 'click', '[data-cancel]', async (e, t) => { if (!(await confirm('Sipariş iptal edilsin mi?'))) return; try { await NS.api('POST', `/api/orders/${t.dataset.cancel}/cancel`); cloudAccount(fresh(el), 'siparisler'); } catch (x) { toast(x.message, 'err'); } });
     } else if (tab === 'ekip') {
       const r = await NS.api('GET', '/api/team');
@@ -960,6 +968,7 @@
         <div class="card pad" id="pw"><h3 class="mb">Şifre değiştir</h3>${NS.fieldsHtml([{ name: 'old', label: 'Mevcut şifre', type: 'password' }, { name: 'pass', label: 'Yeni şifre', type: 'password', hint: 'En az 8 karakter, harf ve rakam' }])}<button class="btn mt" id="cp">Değiştir</button><p class="small muted mt">Şifre değişince diğer cihazlardaki oturumlar kapanır.</p></div></div>`;
       $('#sp', tb).onclick = async () => { try { await NS.api('PUT', '/api/account', NS.readForm($('#pf', tb))); await refreshMe(); toast('Kaydedildi', 'ok'); } catch (x) { toast(x.message, 'err'); } };
       $('#cp', tb).onclick = async () => { try { await NS.api('POST', '/api/auth/password', NS.readForm($('#pw', tb))); toast('Şifre değişti', 'ok'); } catch (x) { toast(x.message, 'err'); } };
+      window.NB_TERCIH($('#pf', tb));
     }
   }
   function enableCloud() {
@@ -968,9 +977,9 @@
   }
 
   // ---------- Yönlendirme ----------
-  const ROUTES = { kayit: (el) => noAccountSystem(el), '': home, programlarim: appsPage, sifre: forgotPage, indir: downloadPage, giris: (el) => (me() ? (location.hash = '#/programlarim') : loginPage(el)), urunler: catalogPage, urun: productPage, fiyatlar: pricingPage, sektorler: sectorsPage, eklentiler: (el) => window.NB_EK.store(el, ekCtx()), websitem: (el) => (!CL || me() ? window.NB_EK.builder(el, ekCtx()) : (location.hash = '#/giris')), sepet: cartPage, odeme: checkoutPage, basarili: successPage, hesabim: accountPage, iletisim: contactPage, yasal: legalPage, yonetim: adminPage };
+  const ROUTES = { kayit: (el) => noAccountSystem(el), '': home, programlarim: appsPage, sifre: forgotPage, indir: downloadPage, giris: (el) => (me() ? (location.hash = '#/programlarim') : loginPage(el)), urunler: catalogPage, urun: productPage, fiyatlar: pricingPage, sektorler: sectorsPage, eklentiler: (el) => window.NB_EK.store(el, ekCtx()), websitem: (el) => (!CL || me() ? window.NB_EK.builder(el, ekCtx()) : (location.hash = '#/giris')), yardim: (el, p) => window.NB_YARDIM.sayfa(el, p), sepet: cartPage, odeme: checkoutPage, basarili: successPage, hesabim: accountPage, iletisim: contactPage, yasal: legalPage, yonetim: adminPage };
   const ekCtx = () => ({ cloud: () => CL, addCart: (pid) => addCart(pid, 0, 'aylik'), me });
-  const TITLES = { eklentiler: 'Eklenti Mağazası', websitem: 'Web sitem', programlarim: 'Programlarım', sifre: 'Şifremi unuttum', indir: 'Masaüstü & Mobil', giris: 'Giriş yap', urunler: 'Ürünler', fiyatlar: 'Fiyatlar', sektorler: 'Sektörler', sepet: 'Sepet', odeme: 'Ödeme', hesabim: 'Hesabım', iletisim: 'İletişim', yonetim: 'Yönetim' };
+  const TITLES = { yardim: 'Yardım merkezi', eklentiler: 'Eklenti Mağazası', websitem: 'Web sitem', programlarim: 'Programlarım', sifre: 'Şifremi unuttum', indir: 'Masaüstü & Mobil', giris: 'Giriş yap', urunler: 'Ürünler', fiyatlar: 'Fiyatlar', sektorler: 'Sektörler', sepet: 'Sepet', odeme: 'Ödeme', hesabim: 'Hesabım', iletisim: 'İletişim', yonetim: 'Yönetim' };
   function route() {
     const [, r = '', p] = location.hash.match(/^#\/?([^/]*)\/?(.*)$/) || [];
     const fn = ROUTES[r] || home;

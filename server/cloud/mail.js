@@ -21,14 +21,14 @@ async function ready() { if (!db.ready()) return false; const c = await getConfi
 // ---------- SMTP ----------
 const b64 = (s) => Buffer.from(String(s), 'utf8').toString('base64');
 const encHeader = (s) => (/^[\x20-\x7e]*$/.test(s) ? s : `=?UTF-8?B?${b64(s)}?=`);
-function smtpSend(c, { to, subject, html, text, replyTo }) {
+function smtpSend(c, { to, subject, html, text, replyTo, unsub }) {
   return new Promise((resolve, reject) => {
     const implicit = Number(c.port) === 465 && c.tls !== false; // tls:false yalnızca yerel test/röle sunucusu için
     let sock = implicit ? tls.connect({ host: c.host, port: c.port, servername: c.host }) : net.connect({ host: c.host, port: c.port });
     sock.setTimeout(20000, () => { sock.destroy(); reject(new Error('E-posta sunucusu yanıt vermedi (zaman aşımı)')); });
     let buf = ''; let step = 0; let upgraded = implicit;
     const boundary = 'nb' + crypto.randomBytes(8).toString('hex'); const id = `<${crypto.randomBytes(12).toString('hex')}@${String(c.from).split('@')[1] || 'nebsoft'}>`;
-    const msg = [`From: ${encHeader(c.fromName || 'NEBSOFT')} <${c.from}>`, `To: <${to}>`, ...(replyTo || c.replyTo ? [`Reply-To: <${replyTo || c.replyTo}>`] : []), `Subject: ${encHeader(subject)}`, `Date: ${new Date().toUTCString()}`, `Message-ID: ${id}`, 'MIME-Version: 1.0', `Content-Type: multipart/alternative; boundary="${boundary}"`, '',
+    const msg = [`From: ${encHeader(c.fromName || 'NEBSOFT')} <${c.from}>`, `To: <${to}>`, ...(replyTo || c.replyTo ? [`Reply-To: <${replyTo || c.replyTo}>`] : []), `Subject: ${encHeader(subject)}`, `Date: ${new Date().toUTCString()}`, `Message-ID: ${id}`, ...(unsub ? [`List-Unsubscribe: <${unsub}>`] : []), 'MIME-Version: 1.0', `Content-Type: multipart/alternative; boundary="${boundary}"`, '',
       `--${boundary}`, 'Content-Type: text/plain; charset=UTF-8', 'Content-Transfer-Encoding: base64', '', b64(text || '').replace(/.{76}/g, '$&\r\n'),
       `--${boundary}`, 'Content-Type: text/html; charset=UTF-8', 'Content-Transfer-Encoding: base64', '', b64(html).replace(/.{76}/g, '$&\r\n'), `--${boundary}--`, ''].join('\r\n');
     const send = (l) => sock.write(l + '\r\n');
@@ -58,7 +58,7 @@ function smtpSend(c, { to, subject, html, text, replyTo }) {
 // ---------- Şablon ----------
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
 // blocks: [{ type:'p'|'code'|'button'|'kv'|'note'|'list', ... }]
-function render({ brand = 'NEBSOFT', site = {}, preheader = '', title, intro, blocks = [], footer = '' }) {
+function render({ brand = 'NEBSOFT', site = {}, preheader = '', title, intro, blocks = [], footer = '', unsub = '' }) {
   const B = '#4f46e5'; const url = site.siteUrl || '';
   const part = (b) => {
     if (b.type === 'code') return `<tr><td style="padding:8px 40px 4px"><table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><td align="center" style="background:#f4f4ff;border:1px solid #e0e0ff;border-radius:14px;padding:22px 10px"><div style="font:600 12px/1 -apple-system,Segoe UI,Roboto,Arial,sans-serif;letter-spacing:.14em;text-transform:uppercase;color:#6b6f8a;margin-bottom:12px">${esc(b.label || 'Doğrulama kodu')}</div><div style="font:800 38px/1 'SF Mono',Consolas,Menlo,monospace;letter-spacing:.32em;color:#111327;padding-left:.32em">${esc(b.code)}</div><div style="font:13px/1.5 -apple-system,Segoe UI,Roboto,Arial,sans-serif;color:#6b6f8a;margin-top:12px">${esc(b.hint || '10 dakika geçerlidir')}</div></td></tr></table></td></tr>`;
@@ -79,19 +79,21 @@ function render({ brand = 'NEBSOFT', site = {}, preheader = '', title, intro, bl
   <table role="presentation" width="100%"><tr><td style="font:400 20px/1 'Michroma',-apple-system,Segoe UI,Arial,sans-serif;letter-spacing:.14em;color:#ffffff">${url ? `<img src="${esc(url.replace(/\/$/, ''))}/assets/icons/icon-128.png" width="44" height="44" alt="" style="vertical-align:middle;border-radius:11px;margin-right:12px;border:0">` : ''}${brand.toUpperCase() === 'NEBSOFT' ? 'NEB<span style="color:#a5b4fc">SOFT</span>' : esc(brand)}</td></tr>
   <tr><td style="padding-top:22px;font:800 26px/1.2 -apple-system,Segoe UI,Roboto,Arial,sans-serif;color:#ffffff;letter-spacing:-.02em">${esc(title)}</td></tr>${intro ? `<tr><td style="padding-top:10px;font:15px/1.55 -apple-system,Segoe UI,Roboto,Arial,sans-serif;color:#c9cbe4">${esc(intro)}</td></tr>` : ''}</table></td></tr>
  <tr><td class="card" style="background:#ffffff;border-radius:0 0 20px 20px;padding:18px 0 30px;box-shadow:0 30px 60px -30px rgba(17,19,39,.25)"><table role="presentation" width="100%" cellpadding="0" cellspacing="0">${blocks.map(part).join('')}</table></td></tr>
- <tr><td style="padding:22px 30px 0;text-align:center;font:12px/1.6 -apple-system,Segoe UI,Roboto,Arial,sans-serif;color:#8a8ca8">${footer ? esc(footer) + '<br>' : ''}${esc(site.siteName || brand)} · ${esc(site.phone || '')} · ${esc(site.email || '')}${url ? `<br><a href="${esc(url)}" style="color:#6366f1;text-decoration:none">${esc(url.replace(/^https?:\/\//, ''))}</a>` : ''}<br><span style="color:#b0b2c8">Bu e-posta hesabınızla ilgili bir işlem nedeniyle gönderildi.</span></td></tr>
+ <tr><td style="padding:22px 30px 0;text-align:center;font:12px/1.6 -apple-system,Segoe UI,Roboto,Arial,sans-serif;color:#8a8ca8">${footer ? esc(footer) + '<br>' : ''}${esc(site.siteName || brand)} · ${esc(site.phone || '')} · ${esc(site.email || '')}${url ? `<br><a href="${esc(url)}" style="color:#6366f1;text-decoration:none">${esc(url.replace(/^https?:\/\//, ''))}</a>` : ''}<br><span style="color:#b0b2c8">Bu e-posta hesabınızla ilgili bir işlem nedeniyle gönderildi.</span>${unsub ? `<br><a href="${esc(unsub)}" style="color:#6366f1">Bu e-postaları almak istemiyorum</a>` : ''}</td></tr>
 </table></td></tr></table></body></html>`;
-  const text = [title, intro, ...blocks.map((b) => (b.type === 'code' ? `${b.label || 'Kod'}: ${b.code}` : b.type === 'button' ? `${b.label}: ${b.url}` : b.type === 'kv' ? b.rows.map(([k, v]) => `${k}: ${v}`).join('\n') : b.type === 'list' ? b.items.map((x) => '- ' + x).join('\n') : b.text || '')), footer, `${site.siteName || brand} ${site.phone || ''}`].filter(Boolean).join('\n\n');
+  const text = [title, intro, ...blocks.map((b) => (b.type === 'code' ? `${b.label || 'Kod'}: ${b.code}` : b.type === 'button' ? `${b.label}: ${b.url}` : b.type === 'kv' ? b.rows.map(([k, v]) => `${k}: ${v}`).join('\n') : b.type === 'list' ? b.items.map((x) => '- ' + x).join('\n') : b.text || '')), footer, `${site.siteName || brand} ${site.phone || ''}`, unsub ? `E-postaları almak istemiyorsanız: ${unsub}` : ''].filter(Boolean).join('\n\n');
   return { html, text };
 }
 
 // ---------- Gönderim + kayıt ----------
+// Doğrulama kodu konunun başındadır: kayıtta maskelenir (yöneticiler gönderim geçmişini okuyabilir, kod orada görünmemeli)
+const logSubject = (s) => String(s).replace(/^\d{6}\b/, '••••••').slice(0, 200);
 async function send(to, subject, tpl, site) {
   const c = await getConfig();
   if (!(c.enabled && c.host && c.user && c.pass)) return { ok: false, skipped: true, error: 'E-posta ayarı yapılmadı' };
   const { html, text } = render({ ...tpl, site, title: tpl.title || subject });
-  try { const r = await smtpSend(c, { to, subject, html, text }); await db.q('INSERT INTO mail_log (at, to_addr, subject, status, detail) VALUES (?,?,?,?,?)', [new Date(), to, subject.slice(0, 200), 'gönderildi', r.id]).catch(() => {}); return r; }
-  catch (e) { await db.q('INSERT INTO mail_log (at, to_addr, subject, status, detail) VALUES (?,?,?,?,?)', [new Date(), to, subject.slice(0, 200), 'hata', e.message.slice(0, 250)]).catch(() => {}); return { ok: false, error: e.message }; }
+  try { const r = await smtpSend(c, { to, subject, html, text, unsub: tpl.unsub }); await db.q('INSERT INTO mail_log (at, to_addr, subject, status, detail) VALUES (?,?,?,?,?)', [new Date(), to, logSubject(subject), 'gönderildi', r.id]).catch(() => {}); return r; }
+  catch (e) { await db.q('INSERT INTO mail_log (at, to_addr, subject, status, detail) VALUES (?,?,?,?,?)', [new Date(), to, logSubject(subject), 'hata', e.message.slice(0, 250)]).catch(() => {}); return { ok: false, error: e.message }; }
 }
 
 // ---------- Doğrulama kodları ----------
@@ -111,4 +113,4 @@ async function checkCode(ticket, code, purpose) {
   return { ok: true, email: r.email, meta: J(r.meta, {}) };
 }
 
-module.exports = { PRESETS, settings, getConfig, saveConfig, ready, send, render, issueCode, checkCode, smtpSend };
+module.exports = { logSubject, PRESETS, settings, getConfig, saveConfig, ready, send, render, issueCode, checkCode, smtpSend };

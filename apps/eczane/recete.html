@@ -83,7 +83,7 @@
     e.preventDefault(); const f = $('#rf'); if (!NS.validate(f)) return; if (!$('#kv').checked) return toast('KVKK onayını işaretleyin', 'err');
     const v = NS.readForm(f); if (!/^[A-Za-z0-9]{6,10}$/.test(v.rxNo.replace(/\s/g, ''))) return toast('E-reçete numarası 6-10 harf/rakam olmalı', 'err');
     if (digits(v.phone).length !== 10) return toast('Geçerli bir cep telefonu girin', 'err');
-    db.load(); const code = 'R' + [...crypto.getRandomValues(new Uint8Array(7))].map((x) => 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'[x % 32]).join('');
+    db.load(); const code = 'R' + [...crypto.getRandomValues(new Uint8Array(6))].map((x) => 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'[x % 32]).join('');
     db.insert('rxOrders', { ...v, rxNo: v.rxNo.replace(/\s/g, '').toUpperCase(), code, status: 'yeni', at: new Date().toISOString() });
     phone = v.phone; try { localStorage.setItem('nebsoft:ecz:tel', phone); } catch (x) { /* yok */ }
     toast(`Reçeteniz alındı. Takip kodunuz: ${(db.find('rxOrders', (o) => o.rxNo === v.rxNo.replace(/\s/g, '').toUpperCase() && digits(o.phone) === digits(v.phone)) || {}).code || code}`, 'ok'); tab = 'takip'; render();

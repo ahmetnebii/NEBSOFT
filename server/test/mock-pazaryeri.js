@@ -14,6 +14,7 @@ function start(port = 5099) {
         if (/\/integration\/order\/sellers\/\d+\/orders$/.test(p)) { const page = Number(u.searchParams.get('page') || 0); const size = Number(u.searchParams.get('size') || 50); return j(200, { totalPages: Math.ceil(pkgs.length / size), page, content: pkgs.slice(page * size, page * size + size) }); }
         if (/\/inventory\/sellers\/\d+\/products\/price-and-inventory$/.test(p) && req.method === 'POST') return j(200, { batchRequestId: 'b-' + ++batch });
         if (/\/products\/batch-requests\/.+$/.test(p)) return j(200, { status: 'COMPLETED', items: [{ requestItem: { barcode: 'LB100-SIY-S' }, status: 'SUCCESS', failureReasons: [] }] });
+        if (/\/order\/sellers\/\d+\/claims$/.test(p)) return j(200, { totalPages: 1, content: [{ id: 'c1', orderNumber: 'TY100', claimDate: 1760000000000, cargoTrackingNumber: 7330, orderShipmentPackageId: 9000, items: [{ orderLine: { barcode: 'LB100-SIY-S', merchantSku: 'LB100-SIY-S', productName: 'Saten Midi Elbise', price: 499.9 }, claimItems: [{ id: 'i1', claimItemStatus: { name: 'WaitingInAction' }, customerClaimItemReason: { name: 'Beden uymadı' } }, { id: 'i2', claimItemStatus: { name: 'WaitingInAction' } }] }] }] });
         if (/\/shipment-packages\/\d+$/.test(p) && req.method === 'PUT') return j(200, {});
         if (/\/shipment-packages\/\d+\/items\/unsupplied$/.test(p) && req.method === 'PUT') return j(200, {});
         if (/\/product\/sellers\/\d+\/v2\/products$/.test(p) && req.method === 'POST') return j(200, { batchRequestId: 'p-' + ++batch });
