@@ -26,6 +26,7 @@ const PAGES = {
   ik: ['calisan.html', 'Çalışan portalı', 'users'], toptan: ['bayi.html', 'Bayi sipariş', 'truck'], musavir: ['portal.html', 'Mükellef portalı', 'book'], muhasebe: ['cari.html', 'Cari hesap portalı', 'wallet'], hukuk: ['muvekkil.html', 'Müvekkil portalı', 'scale'],
   anaokulu: ['veli.html', 'Anaokulu veli portalı', 'heart'], emlak: ['ilan.html', 'İlanlarımız', 'home'], galeri: ['vitrin.html', 'Araç vitrini', 'car'],
   kuyumcu: ['ekran.html', 'Güncel altın fiyatları', 'coins'], eticaret: ['magaza.html', 'Online mağaza', 'bag'], bilet: ['bilet.html', 'Etkinlikler ve bilet', 'ticket'],
+  terzi: ['takip.html', 'Ölçü', 'scissors'],
   cicekci: ['takip.html', 'Sipariş', 'flower'],
   pastane: ['takip.html', 'Özel sipariş', 'chef'],
   matbaa: ['takip.html', 'Teklif', 'print'],

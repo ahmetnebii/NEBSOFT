@@ -78,6 +78,14 @@ window.CATALOG = {
       modules: ['Servis Kayıtları', 'Kanban Pano', 'Müşteriler', 'Parça Stoku', 'Teknisyenler', 'Durum Sorgulama', 'Raporlar'],
     },
     {
+      id: 'terzi', ready: true, extraDemos: [{ label: 'Müşteri takip sayfasını aç', url: 'apps/terzi/takip.html' }], cat: 'randevu', name: 'Terzi & Tadilat', tagline: 'Ölçü, prova, teslim tarihi ve "hazır" SMS\'i', icon: 'scissors', accent: '#b45309',
+      ornekFiyat: true, prices: [499, 899, 1690], sectors: ['Terzi', 'Tadilat', 'Gelinlik atölyesi', 'Özel dikim', 'Erkek terzisi'], // fiyat ÖRNEK, kullanıcı onayı bekliyor
+      desc: 'Ölçü kaydı ve geçmişi, tadilat fişi, önceki ve istenen ölçü, prova takibi, teslim tarihi, etkinlik uyarısı ve "hazır" SMS\'i.',
+      features: ['Kadın, erkek, gelinlik ölçü şablonu; kendi alanlarınız', 'Ölçü geçmişi ve iki ölçü arasındaki fark', 'Tadilatta önceki ve istenen ölçü, müşteri imzası', 'Prova tarihi, düzeltme notu ve hatırlatma SMS\'i', 'Düğün ve nişan tarihi uyarısı', 'Askı fişi, kapora ve kalan tutar', 'Hazır SMS\'i (SMS sağlayıcısı bağlanınca gider, öncesinde TEST görünür)'],
+      modules: ['İş Panosu', 'İşler', 'Teslim Takvimi', 'Ölçüler', 'Provalar', 'Ölçü Şablonları', 'Müşteriler', 'İşlem Fiyatları', 'Ustalar'],
+      faq: [['Eski ölçüler silinir mi?', 'Hayır. Her ölçü tarihiyle saklanır, yeni ölçüde önceki değer görünür ve fark hesaplanır. Usta hesabı ölçü silemez.'], ['Kendi ölçü alanlarımı ekleyebilir miyim?', 'Evet. Ölçü Şablonları sayfasında alanları virgülle yazarsınız.']],
+    },
+    {
       id: 'cicekci', ready: true, extraDemos: [{ label: 'Müşteri takip sayfasını aç', url: 'apps/cicekci/takip.html' }], cat: 'satis', name: 'Çiçekçi', tagline: 'Sipariş, saat aralığı, kurye ve teslim kanıtı', icon: 'flower', accent: '#16a34a',
       ornekFiyat: true, prices: [499, 899, 1690], sectors: ['Çiçekçi', 'Çelenkçi', 'Organizasyon', 'Peyzaj satış'], // fiyat ÖRNEK, kullanıcı onayı bekliyor
       desc: 'Gönderen ve alıcı ayrı sipariş, saat aralığı, kart notu, kurye atama, teslim alan kaydı, başarısız teslim, özel gün listesi ve çiçek tazeliği.',

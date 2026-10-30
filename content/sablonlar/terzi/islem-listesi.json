@@ -1,0 +1,52 @@
+{
+  "sablon": "terzi/islem-listesi",
+  "surum": 1,
+  "program": "terzi",
+  "tur": "urun",
+  "ad": "Terzi işlem listesi",
+  "aciklama": "Sık yapılan tadilatlar. Fiyatları siz girin.",
+  "kaynak": "sablon",
+  "hedef": "services",
+  "fiyatAlan": "price",
+  "varsayilan": {
+    "price": 0
+  },
+  "kayitlar": [
+    {
+      "anahtar": "paca",
+      "name": "Paça kısaltma",
+      "cat": "Pantolon",
+      "unit": "adet"
+    },
+    {
+      "anahtar": "bel",
+      "name": "Bel daraltma",
+      "cat": "Pantolon",
+      "unit": "adet"
+    },
+    {
+      "anahtar": "fermuar",
+      "name": "Fermuar değişimi",
+      "cat": "Onarım",
+      "unit": "adet"
+    },
+    {
+      "anahtar": "kol",
+      "name": "Kol kısaltma",
+      "cat": "Ceket",
+      "unit": "adet"
+    },
+    {
+      "anahtar": "yan",
+      "name": "Yan daraltma",
+      "cat": "Ceket",
+      "unit": "adet"
+    },
+    {
+      "anahtar": "elbise",
+      "name": "Elbise dikimi",
+      "cat": "Dikim",
+      "unit": "adet"
+    }
+  ]
+}
