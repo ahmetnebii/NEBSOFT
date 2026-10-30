@@ -564,6 +564,39 @@ RULES.eczane = {
   grant: (x, list) => { const o = list.find(([n]) => n === 'rxOrders'); return o ? { k: 'r', i: o[1].id } : null; },
 };
 
+// ---------- İK: çalışan portalı (calisan.html) — telefon + giriş kodu ----------
+// Çalışan yalnızca kendi izin bakiyesini, izinlerini, vardiyasını ve kapatılmış aylardaki kendi bordrosunu görür; TC, IBAN, başkasının verisi çıkmaz
+const ikCalc = () => { try { return require('../../apps/ik/bordro.js'); } catch (e) { return null; } };
+const ikLeave = (x, e) => {
+  const B = ikCalc(); if (!B) return null; const ts = x.doc.ts || {}; const p = e.id + '|'; let used = 0, first = null;
+  Object.keys(ts).forEach((k) => { const d = k.slice(k.indexOf('|') + 1); if (!first || d < first) first = d; if (k.startsWith(p) && ts[k].s === 'I') used++; });
+  return B.leaveBalance(e, { asOf: x.today, used, trackFrom: first || x.today });
+};
+RULES.ik = {
+  settings: ['bizName', 'bizPhone'],
+  login: (x, q) => { const d = digits(q.phone); const code = norm(q.code); const e = code && d.length === 10 && x.col('employees').find((r) => r.active !== false && digits(r.phone) === d && r.portalCode && norm(r.portalCode) === code); return e ? { k: 'e', i: e.id } : null; },
+  loginError: 'Telefon veya giriş kodu hatalı',
+  view: (x) => {
+    const id = me(x, 'e'); const e = id && x.get('employees', id); if (!e || e.active === false) return {};
+    const roster = x.doc.roster || {}; const p = id + '|'; const from = new Date(Date.now() - 7 * 864e5).toISOString().slice(0, 10);
+    return {
+      employees: [{ ...x.pick(e, ['id', 'name', 'dept', 'title', 'start', 'phone']), leave: ikLeave(x, e) }],
+      leaves: x.col('leaves').filter((l) => l.emp === id).map((l) => x.pick(l, ['id', 'emp', 'type', 'from', 'to', 'note', 'status', 'source'])),
+      shifts: x.col('shifts').map((s) => x.pick(s, ['id', 'name', 'start', 'end', 'color'])),
+      myRoster: Object.keys(roster).filter((k) => k.startsWith(p) && k.slice(p.length) >= from).map((k) => ({ id: k, date: k.slice(p.length), shift: roster[k] })),
+      payClosed: x.col('payClosed').map((c) => { const r = (c.rows || []).find((y) => y.emp === id); return r ? { id: c.id, ym: c.ym, paidAt: c.paidAt, rows: [x.pick(r, ['emp', 'days', 'gross', 'sgk', 'unemp', 'incomeTax', 'stamp', 'adv', 'netSalary', 'net'])] } : null; }).filter(Boolean),
+    };
+  },
+  write: {
+    leaves: {
+      ins: I({ emp: 'id', type: 'enum:I|U', from: 'date', to: 'date', note: 'str:300?' }, () => ({ status: 'bekliyor', source: 'portal' }), (r, x) => {
+        if (r.emp !== me(x, 'e')) deny(); if (r.to < r.from) bad('Bitiş tarihi başlangıçtan önce olamaz'); if (r.from < x.today) bad('Geçmiş tarihe izin istenemez');
+        if (x.col('leaves').filter((l) => l.emp === r.emp && l.status === 'bekliyor').length >= 5) bad('Onay bekleyen çok fazla talebiniz var');
+      }),
+    },
+  },
+};
+
 // ---------- Fabrika: bayi sipariş portalı (bayi.html) — vergi no/e-posta + telefonun son 4 hanesi ----------
 const dealerLogin = (col) => (x, q) => {
   const v = String(q.vkn || '').trim().toLocaleLowerCase('tr'); const p = String(q.pin || '').replace(/\D/g, '');

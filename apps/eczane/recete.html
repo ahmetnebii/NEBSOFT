@@ -23,6 +23,7 @@
 <header class="tk-bar"><div class="in" id="bar"></div></header>
 <main class="tk-wrap" id="root" style="max-width:760px"></main>
 <script src="../../core/core.js"></script>
+<script src="calc.js"></script>
 <script>
 (function () {
   const { esc, $, $$, on, icon, money, toast, iso, today, addDays } = NS;
@@ -41,8 +42,8 @@
 
   function dutyBox() {
     const d = db.all('duty', (x) => x.date >= today()).sort((a, b) => a.date.localeCompare(b.date))[0];
-    const h = new Date().getHours(); const open = h >= 9 && h < 19;
-    return `<div class="duty">${icon('clock', 'ico-lg')}<div><b>${open ? 'Şu an açığız · 09:00–19:00' : 'Şu an kapalıyız · 09:00–19:00'}</b><span class="small">${d ? (d.date === today() ? 'Bu gece nöbetçiyiz: ' + esc(d.note) : `Sıradaki nöbetimiz: ${NS.dateLong(d.date)}`) : ''} · ${esc(S().bizAddress || '')}</span></div></div>`;
+    const f = S().openFrom, t = S().openTo; const now = new Date().toTimeString().slice(0, 5); const open = f && t && now >= f && now < t;
+    return `<div class="duty">${icon('clock', 'ico-lg')}<div><b>${f && t ? `${open ? 'Şu an açığız' : 'Şu an kapalıyız'} · ${esc(f)}–${esc(t)}` : esc(S().bizName || 'Eczane')}</b><span class="small">${d ? (d.date === today() ? 'Bu gece nöbetçiyiz: ' + esc(d.note) : `Sıradaki nöbetimiz: ${NS.dateLong(d.date)}`) : ''} · ${esc(S().bizAddress || '')}</span></div></div>`;
   }
   function hazirla() {
     return `<section class="tk-panel"><h3>${icon('file')} Reçetemi hazırlayın</h3><div class="b"><p class="small muted" style="margin-top:0">E-reçete numaranızı gönderin; ilaçlarınızı biz hazırlayalım, hazır olunca SMS ile haber verelim. Teslimde kimliğinizi getirmeniz yeterli.</p>
@@ -65,10 +66,10 @@
   function results(q) {
     const t = trl(q).trim(); if (t.length < 3) return '<div class="small muted">En az 3 harf yazın.</div>';
     const ds = db.all('drugs', (d) => trl(d.name).includes(t) || trl(d.active).includes(t)).slice(0, 12);
-    if (!ds.length) return '<div class="small muted">Sonuç bulunamadı. Bizi arayın, depodan aynı gün temin edelim.</div>';
-    return ds.map((d) => { const n = stock(d.id); const alt = n ? null : db.all('drugs', (x) => x.id !== d.id && x.active === d.active && d.active !== '-' && stock(x.id) > 0)[0];
+    if (!ds.length) return '<div class="small muted">Sonuç bulunamadı. Stok bilgisi için bizi arayın.</div>';
+    return ds.map((d) => { const n = stock(d.id); const alt = n ? null : db.all('drugs', (x) => ECZ.sameDrug(d, x) && stock(x.id) > 0)[0];
       const lv = n > 5 ? ['Stokta var', 'var(--ok)'] : n > 0 ? ['Sınırlı stok', 'var(--warn)'] : ['Stokta yok', 'var(--err)'];
-      return `<div class="res"><div><b>${esc(d.name)}</b><div class="small muted">${esc(d.active)} · ${esc(d.form)}${d.rx !== 'yok' ? ' · reçeteli' : ''}</div>${alt ? `<div class="small" style="color:var(--accent)">Muadili mevcut (eczacınız bilgi verir)</div>` : !n ? '<div class="small muted">Depodan aynı gün istenebilir</div>' : ''}</div><div style="text-align:right"><span class="lvl" style="--c:${lv[1]}">${lv[0]}</span>${d.rx === 'yok' ? `<div class="small muted">${money(d.price)}</div>` : ''}</div></div>`; }).join('');
+      return `<div class="res"><div><b>${esc(d.name)}</b><div class="small muted">${esc(d.active)} · ${esc(d.form)}${d.rx !== 'yok' ? ' · reçeteli' : ''}</div>${alt ? `<div class="small" style="color:var(--accent)">Muadili mevcut (eczacınız bilgi verir)</div>` : !n ? '<div class="small muted">Bizi arayın, temin süresini söyleyelim</div>' : ''}</div><div style="text-align:right"><span class="lvl" style="--c:${lv[1]}">${lv[0]}</span>${d.rx === 'yok' ? `<div class="small muted">${money(d.price)}</div>` : ''}</div></div>`; }).join('');
   }
   function render() {
     db.load();
@@ -82,7 +83,7 @@
     e.preventDefault(); const f = $('#rf'); if (!NS.validate(f)) return; if (!$('#kv').checked) return toast('KVKK onayını işaretleyin', 'err');
     const v = NS.readForm(f); if (!/^[A-Za-z0-9]{6,10}$/.test(v.rxNo.replace(/\s/g, ''))) return toast('E-reçete numarası 6-10 harf/rakam olmalı', 'err');
     if (digits(v.phone).length !== 10) return toast('Geçerli bir cep telefonu girin', 'err');
-    db.load(); const code = 'R' + Math.random().toString(36).slice(2, 7).toUpperCase();
+    db.load(); const code = 'R' + [...crypto.getRandomValues(new Uint8Array(6))].map((x) => 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'[x % 32]).join('');
     db.insert('rxOrders', { ...v, rxNo: v.rxNo.replace(/\s/g, '').toUpperCase(), code, status: 'yeni', at: new Date().toISOString() });
     phone = v.phone; try { localStorage.setItem('nebsoft:ecz:tel', phone); } catch (x) { /* yok */ }
     toast(`Reçeteniz alındı. Takip kodunuz: ${(db.find('rxOrders', (o) => o.rxNo === v.rxNo.replace(/\s/g, '').toUpperCase() && digits(o.phone) === digits(v.phone)) || {}).code || code}`, 'ok'); tab = 'takip'; render();
