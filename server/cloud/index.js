@@ -3,8 +3,14 @@ const db = require('./db');
 const cfg = require('./config');
 const sec = require('./security');
 const auth = require('./auth');
+const crypto = require('crypto');
+const log = require('./log');
+const analitik = require('./analitik');
 const { R, err } = require('./routes');
-require('./public'); require('./seo'); require('./odeme'); // müşteriye açık sayfaların ve ödemenin uç noktaları (R listesine eklenir)
+require('./public'); require('./seo'); require('./odeme'); require('./analitik-api'); // müşteriye açık sayfaların, ödemenin ve analitiğin uç noktaları (R listesine eklenir)
+
+// Günlük ve sayaçlara gerçek adres değil kalıp yazılır: /api/public/:slug/... (adresteki belirteçler kayda girmez)
+const kalip = (re) => re.source.replace(/\(\?<(\w+)>\[\^\/\]\+\)/g, ':$1').replace(/\\/g, '').replace(/^\^|\$$/g, '');
 
 const send = (res, code, obj) => { if (res.headersSent) return; res.writeHead(code, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' }); res.end(JSON.stringify(obj)); };
 // raw: gövde bayt olarak döner (webhook imzası ham gövde üzerinden hesaplanır, JSON'a çevrilirse imza bozulabilir)
@@ -21,7 +27,9 @@ async function handle(req, res, path) {
   for (const r of R) { if (r.method !== m) continue; const x = r.re.exec(path); if (x) { hit = r; params = x.groups || {}; break; } }
   if (!hit) return false;
   if (hit.opt.cloudOnly && !db.ready()) return false; // yerel (bulutsuz) modda eski köprü uç noktaları kullanılır
-  const c = { req, res, params: Object.fromEntries(Object.entries(params).map(([k, v]) => [k, decodeURIComponent(v)])), query: new URL(req.url, 'http://x').searchParams, ip: sec.ip(req), body: {} };
+  const c = { req, res, params: Object.fromEntries(Object.entries(params).map(([k, v]) => [k, decodeURIComponent(v)])), query: new URL(req.url, 'http://x').searchParams, ip: sec.ip(req), body: {}, istek: crypto.randomBytes(4).toString('hex') };
+  const yol = kalip(hit.re); const t0 = Date.now();
+  if (hit.opt.metrik !== false && !hit.opt.uzun) res.once('finish', () => analitik.istek(yol, res.statusCode, Date.now() - t0));
   try {
     if (!sec.limit('api:' + c.ip, 1500, 60e3)) throw err(429, 'Çok fazla istek. Biraz sonra tekrar deneyin.');
     if (hit.opt.limit && !sec.limit(`${hit.opt.limit[0]}:${c.ip}`, hit.opt.limit[1], hit.opt.limit[2])) throw err(429, 'Çok fazla deneme. Lütfen daha sonra tekrar deneyin.');
@@ -41,8 +49,8 @@ async function handle(req, res, path) {
     send(res, 200, out || { ok: true });
   } catch (e) {
     const code = e.status || (e.code === 'NO_DB' ? 503 : 500);
-    if (code >= 500 && !e.status) console.error('[api]', req.method, path, e);
-    send(res, code, { ok: false, error: code === 500 ? 'Beklenmeyen bir hata oluştu' : e.message, ...(e.extra || {}) });
+    if (code >= 500 && !e.status) log.uygulama.hata('api.hata', { istek: c.istek, kullanici: c.user && c.user.id, isletme: c.user && c.user.tenant_id, ip: c.ip, veri: { yontem: req.method, yol }, hata: e });
+    send(res, code, { ok: false, error: code === 500 ? 'Beklenmeyen bir hata oluştu' : e.message, ...(code === 500 ? { istek: c.istek } : {}), ...(e.extra || {}) });
   }
   return true;
 }
@@ -50,10 +58,11 @@ async function handle(req, res, path) {
 async function init() {
   const conf = cfg.load();
   if (conf && conf.db) {
-    try { const i = await db.connect(conf.db); console.log(`Veritabanı bağlı: ${i.host}/${i.database} (${i.version})`); } catch (e) { console.error('Veritabanına bağlanılamadı:', e.message); setTimeout(init, 15000); return; }
+    try { const i = await db.connect(conf.db); log.uygulama.bilgi('db.baglandi', { mesaj: `Veritabanı bağlı: ${i.host}/${i.database} (${i.version})` }); } catch (e) { log.uygulama.hata('db.baglanamadi', { mesaj: 'Veritabanına bağlanılamadı', hata: e }); setTimeout(init, 15000); return; }
   }
-  if (db.ready()) { try { const n = await require('./secrets').migrate(db); if (n) console.log(`Entegrasyon kimlik bilgileri şifrelendi: ${n} kayıt`); } catch (e) { console.error('Kimlik bilgisi şifreleme geçişi:', e.message); } }
+  if (db.ready()) { try { const n = await require('./secrets').migrate(db); if (n) log.uygulama.bilgi('sifreleme.gecis', { mesaj: `Entegrasyon kimlik bilgileri şifrelendi: ${n} kayıt` }); } catch (e) { log.uygulama.hata('sifreleme.gecis', { mesaj: 'Kimlik bilgisi şifreleme geçişi', hata: e }); } }
   let hasAdmin = false; if (db.ready()) hasAdmin = !!(await db.one("SELECT id FROM users WHERE role='superadmin' LIMIT 1"));
+  // Kurulum anahtarı bilerek düz yazılır: DEPLOY.md yöneticiyi bu satıra yönlendirir ve bir kez kullanılır (maskelenirse kurulum yapılamaz)
   if (!hasAdmin) { const t = cfg.setupToken(true); console.log(`\n  Kurulum gerekli → /admin/  ·  Kurulum anahtarı: ${t}\n  (anahtar ayrıca ${cfg.DATA}/setup-token.txt dosyasında)\n`); }
 }
 // Oturumdaki işletme sahibinin işletme adresi (uygulama sayfası yönlendirmesi için)
@@ -61,4 +70,4 @@ async function tenantSlug(req) {
   const u = await auth.current(req); if (!u || !u.tenant_id) return null;
   const t = await db.one('SELECT slug FROM tenants WHERE id=?', [u.tenant_id]); return t ? t.slug : null;
 }
-module.exports = { handle, init, send, tenantSlug, db, seo: require('./seo') };
+module.exports = { handle, init, send, tenantSlug, db, log, analitik, seo: require('./seo') };

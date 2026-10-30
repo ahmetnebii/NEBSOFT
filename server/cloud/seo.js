@@ -12,6 +12,7 @@ const sec = require('./security');
 const { R, site, valid, J, syncCatalog } = require('./routes');
 const cat = require('./catalog');
 const bizsite = require('../../core/bizsite');
+const analitik = require('./analitik');
 const tlf = (n) => new Intl.NumberFormat('tr-TR').format(n);
 
 const PLACEHOLDER = 'https://www.domain.com';
@@ -56,6 +57,12 @@ async function rewrite(text, req) {
     // Arama motoru şeması (JSON-LD) da aynı fiyatı göstersin
     const pid = (text.match(/data-p="([a-z]+):\d"/) || [])[1]; const pr = pid && ov[pid] && ov[pid].prices;
     if (pr) text = text.replace(/"lowPrice":\d+(\.\d+)?/, `"lowPrice":${pr[0]}`).replace(/"highPrice":\d+(\.\d+)?/, `"highPrice":${pr[2]}`); }
+  // Analitik yalnızca bulut modunda ve açıksa yüklenir: rıza bandı ve olay gönderimi core/olay.js içindedir (kaynak dosyalar değişmez)
+  if (await analitik.acik().catch(() => false)) {
+    const pid = (text.match(/data-p="([a-z]+):\d"/) || [])[1]; const body = text.lastIndexOf('</body>'); const foot = text.lastIndexOf('</footer>');
+    if (foot > -1) text = `${text.slice(0, foot)}<p style="margin:10px 0 0;font-size:13px"><a href="#" data-olay-tercih>Analitik tercihleri</a></p>${text.slice(foot)}`;
+    if (body > -1) { const b = text.lastIndexOf('</body>'); text = `${text.slice(0, b)}<script src="/core/olay.js"${pid ? ` data-program="${pid}"` : ''} defer></script>${text.slice(b)}`; }
+  }
   return text;
 }
 

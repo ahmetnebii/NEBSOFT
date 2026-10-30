@@ -861,6 +861,14 @@
 
   // ---------- Uygulama iskeleti ----------
   // opts: {id, name, tagline, icon, accent, nav:[{id,label,icon,sec,roles}], routes:{id:(el,param,app)=>{}}, db, auth:{roles:{rol:'Etiket'}}, topActions:(app)=>html, home:'dashboard', productId}
+  // Analitik: yalnızca geçerli denemedeki işletmenin hangi bölümü açtığı sayılır (sunucu kimliği ve lisansı yeniden doğrular). Veri değil, bölüm adı gider. Ayrıntı: docs/LOG-YAPISI.md
+  const modulSon = {};
+  const modulSay = (m) => {
+    if (!CLOUD || !CLOUD.user || !IS_APP_PAGE || !CLOUD.analitik || !(CLOUD.licenses || []).some((l) => l.product === APP_ID && l.status === 'deneme' && l.valid)) return;
+    try { if (/"k":"red"/.test(localStorage.getItem('nebsoft:riza') || '')) return; } catch (e) { /* yok */ }
+    if (Date.now() - (modulSon[m] || 0) < 60e3) return; modulSon[m] = Date.now();
+    fetch('/api/olay', { method: 'POST', headers: { 'Content-Type': 'application/json' }, keepalive: true, body: JSON.stringify({ tur: 'modul', program: APP_ID, modul: String(m).toLowerCase().slice(0, 40) }) }).catch(() => {});
+  };
   function shell(opts) {
     const app = { opts, db: opts.db, route: null, param: null };
     NS.app = app;
@@ -1014,7 +1022,7 @@
       const [, r, p] = (location.hash.match(/^#\/([^/]+)\/?(.*)$/) || []);
       const home = opts.home || opts.nav.find((n) => n.id).id;
       const route = opts.routes[r] ? r : home;
-      app.route = route; app.param = p ? decodeURIComponent(p) : null;
+      app.route = route; app.param = p ? decodeURIComponent(p) : null; modulSay(route);
       const nav = opts.nav.find((n) => n.id === route);
       if (nav && !app.navVisible(nav)) { $('#view').innerHTML = `<div class="empty">${icon('eye')}<div>Bu bölüm menüden gizlendi. Açmak için Ayarlar &gt; Menü ve modüller.</div></div>`; return; }
       if (nav && nav.roles && !app.can(...nav.roles) && route === home) { const alt = opts.nav.find((n) => n.id && (!n.roles || app.can(...n.roles)) && app.navVisible(n)); if (alt) return app.go(alt.id); }

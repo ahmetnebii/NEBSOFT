@@ -19,6 +19,7 @@ const kanal = require('./server/connectors');
 const proto = require('./server/bridge-proto');
 const cloud = require('./server/cloud');
 const sec = require('./server/cloud/security');
+const log = require('./server/cloud/log');
 
 const ROOT = __dirname;
 const PORT = Number(process.env.PORT) || 5050;
@@ -128,7 +129,7 @@ function handle(req, res) {
   if (p.includes('\0')) { res.writeHead(400); return res.end('Geçersiz adres'); }
   if (/[?&]demo=1(&|$)/.test(req.url)) res.setHeader('X-Robots-Tag', 'noindex, nofollow'); // demo verisi dizine girmez
   if (p.startsWith('/api/')) {
-    return cloud.handle(req, res, p).then((done) => { if (!done) return api(req, res, p); }).catch((e) => { console.error(e); json(res, 500, { ok: false, error: 'Beklenmeyen bir hata oluştu' }); });
+    return cloud.handle(req, res, p).then((done) => { if (!done) return api(req, res, p); }).catch((e) => { log.uygulama.hata('sunucu.istek', { hata: e }); json(res, 500, { ok: false, error: 'Beklenmeyen bir hata oluştu' }); });
   }
   if (!['GET', 'HEAD'].includes(req.method)) { res.writeHead(405, { Allow: 'GET, HEAD' }); return res.end(); }
   if (p === '/.well-known/assetlinks.json') { const f = path.join(ROOT, 'data', 'assetlinks.json'); return fs.readFile(f, 'utf8', (e, t) => { if (e) { res.writeHead(404); return res.end(); } sendText(req, res, t, 'application/json; charset=utf-8', 'public, max-age=3600'); }); }
@@ -212,11 +213,11 @@ function serve(req, res, p) {
   });
 }
 server.requestTimeout = 60000; server.headersTimeout = 20000; server.keepAliveTimeout = 65000;
-if (process.env.NODE_ENV === 'production' && !process.env.NEBSOFT_SECRET) console.warn('UYARI: NEBSOFT_SECRET tanımlı değil — şifreleme anahtarı data/secret.key dosyasında; bu dosyayı yedekleyin (kaybolursa veritabanı bağlantı ayarı çözülemez).');
-process.on('unhandledRejection', (e) => console.error('[hata] işlenmemiş söz:', e));
-process.on('uncaughtException', (e) => { console.error('[hata] yakalanmamış istisna, yeniden başlatılmak üzere çıkılıyor:', e); setTimeout(() => process.exit(1), 200); }); // systemd/pm2 otomatik yeniden başlatır
+if (process.env.NODE_ENV === 'production' && !process.env.NEBSOFT_SECRET) log.uygulama.uyari('sunucu.anahtar', { mesaj: 'NEBSOFT_SECRET tanımlı değil — şifreleme anahtarı data/secret.key dosyasında; bu dosyayı yedekleyin (kaybolursa veritabanı bağlantı ayarı çözülemez).' });
+process.on('unhandledRejection', (e) => log.uygulama.hata('sunucu.soz', { mesaj: 'İşlenmemiş söz', hata: e }));
+process.on('uncaughtException', (e) => { log.uygulama.hata('sunucu.istisna', { mesaj: 'Yakalanmamış istisna, yeniden başlatılmak üzere çıkılıyor', hata: e }); setTimeout(() => process.exit(1), 200); }); // systemd/pm2 otomatik yeniden başlatır
 // Düzgün kapanma (systemd / pm2 yeniden başlatmalarında yarım kalan istek olmasın)
-const stop = (sig) => { console.log(`${sig} alındı, kapanıyor…`); server.close(() => { cloud.db.close().finally(() => process.exit(0)); }); setTimeout(() => process.exit(0), 10000).unref(); };
+const stop = (sig) => { log.uygulama.bilgi('sunucu.kapaniyor', { mesaj: `${sig} alındı, kapanıyor…` }); server.close(() => { cloud.analitik.bosalt().catch(() => {}).finally(() => cloud.db.close().finally(() => process.exit(0))); }); setTimeout(() => process.exit(0), 10000).unref(); };
 process.on('SIGTERM', () => stop('SIGTERM')); process.on('SIGINT', () => stop('SIGINT'));
-cloud.init().catch((e) => console.error('Bulut başlatılamadı:', e.message));
+cloud.init().catch((e) => log.uygulama.hata('sunucu.bulut', { mesaj: 'Bulut başlatılamadı', hata: e }));
 server.listen(PORT, process.env.HOST || '0.0.0.0', () => console.log(`NEBSOFT çalışıyor: http://localhost:${PORT}`));
