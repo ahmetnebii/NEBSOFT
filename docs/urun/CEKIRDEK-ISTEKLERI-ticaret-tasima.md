@@ -23,7 +23,7 @@ node site/tools/build-yardim.js
 node site/tools/build-kb.js
 ```
 
-`server/test/yardim.test.js` içindeki `KAYITLI` süzgeci bu satırlar gelince kendiliğinden tüm ürünleri kapsar. Üretilen `core/yardim.json` ve `core/kb.json` bu oturumda değiştirilmedi.
+Üretilen `core/yardim.json` ve `core/kb.json` bu oturumda değiştirilmedi; iki komut onları yeniden üretir.
 
 `core/forms.js` `FORMS` satırı (imzalı belgeler sayfası için; yoksa sayfa boş kalır, programlar kendi belgelerini `NS.docs` ile basar):
 
@@ -35,7 +35,11 @@ mobilya: { coll: 'customers', party: 'Müşteri', kinds: [] }, okulservisi: { co
 
 `core/notify.js` olayları: mobilya müşteri onayı (`jobs`), okul servisi veli mesajı (`messages`) ve gelmeyecek bildirimi (`absences`), lastik teslim talebi (`hotels`).
 
-`core/integrations.js`: program bazlı yardım metni (`opts.integrations` çalıştığı için zorunlu değil).
+`core/integrations.js` `USED` nesnesine (entegrasyon sihirbazı ve sayfadaki "kullanıldığı yer" listesi bunu okur):
+
+```js
+mobilya: ['sms', 'whatsapp', 'efatura', 'printer', 'backup'], okulservisi: ['sms', 'whatsapp', 'efatura', 'backup'], ciftci: ['sms', 'whatsapp', 'efatura', 'emustahsil', 'printer', 'backup'], lastik: ['sms', 'whatsapp', 'efatura', 'printer', 'backup'],
+```
 
 ## Davranış istekleri
 - `NS.crud` sayfalama: 5.000 satırda ilk çizim 2 saniye. Çiftçi alım ve satışları bu yüzden son 90 gün ile açılıyor.
@@ -47,4 +51,14 @@ mobilya: { coll: 'customers', party: 'Müşteri', kinds: [] }, okulservisi: { co
 - `assets/og/og-mobilya.png`, `og-okulservisi.png`, `og-ciftci.png`, `og-lastik.png` şimdilik genel `og.png` kopyasıdır. Ürün görselleri üretilmeli; mevcut görsellerde fiyat yazdığı için fiyat kararı beklenmeli.
 - `site/tools/screens.js` Playwright ister, bu ortamda yok. Dört ürünün ekran görüntüleri üretilmeli, yoksa tanıtım sayfasında görsel kırık olur.
 - `server/cloud/seo.js` `PAGES`: portallar `noindex` olduğu için eklenmedi.
-- `server/test/program-duman.test.js`, `sablon.test.js`, `yardim.test.js` düzeltmesi diğer oturumlarla çakışabilir; değişiklik paylaşılan nota yazıldı.
+
+## Birleştirmeye kadar kırmızı kalan testler
+Bu dalda `npm test` kırmızıdır ve zincir ilk hatada durur. Testler gevşetilmedi, özgün hâlindedir.
+
+| Test | Hata | Neden | Birleştirmede çözüm |
+|---|---|---|---|
+| `server/test/sablon.test.js` | `35 == 31` | Program sayısı sabit, `PROGRAMLAR` 35 oldu | 19. satırdaki 31 yeni toplamla değişir |
+| `server/test/yardim.test.js` | `mobilya: 0 adım` | `core/kurulum-adimlari.js` satırı yok; `core/yardim.json` ve `core/kb.json` üretilmedi | Üstteki çekirdek satırları ve iki derleme komutu |
+| `server/test/program-duman.test.js` | `program sayısı 31 olmalı` | Klasör sayısı 35 oldu | 158 ve 159. satırdaki 31 yeni toplamla değişir |
+
+Sayı, tüm oturumlar birleşince belli olur.
