@@ -5,7 +5,8 @@
   const H = window.FOTO_HESAP; const F = window.FOTO;
   const db = new NS.DB('fotograf', F.seed);
   const S = () => db.settings({ travelMin: 30, promiseDays: 45, depositPct: 30, archiveYears: 3, galleryDays: 45, pickDefault: 60, contractText: F.SOZLESME });
-  const cust = (id) => db.get('customers', id) || { name: '-', phone: '' };
+  // Müşteri tek dizinden bulunur: binlerce kayıtta satır başına dizi taranmaz
+  let CL = null, CN = -1, CI = null; const cust = (id) => { const L = db.data.customers || []; if (CL !== L || CN !== L.length) { CL = L; CN = L.length; CI = new Map(L.map((c) => [c.id, c])); } return CI.get(id) || { name: '-', phone: '' }; };
   const staff = (id) => db.get('staff', id) || { name: '-', color: '#64748b' };
   const by = () => (NS.currentUser || {}).name || '';
   const nowIso = () => new Date().toISOString();

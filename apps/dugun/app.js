@@ -6,7 +6,8 @@
   const db = new NS.DB('dugun', D.seed);
   const S = () => db.settings({ holdDays: 7, sonGun: 7, depositPct: 20, discMax: 5, cancelTiers: D.KADEME, contractText: D.SOZLESME });
   const hall = (id) => db.get('halls', id) || { name: '-', color: '#64748b' };
-  const cust = (id) => db.get('customers', id) || { name: '-', phone: '' };
+  // Müşteri tek dizinden bulunur: binlerce kayıtta satır başına dizi taranmaz
+  let CL = null, CN = -1, CI = null; const cust = (id) => { const L = db.data.customers || []; if (CL !== L || CN !== L.length) { CL = L; CN = L.length; CI = new Map(L.map((c) => [c.id, c])); } return CI.get(id) || { name: '-', phone: '' }; };
   const seansAd = (id) => (id === 'tam' ? 'Tüm gün' : (H.SEANS.find((x) => x.id === id) || {}).name || id);
   const SEANS_OPT = [...H.SEANS.map((x) => ({ value: x.id, label: `${x.name} (${x.start}-${x.end})` })), { value: 'tam', label: 'Tüm gün' }];
   const by = () => (NS.currentUser || {}).name || '';
