@@ -30,17 +30,18 @@ Tasarım kararları:
 
 ## Üst menü düzeltmesi
 
-Giriş yapılmamış pazar yeri üst menüsü bu işten önce de 1.200 piksellik alana sığmıyor, sayfayı yana taşırıyordu (ölçüm: 1.440 px pencerede içerik 1.360 px civarı). "Paketler" bağlantısı bunu büyüttüğü için düzeltildi: menü alanı 1.320 px oldu, bağlantılar sıkılaştı, 1.320 px altında menü düğmesi görünür, "Ücretsiz araçlar" bağlantısı "Araçlar" oldu. Statik sayfa üst menüsü de 1.320 px altında sıkılaştı. 1.125, 1.325 ve 1.440 px genişlikte taşma kalmadı.
+Giriş yapılmamış pazar yeri üst menüsü bu işten önce de 1.200 piksellik alana sığmıyor, sayfayı yana taşırıyordu (1.440 px pencerede "Paketler" ile 1.493 px ölçüldü, bağlantının kendi payı 90 px kadar; yani eklemeden önce de yaklaşık 1.400 px idi). "Paketler" bağlantısı bunu büyüttüğü için düzeltildi: menü alanı 1.320 px oldu, bağlantılar sıkılaştı, 1.320 px altında menü düğmesi görünür, "Ücretsiz araçlar" bağlantısı "Araçlar" oldu. Statik sayfa üst menüsü de 1.320 px altında sıkılaştı. 1.125, 1.325 ve 1.440 px genişlikte taşma kalmadı.
 
 ## Bilinen sınırlar
 
 - **Programlar birbirine veri aktarmaz.** Her programın kendi veri belgesi vardır (`new NS.DB('<program>')`). "Entegre paket" denmedi, her sayfa ve paket ekranı bunu açıkça yazar. Örneğin Butik ile E-ticaret stoğu, Otel folyosu ile Adisyon ayrıdır; ilgili sayfaların SSS bölümünde belirtildi. Bu en büyük ürün boşluğudur.
 - **Yerel kipte sepet toplu indirimi göstermez.** Bu mevcut davranıştır (`cartTotals`). Paket ekranı bu durumda not gösterir, gerçek sipariş bulutta sunucuda hesaplanır.
-- **Yeni programlar paketlere girmedi.** Paralel oturumların programları (ör. Kuaför, Eğitim tarafındakiler) bitince paket içerikleri gözden geçirilmelidir. Örneğin Güzellik paketi bugün Randevu + Market POS kullanır.
+- **Yeni programlar paketlere girmedi.** Paralel oturumlardaki 20 program bitince paket içerikleri gözden geçirilmelidir, listeyi değiştirmek için `market/paketler.js` ve `site/src/paketler.js` yeterlidir.
 - **Sıralama ve arama hacmi verisi yoktur.** `kw` alanı adaydır, Search Console verisi gelince gözden geçirilir.
 
 ## Doğrulama (2026-10-30)
 
+- `npm test`: geçti, GİB XSD testi dahil (atlanmadı).
 - `node server/test/paket.test.js`: 21 kontrol geçti. Sayfalar arası en yüksek üçlü kelime örtüşmesi %28.
 - `node server/test/seo-sayfalar.test.js`: geçti.
 - Tarayıcıda, gerçek bulut kipinde (MariaDB, ayrı veritabanı): paket ekranı → sepet → giriş → ödeme ekranı. Oto Sanayi, Profesyonel, aylık: 2.870 ₺, %10 indirim 287 ₺, KDV 516,60 ₺, toplam 3.099,60 ₺. Paket ekranı, sepet ve ödeme ekranı aynı tutarı gösterdi.
