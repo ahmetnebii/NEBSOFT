@@ -889,6 +889,8 @@ h1 { letter-spacing: -.025em; }
 
 /* Ürün görseli ve ürün formu */
 .pthumb { width: 36px; height: 36px; border-radius: 9px; object-fit: contain; background: #fff; border: 1px solid var(--border); flex: none; }
+.ns-sablon-uyari { display: flex; gap: 8px; align-items: flex-start; padding: 10px 12px; border-radius: 10px; background: color-mix(in srgb, var(--warn, #d97706) 12%, var(--surface)); border: 1px solid color-mix(in srgb, var(--warn, #d97706) 35%, var(--border)); color: var(--text); }
+.ns-atif { display: block; margin-top: 2px; } .ns-atif a { color: inherit; text-decoration: underline; }
 .pf-row { display: flex; gap: 6px; } .pf-row .input { flex: 1; min-width: 0; } .pf-cam { flex: none; padding: 0 12px; }
 .pf-img { display: flex; align-items: center; gap: 12px; margin-top: 12px; padding: 10px; border-radius: 14px; border: 1px dashed var(--border); } .pf-img img { width: 56px; height: 56px; object-fit: contain; background: #fff; border-radius: 10px; } .pf-img span { flex: 1; } .pf-img[hidden] { display: none; }
 

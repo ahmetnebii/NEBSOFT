@@ -250,9 +250,11 @@
       searchFields: (x) => [x.name, name(x.pid)], columns: [{ key: 'name', label: 'Kampanya', render: (x) => `<b>${esc(x.name)}</b><div class="small faint">${esc(name(x.pid))}</div>` }, { label: 'Koşul', render: (x) => `${x.buy} alana ${x.free} bedava` }, { label: 'Tarih', render: (x) => `${x.start ? NS.date(x.start) : '—'} – ${x.end ? NS.date(x.end) : '—'}` }, { label: 'Durum', render: (x) => (T.promoOf([x], x.pid, today()) ? badge('Geçerli', 'ok') : badge('Geçersiz', '')) }] });
   }
   function productsPage(el, p, app) {
+    let kat = null;
     NS.crud(el, app, { col: 'products', title: 'Ürünler & Stok', sub: 'Koli içi adet ve fiyat listeleri (A taban, B +%4, C +%8)', single: 'Ürün', addLabel: 'Ürün ekle', emptyIcon: 'box',
       fields: [{ name: 'code', label: 'Kod', required: true }, { name: 'barcode', label: 'Barkod' }, { name: 'name', label: 'Ürün', required: true, full: true }, { name: 'cat', label: 'Kategori' }, { name: 'pack', label: 'Koli içi adet', type: 'number' }, { name: 'cost', label: 'Alış (₺)', type: 'number', step: '0.01' }, { name: 'price', label: 'A liste fiyatı (₺)', type: 'number', step: '0.01' }, { name: 'vat', label: 'KDV %', type: 'select', options: ['1', '10', '20'] }, { name: 'stock', label: 'Stok (adet)', type: 'number' }, { name: 'min', label: 'Kritik stok', type: 'number' }],
-      beforeSave: (v) => { v.vat = Number(v.vat); ['pack', 'cost', 'price', 'stock', 'min'].forEach((k) => { v[k] = Number(v[k]) || 0; }); if (v.pack < 1) v.pack = 1; },
+      formOpen: (b) => { kat = NS.katalog.formaBagla(b, { barkod: 'barcode', ad: 'name', kategori: 'cat' }); },
+      beforeSave: (v, rec) => { v.vat = Number(v.vat); ['pack', 'cost', 'price', 'stock', 'min'].forEach((k) => { v[k] = Number(v[k]) || 0; }); if (v.pack < 1) v.pack = 1; if (!rec && v.barcode && !(kat && kat.hit)) NS.katalog.oner([{ gtin: v.barcode, ad: v.name, kategori: v.cat }]); },
       canDelete: (x) => (db.find('orders', (o) => T.OPEN.concat('sevk').includes(o.status) && o.lines.some((l) => l.pid === x.id)) ? 'Bu ürün açık siparişte; silinemez.' : true),
       filters: [{ value: 'all', label: 'Tümü' }, { value: 'az', label: 'Kritik stok', test: (x) => x.stock <= (x.min || 0) }],
       searchFields: (x) => [x.code, x.name, x.cat, x.barcode],

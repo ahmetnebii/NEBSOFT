@@ -1,0 +1,33 @@
+{
+  "sablon": "site/yonetim-formlari",
+  "surum": 1,
+  "program": "site",
+  "tur": "form",
+  "ad": "Yönetim formları",
+  "aciklama": "Karar ve tespit tutanakları.",
+  "kaynak": "sablon",
+  "uyari": "Bu metin örnektir, hukuki danışmanlık değildir. Kullanmadan önce avukatınıza gösterin ve işinize göre düzenleyin.",
+  "kayitlar": [
+    {
+      "anahtar": "tespit",
+      "label": "Hasar tespit tutanağı",
+      "sign": [
+        "Yönetim",
+        "Malik / kiracı"
+      ],
+      "fields": [
+        {
+          "name": "yer",
+          "label": "Hasar yeri",
+          "type": "text"
+        },
+        {
+          "name": "aciklama",
+          "label": "Açıklama",
+          "type": "textarea"
+        }
+      ],
+      "body": "{{yer}} bölgesinde {{tarih}} tarihinde hasar tespit edilmiştir."
+    }
+  ]
+}

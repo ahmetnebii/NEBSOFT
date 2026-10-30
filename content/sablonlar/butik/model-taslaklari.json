@@ -1,0 +1,132 @@
+{
+  "sablon": "butik/model-taslaklari",
+  "surum": 1,
+  "program": "butik",
+  "tur": "urun",
+  "ad": "Model taslakları",
+  "aciklama": "Giyim mağazası için temel model adları. Taslaklar pasif gelir: renk, beden ve fiyat girip satışa açın.",
+  "kaynak": "sablon",
+  "hedef": "models",
+  "fiyatAlan": "price",
+  "varsayilan": {
+    "price": 0,
+    "cost": 0,
+    "disc": 0,
+    "sizeType": "harf",
+    "season": "",
+    "online": false,
+    "colors": [],
+    "variants": [],
+    "passive": true
+  },
+  "kayitlar": [
+    {
+      "anahtar": "basic-tisort",
+      "name": "Basic tişört",
+      "cat": "Üst giyim",
+      "code": "SB001"
+    },
+    {
+      "anahtar": "polo-yaka-tisort",
+      "name": "Polo yaka tişört",
+      "cat": "Üst giyim",
+      "code": "SB002"
+    },
+    {
+      "anahtar": "gomlek",
+      "name": "Gömlek",
+      "cat": "Üst giyim",
+      "code": "SB003"
+    },
+    {
+      "anahtar": "bluz",
+      "name": "Bluz",
+      "cat": "Üst giyim",
+      "code": "SB004"
+    },
+    {
+      "anahtar": "kazak",
+      "name": "Kazak",
+      "cat": "Üst giyim",
+      "code": "SB005"
+    },
+    {
+      "anahtar": "hirka",
+      "name": "Hırka",
+      "cat": "Üst giyim",
+      "code": "SB006"
+    },
+    {
+      "anahtar": "sweatshirt",
+      "name": "Sweatshirt",
+      "cat": "Üst giyim",
+      "code": "SB007"
+    },
+    {
+      "anahtar": "kot-pantolon",
+      "name": "Kot pantolon",
+      "cat": "Alt giyim",
+      "code": "SB008"
+    },
+    {
+      "anahtar": "kumas-pantolon",
+      "name": "Kumaş pantolon",
+      "cat": "Alt giyim",
+      "code": "SB009"
+    },
+    {
+      "anahtar": "etek",
+      "name": "Etek",
+      "cat": "Alt giyim",
+      "code": "SB010"
+    },
+    {
+      "anahtar": "sort",
+      "name": "Şort",
+      "cat": "Alt giyim",
+      "code": "SB011"
+    },
+    {
+      "anahtar": "esofman-alti",
+      "name": "Eşofman altı",
+      "cat": "Alt giyim",
+      "code": "SB012"
+    },
+    {
+      "anahtar": "mont",
+      "name": "Mont",
+      "cat": "Dış giyim",
+      "code": "SB013"
+    },
+    {
+      "anahtar": "kaban",
+      "name": "Kaban",
+      "cat": "Dış giyim",
+      "code": "SB014"
+    },
+    {
+      "anahtar": "ceket",
+      "name": "Ceket",
+      "cat": "Dış giyim",
+      "code": "SB015"
+    },
+    {
+      "anahtar": "yelek",
+      "name": "Yelek",
+      "cat": "Dış giyim",
+      "code": "SB016"
+    },
+    {
+      "anahtar": "gunluk-elbise",
+      "name": "Günlük elbise",
+      "cat": "Elbise",
+      "code": "SB017"
+    },
+    {
+      "anahtar": "abiye-elbise",
+      "name": "Abiye elbise",
+      "cat": "Elbise",
+      "code": "SB018"
+    }
+  ]
+}

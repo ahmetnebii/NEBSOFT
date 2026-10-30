@@ -1,0 +1,59 @@
+{
+  "sablon": "otel/kayip-esya",
+  "surum": 1,
+  "program": "otel",
+  "tur": "form",
+  "ad": "Tesis formları",
+  "aciklama": "Kayıp eşya ve hasar tutanakları.",
+  "kaynak": "sablon",
+  "uyari": "Bu metin örnektir, hukuki danışmanlık değildir. Kullanmadan önce avukatınıza gösterin ve işinize göre düzenleyin.",
+  "kayitlar": [
+    {
+      "anahtar": "kayip-esya",
+      "label": "Kayıp eşya tutanağı",
+      "sign": [
+        "Resepsiyon",
+        "Misafir"
+      ],
+      "fields": [
+        {
+          "name": "oda",
+          "label": "Oda no",
+          "type": "text"
+        },
+        {
+          "name": "esya",
+          "label": "Eşya açıklaması",
+          "type": "textarea"
+        },
+        {
+          "name": "bulunma",
+          "label": "Bulunduğu tarih",
+          "type": "date"
+        }
+      ],
+      "body": "{{oda}} numaralı odada {{bulunma}} tarihinde bulunan eşya kayıt altına alınmıştır. Eşya kimlik gösterilerek teslim edilir."
+    },
+    {
+      "anahtar": "oda-hasar",
+      "label": "Oda hasar tutanağı",
+      "sign": [
+        "Resepsiyon",
+        "Misafir"
+      ],
+      "fields": [
+        {
+          "name": "oda",
+          "label": "Oda no",
+          "type": "text"
+        },
+        {
+          "name": "hasar",
+          "label": "Hasar açıklaması",
+          "type": "textarea"
+        }
+      ],
+      "body": "{{oda}} numaralı odada konaklama sırasında oluşan hasar taraflarca birlikte tespit edilmiştir."
+    }
+  ]
+}

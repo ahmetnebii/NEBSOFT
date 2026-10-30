@@ -1,0 +1,54 @@
+{
+  "sablon": "kargo/kargo-formlari",
+  "surum": 1,
+  "program": "kargo",
+  "tur": "form",
+  "ad": "Kargo formları",
+  "aciklama": "Gönderi kabul ve hasar formları.",
+  "kaynak": "sablon",
+  "uyari": "Bu metin örnektir, hukuki danışmanlık değildir. Kullanmadan önce avukatınıza gösterin ve işinize göre düzenleyin.",
+  "kayitlar": [
+    {
+      "anahtar": "kabul",
+      "label": "Gönderi kabul formu",
+      "sign": [
+        "Şube",
+        "Gönderici"
+      ],
+      "fields": [
+        {
+          "name": "takip",
+          "label": "Gönderi no",
+          "type": "text"
+        },
+        {
+          "name": "icerik",
+          "label": "İçerik beyanı",
+          "type": "textarea"
+        }
+      ],
+      "body": "{{takip}} numaralı gönderinin içeriğini beyan ederim. Yasak veya tehlikeli madde bulunmadığını taahhüt ederim."
+    },
+    {
+      "anahtar": "iade",
+      "label": "Teslim edilemeyen gönderi tutanağı",
+      "sign": [
+        "Kurye",
+        "Şube"
+      ],
+      "fields": [
+        {
+          "name": "takip",
+          "label": "Gönderi no",
+          "type": "text"
+        },
+        {
+          "name": "neden",
+          "label": "Neden",
+          "type": "text"
+        }
+      ],
+      "body": "{{takip}} numaralı gönderi \"{{neden}}\" nedeniyle teslim edilememiş, şubeye geri getirilmiştir."
+    }
+  ]
+}

@@ -1,0 +1,44 @@
+{
+  "sablon": "eticaret/magaza-kategorileri",
+  "surum": 1,
+  "program": "eticaret",
+  "tur": "kategori",
+  "ad": "Mağaza kategorileri",
+  "aciklama": "Genel e-ticaret mağazası için kategoriler.",
+  "kaynak": "sablon",
+  "hedef": "cats",
+  "kayitlar": [
+    {
+      "anahtar": "giyim",
+      "name": "Giyim"
+    },
+    {
+      "anahtar": "ayakkabi",
+      "name": "Ayakkabı"
+    },
+    {
+      "anahtar": "aksesuar",
+      "name": "Aksesuar"
+    },
+    {
+      "anahtar": "ev-ve-yasam",
+      "name": "Ev ve yaşam"
+    },
+    {
+      "anahtar": "kozmetik",
+      "name": "Kozmetik"
+    },
+    {
+      "anahtar": "elektronik",
+      "name": "Elektronik"
+    },
+    {
+      "anahtar": "spor",
+      "name": "Spor"
+    },
+    {
+      "anahtar": "anne-ve-bebek",
+      "name": "Anne ve bebek"
+    }
+  ]
+}

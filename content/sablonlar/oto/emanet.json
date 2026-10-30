@@ -1,0 +1,33 @@
+{
+  "sablon": "oto/emanet",
+  "surum": 1,
+  "program": "oto",
+  "tur": "form",
+  "ad": "Otopark ve yıkama formları",
+  "aciklama": "Araç teslim ve anahtar emanet tutanakları.",
+  "kaynak": "sablon",
+  "uyari": "Bu metin örnektir, hukuki danışmanlık değildir. Kullanmadan önce avukatınıza gösterin ve işinize göre düzenleyin.",
+  "kayitlar": [
+    {
+      "anahtar": "anahtar-emanet",
+      "label": "Anahtar emanet tutanağı",
+      "sign": [
+        "İşletme",
+        "Araç sahibi"
+      ],
+      "fields": [
+        {
+          "name": "plaka",
+          "label": "Plaka",
+          "type": "text"
+        },
+        {
+          "name": "sure",
+          "label": "Emanet süresi",
+          "type": "text"
+        }
+      ],
+      "body": "{{plaka}} plakalı aracın anahtarı {{sure}} süreyle işletmeye emanet edilmiştir. Araçta bırakılan değerli eşyalar teslim sırasında birlikte kontrol edilir."
+    }
+  ]
+}

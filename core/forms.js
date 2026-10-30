@@ -76,6 +76,9 @@
     oto: { party: 'Müşteri', kinds: [{ id: 'teslim', label: 'Araç kabul / teslim tutanağı', sign: ['İşletme', 'Araç sahibi'], fields: [T('plaka', 'Plaka'), T('sahip', 'Araç sahibi'), DAMAGE], body: '{{plaka}} plakalı araç işaretlenen hasarlarla teslim alınmıştır; araçta bırakılan değerli eşyalardan işletme sorumlu değildir.' }] },
     bilet: { party: 'Katılımcı', kinds: [{ id: 'iade', label: 'Bilet iade formu', sign: ['Gişe', 'Katılımcı'], fields: [T('etkinlik', 'Etkinlik'), T('bilet', 'Bilet no'), T('tutar', 'İade tutarı (₺)', 'number')], body: '{{etkinlik}} etkinliğine ait {{bilet}} numaralı bilet iade alınmış, {{tutar}} ₺ iade edilmiştir.' }] },
   };
+  // Yerleşik formu olmayan programlar: türler yalnız hazır şablonlardan gelir (sayfa, şablon aktarılınca görünür)
+  Object.entries({ emlak: { coll: 'requests', party: 'Müşteri' }, kiralama: { coll: 'customers', party: 'Müşteri' }, klinik: { coll: 'patients', party: 'Hasta' }, otoservis: { coll: 'customers', party: 'Müşteri' }, servis: { coll: 'customers', party: 'Müşteri' }, pazaryeri: { party: 'Müşteri' }, fiyatrobotu: { party: 'Tedarikçi' } }).forEach(([a, f]) => { if (!FORMS[a]) FORMS[a] = { ...f, ek: true, kinds: [] }; });
+  const kindsOf = (F, db) => [...F.kinds, ...(db.data.sablonFormlar || [])];
   const appId = () => (NS.app && NS.app.opts ? NS.app.opts.id : null);
   const nameOf = (r) => (r ? r.name || r.fullName || r.title || [r.firstName, r.lastName].filter(Boolean).join(' ') || r.plate || r.no || '' : '');
   const phoneOf = (r) => (r ? r.phone || r.parentPhone || r.tel || '' : '');
@@ -102,7 +105,7 @@
       ...k.fields.filter((f) => f.type !== 'damage').map((f) => (f.type === 'lines' ? { name: 'lines', label: f.label, type: 'textarea', full: true, placeholder: 'Laptop Dell 5440 ; 1 ; 0' } : { name: f.name, label: f.label, type: f.type, full: f.type === 'textarea' })),
       { name: 'body', label: 'Belge metni (gerekirse düzenleyin)', type: 'textarea', full: true },
     ];
-    const v = await NS.formModal({ title: k.label, fields, values: { body: k.body, ...preset } }); if (!v) return null;
+    const v = await NS.formModal({ title: k.label, fields, values: { body: k.body, ...preset }, extra: k.uyari ? `<div class="ns-sablon-uyari small">${icon('alert')} <span>${esc(k.uyari)}</span></div>` : '' }); if (!v) return null;
     if (F.coll && F.subject && !v.party) return NS.toast(`${F.party} seçin`, 'err'), null;
     if (!F.subject && !v.party && !v.partyName) return NS.toast(`${F.party} seçin veya adını yazın`, 'err'), null;
     const d = { id: NS.uid(), kind: k.id, at: new Date().toISOString(), no: db.nextNo ? db.nextNo('signedDocs', 'BLG') : 'BLG' + Date.now().toString().slice(-6), party: v.party || null, partyName: v.partyName || '', partyPhone: v.partyPhone || '', body: v.body, staff: (NS.currentUser || {}).name || '', v: {} };
@@ -119,15 +122,15 @@
   function page(el) {
     const F = FORMS[appId()]; const db = NS.app.db;
     const draw = () => {
-      const L = db.data.signedDocs || []; const K = Object.fromEntries(F.kinds.map((k) => [k.id, k]));
+      const L = db.data.signedDocs || []; const KS = kindsOf(F, db); const K = Object.fromEntries(KS.map((k) => [k.id, k]));
       el.innerHTML = NS.pageHead('İmzalı belgeler', 'Sözleşme, onam, tutanak ve makbuzlar — karşı tarafa ekranda imzalatın, işletmenizin şablonuyla yazdırın', `<a class="btn" href="#/belgeler">${icon('print')} Şablonları tasarla</a>`) + `
-        <div class="nv-forms">${F.kinds.map((k) => `<button class="nv-form-k" data-new="${k.id}"><span>${icon('edit', 'ico-lg')}</span><b>${esc(k.label)}</b><small>${esc(k.sign.join(' · '))} imzalı</small></button>`).join('')}</div>
+        <div class="nv-forms">${KS.map((k) => `<button class="nv-form-k" data-new="${esc(k.id)}"><span>${icon('edit', 'ico-lg')}</span><b>${esc(k.label)}</b><small>${k.uyari ? 'Örnek metin, avukata gösterin' : `${esc(k.sign.join(' · '))} imzalı`}</small></button>`).join('')}</div>${KS.length ? '' : `<div class="empty">${icon('file')}<div>Henüz form yok. <a href="#/sablonlar">Hazır şablonlardan</a> ekleyin.</div></div>`}
         <div class="card mt"><div class="card-h"><h3>Arşiv</h3><span class="small faint">${L.length} belge</span></div>${NS.table({ rows: L, empty: 'Henüz belge yok — yukarıdan bir tür seçin', emptyIcon: 'file', columns: [{ label: 'No', render: (d) => `<span class="mono">${esc(d.no)}</span>` }, { label: 'Belge', render: (d) => `<b>${esc((K[d.kind] || {}).label || d.kind)}</b>` }, { label: F.party, render: (d) => esc(d.partyName || nameOf(F.coll ? db.get(F.coll, d.party) : null) || '-') }, { label: 'Tarih', render: (d) => NS.dt(d.at) }, { label: 'İmza', render: (d) => (d.sign ? NS.badge('İmzalı', 'ok') : NS.badge('İmzasız', 'warn')) }], actions: [{ icon: 'print', act: 'pr', title: 'Yazdır' }, { icon: 'edit', act: 'sg', title: 'İmzalat', show: (d) => !d.sign }, { icon: 'trash', act: 'rm' }] })}</div>`;
     };
     el.addEventListener('click', async (e) => {
       const b = e.target.closest('[data-new],[data-act]'); if (!b) return;
-      if (b.dataset.new) { if (await create(F, F.kinds.find((k) => k.id === b.dataset.new))) draw(); return; }
-      const d = (db.data.signedDocs || []).find((x) => x.id === b.dataset.id); if (!d) return; const k = F.kinds.find((x) => x.id === d.kind);
+      if (b.dataset.new) { if (await create(F, kindsOf(F, db).find((k) => k.id === b.dataset.new))) draw(); return; }
+      const d = (db.data.signedDocs || []).find((x) => x.id === b.dataset.id); if (!d) return; const k = kindsOf(F, db).find((x) => x.id === d.kind);
       if (b.dataset.act === 'pr' && k) NS.docs.print('imza-' + k.id, docOf(F, k, d));
       if (b.dataset.act === 'sg' && k) { const s = await NS.sign({ title: `${k.label} — imza`, label: `${k.sign[1]} adı soyadı`, name: d.partyName || nameOf(F.coll ? db.get(F.coll, d.party) : null) }); if (s) { d.sign = s; db.save(); draw(); } }
       if (b.dataset.act === 'rm' && (await NS.confirm('Belge arşivden silinsin mi?'))) { db.data.signedDocs = db.data.signedDocs.filter((x) => x.id !== d.id); db.save(); draw(); }
@@ -136,16 +139,20 @@
   }
 
   // Belge türlerini şablon tasarımcısına tanıt ve programa "İmzalı belgeler" sayfası ekle
-  Object.entries(FORMS).forEach(([app, F]) => F.kinds.forEach((k) => NS.docs.define(app, 'imza-' + k.id, { label: k.label, sample: () => docOf(F, k, { no: 'BLG0001', at: new Date().toISOString(), partyName: 'Örnek Kişi', partyPhone: '0532 000 00 00', staff: 'Yetkili', v: Object.fromEntries(k.fields.map((f) => [f.name, f.type === 'lines' ? 'Örnek kalem ; 1 ; 1500' : f.type === 'number' ? 1500 : f.type === 'date' ? new Date().toISOString().slice(0, 10) : f.type === 'damage' ? [] : 'Örnek']) ) }) })));
+  const tanit = (app, k) => { const F = FORMS[app]; if (F) NS.docs.define(app, 'imza-' + k.id, { label: k.label, sample: () => docOf(F, k, { no: 'BLG0001', at: new Date().toISOString(), partyName: 'Örnek Kişi', partyPhone: '0532 000 00 00', staff: 'Yetkili', v: Object.fromEntries(k.fields.map((f) => [f.name, f.type === 'lines' ? 'Örnek kalem ; 1 ; 1500' : f.type === 'number' ? 1500 : f.type === 'date' ? new Date().toISOString().slice(0, 10) : f.type === 'damage' ? [] : 'Örnek']) ) }) }); };
+  Object.entries(FORMS).forEach(([app, F]) => F.kinds.forEach((k) => tanit(app, k)));
   const origShell = NS.shell;
   NS.shell = function (opts) {
     if (opts && FORMS[opts.id] && !opts.routes.imzali) {
+      const sb = (opts.db && opts.db.data && opts.db.data.sablonFormlar) || []; sb.forEach((k) => tanit(opts.id, k));
       opts.routes.imzali = (el) => page(el);
-      const k = opts.nav.findIndex((n) => n.id === 'belgeler' || n.id === 'ayarlar');
-      const item = { id: 'imzali', label: 'İmzalı belgeler', icon: 'edit' };
-      if (k >= 0) opts.nav.splice(k, 0, item); else opts.nav.push(item);
+      if (!FORMS[opts.id].ek || sb.length) {
+        const k = opts.nav.findIndex((n) => n.id === 'belgeler' || n.id === 'ayarlar');
+        const item = { id: 'imzali', label: 'İmzalı belgeler', icon: 'edit' };
+        if (k >= 0) opts.nav.splice(k, 0, item); else opts.nav.push(item);
+      }
     }
     return origShell.call(this, opts);
   };
-  NS.forms = { FORMS, create, page, docOf };
+  NS.forms = { FORMS, create, page, docOf, tanit };
 })();

@@ -1,0 +1,100 @@
+{
+  "sablon": "otoservis/parca-listesi",
+  "surum": 1,
+  "program": "otoservis",
+  "tur": "urun",
+  "ad": "Sık kullanılan parçalar",
+  "aciklama": "Oto servis için parça adları. Marka, alış ve satış fiyatını siz girin.",
+  "kaynak": "sablon",
+  "hedef": "parts",
+  "fiyatAlan": "price",
+  "varsayilan": {
+    "brand": "",
+    "cost": 0,
+    "price": 0,
+    "stock": 0,
+    "min": 0
+  },
+  "kayitlar": [
+    {
+      "anahtar": "motor-yagi",
+      "name": "Motor yağı",
+      "code": "PR-001"
+    },
+    {
+      "anahtar": "yag-filtresi",
+      "name": "Yağ filtresi",
+      "code": "PR-002"
+    },
+    {
+      "anahtar": "hava-filtresi",
+      "name": "Hava filtresi",
+      "code": "PR-003"
+    },
+    {
+      "anahtar": "polen-filtresi",
+      "name": "Polen filtresi",
+      "code": "PR-004"
+    },
+    {
+      "anahtar": "yakit-filtresi",
+      "name": "Yakıt filtresi",
+      "code": "PR-005"
+    },
+    {
+      "anahtar": "on-balata",
+      "name": "Ön balata",
+      "code": "PR-006"
+    },
+    {
+      "anahtar": "arka-balata",
+      "name": "Arka balata",
+      "code": "PR-007"
+    },
+    {
+      "anahtar": "fren-diski",
+      "name": "Fren diski",
+      "code": "PR-008"
+    },
+    {
+      "anahtar": "silecek-takimi",
+      "name": "Silecek takımı",
+      "code": "PR-009"
+    },
+    {
+      "anahtar": "antifriz",
+      "name": "Antifriz",
+      "code": "PR-010"
+    },
+    {
+      "anahtar": "aku",
+      "name": "Akü",
+      "code": "PR-011"
+    },
+    {
+      "anahtar": "buji",
+      "name": "Buji",
+      "code": "PR-012"
+    },
+    {
+      "anahtar": "triger-seti",
+      "name": "Triger seti",
+      "code": "PR-013"
+    },
+    {
+      "anahtar": "v-kayisi",
+      "name": "V kayışı",
+      "code": "PR-014"
+    },
+    {
+      "anahtar": "amortisor",
+      "name": "Amortisör",
+      "code": "PR-015"
+    },
+    {
+      "anahtar": "rot-basi",
+      "name": "Rot başı",
+      "code": "PR-016"
+    }
+  ]
+}

@@ -1,0 +1,48 @@
+{
+  "sablon": "klinik/hasta-onam",
+  "surum": 1,
+  "program": "klinik",
+  "tur": "form",
+  "ad": "Hasta onam formları",
+  "aciklama": "Tedavi onamı ve bilgilendirme için örnek formlar.",
+  "kaynak": "sablon",
+  "uyari": "Bu metin örnektir, hukuki danışmanlık değildir. Kullanmadan önce avukatınıza gösterin ve işinize göre düzenleyin.",
+  "kayitlar": [
+    {
+      "anahtar": "tedavi-onam",
+      "label": "Tedavi onam formu",
+      "sign": [
+        "Hekim",
+        "Hasta"
+      ],
+      "fields": [
+        {
+          "name": "tedavi",
+          "label": "Planlanan tedavi",
+          "type": "text"
+        },
+        {
+          "name": "dis",
+          "label": "Diş / bölge",
+          "type": "text"
+        },
+        {
+          "name": "risk",
+          "label": "Anlatılan riskler",
+          "type": "textarea"
+        }
+      ],
+      "body": "{{tedavi}} tedavisinin amacı, süreci, olası riskleri ve seçenekleri bana anlatıldı. Sorularımı sordum. Tedavinin yapılmasını kendi isteğimle kabul ediyorum."
+    },
+    {
+      "anahtar": "kvkk-hasta",
+      "label": "Kişisel veri aydınlatma ve onay",
+      "sign": [
+        "Klinik",
+        "Hasta"
+      ],
+      "fields": [],
+      "body": "Sağlık bilgilerimin tedavimin yürütülmesi, kayıtların tutulması ve yasal yükümlülükler için işleneceği, haklarım ve başvuru yolları konusunda bilgilendirildim."
+    }
+  ]
+}

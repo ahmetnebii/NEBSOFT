@@ -1,0 +1,30 @@
+{
+  "sablon": "fabrika/depolar",
+  "surum": 1,
+  "program": "fabrika",
+  "tur": "kategori",
+  "ad": "Depo tanımları",
+  "aciklama": "Hammadde, mamul ve karantina depoları.",
+  "kaynak": "sablon",
+  "hedef": "warehouses",
+  "varsayilan": {
+    "locs": []
+  },
+  "kayitlar": [
+    {
+      "anahtar": "hammadde-deposu",
+      "name": "Hammadde deposu",
+      "type": "hammadde"
+    },
+    {
+      "anahtar": "mamul-deposu",
+      "name": "Mamul deposu",
+      "type": "mamul"
+    },
+    {
+      "anahtar": "karantina-deposu",
+      "name": "Karantina deposu",
+      "type": "karantina"
+    }
+  ]
+}

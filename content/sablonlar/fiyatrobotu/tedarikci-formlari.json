@@ -1,0 +1,33 @@
+{
+  "sablon": "fiyatrobotu/tedarikci-formlari",
+  "surum": 1,
+  "program": "fiyatrobotu",
+  "tur": "form",
+  "ad": "Tedarikçi formları",
+  "aciklama": "Tedarikçi fiyat mutabakatı.",
+  "kaynak": "sablon",
+  "uyari": "Bu metin örnektir, hukuki danışmanlık değildir. Kullanmadan önce avukatınıza gösterin ve işinize göre düzenleyin.",
+  "kayitlar": [
+    {
+      "anahtar": "fiyat-mutabakat",
+      "label": "Fiyat mutabakat formu",
+      "sign": [
+        "Firma",
+        "Tedarikçi"
+      ],
+      "fields": [
+        {
+          "name": "donem",
+          "label": "Geçerlilik dönemi",
+          "type": "text"
+        },
+        {
+          "name": "liste",
+          "label": "Ürünler ve fiyatlar",
+          "type": "textarea"
+        }
+      ],
+      "body": "{{donem}} dönemi için aşağıdaki ürün ve fiyatlarda mutabık kalınmıştır."
+    }
+  ]
+}

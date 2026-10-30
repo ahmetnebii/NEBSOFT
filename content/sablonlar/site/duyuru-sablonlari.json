@@ -1,0 +1,42 @@
+{
+  "sablon": "site/duyuru-sablonlari",
+  "surum": 1,
+  "program": "site",
+  "tur": "duyuru",
+  "ad": "Duyuru şablonları",
+  "aciklama": "Site ve apartman yönetimi için hazır duyuru metinleri. Tarih ve ayrıntıları düzenleyin.",
+  "kaynak": "sablon",
+  "hedef": "announcements",
+  "adAlan": "title",
+  "varsayilan": {
+    "date": "",
+    "pinned": false
+  },
+  "kayitlar": [
+    {
+      "anahtar": "su-kesintisi",
+      "title": "Su kesintisi",
+      "text": "Bakım çalışması nedeniyle su kesintisi yapılacaktır. Kesinti tarihi ve saati için yönetimle görüşebilirsiniz."
+    },
+    {
+      "anahtar": "asansor-bakimi",
+      "title": "Asansör bakımı",
+      "text": "Asansör periyodik bakımı yapılacaktır. Bakım süresince merdivenleri kullanmanızı rica ederiz."
+    },
+    {
+      "anahtar": "aidat-hatirlatmasi",
+      "title": "Aidat hatırlatması",
+      "text": "Bu ayın aidatını son ödeme tarihine kadar yatırmanızı rica ederiz."
+    },
+    {
+      "anahtar": "genel-kurul-toplantisi",
+      "title": "Genel kurul toplantısı",
+      "text": "Olağan genel kurul toplantımız yapılacaktır. Tarih, saat ve gündem ayrıca duyurulacaktır."
+    },
+    {
+      "anahtar": "ortak-alan-temizligi",
+      "title": "Ortak alan temizliği",
+      "text": "Ortak alanlarda temizlik çalışması yapılacaktır. Kişisel eşyalarınızı ortak alanlardan kaldırmanızı rica ederiz."
+    }
+  ]
+}

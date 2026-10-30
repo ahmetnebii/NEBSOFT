@@ -54,6 +54,7 @@
   const { esc, $, on, icon, money, toast, iso, addDays, today } = NS;
   const R = window.RANDEVU;
   const db = new NS.DB('randevu', R.seed);
+  { const s0 = db.settings(); const rk = /^#[0-9a-f]{6}$/i; if (rk.test(s0.bookAccent || '')) { document.documentElement.style.setProperty('--app-accent', s0.bookAccent); if (rk.test(s0.bookSoft || '')) document.documentElement.style.setProperty('--app-accent-soft', s0.bookSoft); } } // hazır tema (Hazır şablonlar)
   const s = db.settings({});
   document.title = s.bizName + ' · Online Randevu';
   const st = { step: 1, service: null, staff: null, date: null, time: null, assigned: null, cat: '', q: '', done: null };

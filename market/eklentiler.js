@@ -152,7 +152,8 @@
       else { try { d = JSON.parse(localStorage.getItem('nebsoft:' + a)); } catch (e) { d = null; } }
       const ps = d && (d.products || d.urunler); if (!Array.isArray(ps)) continue; if (d._meta && d._meta.sample) { sampleOnly = true; continue; }
       const cats = Object.fromEntries((d.cats || d.categories || []).map((c) => [c.id, c.name]));
-      ps.slice(0, 300).forEach((p) => { if (p && p.name) out.push({ id: NS.uid(), name: String(p.name).slice(0, 120), price: Number(p.price) || 0, cat: cats[p.cat] || '', desc: '', img: /^https:/.test(p.image || '') ? p.image : '' }); });
+      // Onaylanmamış şablon kaydı siteye gelmez. Open Food Facts görseli atıf gerektirir (CC BY-SA): siteye taşınmaz
+      ps.filter((p) => !(p && p.kaynak === 'sablon' && !p.onay)).slice(0, 300).forEach((p) => { if (p && p.name) out.push({ id: NS.uid(), name: String(p.name).slice(0, 120), price: Number(p.price) || 0, cat: cats[p.cat] || '', desc: '', img: /^https:/.test(p.image || '') && !/openfoodfacts\.org/.test(p.image) ? p.image : '', ...(p.kaynak === 'sablon' ? { kaynak: 'sablon', onay: true } : {}) }); });
       if (out.length) break;
     }
     if (!out.length) { toast(sampleOnly ? 'Programınızda yalnızca örnek ürünler var. Örnek veriler sitenize aktarılmaz: önce kendi ürünlerinizi girin.' : cl ? 'İçe aktarılacak ürün bulunamadı (Market POS, Butik, E-Ticaret, Toptan veya Eczane programında ürün olmalı)' : 'Bu tarayıcıda ürün bulunamadı. Önce Market POS demosunu açın.', 'err'); return null; }

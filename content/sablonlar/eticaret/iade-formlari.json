@@ -1,0 +1,38 @@
+{
+  "sablon": "eticaret/iade-formlari",
+  "surum": 1,
+  "program": "eticaret",
+  "tur": "form",
+  "ad": "İade formları",
+  "aciklama": "Mesafeli satış iadeleri için örnek bildirim metni.",
+  "kaynak": "sablon",
+  "uyari": "Bu metin örnektir, hukuki danışmanlık değildir. Kullanmadan önce avukatınıza gösterin ve işinize göre düzenleyin.",
+  "kayitlar": [
+    {
+      "anahtar": "cayma",
+      "label": "Cayma bildirimi",
+      "sign": [
+        "Mağaza",
+        "Müşteri"
+      ],
+      "fields": [
+        {
+          "name": "siparis",
+          "label": "Sipariş no",
+          "type": "text"
+        },
+        {
+          "name": "teslim",
+          "label": "Teslim tarihi",
+          "type": "date"
+        },
+        {
+          "name": "urun",
+          "label": "Ürün",
+          "type": "text"
+        }
+      ],
+      "body": "{{siparis}} numaralı siparişimdeki {{urun}} ürününe ilişkin cayma hakkımı kullandığımı bildiririm. Ürün {{teslim}} tarihinde teslim alınmıştır."
+    }
+  ]
+}

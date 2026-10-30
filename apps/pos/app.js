@@ -530,39 +530,38 @@
   ];
   async function productForm(rec) {
     const isNew = !rec || !rec.id;
-    let image = (rec && rec.image) || '';
+    let image = (rec && rec.image) || ''; let katHit = null; let brand = (rec && rec.brand) || '';
     const v = await formModal({ title: isNew ? 'Yeni Ürün' : 'Ürünü Düzenle', fields: productFields(), values: { vat: 20, unit: 'adet', min: 5, stock: 0, cat: (db.all('cats')[0] || {}).id, ...rec }, size: 'wide',
-      extra: `<div class="pf-img" id="pfi" ${image ? '' : 'hidden'}><img src="${esc(image)}" alt=""><span class="small muted">Görsel hazır katalogdan alındı</span><button type="button" class="btn sm ghost" id="pfix">${icon('x')} Kaldır</button></div>`,
+      extra: `<div class="pf-img" id="pfi" ${image ? '' : 'hidden'}><img src="${esc(image)}" alt=""><span class="small muted">Görsel hazır katalogdan alındı</span><button type="button" class="btn sm ghost" id="pfix">${icon('x')} Kaldır</button></div><div id="pfat">${rec && rec.katalogAtif ? NS.katalog.atif({ atif: rec.katalogAtif }) : ''}</div>`,
       onOpen: (b) => {
         const bc = $('[name=barcode]', b); const nm = $('[name=name]', b); if (!bc) return;
         const w = document.createElement('div'); w.className = 'pf-row'; bc.before(w); w.append(bc); w.insertAdjacentHTML('beforeend', `<button type="button" class="btn pf-cam" id="pfc" title="Kamerayla okut">${icon('camera')}</button>`);
         const setImg = (u) => { image = u || ''; const w = $('#pfi', b); w.hidden = !image; if (image) $('img', w).src = image; };
-        const look = async () => { const code = bc.value.trim(); if (!/^\d{8,14}$/.test(code) || nm.value.trim()) return; const hit = await katalogBarkod(code); if (hit && !nm.value.trim()) { nm.value = hit.name; setImg(hit.image); toast('Ürün bilgisi katalogdan dolduruldu', 'ok'); } };
+        const look = async () => { const code = bc.value.trim(); if (!/^\d{8,14}$/.test(code) || nm.value.trim()) return; const hit = await katalogBarkod(code, true); if (hit && !nm.value.trim()) { katHit = hit; nm.value = hit.name; brand = hit.brand || ''; const cs = $('[name=cat]', b); const cn = db.all('cats').find((c) => NS.sablon.norm(c.name) === NS.sablon.norm(hit.category)); if (cs && cn) cs.value = cn.id; setImg(hit.image); const at = $('#pfat', b); if (at) at.innerHTML = NS.katalog.atif(hit); toast('Ürün bilgisi katalogdan dolduruldu', 'ok'); } };
         bc.addEventListener('change', look);
         $('#pfc', b).onclick = () => NS.scan({ title: 'Barkodu okut', onCode: (code) => { bc.value = code; look(); } });
         $('#pfix', b).onclick = () => setImg('');
       } });
     if (!v) return null;
-    if (image) v.image = image; else delete v.image;
-    v.vat = Number(v.vat);
+    if (image) v.image = image; else delete v.image; if (brand) v.brand = brand; if (katHit && katHit.atif) v.katalogAtif = katHit.atif;
+    v.vat = Number(v.vat); const elle = !!v.barcode; // yalnız işletmenin okuttuğu gerçek barkod öneri olur; programın ürettiği iç barkod olmaz
     if (!v.barcode && v.unit !== 'kg') v.barcode = genBarcode();
     const dup = db.find('products', (p) => p.barcode && p.barcode === v.barcode && p.id !== (rec && rec.id));
     if (dup) { toast(`Bu barkod "${dup.name}" ürününde kayıtlı`, 'err'); return null; }
-    if (isNew) { const p = db.insert('products', v); db.log('Ürün eklendi', v.name); toast('Ürün eklendi', 'ok'); katalogKatki([{ barcode: v.barcode, name: v.name, image: v.image }]); return p; }
+    if (isNew) { const p = db.insert('products', v); db.log('Ürün eklendi', v.name); toast('Ürün eklendi', 'ok'); if (elle && !katHit) NS.katalog.oner([{ gtin: v.barcode, ad: v.name, marka: v.brand, kategori: (db.get('cats', v.cat) || {}).name }]); return p; }
     if (rec.price !== v.price) db.insert('priceLog', { pid: rec.id, old: rec.price, new: v.price, user: NS.currentUser && NS.currentUser.name }, true);
     db.update('products', rec.id, v); toast('Kaydedildi', 'ok');
     return P(rec.id);
   }
-  // ---------- Hazır ürün kataloğu (merkezi havuz + Open Food Facts) ----------
-  const katalogBarkod = async (code) => { try { return (await NS.api('GET', '/api/katalog/barkod/' + encodeURIComponent(code))).item; } catch (e) { return null; } };
-  const katalogKatki = (items) => { NS.api('POST', '/api/katalog/katki', { items }).catch(() => {}); };
+  // ---------- Hazır ürün kataloğu (NEBSOFT kataloğu + Open Food Facts) ----------
+  const katalogBarkod = (code, okutma) => NS.katalog.sor(code, { okutma });
   const KAT = [['', 'Tümü'], ['icecek', 'İçecek'], ['atistirmalik', 'Atıştırmalık'], ['sut', 'Süt ürünleri'], ['kahvalti', 'Kahvaltılık'], ['tatli', 'Çikolata & tatlı'], ['temel', 'Temel gıda'], ['konserve', 'Konserve'], ['dondurulmus', 'Dondurulmuş'], ['et', 'Et & şarküteri'], ['meyve', 'Bitkisel & meyve']];
   function catalogWizard(done) {
     const chosen = new Map(); let q = '', kat = '', page = 1, items = [], more = false, step = 1, busy = false, tmr;
     const have = new Set(db.all('products').map((p) => p.barcode).filter(Boolean));
     const m = modal({ title: 'Hazır katalogdan ürün ekle', size: 'xl', body: '<div id="kw"></div>', actions: [{ label: 'Vazgeç' }, { label: 'Geri', icon: 'left', onClick: () => { step = 1; draw(); } }, { label: 'İleri', cls: 'primary', icon: 'right', onClick: () => next() }] });
     const B = m.root; const foot = B.parentElement.querySelector('.ns-modal-f'); const [, backBtn, nextBtn] = foot.children;
-    const card = (it) => { const on = chosen.has(it.barcode), ex = have.has(it.barcode); return `<button type="button" class="kc${on ? ' on' : ''}${ex ? ' ex' : ''}" data-k="${esc(it.barcode)}" ${ex ? 'disabled' : ''}><span class="kc-img">${it.image ? `<img src="${esc(it.image)}" alt="" loading="lazy" onerror="this.replaceWith(Object.assign(document.createElement('i'),{textContent:'${esc((it.name || '?')[0])}'}))">` : `<i>${esc((it.name || '?')[0])}</i>`}</span><span class="kc-t"><b>${esc(it.name)}</b><small>${esc(it.brand || '')}</small><small class="mono">${esc(it.barcode)}</small></span><span class="kc-ck">${icon('check')}</span>${ex ? '<em>Zaten kayıtlı</em>' : it.source === 'havuz' ? '<em class="pop">Sık kullanılan</em>' : ''}</button>`; };
+    const card = (it) => { const on = chosen.has(it.barcode), ex = have.has(it.barcode); return `<div role="button" tabindex="0" class="kc${on ? ' on' : ''}${ex ? ' ex' : ''}" data-k="${esc(it.barcode)}" ${ex ? 'aria-disabled="true"' : ''}><span class="kc-img">${it.image ? `<img src="${esc(it.image)}" alt="" loading="lazy" onerror="this.replaceWith(Object.assign(document.createElement('i'),{textContent:'${esc((it.name || '?')[0])}'}))">` : `<i>${esc((it.name || '?')[0])}</i>`}</span><span class="kc-t"><b>${esc(it.name)}</b><small>${esc(it.brand || '')}</small><small class="mono">${esc(it.barcode)}</small>${NS.katalog.atif(it)}</span><span class="kc-ck">${icon('check')}</span>${ex ? '<em>Zaten kayıtlı</em>' : ''}</div>`; };
     const load = async (reset) => {
       if (busy) return; busy = true; if (reset) { page = 1; items = []; }
       const g = $('#kg', B); if (reset && g) g.innerHTML = '<div class="kgrid">' + '<div class="skel" style="height:96px;border-radius:14px"></div>'.repeat(9) + '</div>';
@@ -578,11 +577,12 @@
       if (step === 1) {
         $('#kw', B).innerHTML = `<div class="kbar"><div class="search grow">${icon('search')}<input class="input" id="kq" placeholder="Ürün, marka veya barkod ara: ülker, süt, 8690…" value="${esc(q)}"></div><button class="btn" id="kcam">${icon('camera')} Barkod okut</button></div>
           <div class="chips mb" id="kc">${KAT.map(([k, l]) => `<button class="chip${k === kat ? ' active' : ''}" data-kat="${k}">${esc(l)}</button>`).join('')}</div>
-          <div class="ksum"><span id="kn"></span><span class="small faint">Kaynak: NEBSOFT ürün havuzu ve Open Food Facts (açık veri)</span></div><div id="kg"></div>`;
+          <div class="ksum"><span id="kn"></span><span class="small faint">Kaynak: NEBSOFT kataloğu ve Open Food Facts</span></div><div id="kg"></div>`;
         $('#kq', B).oninput = (e) => { q = e.target.value.trim(); clearTimeout(tmr); tmr = setTimeout(() => load(true), 380); };
         on($('#kw', B), 'click', '[data-kat]', (e, t) => { kat = t.dataset.kat; $$('[data-kat]', B).forEach((x) => x.classList.toggle('active', x === t)); load(true); });
-        $('#kcam', B).onclick = () => NS.scan({ title: 'Katalogda barkod ara', continuous: true, hint: 'Okuttuğunuz ürünler seçime eklenir', onCode: async (code) => { if (have.has(code)) return toast('Bu ürün zaten kayıtlı', 'err'); const it = await katalogBarkod(code); if (!it) { NS.beep(220, 180); return toast('Katalogda bulunamadı: ' + code + ' — elle ekleyebilirsiniz', 'err'); } chosen.set(it.barcode, it); if (!items.some((x) => x.barcode === it.barcode)) items.unshift(it); grid(); toast(it.name + ' seçildi', 'ok'); } });
-        on($('#kw', B), 'click', '[data-k]', (e, t) => { const it = items.find((x) => x.barcode === t.dataset.k); if (!it) return; chosen.has(it.barcode) ? chosen.delete(it.barcode) : chosen.set(it.barcode, it); t.classList.toggle('on'); cnt(); });
+        $('#kcam', B).onclick = () => NS.scan({ title: 'Katalogda barkod ara', continuous: true, hint: 'Okuttuğunuz ürünler seçime eklenir', onCode: async (code) => { if (have.has(code)) return toast('Bu ürün zaten kayıtlı', 'err'); const it = await katalogBarkod(code, true); if (!it) { NS.beep(220, 180); return toast('Katalogda bulunamadı: ' + code + ' — elle ekleyebilirsiniz', 'err'); } chosen.set(it.barcode, it); if (!items.some((x) => x.barcode === it.barcode)) items.unshift(it); grid(); toast(it.name + ' seçildi', 'ok'); } });
+        on($('#kw', B), 'keydown', '[data-k]', (e, t) => { if ((e.key === 'Enter' || e.key === ' ') && !e.target.closest('a')) { e.preventDefault(); t.click(); } });
+        on($('#kw', B), 'click', '[data-k]', (e, t) => { if (e.target.closest('a') || t.classList.contains('ex')) return; const it = items.find((x) => x.barcode === t.dataset.k); if (!it) return; chosen.has(it.barcode) ? chosen.delete(it.barcode) : chosen.set(it.barcode, it); t.classList.toggle('on'); cnt(); });
         if (items.length) grid(); else load(true); cnt();
       } else {
         const c0 = (db.all('cats')[0] || {}).id;
@@ -590,7 +590,7 @@
         $('#kw', B).innerHTML = `<p class="muted small mb">Barkod, ad ve görsel katalogdan geldi. Yalnızca <b>alış</b>, <b>satış</b> ve <b>miktar</b> girin; ad ve kategoriyi isterseniz değiştirin.</p>
           <div class="kbar"><span class="small">Toplu doldur:</span><label class="small">Kâr % <input class="input" type="number" id="kmk" value="30" style="width:74px"></label><button class="btn sm" id="kmka">Alıştan satış hesapla</button><label class="small">Kategori <select class="input" id="kcat" style="width:170px"><option value="">—</option>${catOpts('')}</select></label><label class="small">KDV <select class="input" id="kvat" style="width:80px"><option value="">—</option>${[0, 1, 10, 20].map((x) => `<option>${x}</option>`).join('')}</select></label></div>
           <div class="ktable"><table class="tbl"><thead><tr><th></th><th>Ürün</th><th>Kategori</th><th>KDV</th><th class="right">Alış ₺</th><th class="right">Satış ₺</th><th class="right">Miktar</th><th></th></tr></thead><tbody>${[...chosen.values()].map((it) => `<tr data-r="${esc(it.barcode)}">
-            <td>${it.image ? `<img class="pthumb" src="${esc(it.image)}" alt="">` : ''}</td><td><input class="input" data-f="name" value="${esc(it.name)}" style="min-width:200px"><div class="small faint mono">${esc(it.barcode)}</div></td>
+            <td>${it.image ? `<img class="pthumb" src="${esc(it.image)}" alt="">` : ''}</td><td><input class="input" data-f="name" value="${esc(it.name)}" style="min-width:200px"><div class="small faint mono">${esc(it.barcode)}</div>${NS.katalog.atif(it)}</td>
             <td><select class="input" data-f="cat">${catOpts(it.cat)}</select></td><td><select class="input" data-f="vat" style="width:72px">${[0, 1, 10, 20].map((x) => `<option ${Number(it.vat) === x ? 'selected' : ''}>${x}</option>`).join('')}</select></td>
             <td><input class="input right" type="number" step="0.01" min="0" data-f="buy" value="${it.buy}" style="width:96px" placeholder="0,00"></td><td><input class="input right" type="number" step="0.01" min="0" data-f="price" value="${it.price}" style="width:96px" placeholder="0,00"></td><td><input class="input right" type="number" step="1" min="0" data-f="qty" value="${it.qty}" style="width:84px" placeholder="0"></td>
             <td><button class="btn ghost icon sm" data-rm="${esc(it.barcode)}" title="Çıkar">${icon('x')}</button></td></tr>`).join('')}</tbody></table></div>`;
@@ -612,8 +612,8 @@
       const bad = [...chosen.values()].filter((it) => !(Number(it.price) > 0) || !String(it.name || '').trim());
       if (bad.length) { bad.forEach((it) => { const r = $(`[data-r="${CSS.escape(it.barcode)}"] [data-f=price]`, B); if (r) r.classList.add('bad'); }); return toast(`${bad.length} üründe satış fiyatı eksik`, 'err'); }
       const at = new Date().toISOString(); let n = 0;
-      chosen.forEach((it) => { if (db.find('products', (p) => p.barcode === it.barcode)) return; const stock = Math.max(0, Number(it.qty) || 0); const p = db.insert('products', { barcode: it.barcode, name: it.name.trim(), brand: it.brand || '', image: it.image || '', cat: it.cat, buy: r2(Number(it.buy) || 0), price: r2(Number(it.price)), vat: Number(it.vat) || 0, unit: 'adet', stock, min: 5 }, true); if (stock) db.insert('moves', { at, pid: p.id, qty: stock, type: 'Giriş', ref: 'Hazır katalog' }, true); n++; });
-      db.log('Katalogdan ürün eklendi', n + ' ürün'); db.save(); katalogKatki([...chosen.values()]);
+      chosen.forEach((it) => { if (db.find('products', (p) => p.barcode === it.barcode)) return; const stock = Math.max(0, Number(it.qty) || 0); const p = db.insert('products', { barcode: it.barcode, name: it.name.trim(), brand: it.brand || '', image: it.image || '', ...(it.atif ? { katalogAtif: it.atif } : {}), cat: it.cat, buy: r2(Number(it.buy) || 0), price: r2(Number(it.price)), vat: Number(it.vat) || 0, unit: 'adet', stock, min: 5 }, true); if (stock) db.insert('moves', { at, pid: p.id, qty: stock, type: 'Giriş', ref: 'Hazır katalog' }, true); n++; });
+      db.log('Katalogdan ürün eklendi', n + ' ürün'); db.save();
       m.close(); toast(`${n} ürün eklendi`, 'ok'); done && done();
     };
     draw();

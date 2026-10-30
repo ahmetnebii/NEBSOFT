@@ -1,0 +1,59 @@
+{
+  "sablon": "emlak/emlak-formlari",
+  "surum": 1,
+  "program": "emlak",
+  "tur": "form",
+  "ad": "Emlak formları",
+  "aciklama": "Yer gösterme ve yetki belgeleri için örnek metinler.",
+  "kaynak": "sablon",
+  "uyari": "Bu metin örnektir, hukuki danışmanlık değildir. Kullanmadan önce avukatınıza gösterin ve işinize göre düzenleyin.",
+  "kayitlar": [
+    {
+      "anahtar": "yer-gosterme",
+      "label": "Yer gösterme belgesi",
+      "sign": [
+        "Danışman",
+        "Müşteri"
+      ],
+      "fields": [
+        {
+          "name": "tasinmaz",
+          "label": "Taşınmaz",
+          "type": "text"
+        },
+        {
+          "name": "gosterim",
+          "label": "Gösterim tarihi",
+          "type": "date"
+        }
+      ],
+      "body": "{{tasinmaz}} {{gosterim}} tarihinde tarafıma gösterilmiştir."
+    },
+    {
+      "anahtar": "yetki",
+      "label": "Satış / kiralama yetki belgesi",
+      "sign": [
+        "Danışman",
+        "Mal sahibi"
+      ],
+      "fields": [
+        {
+          "name": "tasinmaz",
+          "label": "Taşınmaz",
+          "type": "text"
+        },
+        {
+          "name": "sure",
+          "label": "Yetki süresi",
+          "type": "text"
+        },
+        {
+          "name": "oran",
+          "label": "Hizmet bedeli oranı",
+          "type": "text"
+        }
+      ],
+      "body": "{{tasinmaz}} için {{sure}} süreyle yetki verilmiştir. Hizmet bedeli oranı {{oran}} olarak kararlaştırılmıştır."
+    }
+  ]
+}

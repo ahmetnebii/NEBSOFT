@@ -1,0 +1,38 @@
+{
+  "sablon": "kuyumcu/ozel-siparis",
+  "surum": 1,
+  "program": "kuyumcu",
+  "tur": "form",
+  "ad": "Kuyumcu formları",
+  "aciklama": "Özel sipariş ve bozdurma formları.",
+  "kaynak": "sablon",
+  "uyari": "Bu metin örnektir, hukuki danışmanlık değildir. Kullanmadan önce avukatınıza gösterin ve işinize göre düzenleyin.",
+  "kayitlar": [
+    {
+      "anahtar": "ozel-siparis",
+      "label": "Özel sipariş formu",
+      "sign": [
+        "Kuyumcu",
+        "Müşteri"
+      ],
+      "fields": [
+        {
+          "name": "urun",
+          "label": "Ürün tarifi",
+          "type": "textarea"
+        },
+        {
+          "name": "ayar",
+          "label": "Ayar",
+          "type": "text"
+        },
+        {
+          "name": "teslimTarih",
+          "label": "Teslim tarihi",
+          "type": "date"
+        }
+      ],
+      "body": "{{musteri}} için tarifi yazılı ürün {{ayar}} ayar olarak hazırlanacak, {{teslimTarih}} tarihinde teslim edilecektir. Son gram ve işçilik teslimde kesinleşir."
+    }
+  ]
+}

@@ -284,9 +284,6 @@ route('POST', '/api/auth/reset', { auth: 'none', limit: ['reset', 10, 600e3] }, 
 });
 
 // Hazır ürün kataloğu (havuz + Open Food Facts); yerel demo modunda da çalışır
-route('GET', '/api/katalog/ara', { auth: 'none', db: false, limit: ['kat', 120, 60e3] }, async (c) => { try { return { ok: true, ...(await katalog.search({ q: c.query.get('q') || '', cat: c.query.get('kat') || '', page: c.query.get('sayfa') || 1 })) }; } catch (e) { throw err(502, 'Ürün kataloğuna şu an ulaşılamıyor. Biraz sonra tekrar deneyin veya ürünü elle ekleyin.'); } });
-route('GET', '/api/katalog/barkod/:code', { auth: 'none', db: false, limit: ['katb', 240, 60e3] }, async (c) => ({ ok: true, item: await katalog.barcode(c.params.code) }));
-route('POST', '/api/katalog/katki', { auth: 'none', db: false, limit: ['katk', 30, 60e3] }, async (c) => ({ ok: true, added: await katalog.contribute(c.body.items) }));
 
 // İşletme web sitesi eklentisi: düzenleme, yayınlama, özel alan adı ve siparişler
 const addonOn = async (tid, pid) => !!(await db.one("SELECT id FROM licenses WHERE tenant_id=? AND product=? AND status IN ('aktif','deneme') AND end>UTC_TIMESTAMP()", [tid, pid]));

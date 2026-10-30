@@ -1,0 +1,226 @@
+{
+  "sablon": "adisyon/restoran-menu",
+  "surum": 1,
+  "program": "adisyon",
+  "tur": "menu",
+  "ad": "Restoran menüsü",
+  "aciklama": "Çorba, ana yemek, ızgara, tatlı ve içecek başlıklarıyla başlangıç menüsü. Ürünler kapalı gelir: fiyat girip açın.",
+  "kaynak": "sablon",
+  "hedef": "menu",
+  "fiyatAlan": "price",
+  "varsayilan": {
+    "price": 0,
+    "station": "mutfak",
+    "recipe": [],
+    "desc": "",
+    "active": false,
+    "prepMin": 0
+  },
+  "baglar": {
+    "cat": {
+      "koleksiyon": "mcats",
+      "varsayilan": {
+        "color": "#64748b"
+      }
+    }
+  },
+  "kayitlar": [
+    {
+      "anahtar": "mercimek-corbasi",
+      "name": "Mercimek çorbası",
+      "cat": "Çorbalar"
+    },
+    {
+      "anahtar": "ezogelin-corbasi",
+      "name": "Ezogelin çorbası",
+      "cat": "Çorbalar"
+    },
+    {
+      "anahtar": "yayla-corbasi",
+      "name": "Yayla çorbası",
+      "cat": "Çorbalar"
+    },
+    {
+      "anahtar": "tavuk-suyu-corbasi",
+      "name": "Tavuk suyu çorbası",
+      "cat": "Çorbalar"
+    },
+    {
+      "anahtar": "iskembe-corbasi",
+      "name": "İşkembe çorbası",
+      "cat": "Çorbalar"
+    },
+    {
+      "anahtar": "humus",
+      "name": "Humus",
+      "cat": "Başlangıçlar"
+    },
+    {
+      "anahtar": "haydari",
+      "name": "Haydari",
+      "cat": "Başlangıçlar"
+    },
+    {
+      "anahtar": "acili-ezme",
+      "name": "Acılı ezme",
+      "cat": "Başlangıçlar"
+    },
+    {
+      "anahtar": "patlican-salatasi",
+      "name": "Patlıcan salatası",
+      "cat": "Başlangıçlar"
+    },
+    {
+      "anahtar": "sigara-boregi",
+      "name": "Sigara böreği",
+      "cat": "Başlangıçlar"
+    },
+    {
+      "anahtar": "coban-salata",
+      "name": "Çoban salata",
+      "cat": "Salatalar"
+    },
+    {
+      "anahtar": "mevsim-salata",
+      "name": "Mevsim salata",
+      "cat": "Salatalar"
+    },
+    {
+      "anahtar": "gavurdagi-salatasi",
+      "name": "Gavurdağı salatası",
+      "cat": "Salatalar"
+    },
+    {
+      "anahtar": "sezar-salata",
+      "name": "Sezar salata",
+      "cat": "Salatalar"
+    },
+    {
+      "anahtar": "tavuk-sote",
+      "name": "Tavuk sote",
+      "cat": "Ana yemekler"
+    },
+    {
+      "anahtar": "etli-kuru-fasulye",
+      "name": "Etli kuru fasulye",
+      "cat": "Ana yemekler"
+    },
+    {
+      "anahtar": "karniyarik",
+      "name": "Karnıyarık",
+      "cat": "Ana yemekler"
+    },
+    {
+      "anahtar": "manti",
+      "name": "Mantı",
+      "cat": "Ana yemekler"
+    },
+    {
+      "anahtar": "hunkar-begendi",
+      "name": "Hünkar beğendi",
+      "cat": "Ana yemekler"
+    },
+    {
+      "anahtar": "kuru-kofte",
+      "name": "Kuru köfte",
+      "cat": "Ana yemekler"
+    },
+    {
+      "anahtar": "adana-kebap",
+      "name": "Adana kebap",
+      "cat": "Izgaralar"
+    },
+    {
+      "anahtar": "urfa-kebap",
+      "name": "Urfa kebap",
+      "cat": "Izgaralar"
+    },
+    {
+      "anahtar": "tavuk-sis",
+      "name": "Tavuk şiş",
+      "cat": "Izgaralar"
+    },
+    {
+      "anahtar": "kuzu-pirzola",
+      "name": "Kuzu pirzola",
+      "cat": "Izgaralar"
+    },
+    {
+      "anahtar": "izgara-kofte",
+      "name": "Izgara köfte",
+      "cat": "Izgaralar"
+    },
+    {
+      "anahtar": "karisik-izgara",
+      "name": "Karışık ızgara",
+      "cat": "Izgaralar"
+    },
+    {
+      "anahtar": "kunefe",
+      "name": "Künefe",
+      "cat": "Tatlılar"
+    },
+    {
+      "anahtar": "sutlac",
+      "name": "Sütlaç",
+      "cat": "Tatlılar"
+    },
+    {
+      "anahtar": "kazandibi",
+      "name": "Kazandibi",
+      "cat": "Tatlılar"
+    },
+    {
+      "anahtar": "baklava",
+      "name": "Baklava",
+      "cat": "Tatlılar"
+    },
+    {
+      "anahtar": "dondurma",
+      "name": "Dondurma",
+      "cat": "Tatlılar"
+    },
+    {
+      "anahtar": "ayran",
+      "name": "Ayran",
+      "station": "bar",
+      "cat": "İçecekler"
+    },
+    {
+      "anahtar": "salgam",
+      "name": "Şalgam",
+      "station": "bar",
+      "cat": "İçecekler"
+    },
+    {
+      "anahtar": "su",
+      "name": "Su",
+      "station": "bar",
+      "cat": "İçecekler"
+    },
+    {
+      "anahtar": "maden-suyu",
+      "name": "Maden suyu",
+      "station": "bar",
+      "cat": "İçecekler"
+    },
+    {
+      "anahtar": "gazli-icecek",
+      "name": "Gazlı içecek",
+      "station": "bar",
+      "cat": "İçecekler"
+    },
+    {
+      "anahtar": "cay",
+      "name": "Çay",
+      "station": "bar",
+      "cat": "İçecekler"
+    },
+    {
+      "anahtar": "turk-kahvesi",
+      "name": "Türk kahvesi",
+      "station": "bar",
+      "cat": "İçecekler"
+    }
+  ]
+}

@@ -1,0 +1,38 @@
+{
+  "sablon": "musavir/buro-formlari",
+  "surum": 1,
+  "program": "musavir",
+  "tur": "form",
+  "ad": "Müşavir formları",
+  "aciklama": "Evrak ve yetki formları.",
+  "kaynak": "sablon",
+  "uyari": "Bu metin örnektir, hukuki danışmanlık değildir. Kullanmadan önce avukatınıza gösterin ve işinize göre düzenleyin.",
+  "kayitlar": [
+    {
+      "anahtar": "evrak-istek",
+      "label": "Evrak istek listesi",
+      "sign": [
+        "Mali müşavir",
+        "Mükellef"
+      ],
+      "fields": [
+        {
+          "name": "donem",
+          "label": "Dönem",
+          "type": "text"
+        },
+        {
+          "name": "liste",
+          "label": "İstenen evraklar",
+          "type": "textarea"
+        },
+        {
+          "name": "sonTarih",
+          "label": "Son teslim",
+          "type": "date"
+        }
+      ],
+      "body": "{{donem}} dönemi işlemleri için aşağıdaki evrakların {{sonTarih}} tarihine kadar teslim edilmesini rica ederiz."
+    }
+  ]
+}

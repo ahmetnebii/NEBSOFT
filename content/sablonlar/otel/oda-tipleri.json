@@ -1,0 +1,42 @@
+{
+  "sablon": "otel/oda-tipleri",
+  "surum": 1,
+  "program": "otel",
+  "tur": "kategori",
+  "ad": "Oda tipleri",
+  "aciklama": "Sık kullanılan oda tipleri. Gece fiyatını ve oda numaralarını siz girin.",
+  "kaynak": "sablon",
+  "hedef": "types",
+  "fiyatAlan": "price",
+  "varsayilan": {
+    "price": 0,
+    "color": "#0891b2"
+  },
+  "kayitlar": [
+    {
+      "anahtar": "tek-kisilik-oda",
+      "name": "Tek kişilik oda",
+      "capacity": 1
+    },
+    {
+      "anahtar": "cift-kisilik-oda",
+      "name": "Çift kişilik oda",
+      "capacity": 2
+    },
+    {
+      "anahtar": "uc-kisilik-oda",
+      "name": "Üç kişilik oda",
+      "capacity": 3
+    },
+    {
+      "anahtar": "aile-odasi",
+      "name": "Aile odası",
+      "capacity": 4
+    },
+    {
+      "anahtar": "suit",
+      "name": "Süit",
+      "capacity": 2
+    }
+  ]
+}

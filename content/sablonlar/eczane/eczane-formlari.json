@@ -1,0 +1,28 @@
+{
+  "sablon": "eczane/eczane-formlari",
+  "surum": 1,
+  "program": "eczane",
+  "tur": "form",
+  "ad": "Eczane formları",
+  "aciklama": "Hasta bilgilendirme formu. Eczane ortak ürün kataloğunu kullanmaz.",
+  "kaynak": "sablon",
+  "uyari": "Bu metin örnektir, hukuki danışmanlık değildir. Kullanmadan önce avukatınıza gösterin ve işinize göre düzenleyin.",
+  "kayitlar": [
+    {
+      "anahtar": "bilgilendirme",
+      "label": "Hasta bilgilendirme tutanağı",
+      "sign": [
+        "Eczacı",
+        "Hasta"
+      ],
+      "fields": [
+        {
+          "name": "konu",
+          "label": "Bilgilendirme konusu",
+          "type": "textarea"
+        }
+      ],
+      "body": "{{musteri}} kullanım ve saklama koşulları hakkında bilgilendirilmiştir."
+    }
+  ]
+}

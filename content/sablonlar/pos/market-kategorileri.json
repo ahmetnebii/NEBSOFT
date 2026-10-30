@@ -1,0 +1,63 @@
+{
+  "sablon": "pos/market-kategorileri",
+  "surum": 1,
+  "program": "pos",
+  "tur": "kategori",
+  "ad": "Market kategorileri",
+  "aciklama": "Bakkal ve market için ürün kategorileri. Ürünleri barkod okutarak ya da hazır katalogdan ekleyin.",
+  "kaynak": "sablon",
+  "hedef": "cats",
+  "varsayilan": {
+    "color": "#0ea5e9"
+  },
+  "kayitlar": [
+    {
+      "anahtar": "sut-ve-kahvaltilik",
+      "name": "Süt ve kahvaltılık"
+    },
+    {
+      "anahtar": "temel-gida",
+      "name": "Temel gıda"
+    },
+    {
+      "anahtar": "atistirmalik",
+      "name": "Atıştırmalık"
+    },
+    {
+      "anahtar": "icecek",
+      "name": "İçecek"
+    },
+    {
+      "anahtar": "sarkuteri",
+      "name": "Şarküteri"
+    },
+    {
+      "anahtar": "meyve-ve-sebze",
+      "name": "Meyve ve sebze"
+    },
+    {
+      "anahtar": "temizlik",
+      "name": "Temizlik"
+    },
+    {
+      "anahtar": "kisisel-bakim",
+      "name": "Kişisel bakım"
+    },
+    {
+      "anahtar": "bebek",
+      "name": "Bebek"
+    },
+    {
+      "anahtar": "kirtasiye",
+      "name": "Kırtasiye"
+    },
+    {
+      "anahtar": "sigara-ve-tutun",
+      "name": "Sigara ve tütün"
+    },
+    {
+      "anahtar": "evcil-hayvan",
+      "name": "Evcil hayvan"
+    }
+  ]
+}
