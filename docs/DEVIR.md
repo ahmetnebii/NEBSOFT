@@ -9,6 +9,20 @@ kalındığını** ve **ne yapılacağını** anlatır. İkisi çelişirse `CLAU
 
 ---
 
+## İlerleme günlüğü (yeni bilgisayar, 30.10.2026)
+- Kurulum: `devir/hepsi` çekildi (`Desktop
+ebsoft güncel`). Node 24, .NET 8 var → `npm test`: 8 test dosyası geçti (XSD 9 belge);
+  `cloud.test.js` MySQL olmadığı için bağlanamadı (B8 hatasına kadar gelemedi). Masaüstü kurulumu derlendi (`indir/NEBSOFT-Kurulum.exe`, imzasız).
+- **APK derlenmedi:** JDK 17 ve Android SDK 34 yok; `data/android-release.jks` bu klasörde yok (betik anahtar yoksa YENİSİNİ üretir →
+  telefonlar güncellemeyi kurmaz). Eski `data/` klasörü kopyalanmadan APK derlenmemeli. Not: yerel sunucu çalıştırılınca `data/` içinde
+  yeni `secret.key`/`setup-token.txt` üretildi; eski `data/` gelince onların üzerine yazılmalı.
+- Yerel önizleme: 5050 portu bu bilgisayarda başka bir uygulamada → denemeler `PORT=5062 node server.js` ile yapıldı.
+- **YARIM commitler tamamlandı:** Butik 3. dalga (`06faf6b`), Veteriner 2. dalga, Fabrika spec + 1. dalga F1–F6 (bu commit). Ayrıntı ilgili spec'lerde.
+- `.claude/launch.json` servis-arac kaydı hâlâ 5061'i başlatıyordu → 5067 yapıldı. `sw.js` V → `nebsoft-v3-22`.
+- Sıradaki: §4.1 Ön Muhasebe 3. dalga kalanı.
+
+---
+
 ## 0. Yeni bilgisayarda kurulum
 
 ### 0.1 Projeyi çek
@@ -100,9 +114,9 @@ açılan dallarda yapılır. Birleştirmede tek çakışma `.claude/launch.json`
 |---|---|---|---|
 | `muhasebe/urun-spec` (ana oturum) | Ön Muhasebe + çekirdek (`core/`) | 1. ve 2. dalga (`0530bdc`); 3. dalgadan **cari portalı** (bu commit) | 3. dalganın kalanı — §4.1 |
 | `claude/urun-servis-arac-a1f676` | Oto Servis, Teknik Servis, Otopark (`apps/oto`), Oto Galeri, Araç Kiralama, Emlak | Oto Servis 1–3, Teknik Servis 1–3, Otopark 1–3, Oto Galeri **1. dalga** | Oto Galeri 2–3; **Araç Kiralama**, **Emlak** hiç başlanmadı |
-| `claude/urun-perakende-f86f58` | Butik, Market POS, Adisyon, Kuyumcu, Toptan, Fiyat Robotu | Butik etiketi, Butik 1–2 | Butik 3. dalga **YARIM** (son commit "YARIM:", denenmedi); POS, Adisyon, Kuyumcu, Toptan, Fiyat Robotu başlanmadı |
-| `claude/urun-eticaret-uretim-38c2a2` | E-ticaret, Pazaryeri, Kargo, Fabrika ERP | E-ticaret spec + 1. dalga, Pazaryeri spec + 1. dalga, Kargo spec + 1. dalga | E-ticaret/Pazaryeri/Kargo 2–3. dalga; Fabrika spec **YARIM** + 1. dalga başlangıcı ("YARIM:" commit) |
-| `claude/urun-randevu-uyelik-cfb186` | Randevu, Klinik, Veteriner, Spor, Kurs, Anaokulu | Randevu 1–3, Klinik 1–3, Veteriner 1. dalga | Veteriner 2. dalga **YARIM** ("YARIM:" commit, denenmedi) + 3; Spor, Kurs, Anaokulu başlanmadı |
+| `claude/urun-perakende-f86f58` | Butik, Market POS, Adisyon, Kuyumcu, Toptan, Fiyat Robotu | Butik etiketi, Butik 1–2 | ~~Butik 3. dalga YARIM~~ **yapıldı 30.10.2026** (`06faf6b`); POS, Adisyon, Kuyumcu, Toptan, Fiyat Robotu başlanmadı |
+| `claude/urun-eticaret-uretim-38c2a2` | E-ticaret, Pazaryeri, Kargo, Fabrika ERP | E-ticaret spec + 1. dalga, Pazaryeri spec + 1. dalga, Kargo spec + 1. dalga | E-ticaret/Pazaryeri/Kargo 2–3. dalga; ~~Fabrika spec YARIM~~ spec + 1. dalga **yapıldı 30.10.2026**; Fabrika 2–3 |
+| `claude/urun-randevu-uyelik-cfb186` | Randevu, Klinik, Veteriner, Spor, Kurs, Anaokulu | Randevu 1–3, Klinik 1–3, Veteriner 1. dalga | ~~Veteriner 2. dalga YARIM~~ **yapıldı 30.10.2026**; Veteriner 3; Spor, Kurs, Anaokulu başlanmadı |
 | `claude/urun-konaklama-etkinlik-8b3b84` | Otel, Bilet / Etkinlik, Site Yönetimi, CRM | Otel 1–3, Bilet 1. dalga | Bilet 2–3; Site Yönetimi, CRM başlanmadı |
 | `claude/urun-profesyonel-5c5840` | Hukuk, Mali Müşavir, İK, Eczane | Hukuk 1–3 | Mali Müşavir, İK, Eczane başlanmadı |
 
@@ -212,7 +226,7 @@ Amaç: resmî, herkese açık API dokümanı veya SDK'sı **bulunabilen** her G�
 **Kota uyarısı:** 7 paralel oturum 5 saatlik kotayı 5–10 dakikada bitirdi. Öneri: aynı anda en fazla 1–2 oturum; önce yarım kalanlar
 (Butik 3, Veteriner 2, Fabrika spec), sonra her gruptan sıradaki program. Dalga sonunda commit almadan oturumu bırakma.
 
-**Önerilen sıra:** (1) YARIM commitleri tamamla → (2) Ön Muhasebe 3. dalga (§4.1) → (3) çekirdek istekleri (§4.2) → (4) başlanmamış
+**Önerilen sıra:** (1) ~~YARIM commitleri tamamla~~ (yapıldı 30.10.2026) → (2) Ön Muhasebe 3. dalga (§4.1) → (3) çekirdek istekleri (§4.2) → (4) başlanmamış
 programlar (POS, Adisyon, Spor, Mali Müşavir, Eczane, Kuyumcu, Toptan, Fiyat Robotu, Kurs, Anaokulu, Site, CRM, İK, Kiralama, Emlak)
 → (5) kalan 2–3. dalgalar → (6) entegratörler (§4.3, Ön Muhasebe ile paralel gidebilir).
 

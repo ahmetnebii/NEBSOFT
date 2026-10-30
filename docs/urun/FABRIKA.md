@@ -1,13 +1,21 @@
 # Fabrika ERP — Ürün Spesifikasyonu
 
-> **Durum (29.10.2026):** Kullanıcı dalgaları önceden onayladı. 1. dalga uygulanıyor.
+> **Durum (30.10.2026):** Kullanıcı dalgaları önceden onayladı. **1. dalga tamamlandı** (devir oturumu; "YARIM" commit `d43908d` tamamlandı). Sırada 2. dalga.
 
 Tarih: 29.10.2026 · Dal: `claude/urun-eticaret-uretim-38c2a2` · Yöntem: `CLAUDE.md` §2 · Program: `apps/fabrika` (`app.js` stok/lot, satınalma, mal kabul, kalite; `app2.js` reçete, iş emri, plan, MRP, satış/sevkiyat, bakım/OEE; `bayi.html` bayi portalı)
 
 ## 1. dalga — yapılanlar
 | # | Konu | Sonuç | Kanıt |
 |---|---|---|---|
-| F1–F6 | _uygulanıyor_ | | |
+| F1 | Kantar simülasyonda uydurma ağırlık yok | Simülasyonda ağırlık okunmaz, "TEST: … tartımı elle girin" uyarısı | Kod (`readWeight`); cihaz yok, tarayıcıda kantar açılmadı |
+| F2 | Simülasyon belge no olarak yazılmaz | e-Müstahsil ve tedarikçi iadesi e-İrsaliyesi: simülasyon ref'i kaydedilmez, `…Test` işareti, çıktıda "e-İrsaliye: TEST — gönderilmedi". Sevkiyatta e-İrsaliye/e-Fatura simülasyonsa listede "Test — gönderilmedi"; TEST faturası onayla yeniden kesilebilir ("Faturala" düğmesi kalır) | Tarayıcı: SV2613 → e-İrsaliye ve e-Fatura "Test — gönderilmedi"; "Faturala" → onay → NEB…0002 (yine TEST) |
+| F3 | Ölçülmeyen operasyon süresi uydurulmaz | İş emri kapanırken süre yazılmaz ("ölçülmedi"); OEE yalnızca süresi ölçülen operasyonlarla | Tarayıcı: IE26037 kapatıldı → Yoğurma "ölçülmedi / Bitti" |
+| F4 | Eksik malzeme çıkışında lot maliyeti sıfıra düşmez | Çıkılan malzeme reçetenin %90'ından azsa lot standart maliyetle girer, uyarı verilir, bildirimde `costStd` işareti | Tarayıcı: çıkışsız 200 kg bildirim → "lot standart maliyetle (₺37,76) girdi" |
+| F5 | Bayi siparişi onayında SMS sonucu gerçek | "Sipariş onaylandı · SMS TEST — gönderilmedi (SMS sağlayıcısı bağlı değil)"; SMS kaydı gerçek durumla | Tarayıcı (SP2613 bekliyor yapılarak) |
+| F6 | Gerçek / standart maliyet ayrımı | İş emri maliyet kartında malzeme (gerçek çıkış), işçilik (ölçülen süre) ve standart kısım (ölçülmeyen operasyonlar) ayrı; standart maliyetli lot uyarısı; malzeme çıkışı yoksa "Gerçek birim maliyet" gösterilmez | Tarayıcı: "Malzeme ₺0 · İşçilik ₺0 · ₺525 (standart…)" |
+
+Kalite kapısı: `npm test` (cloud.test.js hariç, MySQL yok) geçti. 375 px'te 6 sayfada taşma yok; konsolda hata yok. Koyu tema ayrı
+denenmedi (yalnızca çekirdek sınıfları). 5000 kayıtla hız denenmedi. `sw.js` V `nebsoft-v3-22` (aynı oturumda artırıldı).
 
 ---
 
