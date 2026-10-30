@@ -545,7 +545,7 @@ RULES.eczane = {
   view: (x) => { const ph = me(x, 'p'); return { rxOrders: ph ? x.col('rxOrders').filter((o) => digits(o.phone) === ph) : [] }; },
   write: {
     rxOrders: {
-      ins: I({ rxNo: 'str:12', name: 'str:80', phone: 'phone', pickup: 'str:40', note: 'str:400?' }, () => ({ code: 'R' + Math.random().toString(36).slice(2, 7).toUpperCase(), status: 'yeni', at: nowIso() }), (r, x) => {
+      ins: I({ rxNo: 'str:12', name: 'str:80', phone: 'phone', pickup: 'str:40', note: 'str:400?' }, () => ({ code: 'R' + tixCode().slice(0, 7), status: 'yeni', at: nowIso() }), (r, x) => {
         r.rxNo = r.rxNo.replace(/\s/g, '').toUpperCase(); if (!/^[A-Z0-9]{6,10}$/.test(r.rxNo)) bad('E-reçete numarası 6-10 harf/rakam olmalı');
         if (x.col('rxOrders').filter((o) => samePhone(o.phone, r.phone) && o.status === 'yeni').length >= 5) bad('Bu numarayla bekleyen çok fazla reçete var');
       }),
