@@ -7,9 +7,9 @@ Tarih: 30.10.2026 · Dal: `guvenlik/denetim` (temel: `devir/hepsi` 4ec51e1) · K
 | # | Konu | Neden | Gereken |
 |---|---|---|---|
 | E1 | **Program rolleri sunucuda (A1): klinik, eczane, veteriner, ik için GİDERİLDİ** (dal `guvenlik/sunucu-rolleri`) | Ekip hesabına `team_roles` + `server/cloud/rol-kural.js`: okumada süzme, yazmada geri koyma, PIN sunucuda. Rol atanmamış ekip hesabı eskisi gibi tam yetkili ve PIN'leri görür. Diğer 27 programın rolleri yalnızca arayüzde. | Sağlık programı kullanan işletmelerde üyelere rol atayın; yeni programlar için `RULES`e kayıt ekleyin |
-| E2 | **Randevu sayfasında yalnızca telefonla giriş (A2)** | Numarayı bilen kişi müşterinin adını, e-postasını, randevu notlarını görür, randevuyu iptal eder veya taşır. | Karar: SMS kodu veya portal kodu |
-| E3 | **mysql2 3.11.5 açığı (B-Y)** | `npm audit`: yüksek önem, 3.24.6'da giderilmiş. `package.json` görev gereği değiştirilmedi. | Sürümü yükseltin, `cloud.test.js` çalıştırın |
-| E4 | **`cloud.test.js` çalıştırılmadı** | Görev gereği. Bu dalın bulut düzeltmeleri gerçek MySQL ile uçtan uca denenmedi. | Test veritabanıyla bir kez çalıştırın |
+| ~~E2~~ | **Kapandı 30.10.2026 (A2):** telefon tek başına giriş açmıyor | Randevu kodu yalnız o randevuyu, işletmenin verdiği portal kodu tüm randevuları açar. Başkasının numarasıyla randevu alan kişi müşteri bilgisini göremez. | Kodu olmayan eski müşteriye program **Müşteriler → Randevu portalı kodu** ile kod verir |
+| ~~E3~~ | **Kapandı 30.10.2026:** mysql2 3.24.6, `npm audit --omit=dev` 0 açık | Masaüstü bağımlılıkları (Bölüm 3) ayrı duruyor. | exe yeniden derlenirken yükseltilecek |
+| ~~E4~~ | **Kapandı 30.10.2026:** `cloud.test.js` gerçek MariaDB ile geçiyor (43 test) | — | — |
 | E5 | **Varsayılan sunucu adresi şifresiz HTTP (A9)** | `sunucu.json` ilk adresi `http://45.133.36.99:5050`. Parola ve oturum çerezi ağda açık gider. | Adresi listeden çıkarın, exe ve APK'yı yeniden derleyin |
 
 ## Özet
@@ -177,11 +177,11 @@ Kalan teknik sınırlar:
 |---|---|---|---|---|
 | A1 | Yüksek → **4 programda giderildi** | Rolü atanan hesapta veri sunucuda süzülür, PIN inmez, yazma geri konur (`rol-kural.js`, `routes.js`). Kalan: PIN hâlâ düz metin `users[].pin`; rolsüz ekip hesabı ve sahip PIN'i görür; 27 programda rol yalnızca arayüzde; onay kararı (`NS.approve`) sunucuda zorlanmaz | `server/cloud/rol-kural.js`, `routes.js`, `core/core.js` | PIN özeti; yeni programlara kural |
 | A2 | Yüksek | Randevuda telefonla giriş | `public-rules.js:106` | SMS kodu veya portal kodu |
-| A3 | Orta | Ekip üyesi kayıtlı gizli bilgiyi kendi sunucusuna gönderip okuyabilir: `/api/istek` yer tutucuyu her adres için çözer | `bridge.js:36` | Yer tutucuyu sağlayıcı alan adına bağlayın |
+| ~~A3~~ | Orta | **Kapandı 30.10.2026:** yer tutucu yalnız `core/integrations.js`, `integ-wizard.js`, `ubltr.js` içinde geçen sağlayıcı adresine veya o entegrasyonun kayıtlı adresine çözülür. Sınır: rolü atanmamış ekip üyesi entegrasyon adresini değiştirebilir | `secrets.js` | Rol atanan hesap `cfg` değiştiremez |
 | A4 | Orta | CSP `unsafe-inline`; `connect-src https:` veri çıkışına izin verir | `security.js:16` | Gömülü betikleri taşımak büyük iş, aşamalı |
-| A5 | Orta | Müşteri sayfası yazma kotası yok: IP başına dakikada 40 istek × 60 işlem işletme verisini şişirebilir | `public.js:104-105` | İşletme başına kota |
-| A6 | Orta | Yönetici için 2 adımlı giriş zorunlu değil (e-posta ayarına bağlı) | `routes.js:206` | Yönetici rolünde zorunlu kılın |
-| A7 | Orta | Özel alan adında DNS sahiplik doğrulaması yok; başkası önce yazarak gerçek sahibi engelleyebilir | `routes.js:297` | TXT doğrulaması |
+| ~~A5~~ | Orta | **Kapandı 30.10.2026:** işletme ve program başına saatte 3000 yazma işlemi. Sınır tek süreç belleğinde | `public.js` | — |
+| A6 | Orta | **Kısmen kapandı 30.10.2026:** e-posta altyapısı kuruluysa platform yöneticisi kodla girer. E-posta kurulmadan iki adım yok; uygulama tabanlı doğrulama (TOTP) yok | `routes.js` | E-posta ayarını canlıdan önce yapın |
+| ~~A7~~ | Orta | **Kapandı 30.10.2026:** yeni veya değişen alan adı `_nebsoft.<alan>` TXT kaydıyla doğrulanmadan yayınlanmaz, doğrulanmamış kayıt adı tutamaz. Eski kayıtlar doğrulanmış sayılır. Gerçek DNS ile denenmedi | `routes.js`, `seo.js` | Canlıda bir alan adıyla deneyin |
 | A8 | Düşük | Hesap kilidi hedefli engellemeye açık; müşteri parolası en az 8 karakter; hız sınırları tek süreç belleğinde | `auth.js:54`, `security.js` | nginx `limit_req`, süreli kilit gözden geçirme |
 | A9 | Yüksek | `sunucu.json` HTTP adresi; Android `usesCleartextTraffic=true` | `sunucu.json`, `AndroidManifest.xml:20` | HTTPS'e geçince kapatın |
 | A10 | Düşük | Bilet koltuk kilidini herkes silebilir; kilit satışı engellemediği için etkisi sınırlı | `public-rules.js:841` | Sahibine bağlayın |
@@ -207,9 +207,9 @@ node server/test/guvenlik.test.js && node server/test/program-duman.test.js &&
 
 ## Senden gerekenler
 
-1. E2 için karar: randevu girişi yöntemi. E1 kararı uygulandı (`guvenlik/sunucu-rolleri`).
-2. `mysql2` yükseltmesi, `package.json` test satırı ve `sw.js` güncellemesi.
-3. `cloud.test.js`'i test veritabanıyla çalıştırma.
+1. Sağlık ve İK kullanan işletmelerde mevcut ekip üyelerine rol atayın; atanmayan üye tam yetkili kalır.
+2. Gerçek Chrome'da `sw.js` kaydını bir kez doğrulayın: tarayıcı panelinde en küçük service worker bile "unknown error" veriyor, bu yüzden hata panele özgü görünüyor.
+3. E-posta altyapısını kurun (platform yöneticisi iki adımlı giriş buna bağlı).
 4. `sunucu.json` HTTP adresini kaldırıp paketleri yeniden derleme.
 5. Canlıda `data/` kod klasöründe kaldıysa: **bu açık yayında bulunduysa `NEBSOFT_SECRET`, veritabanı parolası ve entegrasyon anahtarlarını değiştirin**, sunucu günlüklerinde `..` ve `%2e` içeren istekleri arayın.
 6. Avukat soruları (Bölüm 5).
