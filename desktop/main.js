@@ -73,7 +73,8 @@ ipcMain.handle('ns:kiosk', (e, on) => { const w = BrowserWindow.fromWebContents(
 // Electron'da navigator.serial.requestPort seçimi ana süreçte yapılır: tek port doğrudan seçilir, birden fazlaysa kullanıcıya sorulur.
 // İzin bellekte tutulduğu için seçilen portlar ayarlara yazılır; program yeniden açılınca kullanıcı hareketi beklenmeden getPorts ile gelir.
 const sameOrigin = (u) => { try { return !!SERVER() && new URL(u).origin === new URL(SERVER()).origin; } catch (e) { return false; } };
-const portKey = (p) => [p.vendorId || '', p.productId || '', p.serialNumber || p.portName || ''].join(':');
+// Seçim olayı deviceInstanceId/vendorId, izin denetimi device_instance_id/vendor_id yazımıyla gelir; ikisi de aynı anahtara iner
+const portKey = (p) => p.deviceInstanceId || p.device_instance_id || [p.vendorId || p.vendor_id || '', p.productId || p.product_id || '', p.serialNumber || p.serial_number || p.name || ''].join(':');
 const rememberPort = (p) => { const l = ucfg().serialPorts || []; if (!l.includes(portKey(p))) saveUcfg({ serialPorts: [...l, portKey(p)] }); };
 function serialSetup(ses) {
   ses.setPermissionCheckHandler((wc, perm, origin) => perm !== 'serial' || sameOrigin(origin)); // diğer izin denetimleri varsayılan gibi kalır

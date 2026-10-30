@@ -246,7 +246,7 @@ Yükseltme sırasında bulunan, Electron sürümünden bağımsız iki eski hata
 - **Paketteki köprü hiç açılmıyordu:** `server/cloud/seo.js` `site/src/site.config` istiyor, paket filtresi `site/src`i dışlıyordu. Köprü `MODULE_NOT_FOUND` ile kapanıyordu; ağ yazıcısı, terazi ve MQTT kurulu uygulamada çalışmıyordu. Filtreden çıkarıldı (sunucu `/site/src` adresini yine vermez).
 - **Masaüstünde seri port seçilemiyordu:** `select-serial-port` dinleyicisi yoktu, `requestPort` `NotFoundError` veriyordu. Dinleyici eklendi: tek port doğrudan seçilir, birden fazlaysa sorulur, seçim `ayarlar.json`da hatırlanır, yalnız NEBSOFT sunucusunun adresine izin verilir.
 
-Denenen ve denenmeyen: kurulum dosyası üretildi; paketlenmiş uygulama (`win-unpacked`) başlatıldı, giriş sayfası ve iki program yüklendi, köprü yanıt verdi, yazıcı listesi geldi, olmayan yazıcıya yazdırma hatayı döndürdü, COM3 seçildi. **Denenmedi:** kurulum sihirbazı, otomatik güncelleme, gerçek yazıcıya çıktı, seri portu açıp veri okuma/yazma, kod imzası, macOS.
+Denenen ve denenmeyen: kurulum dosyası üretildi; paketlenmiş uygulama (`win-unpacked`) başlatıldı, giriş sayfası ve iki program yüklendi, köprü yanıt verdi, yazıcı listesi geldi, olmayan yazıcıya yazdırma hatayı döndürdü, COM3 seçildi ve uygulama yeniden açılınca hatırlandı. **Denenmedi:** kurulum sihirbazı, otomatik güncelleme, gerçek yazıcıya çıktı, seri portu açıp veri okuma/yazma, kod imzası, macOS.
 
 Önceki durum:
 
