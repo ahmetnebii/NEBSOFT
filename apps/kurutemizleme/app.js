@@ -5,10 +5,11 @@
   const { esc, $, on, icon, toast, confirm, badge } = NS;
   // Parça listesi: adetli satırda adet kadar, m² satırında tek parça. İşaretler kod üzerinden korunur.
   const parcalar = (o) => { const eski = new Map((o.pieces || []).map((p) => [p.k, p])); let i = 0; const L = []; (o.lines || []).forEach((l) => { const n = l.unit === 'm²' ? 1 : Math.max(1, Math.round(Number(l.qty) || 1)); for (let j = 0; j < n; j++) { const k = `${o.no}-${++i}`; L.push({ k, name: l.name, ok: !!(eski.get(k) || {}).ok }); } }); return L; };
+  const ROLES = { admin: 'Yönetici', tezgah: 'Tezgâh', kurye: 'Şoför' };
   window.SIPARIS.kur({
     menu: [{ id: 'pano', label: 'İş Panosu' }, { id: 'siparisler', label: 'Fişler' }, { id: 'fiyatlar', label: 'Fiyat Listesi' }, { id: 'personel', label: 'Personel' }, { id: 'dagitim', label: 'Dağıtım' }],
     id: 'kurutemizleme', ad: 'Kuru Temizleme & Halı Yıkama', tagline: 'Fiş, etiket, adresten alma ve teslim', icon: 'drop', accent: '#0284c7', prefix: 'KT', status: window.KURU.STATUS, seed: window.KURU.seed, single: 'Fiş', panoBaslik: 'İş Panosu', listeBaslik: 'Fişler', docLabel: 'Teslim fişi', hazirKelime: 'Hazır SMS’i', pickup: true, pickupStatus: 'alinacak', delivery: true, adresBaslik: 'Alma ve teslim adresi', staffLabel: 'Sorumlu', units: ['adet', 'm²', 'takım', 'kg'], fiyatBaslik: 'Fiyat Listesi',
-    roles: { admin: 'Yönetici', tezgah: 'Tezgâh', kurye: 'Şoför' }, navRoles: { ozet: ['admin'], fiyatlar: ['admin'], personel: ['admin'], talepler: ['admin', 'tezgah'], musteriler: ['admin', 'tezgah'], siparisler: ['admin', 'tezgah'], takvim: ['admin', 'tezgah'], pano: ['admin', 'tezgah'] }, home: 'pano',
+    roles: ROLES, navRoles: { ozet: ['admin'], fiyatlar: ['admin'], personel: ['admin'], talepler: ['admin', 'tezgah'], musteriler: ['admin', 'tezgah'], siparisler: ['admin', 'tezgah'], takvim: ['admin', 'tezgah'], pano: ['admin', 'tezgah'] }, home: 'pano',
     lineExtra: [{ name: 'color', label: 'Renk / marka' }], conditionLabel: 'Teslim alınırken durum (leke, yırtık, eksik düğme)', photos: 'Teslim alma fotoğrafları', signIn: 'Eşyamı yukarıda yazan adet, ölçü ve durumla teslim ettim.', talep: true,
     hazirMetni: (o, s) => `${s.bizName}: ${o.no} numaralı fişiniz hazır. Takip kodu: ${o.code}`,
     docInfo: (o) => (o.shelf ? [['Raf', o.shelf]] : []),

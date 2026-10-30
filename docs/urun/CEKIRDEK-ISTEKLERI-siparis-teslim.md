@@ -26,3 +26,13 @@ Ortak altyapı `core/` dışında kuruldu: `apps/siparisortak/` (`hesap.js`, `to
 ## Birleştirme notu
 
 Şu dosyalardaki eklemeler diğer paralel oturumlarla aynı satırları değiştirir, birleştirmede ikisi de korunur: `market/market.js` (SLUG), `admin/data.js` (SEC_PID), `server/cloud/sablon.js` (PROGRAMLAR), `sw.js` (V, SHELL), `package.json` (test zinciri). `site/sitemap.xml`, `site/src/lastmod.json` ve ana sayfa gibi üretilen dosyalar birleştirmeden sonra `node site/tools/build-sites.js` ile yeniden üretilir.
+
+## Kod tekrarı raporu
+
+"Sipariş ve Teslim" adlı hazır bir altyapı yoktu. Benzer yapı `apps/servis` ve `apps/otoservis` içindeydi; oradan desen alınıp `apps/siparisortak/` kuruldu.
+
+| Konu | Durum |
+|---|---|
+| Beş program arası | Fiş, pano, takvim, dağıtım, tahsilat, belge, SMS, müşteri, takip sayfası ve sunucu kuralı tek yerde. Tekrar yalnız `index.html`, `takip.html` iskeleti ve `data.js` içindeki tohum yapısı. |
+| `apps/servis` ve `apps/otoservis` ile | Kanban, durum geçmişi, takip sayfası ve SMS sonucu yazma benzer kalıplarla iki kez daha var. Bu oturum onlara dokunmadı. |
+| Öneri | Bu motor pilotta oturursa `core/` altına taşınıp yeni sipariş odaklı programlarda kullanılsın. Servis programları ayrı iş olarak değerlendirilir; taşıma riski kazancından büyükse olduğu gibi kalır. |
