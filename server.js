@@ -15,6 +15,7 @@ const fs = require('fs');
 const net = require('net');
 const path = require('path');
 const crypto = require('crypto');
+const zlib = require('zlib');
 const kanal = require('./server/connectors');
 const proto = require('./server/bridge-proto');
 const cloud = require('./server/cloud');
@@ -120,6 +121,10 @@ const SITES = new Set(fs.existsSync(path.join(ROOT, 'site')) ? fs.readdirSync(pa
 // Dışarıya asla sunulmayacak yollar (sunucu kodu, veriler, gizli dosyalar, araçlar)
 const DENY = /^\/(data|server|node_modules|site\/tools|site\/src|awesome-claude-design|docs|desktop|\.[^/]*)(\/|$)|^\/(package(-lock)?\.json|skills-lock\.json|baslat\.bat|DESIGN\.md|README\.md|DEPLOY\.md)$|\/\.[^/]+$/i;
 const LONG = /\.(jpg|jpeg|png|webp|svg|ico|woff2?)$/i;
+// Adresi sonda / ile biten statik sayfalar (program sayfaları ve /programlar eski biçimde kalır: sonda / yok)
+const SLASHED = new Set(['fiyatlar', 'kvkk', 'gizlilik', 'mesafeli-satis', 'iade', 'cerez', 'kayit', 'rehber']);
+const GZ = /^(text\/|application\/(json|xml|manifest\+json)|image\/svg)/; // sıkıştırılacak türler
+const canGz = (req, type, size) => size >= 1024 && GZ.test(type) && /\bgzip\b/.test(String(req.headers['accept-encoding'] || ''));
 
 function handle(req, res) {
   sec.headers(req, res);
@@ -175,16 +180,24 @@ const server = http.createServer((req, res) => {
 
 function sendText(req, res, text, type, cache) {
   const etag = `W/"${crypto.createHash('sha1').update(text).digest('base64url').slice(0, 20)}"`;
-  const h = { 'Content-Type': type, ETag: etag, 'Cache-Control': cache };
+  const h = { 'Content-Type': type, ETag: etag, 'Cache-Control': cache, Vary: 'Accept-Encoding' };
   if (req.headers['if-none-match'] === etag) { res.writeHead(304, h); return res.end(); }
-  res.writeHead(200, { ...h, 'Content-Length': Buffer.byteLength(text) }); res.end(req.method === 'HEAD' ? undefined : text);
+  const gz = canGz(req, type, Buffer.byteLength(text)) ? zlib.gzipSync(text) : null; const body = gz || text;
+  res.writeHead(200, { ...h, ...(gz ? { 'Content-Encoding': 'gzip' } : {}), 'Content-Length': Buffer.byteLength(body) }); res.end(req.method === 'HEAD' ? undefined : body);
 }
 
 // Statik dosyalar ve tanıtım siteleri
 function serve(req, res, p) {
   // Tanıtım siteleri: /randevusistemi → site/randevusistemi/index.html (görseller /randevusistemi/img/…)
   const seg = p.split('/')[1] || '';
-  if (/^[a-z0-9-]+$/.test(seg) && SITES.has(seg)) {
+  const q = req.url.includes('?') ? req.url.slice(req.url.indexOf('?')) : '';
+  // Aynı sayfanın /site/... kopyası ayrı adres olarak görünmesin
+  const dup = /^\/site\/([a-z0-9-]+)\/(?:([a-z0-9-]+)\/)?(index\.html)?$/.exec(p);
+  if (dup && SITES.has(dup[1]) && (!dup[2] || dup[1] === 'rehber')) { res.writeHead(301, { Location: `/${dup[1]}${dup[2] ? '/' + dup[2] : ''}${SLASHED.has(dup[1]) ? '/' : ''}${q}` }); return res.end(); }
+  if (SLASHED.has(seg) && SITES.has(seg)) {
+    if (p === '/' + seg || /^\/rehber\/[a-z0-9-]+$/.test(p)) { res.writeHead(301, { Location: p + '/' + q }); return res.end(); }
+    p = '/site' + p;
+  } else if (/^[a-z0-9-]+$/.test(seg) && SITES.has(seg)) {
     if (p === '/' + seg + '/') { res.writeHead(301, { Location: '/' + seg }); return res.end(); }
     p = '/site' + (p === '/' + seg ? p + '/index.html' : p);
   }
@@ -195,12 +208,16 @@ function serve(req, res, p) {
     if (e || !st.isFile()) { res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' }); return res.end('Bulunamadı'); }
     const ext = path.extname(file).toLowerCase();
     const etag = `W/"${st.size.toString(16)}-${Math.floor(st.mtimeMs).toString(16)}"`;
-    const h = { 'Content-Type': TYPES[ext] || 'application/octet-stream', ETag: etag, 'Cache-Control': ext === '.html' ? 'no-cache' : LONG.test(ext) ? 'public, max-age=604800' : 'public, max-age=300, must-revalidate' };
+    const type = TYPES[ext] || 'application/octet-stream'; const gz = canGz(req, type, st.size);
+    // Sürüm parametreli CSS (?v=<özet>) içerik değişince adresi de değiştiği için uzun süre önbellekte kalabilir
+    const cache = ext === '.html' ? 'no-cache' : ext === '.css' && /[?&]v=[0-9a-f]{6,}/.test(req.url) ? 'public, max-age=31536000, immutable' : LONG.test(ext) ? 'public, max-age=604800' : 'public, max-age=300, must-revalidate';
+    const h = { 'Content-Type': type, ETag: etag, 'Cache-Control': cache, ...(GZ.test(type) ? { Vary: 'Accept-Encoding' } : {}) };
     // Tanıtım sitelerinde alan adı yer tutucusu panel ayarındaki adresle değiştirilir
     if (ext === '.html' && (p.startsWith('/site/') || p === '/index.html')) return fs.readFile(file, 'utf8', (er, txt) => { if (er) { res.writeHead(500); return res.end(); } cloud.seo.rewrite(txt, req).then((t) => sendText(req, res, t, h['Content-Type'], h['Cache-Control'])); });
     if (req.headers['if-none-match'] === etag) { res.writeHead(304, h); return res.end(); }
-    res.writeHead(200, { ...h, 'Content-Length': st.size });
+    res.writeHead(200, gz ? { ...h, 'Content-Encoding': 'gzip' } : { ...h, 'Content-Length': st.size });
     if (req.method === 'HEAD') return res.end();
+    if (gz) return fs.createReadStream(file).pipe(zlib.createGzip()).pipe(res);
     fs.createReadStream(file).pipe(res);
   });
 }

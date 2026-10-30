@@ -23,7 +23,7 @@ const slugify = (s) => String(s).toLocaleLowerCase('tr').replace(/ç/g, 'c').rep
 
 async function setting(k, d) { const r = await db.one('SELECT v FROM settings WHERE k=?', [k]); return r ? J(r.v, r.v) : d; }
 async function setSetting(k, v) { await db.q('INSERT INTO settings (k, v) VALUES (?, ?) ON DUPLICATE KEY UPDATE v=VALUES(v)', [k, JSON.stringify(v)]); }
-const DEFAULTS = { trialDays: 7, siteName: 'NEBSOFT', phone: '0850 555 00 34', email: 'destek@nebsoft.com.tr', address: '', referralDays: 30, siteUrl: '' };
+const DEFAULTS = { trialDays: 7, siteName: 'NEBSOFT', phone: '0850 555 00 34', email: 'destek@nebsoft.com.tr', address: '', referralDays: 30, siteUrl: '', googleVerify: '' };
 async function site() { return { ...DEFAULTS, ...(await setting('site', {})) }; }
 async function audit(c, action, detail, tenant) { await db.q('INSERT INTO audit (at, user_id, tenant_id, ip, action, detail) VALUES (?,?,?,?,?,?)', [now(), c.user ? c.user.id : null, tenant || (c.user ? c.user.tenant_id : null), c.ip, action, String(detail || '').slice(0, 500)]).catch(() => {}); }
 
@@ -669,8 +669,10 @@ A('PUT', '/catalog/:id', async (c) => {
   await setSetting('catalog', ov); await syncCatalog(true); await audit(c, 'Ürün güncellendi', `${id} ${pr.join('/')}`); return { ok: true };
 });
 A('DELETE', '/catalog/:id', async (c) => { const ov = { ...(await setting('catalog', {})) }; delete ov[String(c.params.id)]; await setSetting('catalog', ov); await syncCatalog(true); await audit(c, 'Ürün varsayılana döndü', c.params.id); return { ok: true }; });
+// Search Console kodu: yalnız kod ya da panelin verdiği meta etiketinin tamamı yapıştırılabilir
+const googleCode = (v) => { const raw = String(v || '').trim(); const code = (/content=["']([^"']+)["']/.exec(raw) || [])[1] || raw; if (code && !/^[A-Za-z0-9_-]{10,100}$/.test(code)) throw err(400, 'Google doğrulama kodu geçersiz. Search Console\'un verdiği kodu veya meta etiketini yapıştırın'); return code; };
 A('PUT', '/settings', async (c) => {
-  const b = c.body; const s = { trialDays: Math.min(60, Math.max(1, Number(b.trialDays) || 7)), siteName: sec.clean(b.siteName, 60) || 'NEBSOFT', phone: sec.clean(b.phone, 40), email: sec.clean(b.email, 190), address: sec.clean(b.address, 300), referralDays: Math.min(365, Math.max(0, Number(b.referralDays) || 0)), siteUrl: sec.clean(b.siteUrl, 200) };
+  const b = c.body; const s = { trialDays: Math.min(60, Math.max(1, Number(b.trialDays) || 7)), siteName: sec.clean(b.siteName, 60) || 'NEBSOFT', phone: sec.clean(b.phone, 40), email: sec.clean(b.email, 190), address: sec.clean(b.address, 300), referralDays: Math.min(365, Math.max(0, Number(b.referralDays) || 0)), siteUrl: sec.clean(b.siteUrl, 200), googleVerify: googleCode(b.googleVerify) };
   await setSetting('site', s); await audit(c, 'Site ayarları', JSON.stringify(s).slice(0, 300)); return { ok: true };
 });
 A('GET', '/audit', async () => ({ ok: true, rows: await db.q('SELECT a.*, u.email FROM audit a LEFT JOIN users u ON u.id=a.user_id ORDER BY a.id DESC LIMIT 500') }));

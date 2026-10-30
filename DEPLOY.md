@@ -150,7 +150,8 @@ Bu noktadan sonra tüm uygulamalar, satış sitesi ve müşteri sayfaları bu My
 - **Kuponlar** (isteğe bağlı) ve **Yöneticiler**: personeliniz için ayrı hesaplar açın, ortak şifre kullanmayın.
 - **Arama motorları:**
   - Ayarlar sayfasındaki **"Arama motorlarına bildir"** düğmesine basın (IndexNow: Bing, Yandex vb.).
-  - Google Search Console'a `https://www.alanadiniz.com/sitemap.xml` adresini bir kez ekleyin.
+  - Google Search Console'da HTML etiketi yöntemini seçin, kodu **Site Ayarları → Google Search Console doğrulama kodu** alanına yapıştırıp kaydedin, sonra `https://www.alanadiniz.com/sitemap.xml` adresini bir kez ekleyin.
+  - Yeni sayfa kuralları: `docs/SEO-KURALLARI.md`. Metin değişince `node site/tools/build-sites.js`, görsel değişince önce `node site/tools/kucult.js` çalıştırılır.
 - Yasal metinler (KVKK, mesafeli satış, iade) **örnek şablondur**. Yayından önce hukukçunuza onaylatın.
 
 ### Satış akışı
@@ -164,7 +165,7 @@ Bu noktadan sonra tüm uygulamalar, satış sitesi ve müşteri sayfaları bu My
 
 - Her işletmenin `/t/<işletme>/` sayfası (online randevu, takip, portal bağlantıları) site haritasına **otomatik** eklenir.
 - Müşteri sayfalarının altında, işletmenin tavsiye koduyla **"NEBSOFT ile hazırlandı · 7 gün ücretsiz deneyin"** bağlantısı bulunur. Bu bağlantıdan kayıt olan her işletme tavsiye programına girer.
-- 31 ürün tanıtım sitesi (`/randevusistemi`, `/adisyonprogrami` …) ve `/programlar` merkez sayfası şema (SoftwareApplication, FAQ, Organization) içerir.
+- 31 ürün tanıtım sitesi (`/randevusistemi`, `/adisyonprogrami` …), `/programlar`, `/fiyatlar/`, yasal metinler (`/kvkk/`, `/gizlilik/`, `/mesafeli-satis/`, `/iade/`, `/cerez/`) ve `/rehber/` sunucudan tam HTML döner, şema içerir.
 
 ## 9. Yedekleme
 

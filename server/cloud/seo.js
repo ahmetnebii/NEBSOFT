@@ -1,6 +1,6 @@
 // Arama motoru görünürlüğü ve "kendi kendini pazarlayan" sistem:
 //  • Alan adı yönetim panelindeki "Site adresi" ayarından gelir (tanıtım sitelerindeki yer tutucu sunarken değiştirilir)
-//  • /sitemap.xml dinamiktir: ürün siteleri + /programlar + NEBSOFT kullanan her işletmenin herkese açık sayfası (/t/<işletme>/)
+//  • /sitemap.xml dinamiktir: site/sitemap.xml (ürün siteleri, /programlar, /fiyatlar/, yasal metinler, /rehber/) + NEBSOFT kullanan her işletmenin herkese açık sayfası (/t/<işletme>/)
 //  • /t/<işletme>/ : işletmenin müşterilerine açık hizmetlerini listeleyen, LocalBusiness şemalı sayfa (alt kısmında tavsiye bağlantısı)
 //  • IndexNow: yeni/değişen adresler Bing, Yandex, Seznam vb. arama motorlarına anında bildirilir
 const fs = require('fs');
@@ -46,6 +46,8 @@ const BUILT = require('../../site/src/site.config');
 const telOf = (p) => '+90' + String(p || '').replace(/\D/g, '').replace(/^(90)?0?/, '');
 async function rewrite(text, req) {
   const s = await settings();
+  // Google Search Console doğrulama etiketi (panel: Site Ayarları). Biçimi kayıtta denetlenir, burada yine de yalnız geçerli kod basılır
+  if (/^[A-Za-z0-9_-]{10,100}$/.test(String(s.googleVerify || ''))) text = text.replace('</head>', `<meta name="google-site-verification" content="${s.googleVerify}">\n</head>`);
   if (text.includes('www.domain.com')) { const B = await base(req); text = text.split(PLACEHOLDER).join(B).split('www.domain.com').join(B.replace(/^https?:\/\//, '')); }
   if (s.phone && s.phone !== BUILT.phone) text = text.split(telOf(BUILT.phone)).join(telOf(s.phone)).split(BUILT.phone).join(s.phone);
   if (s.email && s.email !== BUILT.email) text = text.split(BUILT.email).join(s.email);
