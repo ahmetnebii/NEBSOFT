@@ -19,7 +19,7 @@ window.BILET = {
       ['Girişimcilik Zirvesi', 'v1', 'Konferans', 'Sektör liderleri', 24, '10:00', { vip: 1500, k1: 900, k2: 600 }, '#475569'], ['Geçen Haftanın Galası', 'v1', 'Tiyatro', 'Modern Sahne', -5, '20:30', { vip: 850, k1: 600, k2: 400 }, '#9333ea'],
     ];
     db.data.events = E.map(([name, venue, cat, artist, d, time, prices, color], i) => ({ id: 'e' + i, name, venue, cat, artist, date: iso(addDays(new Date(), d)), time, prices, color, desc: `${artist} ile unutulmaz bir ${cat.toLocaleLowerCase('tr-TR')} deneyimi. Kapılar etkinlikten 45 dakika önce açılır. Süre yaklaşık 2 saattir.`, age: cat === 'Çocuk' ? 'Genel izleyici' : '+13', status: 'satista' }));
-    db.data.codes = [{ id: 'c1', code: 'OGRENCI', pct: 30, note: 'Girişte öğrenci kimliği istenir', active: true, uses: 34 }, { id: 'c2', code: 'ERKEN20', pct: 20, note: 'Erken rezervasyon', active: true, uses: 61 }, { id: 'c3', code: 'SPONSOR', pct: 100, note: 'Davetiye', active: true, uses: 12 }];
+    db.data.codes = [{ id: 'c1', code: 'OGRENCI', pct: 30, note: 'Girişte öğrenci kimliği istenir', active: true, uses: 34 }, { id: 'c2', code: 'ERKEN20', pct: 20, note: 'Erken rezervasyon', active: true, uses: 61 }, { id: 'c3', code: 'SPONSOR', pct: 100, note: 'Davetiye', active: true, online: false, maxUses: 40, uses: 12 }];
     const tickets = []; let ord = 3000;
     db.data.events.forEach((ev) => {
       const v = db.data.venues.find((x) => x.id === ev.venue);
@@ -46,6 +46,40 @@ window.BILET = {
     const list = this.PH[e.cat] || this.PH.Konser; const k = [...String(e.id)].reduce((a, c) => a + c.charCodeAt(0), 0);
     const id = p || list[k % list.length];
     return `https://images.unsplash.com/photo-${id}?w=${w}${h ? '&h=' + h : ''}&q=75&auto=format&fit=crop`;
+  },
+  // Ödenmemiş rezervasyonun süresi dolunca / iptal edilince koltuk açılır. Sunucu kuralıyla uyumlu kalmak için durum "refunded",
+  // nedeni void alanında ('expired' süresi doldu, 'cancelled' ödenmeden iptal) — para iadesi yalnızca refund kaydı varsa vardır.
+  voidLabel(t) { return t.void === 'expired' ? 'Süresi doldu (ödenmedi)' : t.void === 'cancelled' ? 'İptal (ödenmemişti)' : 'İade edildi'; },
+  expire(db) {
+    const now = Date.now(); let n = 0;
+    db.all('tickets', (t) => t.status === 'reserved' && t.holdUntil && t.holdUntil < now).forEach((t) => { t.status = 'refunded'; t.void = 'expired'; t.refundedAt = new Date().toISOString(); n++; });
+    if (n) { db.log('Süresi dolan rezervasyon', `${n} bilet serbest bırakıldı`); db.save(); }
+    return n;
+  },
+  // Rezervasyon için ödeme son anı: ayardaki saat kadar, en geç etkinlikten 2 saat önce
+  holdUntil(e, hours) { const start = new Date(`${e.date}T${e.time || '20:00'}`).getTime(); return Math.max(Date.now() + 15 * 60000, Math.min(Date.now() + (Number(hours) || 48) * 3600000, start - 2 * 3600000)); },
+  start(e) { return new Date(`${e.date}T${e.time || '20:00'}`); },
+  // Satış penceresi: online satış başlangıç–bitiş (boşsa etkinlik saatine kadar); gişe etkinlik başladıktan 1 saat sonrasına kadar
+  salesOpen(e, channel) {
+    if (!e || e.status === 'iptal' || e.status === 'taslak') return { ok: false, why: 'Etkinlik satışta değil' };
+    const now = Date.now(), st = window.BILET.start(e).getTime();
+    if (channel === 'online' && e.salesStart && now < new Date(e.salesStart).getTime()) return { ok: false, why: `Satış ${NS.dt(e.salesStart)} tarihinde başlıyor` };
+    const end = channel === 'online' ? (e.salesEnd ? new Date(e.salesEnd).getTime() : st) : st + 3600000;
+    if (now > end) return { ok: false, why: channel === 'online' ? 'Online satış kapandı' : 'Etkinlik başlayalı 1 saatten fazla oldu' };
+    return { ok: true };
+  },
+  // İndirim kodu: aktif, tarih aralığında, kullanım sınırı içinde, etkinliğe uygun; %100 kodlar (davetiye) online kullanılamaz
+  codeCheck(db, code, e, n, channel) {
+    if (!code) return { k: null };
+    const k = db.find('codes', (c) => c.code === String(code).trim().toUpperCase());
+    if (!k || !k.active) return { err: 'Geçersiz indirim kodu' };
+    const d = NS.today();
+    if (k.from && d < k.from) return { err: `Bu kod ${NS.date(k.from)} tarihinden itibaren geçerli` };
+    if (k.to && d > k.to) return { err: 'Bu kodun süresi doldu' };
+    if (k.events && !String(k.events).split(',').map((x) => x.trim()).filter(Boolean).includes(e.id)) return { err: 'Bu kod bu etkinlikte geçerli değil' };
+    if (Number(k.maxUses) && (k.uses || 0) + n > Number(k.maxUses)) return { err: `Bu kodun kullanım hakkı doldu (kalan ${Math.max(0, k.maxUses - (k.uses || 0))})` };
+    if (channel === 'online' && (Number(k.pct) >= 100 || k.online === false)) return { err: 'Bu kod online satışta kullanılamaz' };
+    return { k };
   },
   code() { const A = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; let s = ''; for (let i = 0; i < 8; i++) s += A[Math.floor(Math.random() * A.length)]; return s; },
   seats(v) { return v.type !== 'seated' ? [] : v.rows.flatMap(({ r, cat }) => Array.from({ length: v.seatsPerRow }, (_, i) => ({ id: `${r}${i + 1}`, row: r, n: i + 1, cat }))); },
