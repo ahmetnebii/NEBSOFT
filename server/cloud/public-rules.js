@@ -719,7 +719,7 @@ RULES.kuyumcu = { pub: {}, write: {} };
 // ---------- Oto galeri: araç vitrini ve bilgi talebi (vitrin.html) ----------
 const leadLimit = (col, phoneField = 'phone') => (r, x) => { if (x.col(col).filter((l) => samePhone(l[phoneField], r[phoneField]) && String(l.at || l.created || '').slice(0, 10) === x.today).length >= 5) bad('Bugün için çok fazla talep gönderdiniz'); };
 RULES.galeri = {
-  pub: { vehicles: { where: (v) => ['satista', 'opsiyon'].includes(v.status), fields: ['id', 'stockNo', 'brand', 'model', 'pkg', 'body', 'fuel', 'gear', 'year', 'km', 'color', 'listPrice', 'tramer', 'parts', 'status', 'desc', 'photos', 'photo'] } },
+  pub: { vehicles: { where: (v) => ['satista', 'opsiyon'].includes(v.status), fields: ['id', 'stockNo', 'brand', 'model', 'pkg', 'body', 'fuel', 'gear', 'year', 'km', 'color', 'listPrice', 'tramer', 'parts', 'expertise', 'status', 'desc', 'photos', 'photo'] } },
   write: { leads: { ins: I({ name: 'str:80', phone: 'phone', note: 'str:600?', body: 'str:30?', budget: 'num:0:1e9?' }, () => ({ status: 'yeni', source: 'Vitrin sayfası', at: nowIso() }), leadLimit('leads')) } },
 };
 

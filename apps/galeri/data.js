@@ -7,6 +7,9 @@ window.GLR = {
   EXP: ['Ekspertiz', 'Boya / kaporta', 'Mekanik bakım', 'Lastik', 'Detaylı temizlik', 'Noter / devir', 'Muayene', 'Komisyon'],
   cost: (v) => (v.buy || 0) + (v.expenses || []).reduce((s, e) => s + e.amount, 0),
   profit: (v) => (v.source === 'konsinye' ? Math.round(((v.sale ? v.sale.price : v.listPrice) * (v.commission || 3)) / 100) - (v.expenses || []).reduce((s, e) => s + e.amount, 0) : (v.sale ? v.sale.price : v.listPrice) - GLR.cost(v)),
+  // Konsinye: araç sahibine ödenecek = satış bedeli − komisyon; ödenenler ayrı izlenir
+  ownerNet: (v) => (v.sale ? v.sale.price - Math.round((v.sale.price * (v.commission || 3)) / 100) : 0),
+  ownerPaid: (v) => (v.ownerPays || []).reduce((s, p) => s + p.amount, 0),
   days: (v) => Math.floor(((v.sale ? new Date(v.sale.at) : new Date()) - new Date(v.buyDate)) / 864e5),
   seed(db) {
     const { rand, pick, addDays } = NS;
