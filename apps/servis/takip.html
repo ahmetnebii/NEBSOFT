@@ -18,7 +18,8 @@
   const { esc, $, $$, on, icon, money, toast, sum, addDays } = NS;
   const SV = window.SERVIS;
   const db = new NS.DB('servis', SV.seed);
-  const s = () => db.settings({ warrantyDays: 90 });
+  const s = () => db.settings({});
+  const wDays = () => Number(s().warrantyDays) || 0; // garanti süresi işletme ayarından gelir; yoksa gösterilmez
   const ST = Object.fromEntries(SV.STATUS.map((x) => [x.id, x]));
   const total = (t) => sum(t.parts, (p) => p.price * p.qty) + (t.labor || 0);
   const paid = (t) => sum(t.payments, (p) => p.amount) + (t.deposit || 0);
@@ -60,7 +61,7 @@
     const t = k && db.find('tickets', (x) => x.code === k || x.no === k);
     if (!k) {
       $('#root').innerHTML = `<div class="tk-view"><div class="tk-intro"><h1>Cihazınız ne durumda?</h1><p>Kabul fişinizdeki 6 haneli takip kodunu yazın. Fiyat teklifini buradan onaylayabilir, ${NS.pub ? 'onarımın her aşamasını anlık izleyebilirsiniz' : 'hazır olduğunda ödemenizi yapabilirsiniz'}.</p></div>${finder('')}
-        <div class="tk-how"><div>${icon('file')}<b>Kodunuz fişte</b>Cihazı bıraktığınızda verilen kabul fişinin sağ üstünde yazar; SMS ile de gönderilir.</div><div>${icon('check')}<b>Teklifi online onaylayın</b>Arıza tespit edilince fiyat burada görünür. Onayladığınız an onarıma başlarız.</div><div>${icon('shield')}<b>${s().warrantyDays} gün garanti</b>Değişen parça ve yapılan işlem teslimden itibaren garantilidir.</div></div></div>`;
+        <div class="tk-how"><div>${icon('file')}<b>Kodunuz fişte</b>Cihazı bıraktığınızda verilen kabul fişinin sağ üstünde yazar; SMS ile de gönderilir.</div><div>${icon('check')}<b>Teklifi online onaylayın</b>Arıza tespit edilince fiyat burada görünür. Onayladığınız an onarıma başlarız.</div>${wDays() ? `<div>${icon('shield')}<b>${wDays()} gün garanti</b>Değişen parça ve yapılan işlem teslimden itibaren garantilidir.</div>` : ''}</div></div>`;
       return bind();
     }
     if (!t) { $('#root').innerHTML = `<div class="tk-view">${finder(k)}<div class="tk-panel"><div class="b empty">${icon('search')}<div><b>${esc(k)}</b> koduna ait kayıt bulunamadı.</div><div class="small muted mt">Kodu fişinizden kontrol edin veya bizi arayın: <a href="tel:${tel()}">${esc(s().bizPhone)}</a></div></div></div></div>`; return bind(); }
@@ -68,7 +69,7 @@
     const st = ST[t.status]; const [eta, etaSub] = etaText(t);
     const bal = total(t) - paid(t);
     const tech = (db.get('techs', t.tech) || {}).name || '';
-    const wEnd = t.delivered ? addDays(new Date(t.delivered), s().warrantyDays) : null;
+    const wEnd = t.warrantyUntil ? new Date(t.warrantyUntil + 'T23:59:59') : t.delivered && wDays() ? addDays(new Date(t.delivered), wDays()) : null; // teslimde yazılan tarih esastır
     const lines = `<table class="tk-lines">${t.parts.map((p) => `<tr><td>${esc(p.name)}${p.qty > 1 ? ` × ${p.qty}` : ''}</td><td>${money(p.price * p.qty)}</td></tr>`).join('')}${t.labor ? `<tr><td>İşçilik</td><td>${money(t.labor)}</td></tr>` : ''}`;
 
     let call = '';
@@ -80,7 +81,7 @@
       <div class="row between"><span>${bal > 0 ? 'Ödenecek tutar' : 'Ödeme'}</span><b style="font-size:24px">${bal > 0 ? money(bal) : 'Tamamlandı'}</b></div>
       <div class="tk-acts mt"><a class="btn lg" target="_blank" rel="noopener" href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(s().bizAddress)}">${icon('map')} Yol tarifi</a></div>
       ${bal > 0 ? `<p class="small muted mt" style="margin-bottom:0">Ödemeyi cihazı teslim alırken yapabilirsiniz.</p>` : ''}</div>`;
-    else if (t.status === 'teslim') call = `<div class="tk-call" style="--c:var(--accent)"><h3>${icon('shield')} Garantiniz ${wEnd > new Date() ? `${NS.dateLong(NS.iso(wEnd))} tarihine kadar geçerli` : 'sona erdi'}</h3>
+    else if (t.status === 'teslim' && wEnd) call = `<div class="tk-call" style="--c:var(--accent)"><h3>${icon('shield')} Garantiniz ${wEnd > new Date() ? `${NS.dateLong(NS.iso(wEnd))} tarihine kadar geçerli` : 'sona erdi'}</h3>
       ${t.review ? `<p class="small" style="margin:0">Değerlendirmeniz için teşekkürler: ${'★'.repeat(t.review.stars)}${'☆'.repeat(5 - t.review.stars)}${t.review.text ? ` — “${esc(t.review.text)}”` : ''}</p>` : `<p class="small" style="margin:0 0 8px">Hizmetimizi nasıl buldunuz?</p><div class="tk-stars" role="radiogroup" aria-label="Puan">${[1, 2, 3, 4, 5].map((n) => `<button data-star="${n}" aria-label="${n} yıldız">★</button>`).join('')}</div><textarea class="input mt" id="rv" rows="2" placeholder="Eklemek istedikleriniz (isteğe bağlı)"></textarea><button class="btn primary mt" id="rvs">Gönder</button>`}</div>`;
     else if (t.status === 'iade') call = `<div class="tk-call" style="--c:var(--err)"><h3>${icon('x')} Cihaz onarılamadı</h3><p class="small" style="margin:0">${esc((t.log.filter((l) => l.status === 'iade').pop() || {}).note || 'Cihazınız teslim alınmayı bekliyor.')} ${Number(s().diagFee) > 0 ? `Arıza tespit ücreti: ${money(Number(s().diagFee))}.` : 'Arıza tespit ücreti alınmaz.'}</p></div>`;
     else if (t.status === 'parca') call = `<div class="tk-call" style="--c:${st.color}"><h3>${icon('truck')} Parça tedarik ediliyor</h3><p class="small" style="margin:0">Gerekli parça siparişi verildi. Parça ulaştığında onarım aynı gün tamamlanır.</p></div>`;

@@ -68,7 +68,6 @@
   const dayH = (d) => { const hs = db.all('staff', (x) => x.active !== false).map((x) => x.hours && x.hours[d]).filter(Boolean); return hs.length ? { start: hs.map((h) => h.start).sort()[0], end: hs.map((h) => h.end).sort().pop() } : null; };
   const hrsTxt = (d) => { const h = dayH(d); return h ? `${h.start}–${h.end}` : 'Kapalı'; };
   const nowOpen = () => { const n = new Date(); const m = n.getHours() * 60 + n.getMinutes(); const h = dayH(n.getDay()); return !!h && m >= R.toMin(h.start) && m < R.toMin(h.end); };
-  const done = db.all('appointments', (a) => a.status === 'tamam').length;
   const cutoff = () => { const n = new Date(); return n.getHours() * 60 + n.getMinutes() + 30; };
 
   function slotsFor(date) {
@@ -84,7 +83,7 @@
 
   function frame() {
     const cats = [...new Set(db.all('services', (x) => x.online).map((x) => x.cat || 'Diğer'))];
-    $('#root').innerHTML = `<div class="cover" style="background-image:url('https://images.unsplash.com/photo-${R.COVER[0]}?w=1800&q=70&auto=format&fit=crop')"><div class="in"><div class="lg">${icon('scissors')}</div><div class="grow"><h1>${esc(s.bizName)}</h1><div class="meta"><span class="${nowOpen() ? 'open' : 'closed'}">${nowOpen() ? 'Şu an açık' : 'Şu an kapalı'} · Bugün ${esc(hrsTxt(new Date().getDay()))}</span><span>${icon('map')} ${esc(String(s.bizAddress || '').split(',')[0])}</span>${done ? `<span>${icon('check')} ${done}+ tamamlanan randevu</span>` : ''}</div></div><button class="btn ghost icon" id="th" style="color:#fff" aria-label="Tema">${icon(NS.getTheme() === 'dark' ? 'sun' : 'moon')}</button></div></div>
+    $('#root').innerHTML = `<div class="cover" style="background-image:url('https://images.unsplash.com/photo-${R.COVER[0]}?w=1800&q=70&auto=format&fit=crop')"><div class="in"><div class="lg">${icon('scissors')}</div><div class="grow"><h1>${esc(s.bizName)}</h1><div class="meta"><span class="${nowOpen() ? 'open' : 'closed'}">${nowOpen() ? 'Şu an açık' : 'Şu an kapalı'} · Bugün ${esc(hrsTxt(new Date().getDay()))}</span><span>${icon('map')} ${esc(String(s.bizAddress || '').split(',')[0])}</span></div></div><button class="btn ghost icon" id="th" style="color:#fff" aria-label="Tema">${icon(NS.getTheme() === 'dark' ? 'sun' : 'moon')}</button></div></div>
       <nav class="tabs"><div class="in"><a href="#randevu">Randevu al</a><a href="#fiyatlar">Hizmetler & fiyatlar</a><a href="#ekip">Ekibimiz</a><a href="#hakkinda">Hakkında</a><a href="#" data-my>Randevumu sorgula</a></div></nav>
       <div class="wrap"><div class="lay"><div id="randevu" style="scroll-margin-top:70px"><div class="card pad" id="wiz"></div></div><aside class="side"><div class="card pad sum" id="sum"></div>
         <div class="card pad"><h3 class="mb">İletişim</h3><div class="small" style="line-height:1.7">${icon('map')} ${esc(s.bizAddress || '')}</div><div class="row mt" style="gap:6px"><a class="btn sm" href="tel:${esc(tel(s.bizPhone))}">${icon('phone')} Ara</a><a class="btn sm" target="_blank" rel="noopener" href="${wa('Merhaba, randevu hakkında bilgi almak istiyorum.')}">${icon('message')} WhatsApp</a><a class="btn sm" target="_blank" rel="noopener" href="${mapUrl}">${icon('map')} Yol tarifi</a></div>
