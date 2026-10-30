@@ -33,9 +33,13 @@
     on(el, 'click', '[data-undo]', (e, b) => { delete db.data.att[key(b.dataset.undo)]; db.save(); draw(); });
     on(el, 'click', '[data-out]', async (e, b) => {
       const s = stu(b.dataset.out); const allowed = [...s.parents, ...(s.pickup || [])];
-      const v = await formModal({ title: `${s.name} — teslim`, fields: [{ name: 'by', label: 'Teslim alan', type: 'select', options: [...allowed.map((x) => ({ value: x.name, label: `${x.name} (${x.rel})` })), { value: 'servis', label: 'Servis' }, { value: '__', label: 'Listede olmayan kişi' }] }, { name: 'other', label: 'Listede olmayan kişinin adı ve TC (veliyi arayıp teyit edin)', full: true }, { name: 'notify', label: 'Veliye "teslim edildi" bildirimi gönder', type: 'checkbox' }], values: { notify: true } });
-      if (!v) return; if (v.by === '__' && !v.other) return toast('Teslim alan kişiyi yazın', 'err');
-      const by = v.by === '__' ? `${v.other} (yetkisiz — veli teyitli)` : v.by === 'servis' ? 'Servis' : v.by;
+      const v = await formModal({ title: `${s.name} — teslim`, fields: [{ name: 'by', label: 'Teslim alan', type: 'select', options: [...allowed.map((x) => ({ value: x.name, label: `${x.name} (${x.rel})` })), { value: 'servis', label: 'Servis' }, { value: '__', label: 'Listede olmayan kişi' }] }, { name: 'other', label: 'Listede olmayan kişinin adı soyadı', full: true }, { name: 'otherTc', label: 'TC kimlik no (kimlikten kontrol edin)' }, { name: 'confirmed', label: 'Veliyi arayıp teyit ettim', type: 'checkbox', full: true }, { name: 'notify', label: 'Veliye "teslim edildi" bildirimi gönder', type: 'checkbox' }], values: { notify: true } });
+      if (!v) return; let apprBy = '';
+      // Listede olmayan kişiye teslim: ad, TC, veli teyidi ve müdür PIN'i zorunlu; veliye her durumda bilgi gider (çocuk güvenliği)
+      if (v.by === '__') { if (!v.other || !/^\d{11}$/.test(String(v.otherTc || '').trim())) return toast('Teslim alanın adını ve 11 haneli TC kimlik numarasını yazın', 'err'); if (!v.confirmed) return toast('Önce veliyi arayıp teyit edin', 'err'); const u = await NS.approve(NS.app, `${s.name} listede olmayan kişiye teslim (${v.other})`); if (!u) return; apprBy = u.name || ''; v.notify = true; }
+      // TC yalnızca işlem geçmişinde tutulur: yoklama kaydı veli portalından okunur, SMS'e de girmemeli
+      if (v.by === '__') db.log('Listede olmayan kişiye teslim', `${s.name} · ${v.other} · TC ${String(v.otherTc).trim()} · onay ${apprBy}`);
+      const by = v.by === '__' ? `${v.other} (listede yok — veli teyitli${apprBy ? ', onay ' + apprBy : ''})` : v.by === 'servis' ? 'Servis' : v.by;
       db.data.att[key(s.id)] = { ...att(s), out: now(), by };
       if (v.notify) NS.smsLog(db, { to: s.parents[0].phone, name: s.parents[0].name, text: `${S().bizName}: ${s.name.split(' ')[0]} saat ${now()}'de ${by} tarafından teslim alındı.` }, true);
       db.save(); draw(); toast('Teslim kaydedildi', 'ok');
@@ -65,7 +69,7 @@
 
   // ---------- Öğrenciler ----------
   function studentsPage(el, p, app) {
-    NS.crud(el, app, { col: 'students', title: 'Öğrenciler', sub: 'Veli, alerji/sağlık ve teslim yetkilisi bilgileri', single: 'Öğrenci', addLabel: 'Yeni kayıt', emptyIcon: 'users',
+    NS.crud(el, app, { canDelete: (s) => (db.find('payments', (p) => p.student === s.id) ? 'Bu öğrencinin ödeme kaydı var; silinemez. Ayrıldıysa sınıfını boşaltıp notuna yazın.' : true), col: 'students', title: 'Öğrenciler', sub: 'Veli, alerji/sağlık ve teslim yetkilisi bilgileri', single: 'Öğrenci', addLabel: 'Yeni kayıt', emptyIcon: 'users',
       fields: [{ name: 'name', label: 'Ad soyad', required: true }, { name: 'birth', label: 'Doğum tarihi', type: 'date', required: true }, { name: 'cls', label: 'Sınıf', type: 'select', options: db.all('classes').map((c) => ({ value: c.id, label: `${c.name} (${c.age})` })) }, { name: 'gender', label: 'Cinsiyet', type: 'select', options: ['Kız', 'Erkek'] }, { type: 'section', label: 'Veliler' }, { name: 'p1n', label: '1. veli ad soyad', required: true }, { name: 'p1r', label: 'Yakınlık', type: 'select', options: ['Anne', 'Baba', 'Vasi'] }, { name: 'p1p', label: '1. veli telefon', type: 'tel', required: true }, { name: 'p2n', label: '2. veli ad soyad' }, { name: 'p2r', label: 'Yakınlık', type: 'select', options: ['Baba', 'Anne', 'Vasi'] }, { name: 'p2p', label: '2. veli telefon', type: 'tel' }, { name: 'pk', label: 'Teslim alabilecek diğer kişiler (Ad - yakınlık - telefon; satır satır)', type: 'textarea', full: true }, { type: 'section', label: 'Sağlık' }, { name: 'allergy', label: 'Alerji', full: true }, { name: 'health', label: 'Kronik hastalık / ilaç', full: true }, { type: 'section', label: 'Ücret' }, { name: 'fee', label: 'Aylık ücret', type: 'number' }, { name: 'disc', label: 'İndirim %', type: 'number' }, { name: 'service', label: 'Servis', type: 'select', empty: 'Servis yok', options: db.all('routes').map((r) => ({ value: r.id, label: r.name })) }],
       defaults: () => ({ fee: S().fee, cls: 's1', p1r: 'Anne', p2r: 'Baba' }),
       toForm: (s) => ({ ...s, p1n: s.parents[0] && s.parents[0].name, p1r: s.parents[0] && s.parents[0].rel, p1p: s.parents[0] && s.parents[0].phone, p2n: s.parents[1] && s.parents[1].name, p2r: s.parents[1] && s.parents[1].rel, p2p: s.parents[1] && s.parents[1].phone, pk: (s.pickup || []).map((x) => `${x.name} - ${x.rel} - ${x.phone}`).join('\n') }),
@@ -84,10 +88,15 @@
       sort: (a, b) => b.at.localeCompare(a.at),
       columns: [{ key: 'title', label: 'Duyuru', render: (x) => `<b>${esc(x.title)}</b><div class="small faint">${esc(x.body.slice(0, 120))}</div>` }, { label: 'Kime', render: (x) => (x.cls ? badge(cls(x.cls).name, 'info') : badge('Tüm okul', 'acc')) }, { key: 'at', label: 'Tarih', render: (x) => NS.dt(x.at) }] });
   }
+  // Menü metninde alerjen araması (yardımcıdır, mutfak kontrolünün yerine geçmez): çocuğun alerji metni + yaygın ürün eşleşmeleri
+  const SUTL = ['süt', 'peynir', 'yoğurt', 'tereyağ', 'krema', 'ayran', 'kaşar', 'sütlaç', 'muhallebi'];
+  const ALG = { laktoz: SUTL, süt: ['süt', 'peynir', 'yoğurt', 'tereyağ', 'krema', 'ayran', 'kaşar', 'sütlaç', 'muhallebi'], yumurta: ['yumurta', 'omlet', 'menemen', 'kek', 'krep'], gluten: ['ekmek', 'makarna', 'börek', 'poğaça', 'kek', 'bulgur', 'erişte', 'simit', 'mantı'], buğday: ['ekmek', 'makarna', 'börek', 'poğaça', 'kek', 'bulgur', 'erişte', 'simit', 'mantı'], fındık: ['fındık', 'kuruyemiş'], fıstık: ['fıstık', 'kuruyemiş'], ceviz: ['ceviz', 'kuruyemiş'], balık: ['balık', 'somon', 'hamsi', 'ton'] };
+  const trl = (x) => String(x || '').toLocaleLowerCase('tr-TR');
+  function allergyHits(m) { const txt = trl(`${m.kahvalti} ${m.ogle} ${m.ikindi}`); const out = []; db.all('students', (s) => s.allergy).forEach((s) => { const a = trl(s.allergy); const words = new Set(a.split(/[^a-zçğıöşü]+/).filter((w) => w.length >= 3)); Object.keys(ALG).forEach((k) => { if (a.includes(k)) ALG[k].forEach((w) => words.add(w)); }); const w = [...words].find((x) => txt.includes(x)); if (w) out.push({ s, w }); }); return out; }
   function menuPage(el, p, app) {
     NS.crud(el, app, { col: 'menu', title: 'Yemek Menüsü', sub: 'Bu haftanın menüsü — alerjisi olan çocuklar için mutfak uyarısı', single: 'Gün', canAdd: false, emptyIcon: 'coffee',
       fields: [{ name: 'day', label: 'Gün', required: true }, { name: 'kahvalti', label: 'Kahvaltı', full: true }, { name: 'ogle', label: 'Öğle', full: true }, { name: 'ikindi', label: 'İkindi', full: true }], sort: () => 0,
-      columns: [{ key: 'day', label: 'Gün', render: (m) => `<b>${esc(m.day)}</b>` }, { key: 'kahvalti', label: 'Kahvaltı' }, { key: 'ogle', label: 'Öğle' }, { key: 'ikindi', label: 'İkindi' }] });
+      columns: [{ key: 'day', label: 'Gün', render: (m) => `<b>${esc(m.day)}</b>` }, { key: 'kahvalti', label: 'Kahvaltı' }, { key: 'ogle', label: 'Öğle' }, { key: 'ikindi', label: 'İkindi' }, { label: 'Alerji uyarısı', render: (m) => { const h = allergyHits(m); return h.length ? h.map((x) => badge(`${x.s.name.split(' ')[0]}: ${x.w}`, 'err')).join(' ') : '<span class="faint">—</span>'; } }] });
     const al = db.all('students', (s) => s.allergy); if (al.length) el.insertAdjacentHTML('beforeend', `<div class="card pad mt"><b>${icon('alert')} Mutfak için alerji listesi</b><div class="small mt">${al.map((s) => `${esc(s.name)} (${esc(cls(s.cls).name)}): <b>${esc(s.allergy)}</b>`).join(' · ')}</div></div>`);
   }
   function servicePage(el, p, app) {
