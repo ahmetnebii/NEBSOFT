@@ -30,7 +30,8 @@ ebsoft güncel`). Node 24, .NET 8 var → `npm test`: 8 test dosyası geçti (XS
 - **Yeni APK imza anahtarı üretildi** (kullanıcı kararı, 30.10.2026): `data/android-release.jks` + `android-keystore.txt`. Eski kurulu APK'lar bu sürümle güncellenemez, önce silinmeli. Bu iki dosya depoda yok; yedeklenmeli. SHA-256: 51b76361e3242712a547856b9e2157c1468b03217e76e80966685872f5785fa9.
 - **B8 kapandı (kullanıcı kararı 30.10.2026): deneme hemen başlar.** Kayıtta ve `/api/trial`'da 7 gün `deneme` açılır, yönetici onayı yok; eski `talep` kayıtları müşteri karta dokununca başlar. Yönetici paneli "Deneme talepleri" yalnızca eski kayıtlar için kaldı. `cloud.test.js` 41 test geçiyor. Not: aynı kişi yeni e-postayla tekrar deneme alabilir (önceden yönetici onayı bu kapıydı).
 - **Bordro parametreleri doğrulandı** (`IK.md`); kıdem tavanı ve prim indirimi düzeltildi.
-- **Sıradaki:** Spor, Kurs, Anaokulu, Mali Müşavir, Toptan, CRM için (bunlarda bilinen güven hatası taraması temiz) ve 1. dalgası yapılanlar için pazar araştırması + spec + dalgalar (portal kodu ve SMS düzeltmeleri bunların bazılarında zaten yapıldı); İK ve Eczane 2–3. dalga; kalan 2–3. dalgalar; §4.3 entegratörler.
+- **Spor 1–3 (`SPOR.md`), Kurs ve Anaokulu 1. dalga (`KURS.md`, `ANAOKULU.md`), Mali Müşavir 1. dalga (`MUSAVIR.md`) yapıldı.** §4.3: **Nilvera eklendi** (`core/integrations.js`, sahte sunucuyla denendi; gerçek test hesabı gerekir), tablo `MUHASEBE-DOGRULAMA-RAPORU.md` §3.0.
+- **Sıradaki:** Toptan ve CRM için (bilinen güven hatası taraması temiz; spec yok) ve 1. dalgası yapılanlar için pazar araştırması + spec + dalgalar (portal kodu ve SMS düzeltmeleri bunların bazılarında zaten yapıldı); İK ve Eczane 2–3. dalga; kalan 2–3. dalgalar; §4.3 entegratörler.
 
 ---
 

@@ -17,7 +17,7 @@ Tarih: 28.10.2026 (2. tur) · Kapsam: `apps/muhasebe/*` ve kullandığı ortak m
 | B3 | Dövizli faturada kur türü ve tarihi | Teknik kısım doğrulandı; **hangi kurun** kullanılacağı mevzuat metninde yazmıyor (VUK md. 280 "borsa rayici" der) | Mali müşavir görüşü. Program artık kur türünü (alış/satış/efektif) ve bülten tarihini **seçtiriyor**; seçim kaydedilir. |
 | B4 | e-İrsaliye, e-Defter, banka hareketleri, Logo/Mikro/… aktarımı | Kodda sağlayıcı adaptörü yok → **canlıda kapatıldı** (muhasebe menüsünde görünmez) | Hangi sağlayıcı/banka kullanılacak? Her biri için resmi API dokümanı + test hesabı. e-Defter için ayrıca karar: bu program yevmiye/kebir tutmuyor. |
 | B5 | Mutlucell SMS | Resmi API dokümanı bulunamadı (mutlucell.com.tr/api sayfasında uç nokta yok; GitHub'da yalnızca üçüncü taraf paketler) → **canlıda seçilemez** | Mutlucell'den resmi API dokümanı (PDF) veya başka sağlayıcı. |
-| B6 | Logo e-Dönüşüm, Sovos, Mysoft, EDM (e-Fatura) | Adaptör yok → **seçilemez** | Kullanılacaksa o firmanın resmi API dokümanı + test hesabı. |
+| B6 | Logo e-Dönüşüm, Sovos, Mysoft, EDM (e-Fatura) | Resmî herkese açık doküman bulunamadı (30.10.2026, bkz. §3.0); Nilvera eklendi → bunlar **seçilemez** | Kullanılacaksa o firmanın resmi API dokümanı + test hesabı. |
 | B7 | Gelen fatura alma ve kabul/red yanıtı (Uyumsoft/Paraşüt) | Bu sürümde yok; program bunu açıkça söylüyor, sahte veri üretmiyor | İstenirse sonraki iş: Uyumsoft `GetInboxInvoices` ile alma. |
 | B8 | Bulut testi `server/test/cloud.test.js` | **Bu çalışmadan önce de** başarısız: lisans kaydı `'talep'` döndürüyor, test `'deneme'` bekliyor (`server/cloud/routes.js:394-397`) | Hangisi doğru — yeni lisans "talep" mi "deneme" mi başlamalı? Karar sizin. |
 | B9 | e-Belge'de konaklama vergisi tutarı (Otel) | **DOĞRULANAMADI** (30.10.2026): GİB "UBL-TR Kod Listeleri" V 1.43 (Temmuz 2026, `ebelge.gib.gov.tr/dosyalar/kilavuzlar/UBLTR_1.2.1_Kilavuzlar.zip`) vergi kodları listesinde ayrı bir konaklama vergisi kodu **yok**; yalnızca fatura tipi `KONAKLAMAVERGISI` ve "Konaklama Vergisi İstisna Kodları" (001 Diplomatik İstisna) var. Tutarın UBL'de nasıl yazılacağı aynı arşivdeki "UBL-TR Fatura V 1.0" kılavuzunda da bulunamadı. Hafızadan kod yazılmadı. Otel programı konaklama vergili faturayı gerçek entegratöre göndermiyor (TEST'te uyarıyla, vergi satırı olmadan) | GİB'in konaklama vergisi teknik duyurusu/kılavuzu veya entegratörün resmî dokümanı + test hesabı |
@@ -76,6 +76,18 @@ Tarih: 28.10.2026 (2. tur) · Kapsam: `apps/muhasebe/*` ve kullandığı ortak m
 ---
 
 ## 3. Entegrasyon durumu (muhasebe programı)
+
+### 3.0 e-Fatura özel entegratörleri (§4.3, 30.10.2026)
+GİB resmî listesi: `ebelge.gib.gov.tr/efaturaozelentegratorlerlistesi.html` (okundu 30.10.2026, 88 kurum, sayfada tarih yok).
+
+| Sağlayıcı | Kaynak | Sürüm | Etiket | Desteklenen |
+|---|---|---|---|---|
+| Uyumsoft | WSDL | önceki rapor | DOĞRULANDI (dokümana uyum; canlı test yok, B1) | gönder, mükellef, durum, e-Arşiv iptal |
+| Paraşüt | API v4 swagger | önceki rapor | DOĞRULANDI (dokümana uyum; canlı test yok, B1) | gönder, durum |
+| **Nilvera** | `developer.nilvera.com` (Base64String gönderim, GlobalCompany, Status, Cancel sayfaları), GİB listesinde var | v1 (tarih yok) | **DOĞRULANDI** (dokümana uyum; sahte sunucuyla uçtan uca denendi, gerçek hesapla DENENMEDİ) | e-Fatura, e-Arşiv, mükellef + etiket, durum, e-Arşiv iptal |
+| QNB eSolutions, İzibiz, Sovos, Logo, EDM, Mysoft, Kolaysoft, Digital Planet, Turkcell e-Şirket vb. | Herkese açık resmî API dokümanı bu turda bulunamadı (yalnızca üçüncü taraf kütüphaneler) | — | DOĞRULANAMADI → seçilemez | — |
+
+Nilvera notu: UBL içindeki numaranın korunup korunmadığı dokümanda yazmıyor. Program kendi numarasıyla gönderir, yanıttaki `InvoiceNumber`'ı kaydeder; ilk test gönderiminde kontrol edilmeli. e-İrsaliye eklenmedi.
 
 | Entegrasyon | Etiket | Kaynak (28.10.2026) | Not |
 |---|---|---|---|

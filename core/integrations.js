@@ -86,11 +86,11 @@
       build: (c, to, text) => { const v = { to, text: c.method === 'GET' ? encodeURIComponent(text) : String(text).replace(/"/g, '\\"'), sender: c.header || '' }; let h = {}; try { h = JSON.parse(c.headers || '{}'); } catch (e) { /* geçersiz başlık */ } return { url: fill(c.url, { ...v, text: encodeURIComponent(text) }), method: c.method || 'POST', headers: { 'Content-Type': 'application/json', ...h }, body: c.method === 'GET' ? undefined : fill(c.body, v) }; },
       ok: (r, c) => r.ok && (!c.okText || String(r.body).includes(c.okText)) },
   };
-  const EFAT = {
+  const EFAT = { nilvera: 'Nilvera',
     sim: 'Simülasyon (test)', parasut: 'Paraşüt', uyumsoft: 'Uyumsoft', logo: 'Logo e-Dönüşüm', sovos: 'Sovos (Foriba)', mysoft: 'Mysoft', edm: 'EDM Bilişim', custom: 'Özel API',
   };
   // Doğrudan adaptörü olan ve resmî dokümanla karşılaştırılan entegratörler (Uyumsoft WSDL, Paraşüt API v4 swagger). Diğerleri canlıda seçilemez.
-  const EFAT_OK = ['sim', 'uyumsoft', 'parasut', 'custom'];
+  const EFAT_OK = ['sim', 'uyumsoft', 'parasut', 'nilvera', 'custom'];
   const POSB = { manual: 'Manuel (çekimi cihazdan yapıp onaylayın)', bridge: 'Entegre terminal (köprü / üretici servisi)', demo: 'Demo terminal (test)' };
 
   // Her entegrasyonun ayar şeması ve varsayılanları
@@ -120,7 +120,7 @@
       fields: (c) => [{ name: 'mode', label: 'Entegrasyon', type: 'select', options: Object.entries(POSB).map(([value, label]) => ({ value, label })), full: true }, F('brand', 'Cihaz', { type: 'select', options: [{ value: 'ingenico', label: 'Ingenico' }, { value: 'verifone', label: 'Verifone' }, { value: 'beko', label: 'Beko ÖKC' }, { value: 'hugin', label: 'Hugin' }, { value: 'pavo', label: 'Pavo' }, { value: 'paygo', label: 'PayGo / Android POS' }, { value: 'diger', label: 'Diğer' }] }),
         ...(c.mode === 'bridge' ? [F('url', 'Terminal servis adresi', { full: true, required: true, placeholder: 'http://localhost:8085/sale veya /api/pos/satis' }), F('timeout', 'Zaman aşımı (sn)', { type: 'number' })] : []), F('maxInst', 'En fazla taksit', { type: 'number' })] },
     efatura: { title: 'e-Fatura / e-Arşiv', icon: 'file', desc: 'Faturaların GİB’e iletilmesi', defaults: { provider: 'sim', test: true, efPrefix: 'NEB', eaPrefix: 'EAR' },
-      fields: (c) => [{ name: 'provider', label: 'Entegratör', type: 'select', options: Object.entries(EFAT).filter(([value]) => EFAT_OK.includes(value) || value === c.provider).map(([value, label]) => ({ value, label: EFAT_OK.includes(value) ? label : label + ' (bağlantı yok — kullanılamaz)' })), full: true }, ...(c.provider !== 'sim' ? [F('user', 'Kullanıcı adı / client id', { required: true }), F('pass', 'Şifre / secret', { type: 'password', required: true }), F('vkn', 'Firma VKN'), F('url', 'API adresi (özel / test ortamı)', { full: true })] : []), F('efPrefix', 'e-Fatura seri'), F('eaPrefix', 'e-Arşiv seri'), F('test', 'Test ortamı', { type: 'checkbox' })] },
+      fields: (c) => [{ name: 'provider', label: 'Entegratör', type: 'select', options: Object.entries(EFAT).filter(([value]) => EFAT_OK.includes(value) || value === c.provider).map(([value, label]) => ({ value, label: EFAT_OK.includes(value) ? label : label + ' (bağlantı yok — kullanılamaz)' })), full: true }, ...(c.provider === 'nilvera' ? [F('pass', 'API anahtarı (Nilvera Portal > API Tanımları; test ve canlı anahtarları ayrıdır)', { type: 'password', required: true, full: true }), F('vkn', 'Firma VKN')] : c.provider !== 'sim' ? [F('user', 'Kullanıcı adı / client id', { required: true }), F('pass', 'Şifre / secret', { type: 'password', required: true }), F('vkn', 'Firma VKN'), F('url', 'API adresi (özel / test ortamı)', { full: true })] : []), F('efPrefix', 'e-Fatura seri'), F('eaPrefix', 'e-Arşiv seri'), F('test', 'Test ortamı', { type: 'checkbox' })] },
     payment: { title: 'Online ödeme', icon: 'wallet', desc: 'Pazar yeri ve online satış sayfalarında kartla ödeme', defaults: { provider: 'none', sandbox: true },
       fields: (c) => [{ name: 'provider', label: 'Sanal POS', type: 'select', options: [{ value: 'none', label: 'Kapalı (demo ödeme)' }, { value: 'iyzico', label: 'iyzico' }, { value: 'paytr', label: 'PayTR' }, { value: 'param', label: 'Param' }, { value: 'stripe', label: 'Stripe' }], full: true }, ...(c.provider === 'iyzico' ? [F('apiKey', 'API key', { required: true }), F('secret', 'Secret key', { type: 'password', required: true })] : []), ...(c.provider === 'paytr' ? [F('merchantId', 'Mağaza no', { required: true }), F('merchantKey', 'Mağaza parola', { type: 'password', required: true }), F('merchantSalt', 'Mağaza gizli anahtar', { type: 'password', required: true })] : []), ...(['param', 'stripe'].includes(c.provider) ? [F('apiKey', 'API anahtarı', { required: true }), F('secret', 'Gizli anahtar', { type: 'password', required: true })] : []), F('sandbox', 'Test (sandbox) modu', { type: 'checkbox' })] },
     barcode: { title: 'Barkod okuyucu', icon: 'barcode', desc: 'El terminali, masaüstü okuyucu, kamera', defaults: { suffix: 'enter', minLen: 4, camera: true, beep: true },
@@ -566,16 +566,33 @@
     if (r.error && !r.body) return { ok: false, error: r.error };
     return U.UY.parse(r.body);
   }
+  // Nilvera REST API v1 (developer.nilvera.com, okundu 30.10.2026 — dokümana uygun; canlı/test hesabıyla DENENMEDİ):
+  // api.nilvera.com (test: apitest.nilvera.com), Authorization: Bearer <API anahtarı>; UBL-TR XML'in zip'i base64 olarak /einvoice|earchive/Send/Base64String
+  async function nvCall(c, path, opt = {}) {
+    const r = await httpCall({ url: (c.test ? 'https://apitest.nilvera.com' : 'https://api.nilvera.com') + path, method: opt.method || 'GET', headers: { Authorization: 'Bearer ' + (c.pass || ''), Accept: 'application/json', ...(opt.body ? { 'Content-Type': 'application/json' } : {}) }, body: opt.body ? JSON.stringify(opt.body) : undefined });
+    let j = null; try { j = JSON.parse(r.body || 'null'); } catch (e) { j = null; }
+    return { ok: !!r.ok, status: r.status, j, error: r.ok ? '' : `Nilvera HTTP ${r.status || ''} ${(j && (j.Message || j.message || (j.Errors && JSON.stringify(j.Errors)))) || String(r.error || r.body || '').slice(0, 160)}`.trim() };
+  }
+  // Mükellef mi + gönderici etiketi: Check/TaxNumber ve GetGlobalCustomerInfo (Aliases: silinmemiş, tercihen pk)
+  async function nvPayer(c, vkn) {
+    const q = await nvCall(c, `/general/GlobalCompany/Check/TaxNumber/${vkn}?globalUserType=Invoice`); if (!q.ok) return { ok: false, error: q.error };
+    if (!(Array.isArray(q.j) && q.j.length)) return { ok: true, payer: false, alias: '' };
+    const inf = await nvCall(c, `/general/GlobalCompany/GetGlobalCustomerInfo/${vkn}?globalUserType=Invoice`); if (!inf.ok) return { ok: false, error: inf.error };
+    const al = ((inf.j && inf.j.Aliases) || []).filter((a) => !a.DeletionTime).map((a) => a.Name); return { ok: true, payer: true, alias: al.find((a) => /pk/i.test(a)) || al[0] || '' };
+  }
+  const b64zip = async (name, xml) => { const u = new Uint8Array(await NS.zip([{ name, data: xml }]).arrayBuffer()); let s = ''; for (let i = 0; i < u.length; i += 8192) s += String.fromCharCode(...u.subarray(i, i + 8192)); return btoa(s); };
   async function sendUyumsoft(doc, c) {
-    const fail = (msg) => { log('efatura', doc.buyer || '', 'Uyumsoft', 'hata', msg); toast('e-Fatura gönderilemedi: ' + msg, 'err'); return { ok: false, error: msg }; };
+    const nv = c.provider === 'nilvera'; const NM = nv ? 'Nilvera' : 'Uyumsoft';
+    const fail = (msg) => { log('efatura', doc.buyer || '', NM, 'hata', msg); toast('e-Fatura gönderilemedi: ' + msg, 'err'); return { ok: false, error: msg }; };
     try {
-      const U = await ubl(); if (doc.docType === 'e-İrsaliye') return fail('e-İrsaliye Uyumsoft’un ayrı servisidir; bu sürümde yalnızca e-Fatura / e-Arşiv gönderilir');
+      const U = await ubl(); if (doc.docType === 'e-İrsaliye') return fail(`e-İrsaliye ${NM} için bu sürümde yok; yalnızca e-Fatura / e-Arşiv gönderilir`);
       const buyerId = String(doc.buyerVkn || '').replace(/\D/g, '');
       if (!buyerId) return fail('Alıcının VKN (10 hane) veya TCKN (11 hane) bilgisi gerekli');
       // Alıcı e-Fatura mükellefi mi? (GİB kayıtlı kullanıcı listesi, Uyumsoft üzerinden)
       let scenario = 'eArchive', alias = '';
       if (buyerId !== '11111111111') {
-        const q = await uyCall(c, 'IsEInvoiceUser', U.UY.isEInvoiceUser(buyerId)); if (q.fault || (!q.ok && q.error)) return fail(q.error);
+        if (nv) { const q = await nvPayer(c, buyerId); if (!q.ok) return fail(q.error); if (q.payer) { scenario = 'eInvoice'; alias = q.alias; if (!alias) return fail('Alıcının e-Fatura etiketi (alias) bulunamadı'); } }
+        const q = nv ? {} : await uyCall(c, 'IsEInvoiceUser', U.UY.isEInvoiceUser(buyerId)); if (q.fault || (!q.ok && q.error)) return fail(q.error);
         if (q.flag === 'true') { scenario = 'eInvoice'; const al = await uyCall(c, 'GetUserAliasses', U.UY.getUserAliasses(buyerId)); alias = ((al.aliases || []).find((a) => a.enabled) || {}).alias || ''; if (!alias) return fail('Alıcı e-Fatura mükellefi ama etkin posta kutusu etiketi bulunamadı'); }
       }
       const ef = scenario === 'eInvoice'; const prefix = String((ef ? c.efPrefix : c.eaPrefix) || '').toUpperCase();
@@ -595,12 +612,14 @@
       const seller = { id: c.vkn, name: c.title, taxOffice: c.taxOffice, street: c.street, district: c.district, city: c.city, phone: c.phone, email: c.email };
       const buyer = { id: buyerId, name: doc.buyer, taxOffice: doc.buyerTaxOffice, street: doc.address, district: doc.district, city: doc.city, email: doc.buyerEmail };
       const b = U.build({ profile: ef ? (c.profile === 'TICARIFATURA' && !doc.refund ? 'TICARIFATURA' : 'TEMELFATURA') : 'EARSIVFATURA', type: doc.refund ? 'IADE' : 'SATIS', refundOf: doc.refundOf, refundDate: doc.refundDate, id, date: doc.date, currency: doc.currency, rate: doc.rate, notes: [doc.note, doc.no ? 'Belge no: ' + doc.no : ''], seller, buyer, lines: doc.lines, total: doc.total, vat: doc.vat, xslt: doc.xslt });
-      const r = await uyCall(c, 'SendInvoice', U.UY.sendInvoice([{ body: b.body, scenario, target: { vkn: buyerId, alias, title: doc.buyer }, delivery: 'Electronic', internet, localId: doc.no ? String(doc.no) : undefined }]));
+      // Nilvera numaralama kuralı dokümanda yazmıyor: UBL kendi numaramızla gider, geçerli numara yanıttaki InvoiceNumber'dır
+      let r; if (nv) { const ZIPFileBase64 = await b64zip(`${b.uuid}.xml`, U.wrap(b.body)); const q = await nvCall(c, ef ? '/einvoice/Send/Base64String' : '/earchive/Send/Base64String', { method: 'POST', body: ef ? { ZIPFileBase64, Alias: alias } : { ZIPFileBase64 } }); r = { ok: q.ok, error: q.error, values: q.j ? [{ Id: q.j.UUID, Number: q.j.InvoiceNumber }] : [] }; }
+      else r = await uyCall(c, 'SendInvoice', U.UY.sendInvoice([{ body: b.body, scenario, target: { vkn: buyerId, alias, title: doc.buyer }, delivery: 'Electronic', internet, localId: doc.no ? String(doc.no) : undefined }]));
       if (!r.ok) return fail(r.error);
       seq[key] = last + 1; setCfg('efatura', { ...cfg('efatura'), seq });
       const v = (r.values || [])[0] || {}; const type = ef ? 'e-Fatura' : 'e-Arşiv'; const no = v.Number || id;
-      log('efatura', doc.buyer || '', `${type} ${no}`, 'gönderildi', `Uyumsoft · ${U.r2(b.totals.gross)} ${b.totals.currency}`); toast(`${type} Uyumsoft’a iletildi: ${no}`, 'ok');
-      return { ok: true, type, no, uuid: b.uuid, providerId: v.Id || '', provider: 'uyumsoft', xml: U.wrap(b.body) };
+      log('efatura', doc.buyer || '', `${type} ${no}`, 'gönderildi', `${NM} · ${U.r2(b.totals.gross)} ${b.totals.currency}`); toast(`${type} ${NM} entegratörüne iletildi: ${no}`, 'ok');
+      return { ok: true, type, no, uuid: b.uuid, providerId: v.Id || '', provider: nv ? 'nilvera' : 'uyumsoft', xml: U.wrap(b.body) };
     } catch (e) { return fail(e.message); }
   }
   // ---------- Paraşüt API v4 (resmî belge: apidocs.parasut.com) — satış faturası + e-Fatura / e-Arşiv / e-SMM resmileştirme ----------
@@ -679,7 +698,7 @@
     const no = `${type === 'e-İrsaliye' ? 'IRS' : type === 'e-Fatura' ? c.efPrefix : c.eaPrefix}${new Date().getFullYear()}${String(Date.now()).slice(-9)}`;
     // Eski doğrudan yol (yalnızca I.sendDirect); programlar NS.ebelge.create() kullanır. Simülasyonda numara TEST olarak döner.
     if (c.provider === 'sim') { log('efatura', doc.buyer || '', `${type} ${no}`, 'simülasyon', money(doc.total || 0)); toast(`${type} TEST — gönderilmedi (simülasyon)`, 'warn'); return { ok: true, simulated: true, type, no: 'TEST-' + no, uuid: crypto.randomUUID ? crypto.randomUUID() : NS.uid() }; }
-    if (c.provider === 'uyumsoft') return sendUyumsoft(doc, c);
+    if (c.provider === 'uyumsoft' || c.provider === 'nilvera') return sendUyumsoft(doc, c);
     if (c.provider === 'parasut') return sendParasut(doc, c);
     if (c.provider === 'custom' && c.url) {
       try { const r = await httpCall({ url: c.url, method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Basic ' + btoa(`${c.user}:${c.pass}`) }, body: JSON.stringify({ type, no, ...doc }) }); log('efatura', doc.buyer, `${type} ${no}`, r.ok ? 'gönderildi' : 'hata', r.body); return { ok: r.ok, type, no }; } catch (e) { log('efatura', doc.buyer, no, 'hata', e.message); return { ok: false, error: e.message }; }
@@ -823,7 +842,7 @@
     draw();
   }
 
-  NS.integ = { prsSession, ubl, uyCall, readPlc, trackUrl, trackShipment, trackOf, TRACK, meetingLinkOk, createMeeting, zoomToken, htmlToLines, cfg, setCfg, sms, whatsapp, email, printReceipt, openDrawer, printLabels, parseScaleBarcode, readScale, readKantar, parseWeight, cardPayment, sendEInvoice, emit, backupAll, restoreAll, page, bridgeStatus, log, DEFS, normPhone, call, isOn, SECTOR, CONN, USED, http: httpCall };
+  NS.integ = { nvCall, nvPayer, prsSession, ubl, uyCall, readPlc, trackUrl, trackShipment, trackOf, TRACK, meetingLinkOk, createMeeting, zoomToken, htmlToLines, cfg, setCfg, sms, whatsapp, email, printReceipt, openDrawer, printLabels, parseScaleBarcode, readScale, readKantar, parseWeight, cardPayment, sendEInvoice, emit, backupAll, restoreAll, page, bridgeStatus, log, DEFS, normPhone, call, isOn, SECTOR, CONN, USED, http: httpCall };
 })();
 
 /* ===== e-Belge merkezi: e-Fatura, e-Arşiv, e-İrsaliye giden/gelen kutusu =====
@@ -873,6 +892,7 @@
     let payer = false, alias = '';
     try {
       if (c.provider === 'sim') { payer = vkn.length === 10 && vkn.split('').reduce((a, b) => a + Number(b), 0) % 2 === 0; alias = payer ? `urn:mail:defaultpk@${vkn}.efatura` : ''; }
+      else if (c.provider === 'nilvera') { const q = await I.nvPayer(c, vkn); if (!q.ok) return q; payer = q.payer; alias = q.alias; }
       else if (c.provider === 'uyumsoft') {
         const U = await I.ubl(); const q = await I.uyCall(c, 'IsEInvoiceUser', U.UY.isEInvoiceUser(vkn)); if (!q.ok) return { ok: false, error: q.error || 'Uyumsoft mükellef sorgusu başarısız' };
         payer = q.flag === 'true';
@@ -900,7 +920,7 @@
     if (!type || type === 'auto') {
       const q = await isPayer(doc.buyerVkn);
       // Uyumsoft / Paraşüt gönderimde alıcıyı kendisi sorgular; diğerlerinde sorgu başarısızsa belge türü tahmin edilmez
-      if (!q.ok && !['uyumsoft', 'parasut'].includes(c.provider)) { toast('e-Belge oluşturulmadı: ' + q.error, 'err'); return { ok: false, error: q.error }; }
+      if (!q.ok && !['uyumsoft', 'parasut', 'nilvera'].includes(c.provider)) { toast('e-Belge oluşturulmadı: ' + q.error, 'err'); return { ok: false, error: q.error }; }
       type = q.payer ? 'e-Fatura' : 'e-Arşiv';
     }
     if (/irsaliye/i.test(type)) type = 'e-İrsaliye';
@@ -924,11 +944,11 @@
       // Simülasyon: belge yalnızca bu programda oluşur; hiçbir yere gönderilmez ve "gönderildi / raporlandı" sayılmaz
       rec.status = 'test'; hist('test', 'Simülasyon — GİB’e / entegratöre gönderilmedi'); I.log('efatura', rec.party.name, `${rec.type} ${rec.no}`, 'simülasyon', money(rec.total));
       toast(`${rec.type} ${rec.no} TEST olarak oluşturuldu — gönderilmedi (Entegrasyonlar > e-Fatura’dan entegratörünüzü bağlayın)`, 'warn');
-    } else if (c.provider === 'uyumsoft' || c.provider === 'parasut') {
+    } else if (c.provider === 'uyumsoft' || c.provider === 'parasut' || c.provider === 'nilvera') {
       if (rec.type === 'e-İrsaliye') fail(`${pname} entegrasyon servisinde e-İrsaliye yok`);
       else {
         // Uyumsoft'a gömülü görünüm şablonu gider; Paraşüt faturayı kendi şablonuyla oluşturur
-        const xslt = c.provider === 'uyumsoft' ? await designXslt({ forEmbed: true }).catch(() => '') : '';
+        const xslt = c.provider === 'uyumsoft' || c.provider === 'nilvera' ? await designXslt({ forEmbed: true }).catch(() => '') : '';
         const r = await I.sendDirect({ ...(src || docOf(rec)), docType: rec.type, xslt: xslt || undefined });
         if (!r.ok) { rec.status = 'hata'; hist('hata', r.error || 'Gönderilemedi'); }
         else {
@@ -1071,6 +1091,12 @@
         const v = (r.values || []).find((x) => x.InvoiceId === d.providerId) || (r.values || [])[0]; const st = v && U.UY.status(v.Status, d.type === 'e-Arşiv');
         if (!st) return say('Uyumsoft yanıtında durum bilgisi yok', 'err');
         d.status = st; d.history.push({ at: new Date().toISOString(), st, note: `Uyumsoft: ${v.Status}${v.Message ? ' · ' + v.Message : ''}`, user: NS.currentUser ? NS.currentUser.name : '' });
+      } else if (prov === 'nilvera') {
+        if (!d.providerId) return say('Bu belgenin Nilvera kimliği yok; durumu Nilvera portalından kontrol edin', 'warn');
+        const ea = d.type === 'e-Arşiv'; const r = await I.nvCall(c, ea ? `/earchive/Invoices/${d.providerId}/Status` : `/einvoice/Sale/${d.providerId}/Status`); if (!r.ok) return say(r.error, 'err'); const j = r.j || {};
+        const code = ea ? j.StatusCode : (j.InvoiceStatus || {}).Code, ans = (j.Answer || {}).AnswerCode;
+        const st = code === 'error' ? 'hata' : code === 'waiting' ? 'kuyrukta' : ea ? (j.CancelStatus ? 'iptal' : code === 'succeed' && j.ReportStatus === 'Reported' ? 'raporlandi' : 'gonderildi') : ans === 'approved' ? 'kabul' : ans === 'rejected' ? 'red' : ans === 'waitingForApproval' ? 'yanit-bekliyor' : 'gonderildi';
+        d.status = st; d.history.push({ at: new Date().toISOString(), st, note: `Nilvera: ${(ea ? j.StatusDetail : (j.InvoiceStatus || {}).Description) || code || ''}`, user: NS.currentUser ? NS.currentUser.name : '' });
       } else if (prov === 'custom' && c.url) {
         const r = await I.http({ url: c.url, method: 'POST', headers: { 'Content-Type': 'application/json', ...auth(c) }, body: JSON.stringify({ action: 'durum-sorgu', uuid: d.uuid, no: d.no }) });
         const j = JSON.parse(r.body || '{}'); if (!r.ok || !(j.status && ST[j.status])) return say('Özel API geçerli bir durum döndürmedi', 'err');
@@ -1086,6 +1112,10 @@
     if (d.status === 'test') {
       if (!(await confirm(`${d.no} test belgesi iptal edilsin mi?`))) return false;
       d.status = 'iptal'; H('iptal', 'Test belgesi iptal edildi');
+    } else if (d.type === 'e-Arşiv' && (d.provider || c.provider) === 'nilvera' && d.providerId) {
+      if (!(await confirm(`${d.no} e-Arşiv faturası Nilvera üzerinden iptal edilsin mi? Bu işlem geri alınamaz.`))) return false;
+      const r = await I.nvCall(c, `/earchive/Invoices/${d.providerId}/Cancel`, { method: 'PUT' }); if (!r.ok) { toast('İptal edilemedi: ' + r.error, 'err'); return false; }
+      d.status = 'iptal'; H('iptal', 'Nilvera iptal başarılı');
     } else if (d.type === 'e-Arşiv' && (d.provider || c.provider) === 'uyumsoft' && d.providerId) {
       if (!(await confirm(`${d.no} e-Arşiv faturası Uyumsoft üzerinden iptal edilsin mi? Bu işlem geri alınamaz.`))) return false;
       const U = await I.ubl(); const r = await I.uyCall(c, 'CancelEArchiveInvoice', U.UY.cancelEArchive(d.providerId));
