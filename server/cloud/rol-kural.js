@@ -249,6 +249,14 @@ const RULES = {
     gorevli: { ad: 'Belletmen / Nöbetçi', kapat: ['payments', 'staff', 'signedDocs'], ekle: ['sms'], gizle: { stays: ['plan', 'charges', 'deposit', 'monthly', 'leftInfo', 'depoOut', 'sign', 'signedAt', 'idIn', 'idOut'], terms: ['monthly'] }, saltOkunur: ['students', 'stays', 'rooms', 'terms'],
       suz: (o) => { if (Array.isArray(o.students)) { const YH = require('../../apps/yurt/hesap.js'); const bugun = new Date(Date.now() + 3 * 3600e3).toISOString().slice(0, 10); o.students = o.students.map((s) => { if (!nesne(s)) return s; const g = nesne(s.guardian) ? s.guardian : {}; const { tc, health, address, birth, portalCode, veliIzni, ...r } = s; return { ...r, minor: YH.resitDegil(s, bugun), veliAcik: YH.veliPaylasir(s, bugun), guardian: { name: g.name, rel: g.rel, phone: g.phone } }; }); } } },
   },
+  // apps/fotograf: fotoğrafçı yalnız kendi çekimlerini görür (benim); fiyat, ödeme, sözleşme gitmez. Aşama, yedek ve galeri yazar. Asistan iptalde yönetici PIN'i ister.
+  fotograf: {
+    asistan: { ad: 'Asistan / Stüdyo', saltOkunur: ['packages', 'extras', 'staff'], silemez: ['shoots', 'payments', 'galleries'], onayTurleri: ['iptal'], onayGeri: { iptal: ['payments'] },
+      onayAdim: (o, s, onayla) => { if (!Array.isArray(o.shoots)) return; const m = idHarita(s.shoots); o.shoots = o.shoots.map((x) => { const e = nesne(x) ? m.get(x.id) : null; return !e || x.status !== 'iptal' || e.status === 'iptal' || onayla('iptal', 'shoots') ? x : e; }); } },
+    fotografci: { ad: 'Fotoğrafçı', kisi: { kol: 'staff', alan: 'staff', baslik: 'Fotoğrafçı', yok: 'Fotoğrafçı seçin (seçilmezse çekim görünmez)' }, kapat: ['payments', 'signedDocs', 'sms'], gizle: { shoots: ['price', 'discount', 'contract', 'cancel', 'log'], packages: ['price'], customers: ['note', 'portalCode', 'email'] }, saltOkunur: ['shoots', 'packages', 'extras', 'staff', 'customers'], izinli: { shoots: ['status', 'backup'] }, silemez: ['galleries'],
+      satir: { shoots: (r, b) => eslesir(r, 'staff', b), galleries: (g, b) => b.ids('shoots').has(g.shoot) },
+      suz: (o) => { if (Array.isArray(o.shoots)) o.shoots = o.shoots.map((x) => (nesne(x) ? { ...x, extras: dizi(x.extras).map((e) => (nesne(e) ? { id: e.id, name: e.name, qty: e.qty } : e)) } : x)); if (Array.isArray(o.extras)) o.extras = o.extras.map((x) => (nesne(x) ? { id: x.id, name: x.name } : x)); } },
+  },
   // apps/servis: ROLES var, ekranlarda rol denetimi yok. Teknisyen ve kabul Özet, Teknisyenler, Ayarlar menüsünü görmez; parça alış fiyatı Parça Stoku ekranında herkese açık. Yalnız menü farkı: kural eklenmedi.
 };
 // Pazaryeri kanal kaydı: bağlantı alanları gerekir, komisyon ve hizmet bedeli kâr hesabıdır

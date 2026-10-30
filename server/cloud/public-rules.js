@@ -1037,5 +1037,24 @@ RULES.yurt = {
   },
 };
 
+// ---------- Fotoğrafçı: müşteri galerisi (galeri.html) ----------
+// Fotoğraf adresleri yalnız giriş yapan müşteriye, galeri açıkken ve süresi dolmamışsa gider. Müşteri yalnız kendi galerisinde seçim yazar; seçim galerideki karelerle sınırlı, bitince kilitlenir.
+const FH = require('../../apps/fotograf/hesap.js');
+const fotoCode = (c) => (c.portalCode ? norm(c.portalCode) : null);
+const fotoGal = (cur, x) => { const m = me(x, 'm'); const s = m && x.get('shoots', cur.shoot); return !!s && s.customer === m && s.status !== 'iptal' && FH.galeriAcik(cur, x.today); };
+RULES.fotograf = {
+  settings: ['bizName', 'bizPhone', 'bizAddress', 'iban'],
+  pub: {},
+  login: (x, q) => { const code = norm(q.code); const d = digits(q.phone); const c = code && d.length === 10 ? x.col('customers').find((r) => digits(r.phone) === d && fotoCode(r) === code) : null; return c ? { k: 'm', i: c.id } : null; },
+  loginError: 'Telefon veya kod hatalı',
+  view: (x) => {
+    const m = me(x, 'm'); const c = m && x.get('customers', m); if (!c) return {}; const sh = x.col('shoots').filter((s) => s.customer === m && s.status !== 'iptal'); const ids = new Set(sh.map((s) => s.id));
+    return { customers: [{ id: c.id, name: c.name, phone: c.phone }], shoots: sh.map((s) => ({ id: s.id, customer: s.customer, type: s.type, date: s.date, pkgName: s.pkgName, price: s.price, extras: (s.extras || []).map((e) => ({ qty: e.qty, price: e.price, name: e.name })), discount: s.discount, status: s.status, dueAt: s.dueAt, promiseDays: s.promiseDays })), payments: x.col('payments').filter((p) => ids.has(p.shoot)).map((p) => ({ id: p.id, shoot: p.shoot, amount: p.amount })), galleries: x.col('galleries').filter((g) => ids.has(g.shoot) && FH.galeriAcik(g, x.today)).map((g) => ({ id: g.id, shoot: g.shoot, name: g.name, photos: g.photos, picks: g.picks || [], pickLimit: g.pickLimit, expires: g.expires, published: g.published, pickDone: !!g.pickDone, downloadLink: g.downloadLink })) };
+  },
+  write: {
+    galleries: { upd: U({ picks: 'strs:1000', pickDone: 'bool' }, (cur, x, set) => { if (!fotoGal(cur, x) || cur.pickDone) return false; if (set.picks !== undefined) { const h = FH.secimHata(cur, set.picks); if (h) bad(h); } if (set.pickDone === false) return false; return true; }, (cur, x, p) => (p.pickDone ? { pickAt: nowIso() } : {})) },
+  },
+};
+
 module.exports = RULES;
 module.exports._lib = { appendOnly, strip, bad, deny, val, clean, I, U, me, mergeByPhone, samePhone, digits, norm, overlap, toMin, nowIso };

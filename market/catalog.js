@@ -80,6 +80,14 @@ window.CATALOG = {
       faq: [['KBS bildirimi otomatik mi?', 'Hayır. KBS için resmî bir yazılım bağlantısı doğrulanamadı. Program yapılacakları listeler, bildirimi yetkili sistemden yaparsınız.'], ['Veli her şeyi görür mü?', 'Reşit olmayan öğrencide veli hareket ve ödeme bilgisini görür. Reşit öğrencide yalnızca öğrencinin kayıtlı izniyle görür.'], ['Ayrılış hesabı yasal hesap mı?', 'Bağlı olduğunuz yönetmeliğe göre öneri üretir. Oranı kendi taahhütnamenize göre değiştirirsiniz, son karar sizindir.']],
     },
     {
+      id: 'fotograf', ready: true, ornekFiyat: true, extraDemos: [{ label: 'Müşteri galerisini aç', url: 'apps/fotograf/galeri.html' }], cat: 'randevu', name: 'Fotoğrafçı & Stüdyo', tagline: 'Çekim takvimi, kapora, teslim takibi ve müşteri galerisi', icon: 'camera', accent: '#7c3aed',
+      prices: [599, 1090, 1990], sectors: ['Düğün fotoğrafçısı', 'Fotoğraf stüdyosu', 'Bebek fotoğrafçısı', 'Ürün fotoğrafçısı', 'Video çekim'],
+      desc: 'Çekim takvimi, kapora, paket, sözleşme, teslim sözü ve gecikme listesi, yedek kontrolü, müşteri galerisi ve fotoğraf seçimi, albüm eşleştirme, teslim tutanağı, yayın izni.',
+      features: ['Fotoğrafçı takvimi, yol süresi dahil çakışma engeli', 'Paket, ek hizmet, kapora ve kalan ödeme', 'Her işte teslim sözü, geciken teslim listesi', 'Çekimden teslime aşama takibi, müşteriye aşama bildirimi', 'Müşteri galerisi: telefon ve kodla giriş, son gün, seçim sınırı', 'Seçim kilidi ve seçim-albüm eşleştirme', 'Yedek kontrol listesi: iki kopya olmadan uyarı', 'Teslim tutanağı: kim, ne zaman, ne aldı', 'Kişi bazlı, geri alınabilir yayın izni', 'Fotoğrafçı rolü fiyat görmez, kendi işlerini görür'],
+      modules: ['Takvim', 'Çekimler', 'Teslim Takibi', 'Tahsilatlar', 'Müşteri Galerisi', 'Paketler', 'İmzalı Belgeler', 'Raporlar'],
+      faq: [['Fotoğraflar tam çözünürlükte mi saklanıyor?', 'Hayır. Galeri seçim içindir, fotoğraflar en uzun kenarı 1280 piksele küçültülür. Tam çözünürlüklü teslim için kendi depolama bağlantınızı yazarsınız.'], ['Müşteri galerisi herkese açık mı?', 'Galeriye telefon ve kodla girilir. Fotoğraf adresleri tahmin edilemez, ancak adresi bilen kişi görselini açabilir; bağlantıyı paylaşmamak müşterinin sorumluluğundadır.'], ['Müşteri fotoğrafını örnek çalışma olarak kullanabilir miyim?', 'Her kişiden ayrı izin alın. Program izni kişi bazında kaydeder, geri alınınca sizi uyarır.']],
+    },
+    {
       id: 'otel', ready: true, extraDemos: [{ label: 'Web rezervasyon motorunu aç', url: 'apps/otel/rezervasyon.html' }], cat: 'konaklama', name: 'Otel & Pansiyon', tagline: 'Rezervasyon takvimi, oda durumu ve folyo', icon: 'bed', accent: '#0891b2',
       prices: [990, 1890, 3490], sectors: ['Butik otel', 'Pansiyon', 'Apart', 'Bungalov', 'Hostel'],
       desc: 'Oda/tarih ızgarasında sürükle-bırak rezervasyon, check-in/check-out, oda temizlik durumu, misafir folyosu ve ekstra harcamalar, doluluk ve ADR raporları.',
