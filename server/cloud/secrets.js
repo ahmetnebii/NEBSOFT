@@ -17,7 +17,10 @@ const SECRET = new Set(['pass', 'password', 'secret', 'token', 'apiSecret', 'api
 const PFX = 'enc:v1:';
 const TOKEN_RE = /__nsg_([a-z0-9]+)_([a-z0-9]+)_([A-Za-z0-9]+)__/g;
 const token = (app, grp, field) => `__nsg_${app}_${grp}_${field}__`;
-const isSecret = (k, v) => SECRET.has(k) && typeof v === 'string' && v !== '';
+// "user" alanı sağlayıcıya göre değişir. Düz kalanlar kullanıcı adıdır: SMS (Netgsm, Verimor, Mutlucell), e-Fatura (Uyumsoft, Paraşüt), MQTT.
+// Şifrelenenler API anahtarı olabilir: formu "Kullanıcı adı / API key" diyen bağlantılar (pazaryeri, kargo, e-Belge vb.) ve e-Fatura özel API.
+const userKey = (app, grp, c) => app === 'entegrasyon' && (grp === 'efatura' ? c.provider === 'custom' : grp !== 'sms' && c.provider !== 'mqtt');
+const isSecret = (k, v, app, grp, c) => typeof v === 'string' && v !== '' && (SECRET.has(k) || (k === 'user' && (v.startsWith(PFX) || /^__nsg_/.test(v) || userKey(app, grp, c)))); // sağlayıcı değişse de şifreli değer açığa çıkmaz
 const enc = (v) => PFX + cfg.encrypt(v);
 const dec = (v) => { if (typeof v !== 'string' || !v.startsWith(PFX)) return v; try { return cfg.decrypt(v.slice(PFX.length)); } catch (e) { return ''; } };
 // data[grup][anahtar][alan] üzerinde gizli alanları dönüştürür
@@ -25,7 +28,7 @@ function walk(app, data, fn) {
   const g = GROUPS[app]; if (!g || !data || typeof data !== 'object' || !data[g] || typeof data[g] !== 'object') return data;
   const out = { ...data, [g]: {} };
   for (const [grp, c] of Object.entries(data[g])) {
-    out[g][grp] = c && typeof c === 'object' && !Array.isArray(c) ? Object.fromEntries(Object.entries(c).map(([k, v]) => [k, isSecret(k, v) ? fn(v, grp, k) : v])) : c;
+    out[g][grp] = c && typeof c === 'object' && !Array.isArray(c) ? Object.fromEntries(Object.entries(c).map(([k, v]) => [k, isSecret(k, v, app, grp, c) ? fn(v, grp, k) : v])) : c;
   }
   return out;
 }
