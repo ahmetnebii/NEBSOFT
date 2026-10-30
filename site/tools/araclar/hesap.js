@@ -159,6 +159,57 @@
     const kdv = H.yuvarla(Object.values(gruplar).reduce((a, b) => a + b, 0)); return { satirlar: satir, ara, gruplar, kdv, toplam: H.yuvarla(ara + kdv) };
   };
 
+  // ---------- İşletme kararları ----------
+  // VUK md. 315, mük. 315, 320: normal oran 1/ömür; azalan oran normalin iki katı, en çok %50, son yıl bakiye silinir. Binekte ilk yıl ay kesri tam ay, kalan son yıla devreder.
+  H.amortisman = ({ bedel, omur, binek, ay, yil = 1 }) => {
+    pozitif(bedel, 'Amortismana tabi bedel'); if (!Number.isInteger(omur) || omur < 1 || omur > 50) throw new Error('Faydalı ömür 1 ile 50 arasında tam yıl olmalı');
+    if (binek && !(Number.isInteger(ay) && ay >= 1 && ay <= 12)) throw new Error('Aktife giriş ayı 1 ile 12 arasında olmalı');
+    const kist = binek ? (13 - ay) / 12 : 1; const nOran = 1 / omur, aOran = Math.min(2 / omur, 0.5); let nKalan = bedel, aKalan = bedel; const satirlar = [];
+    for (let i = 1; i <= omur; i++) { const k = i === 1 ? kist : 1; const n = i === omur ? nKalan : H.yuvarla(bedel * nOran * k); const a = i === omur ? aKalan : H.yuvarla(aKalan * aOran * k); nKalan = H.yuvarla(nKalan - n); aKalan = H.yuvarla(aKalan - a); satirlar.push({ yil: yil + i - 1, normal: H.yuvarla(n), azalan: H.yuvarla(a), normalKalan: nKalan, azalanKalan: aKalan }); }
+    return { normalOran: H.yuvarla(nOran * 100), azalanOran: H.yuvarla(aOran * 100), ayKist: binek ? 13 - ay : 12, satirlar };
+  };
+  // "10+5+3", "%10 + %5" veya "10 5 3" okunur; boş metin iskontosuz demektir
+  H.iskontoOku = (s) => {
+    const p = String(s == null ? '' : s).split(/[+\s]+/).filter(Boolean).map(H.sayiOku);
+    if (p.some((x) => Number.isNaN(x) || x < 0 || x >= 100)) throw new Error('İskontoları 10+5+3 biçiminde, her biri 100’den küçük yazın'); return p;
+  };
+  // Oranlar sırayla kalan tutara uygulanır. Mal fazlası: alınan + bedava adet, alınan adedin parasına gelir.
+  H.zincirIskonto = ({ liste, oranlar = [], alinan = 0, bedava = 0 }) => {
+    pozitif(liste, 'Liste fiyatı'); sifirVeyaUstu(alinan, 'Alınan adet'); sifirVeyaUstu(bedava, 'Bedava adet'); if (bedava > 0 && !(alinan > 0)) throw new Error('Mal fazlası için alınan adedi de yazın');
+    const yuzde = (x) => H.yuvarla(H.yuvarla((1 - x / liste) * 100, 8)); const net = oranlar.reduce((t, o) => t * (1 - o / 100), liste); const birim = bedava > 0 ? (net * alinan) / (alinan + bedava) : net;
+    return { net: H.yuvarla(net), birim: H.yuvarla(birim), esdeger: yuzde(net), toplamEsdeger: yuzde(birim), duzToplam: H.yuvarla(oranlar.reduce((t, o) => t + o, 0)) };
+  };
+  H.ekIskonto = ({ birim, hedef }) => { pozitif(birim, 'Birim fiyat'); pozitif(hedef, 'Hedef fiyat'); return hedef >= birim ? 0 : H.yuvarla((1 - hedef / birim) * 100); };
+  // Ortalama vade = Σ(tutar × gün) ÷ Σ tutar. Vade farkı basit hesaplanır: tutar × aylık oran × gün ÷ 30.
+  H.ortalamaVade = ({ satirlar, tarih, aylikFark = 0 }) => {
+    const baz = zorunluTarih(tarih, 'Hesap tarihi'); sifirVeyaUstu(aylikFark, 'Aylık vade farkı'); const L = (satirlar || []).filter((x) => x.tutar || x.vade); if (!L.length) throw new Error('En az bir çek veya senet girin');
+    L.forEach((x, i) => { if (!(x.tutar > 0) || !x.vade) throw new Error(`${i + 1}. satırda tutar veya vade tarihi eksik`); });
+    const list = L.map((x) => ({ ...x, gun: H.gunFark(tarih, x.vade) })); const toplam = list.reduce((t, x) => t + x.tutar, 0); const adat = list.reduce((t, x) => t + x.tutar * x.gun, 0); const gun = adat / toplam;
+    const ort = new Date(baz.getTime() + Math.round(gun) * 864e5).toISOString().slice(0, 10);
+    return { satirlar: list, toplam: H.yuvarla(toplam), adat: H.yuvarla(adat), gun: H.yuvarla(gun, 1), ortalamaTarih: ort, vadeFarki: H.yuvarla(Math.max(0, (toplam * (aylikFark || 0) * gun) / 3000)) };
+  };
+  // Gecikme: her ayın tahsilatının yüzde kaçı bir sonraki aya kayar. Tablonun son ayından taşan tutar dönem dışında kalır.
+  H.nakitAkisi = ({ acilis = 0, aylar, gecikme = 0, alt = 0 }) => {
+    const L = (aylar || []).filter((x) => x.ad || x.tahsilat > 0 || x.odeme > 0); if (!L.length) throw new Error('En az bir ay girin'); if (!(gecikme >= 0 && gecikme <= 100)) throw new Error('Gecikme oranı 0 ile 100 arasında olmalı');
+    const g = gecikme / 100; let b = acilis || 0, s = acilis || 0, onceki = 0;
+    const satirlar = L.map((x, i) => { const t = sifirVeyaUstu(x.tahsilat, 'Tahsilat'), o = sifirVeyaUstu(x.odeme, 'Ödeme'); const st = t * (1 - g) + onceki * g; onceki = t; b += t - o; s += st - o; return { ad: x.ad || `${i + 1}. ay`, tahsilat: t, odeme: o, kapanis: H.yuvarla(b), senaryoTahsilat: H.yuvarla(st), senaryoKapanis: H.yuvarla(s) }; });
+    const ozet = (k) => { const dip = satirlar.reduce((m, x) => (x[k] < m[k] ? x : m)); const eksi = satirlar.find((x) => x[k] < 0); return { enDusuk: dip[k], enDusukAy: dip.ad, ilkEksi: eksi ? eksi.ad : null, finansman: H.yuvarla(Math.max(0, (alt || 0) - dip[k])) }; };
+    return { satirlar, normal: ozet('kapanis'), senaryo: ozet('senaryoKapanis') };
+  };
+  // SMM ÷ ortalama stok. SMM verilmezse açılış + alış - kapanış. hedefGun: o güne inince stokta kalacak para.
+  H.stokDevir = ({ smm, alis, acilis, kapanis, gun = 365, hedefGun = 0 }) => {
+    sifirVeyaUstu(acilis, 'Dönem başı stok'); sifirVeyaUstu(kapanis, 'Dönem sonu stok'); pozitif(gun, 'Dönem uzunluğu'); const a = acilis || 0, k = kapanis || 0; const ort = (a + k) / 2; pozitif(ort, 'Ortalama stok');
+    const m = alis != null ? a + alis - k : smm; pozitif(m, 'Satılan malın maliyeti'); const devir = m / ort; const r = { smm: H.yuvarla(m), ortalama: H.yuvarla(ort), devir: H.yuvarla(devir), gun: H.yuvarla(gun / devir, 1) };
+    if (hedefGun > 0) { const hs = (m / gun) * hedefGun; r.hedefStok = H.yuvarla(hs); r.serbest = H.yuvarla(ort - hs); } return r;
+  };
+  // 5510 md. 82: prim matrahı alt-üst sınır arasına çekilir. Kıdem karşılığı aylık brüt ÷ 12, kıdem tavanıyla sınırlı. İşsizlik işveren payı %2: ÇSGB 2026 tablosu, okundu 31.10.2026.
+  H.personelMaliyet = ({ brut, sgkOran, issizlikOran = 2, altSinir = 0, ustSinir = 0, yemek = 0, yol = 0, diger = 0, kidemTavan = 0, adet = 1, marj = 0 }) => {
+    pozitif(brut, 'Brüt ücret'); pozitif(sgkOran, 'SGK işveren oranı'); const n = adet > 0 ? adet : 1; const yan = sifirVeyaUstu(yemek, 'Yemek') + sifirVeyaUstu(yol, 'Yol') + sifirVeyaUstu(diger, 'Diğer'); if (ustSinir > 0 && altSinir > ustSinir) throw new Error('Alt sınır üst sınırdan büyük olamaz');
+    const matrah = Math.min(Math.max(brut, altSinir || 0), ustSinir > 0 ? ustSinir : Infinity); const sgk = H.yuvarla((matrah * sgkOran) / 100); const issizlik = H.yuvarla((matrah * issizlikOran) / 100); const kidem = kidemTavan > 0 ? H.yuvarla(Math.min(brut, kidemTavan) / 12) : 0; const aylik = H.yuvarla(brut + sgk + issizlik + yan + kidem);
+    const r = { matrah: H.yuvarla(matrah), sgk, issizlik, yan: H.yuvarla(yan), kidem, aylik, yillik: H.yuvarla(aylik * 12), toplamAylik: H.yuvarla(aylik * n), toplamYillik: H.yuvarla(aylik * n * 12), carpan: H.yuvarla(aylik / brut), altta: brut < (altSinir || 0), ustte: ustSinir > 0 && brut > ustSinir };
+    if (marj > 0) { if (marj > 100) throw new Error('Marj yüzde 100’ü geçemez'); r.ekCiro = H.yuvarla((aylik * n) / (marj / 100)); } return r;
+  };
+
   // ---------- Tutarı yazıyla ----------
   const BIR = ['', 'bir', 'iki', 'üç', 'dört', 'beş', 'altı', 'yedi', 'sekiz', 'dokuz'], ON = ['', 'on', 'yirmi', 'otuz', 'kırk', 'elli', 'altmış', 'yetmiş', 'seksen', 'doksan'];
   const uclu = (n) => [n >= 200 ? BIR[Math.floor(n / 100)] : '', n >= 100 ? 'yüz' : '', ON[Math.floor((n % 100) / 10)], BIR[n % 10]].filter(Boolean).join(' ');

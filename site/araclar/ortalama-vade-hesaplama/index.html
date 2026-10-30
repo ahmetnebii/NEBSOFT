@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ortalama Vade Hesaplama: Çek ve Senet Vadesi Bulma | NEBSOFT</title>
+<meta name="description" content="Çek ve senetlerin tutarını ve tarihini girin, tutar ağırlıklı ortalama vadeyi tarih olarak görün. Aylık oran yazarsanız basit vade farkı da hesaplanır.">
+<meta name="robots" content="index,follow">
+<link rel="canonical" href="https://www.nebsoftapp.com/araclar/ortalama-vade-hesaplama/">
+<meta name="theme-color" content="#1d7bf5">
+<meta property="og:type" content="website"><meta property="og:locale" content="tr_TR"><meta property="og:site_name" content="NEBSOFT">
+<meta property="og:title" content="Ortalama Vade Hesaplama: Çek ve Senet Vadesi Bulma | NEBSOFT"><meta property="og:description" content="Çek ve senetlerin tutarını ve tarihini girin, tutar ağırlıklı ortalama vadeyi tarih olarak görün. Aylık oran yazarsanız basit vade farkı da hesaplanır."><meta property="og:url" content="https://www.nebsoftapp.com/araclar/ortalama-vade-hesaplama/"><meta property="og:image" content="https://www.nebsoftapp.com/assets/og/og.png"><meta name="twitter:card" content="summary_large_image"><meta name="twitter:title" content="Ortalama Vade Hesaplama: Çek ve Senet Vadesi Bulma | NEBSOFT"><meta name="twitter:description" content="Çek ve senetlerin tutarını ve tarihini girin, tutar ağırlıklı ortalama vadeyi tarih olarak görün. Aylık oran yazarsanız basit vade farkı da hesaplanır."><meta name="twitter:image" content="https://www.nebsoftapp.com/assets/og/og.png">
+<link rel="icon" href="/assets/icons/icon-32.png" sizes="32x32" type="image/png"><link rel="icon" href="/assets/favicon.svg" type="image/svg+xml"><link rel="apple-touch-icon" href="/assets/icons/apple-touch-icon.png">
+<link rel="stylesheet" href="/site/assets/site.css"><link rel="stylesheet" href="/site/assets/araclar.css">
+<style>:root{--c:#1d4ed8}</style>
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"WebApplication","name":"Ortalama Vade Hesaplama","url":"https://www.nebsoftapp.com/araclar/ortalama-vade-hesaplama/","description":"Çek ve senetlerin tutarını ve tarihini girin, tutar ağırlıklı ortalama vadeyi tarih olarak görün. Aylık oran yazarsanız basit vade farkı da hesaplanır.","inLanguage":"tr-TR","applicationCategory":"BusinessApplication","operatingSystem":"Web","browserRequirements":"JavaScript gerekir","isAccessibleForFree":true,"dateModified":"2026-10-31","offers":{"@type":"Offer","price":0,"priceCurrency":"TRY"},"publisher":{"@type":"Organization","name":"NEBSOFT","url":"https://www.nebsoftapp.com/"}}</script>
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"Organization","@id":"https://www.nebsoftapp.com/#kurulus","name":"NEBSOFT","url":"https://www.nebsoftapp.com/"}</script>
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"WebSite","@id":"https://www.nebsoftapp.com/#site","name":"NEBSOFT","url":"https://www.nebsoftapp.com/","inLanguage":"tr-TR","publisher":{"@id":"https://www.nebsoftapp.com/#kurulus"}}</script>
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"NEBSOFT","item":"https://www.nebsoftapp.com/"},{"@type":"ListItem","position":2,"name":"Ücretsiz Araçlar","item":"https://www.nebsoftapp.com/araclar"},{"@type":"ListItem","position":3,"name":"Ortalama Vade Hesaplama","item":"https://www.nebsoftapp.com/araclar/ortalama-vade-hesaplama/"}]}</script>
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[{"@type":"Question","name":"Ortalama vade formülü nedir?","acceptedAnswer":{"@type":"Answer","text":"Her evrakta tutar ile gün çarpılır, çarpımlar toplanır ve toplam tutara bölünür."}},{"@type":"Question","name":"Geçmiş tarihli evrak girebilir miyim?","acceptedAnswer":{"@type":"Answer","text":"Evet. Gün sayısı eksi olur ve ortalamaya eksi olarak girer. Sonuç geçmişte kalırsa sayfa bunu belirtir."}},{"@type":"Question","name":"Hesap tarihi sonucu değiştirir mi?","acceptedAnswer":{"@type":"Answer","text":"Ortalama tarih aynı kalır. Değişen şey o tarihe kalan gün sayısı ve vade farkıdır."}},{"@type":"Question","name":"Vade farkı oranı kaç olmalı?","acceptedAnswer":{"@type":"Answer","text":"Oran taraflar arasında belirlenir, araç bir oran önermez. Hazır değer bulunmamasının nedeni de budur."}},{"@type":"Question","name":"Sonuç neden tam güne yuvarlanıyor?","acceptedAnswer":{"@type":"Answer","text":"Çek ve senet vadesi tam gündür. 109,5 gün gibi bir sonuç en yakın güne yuvarlanır, vade farkı ise küsuratlı gün üzerinden hesaplanır."}}]}</script>
+</head>
+<body>
+<a class="skip" href="#ana">İçeriğe geç</a>
+<header class="hd mk"><div class="w">
+  <a class="logo" href="/" aria-label="NEBSOFT ana sayfa"><img src="/assets/icons/icon-64.png" alt="" width="36" height="36"><span class="wm"><b>NEB</b><i>SOFT</i></span><span class="sub">Ücretsiz Araçlar</span></a>
+  <nav class="nav" aria-label="Ana menü"><a href="/programlar">Programlar</a><a href="/paketler/">Paketler</a><a href="/araclar">Araçlar</a><a href="/fiyatlar/">Fiyatlar</a><a href="/#/sektorler">Sektörler</a><a href="/#/iletisim">İletişim</a></nav>
+  <a class="btn g" href="/#/giris">Giriş yap</a><a class="btn p" href="/#/kayit">Ücretsiz başla <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
+</div></header>
+<main id="ana">
+<div class="w ar-hero">
+  <nav class="crumb" aria-label="Konum"><a href="/">NEBSOFT</a> / <a href="/araclar">Ücretsiz Araçlar</a> / Ortalama Vade Hesaplama</nav>
+  <h1>Ortalama Vade Hesaplama</h1>
+  <p class="lead">Çek ve senetlerin tutarını ve tarihini girin, tutar ağırlıklı ortalama vadeyi tarih olarak görün. Aylık oran yazarsanız basit vade farkı da hesaplanır.</p>
+  <p class="ar-gizli"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg><span>İşlem tarayıcınızda yapılır. Girdiğiniz bilgiler sunucuya gönderilmez ve kaydedilmez.</span></p>
+</div>
+<div class="w ar-is">
+  <form class="ar-kart ar-form-k" id="ar-form" novalidate><h2>Bilgileri girin</h2><div class="ar-alanlar">
+<div class="ar-alan"><label for="a-tarih">Hesap tarihi</label><input id="a-tarih" type="date" data-alan="tarih" data-tip="tarih" data-bugun></div>
+<div class="ar-alan"><label for="a-aylikFark">Aylık vade farkı (%, isteğe bağlı)</label><input id="a-aylikFark" type="text" autocomplete="off" inputmode="decimal" data-alan="aylikFark" data-tip="yuzde"><small>Aranızda anlaştığınız oran, araçta hazır oran yok</small></div>
+<div class="ar-satirlar" data-alan="cekler" style="--kolon:repeat(2, minmax(0, 1fr))"><span class="ar-liste-b">Çek ve senetler</span><div class="ar-liste"><div class="ar-satir"><div class="bir"><label>Tutar (₺)<input type="text" autocomplete="off" inputmode="decimal" data-alan="tutar" data-tip="para" value="50000"></label></div><div><label>Vade tarihi<input type="date" data-alan="vade" data-tip="tarih" value="2027-01-15"></label></div><button type="button" class="ar-sil" data-sil aria-label="Satırı sil">×</button></div><div class="ar-satir"><div class="bir"><label>Tutar (₺)<input type="text" autocomplete="off" inputmode="decimal" data-alan="tutar" data-tip="para" value="30000"></label></div><div><label>Vade tarihi<input type="date" data-alan="vade" data-tip="tarih" value="2027-03-01"></label></div><button type="button" class="ar-sil" data-sil aria-label="Satırı sil">×</button></div><div class="ar-satir"><div class="bir"><label>Tutar (₺)<input type="text" autocomplete="off" inputmode="decimal" data-alan="tutar" data-tip="para" value="20000"></label></div><div><label>Vade tarihi<input type="date" data-alan="vade" data-tip="tarih" value="2027-04-30"></label></div><button type="button" class="ar-sil" data-sil aria-label="Satırı sil">×</button></div></div><template><div class="ar-satir"><div class="bir"><label>Tutar (₺)<input type="text" autocomplete="off" inputmode="decimal" data-alan="tutar" data-tip="para"></label></div><div><label>Vade tarihi<input type="date" data-alan="vade" data-tip="tarih"></label></div><button type="button" class="ar-sil" data-sil aria-label="Satırı sil">×</button></div></template><button type="button" class="ar-ekle" data-ekle>+ Evrak ekle</button></div>
+  </div></form>
+  <section class="ar-kart ar-sonuc" aria-live="polite"><h2>Ortalama vade</h2><div id="sonuc"><p class="ar-bos">Aracın çalışması için tarayıcınızda JavaScript açık olmalı.</p></div></section>
+</div>
+<section class="ar-metin"><div class="w"><div class="ar-yazi">
+  <h2>Ortalama vade ne için kullanılır?</h2>
+  <p>Bir müşteriden farklı tarihli dört çek aldınız, tedarikçiniz de “ortalama kaç günlük ödüyorsun” diye soruyor. Basit ortalama burada yanlış sonuç verir, çünkü 100.000 ₺’lik çek ile 5.000 ₺’lik senet aynı ağırlığı taşımaz. Ortalama vade her evrakın tutarını gün sayısıyla çarpar, toplamı toplam tutara böler. Çıkan gün, bütün ödemenin tek seferde yapıldığı varsayılsa geleceği tarihtir.</p>
+  <p>Bu tarih üç yerde işe yarar. Toplu ödeme yaparken karşılığında tek çek yazacaksanız vadesini buradan bulursunuz. Alıcıya verdiğiniz ortalama vadeyle tedarikçinin size verdiği vadeyi karşılaştırır, aradaki günlerde kasanın kimi finanse ettiğini görürsünüz. Yeni bir sevkiyatta vade pazarlığında da elinizde somut bir gün sayısı olur.</p>
+  <p>Aylık vade farkı alanı isteğe bağlıdır ve oranı siz yazarsınız. Araç bileşik faiz uygulamaz: toplam tutar, aylık oran ve otuza bölünmüş gün çarpılır. Hesap tarihini değiştirmek ortalama tarihi değiştirmez, yalnız kalan gün sayısını ve vade farkını değiştirir. Sonuç tam güne yuvarlanır. Araç evrakın karşılıksız kalma riskini, banka iskontosunu ve faturaya yansıyan vade farkının vergisini hesaba katmaz.</p>
+  <h2>Örnek: 100.000 ₺ tutarında üç evrak</h2>
+  <p>1 Kasım 2026 hesap tarihinde elinizde 50.000 ₺ 15 Ocak, 30.000 ₺ 1 Mart ve 20.000 ₺ 30 Nisan 2027 vadeli üç evrak olsun. Gün sayıları 75, 120 ve 180’dir. Tutarla çarpılan günlerin toplamı 10.950.000 eder, 100.000 ₺’ye bölününce 109,5 gün bulunur.</p>
+  <p>Ortalama vade 19 Şubat 2027’ye denk gelir. Basit ortalama 125 gün çıkardı, yani büyük çekin yakın tarihli olması hesabı on beş gün öne çekiyor. Tarafların aylık yüzde 3 üzerinde anlaştığını varsayarsak basit vade farkı 100.000 × 0,03 × 109,5 ÷ 30 = 10.950 ₺ olur.</p>
+  <h2>Kaynaklar ve son güncelleme</h2>
+  <p><b>Son güncelleme:</b> <time datetime="2026-10-31">31 Ekim 2026</time>. Bu araç mevzuat oranı kullanmaz; hesap girdiğiniz değerlerle yapılır.</p>
+  
+  
+  <div class="ar-prog"><p>Çek ve senetleriniz çoksa Ön Muhasebe programındaki portföy her evrakın vadesini tutar, tahsilat ve ödemeyi hatırlatır.</p><a class="btn p" href="/onmuhasebeprogrami">Ön muhasebe programı <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a></div>
+  <h2>Sık sorulan sorular</h2>
+  <div class="faq"><details open><summary>Ortalama vade formülü nedir?</summary><p>Her evrakta tutar ile gün çarpılır, çarpımlar toplanır ve toplam tutara bölünür.</p></details><details><summary>Geçmiş tarihli evrak girebilir miyim?</summary><p>Evet. Gün sayısı eksi olur ve ortalamaya eksi olarak girer. Sonuç geçmişte kalırsa sayfa bunu belirtir.</p></details><details><summary>Hesap tarihi sonucu değiştirir mi?</summary><p>Ortalama tarih aynı kalır. Değişen şey o tarihe kalan gün sayısı ve vade farkıdır.</p></details><details><summary>Vade farkı oranı kaç olmalı?</summary><p>Oran taraflar arasında belirlenir, araç bir oran önermez. Hazır değer bulunmamasının nedeni de budur.</p></details><details><summary>Sonuç neden tam güne yuvarlanıyor?</summary><p>Çek ve senet vadesi tam gündür. 109,5 gün gibi bir sonuç en yakın güne yuvarlanır, vade farkı ise küsuratlı gün üzerinden hesaplanır.</p></details></div>
+</div>
+<h2 class="ar-grup">İlgili araçlar</h2><div class="ar-kartlar"><a href="/araclar/nakit-akisi-hesaplama/"><b>Nakit Akışı Hesaplama</b><span>Kasanın hangi ay eksiye düşeceğini ve tahsilat gecikirse ne olacağını görün</span></a><a href="/araclar/zincirleme-iskonto-hesaplama/"><b>Zincirleme İskonto Hesaplama</b><span>10+5+3 gibi iskontoları ve mal fazlasını net fiyata çevirip teklifleri karşılaştırın</span></a><a href="/araclar/tahsilat-makbuzu-olusturucu/"><b>Tahsilat Makbuzu Oluşturucu</b><span>Cari tahsilat, kapora ve avans için numaralı makbuz hazırlayın</span></a><a href="/araclar/pazaryeri-komisyon-hesaplama/"><b>Pazaryeri Komisyon ve Kâr Hesaplama</b><span>Komisyon, kargo ve hizmet bedeli sonrası gerçek kârı ve hedef fiyatı görün</span></a></div>
+</div></section>
+</main>
+<footer class="ft"><div class="w">
+  <div class="cols">
+    <div><a class="logo" href="/"><img src="/assets/icons/icon-64.png" alt="" width="34" height="34"><span class="wm"><b>NEB</b><i>SOFT</i></span></a><p>Türkiye'deki işletmeler için bulut tabanlı yazılımlar ve ücretsiz iş araçları.</p><p><a href="tel:+908505550034">0850 555 00 34</a><a href="mailto:destek@nebsoft.com.tr">destek@nebsoft.com.tr</a></p></div>
+    <div><h4><a href="/programlar" style="color:inherit">Programlar</a></h4><a href="/randevusistemi">Randevu sistemi</a><a href="/klinikprogrami">Klinik programı</a><a href="/eczaneprogrami">Eczane programı</a><a href="/kuyumcuprogrami">Kuyumcu programı</a><a href="/nakliyatprogrami">Nakliyat programı</a><a href="/okulservisiprogrami">Okul servisi programı</a></div><div><h4>&nbsp;</h4><a href="/adisyonprogrami">Adisyon programı</a><a href="/emlakprogrami">Emlak programı</a><a href="/kargotakipprogrami">Kargo takip programı</a><a href="/otogaleriprogrami">Oto galeri programı</a><a href="/temizlikprogrami">Temizlik şirketi programı</a><a href="/kooperatifprogrami">Kooperatif programı</a></div><div><h4>&nbsp;</h4><a href="/marketprogrami">Market programı</a><a href="/kursprogrami">Kurs programı</a><a href="/biletsatisprogrami">Bilet satış programı</a><a href="/hukukburosuprogrami">Hukuk bürosu programı</a><a href="/mobilustaprogrami">Mobil usta programı</a><a href="/lastikciprogrami">Lastikçi programı</a></div>
+  </div>
+  <div class="copy">© 2026 NEBSOFT. Tüm hakları saklıdır. · <a href="/araclar" style="display:inline">Ücretsiz araçlar</a> · <a href="/kvkk/" style="display:inline">KVKK ve yasal metinler</a></div>
+</div></footer>
+<script src="/site/assets/araclar-hesap.js"></script>
+<script src="/site/assets/araclar.js"></script>
+<script>AR.baslat({dosyaAdi:"ortalama-vade-hesaplama",gerekli:[["tarih","Hesap tarihi"]],hesap:function (v, H) {
+    const r = H.ortalamaVade({ satirlar: v.cekler, tarih: v.tarih, aylikFark: v.aylikFark }); const gunYazi = (g) => (g < 0 ? `${H.sayi(-g, 1)} gün geçmiş` : `${H.sayi(g, 1)} gün sonra`);
+    return H.tablo([['Ortalama vade tarihi', H.tarihTR(r.ortalamaTarih), 1], ['Hesap tarihine uzaklık', gunYazi(r.gun)], ['Toplam tutar', H.tl(r.toplam)], v.aylikFark > 0 ? [`Vade farkı (aylık %${H.sayi(v.aylikFark)})`, H.tl(r.vadeFarki)] : null])
+      + `<div class="ar-tablo-k"><table class="ar-liste-t"><thead><tr><th>Vade</th><th class="r">Tutar</th><th class="r">Gün</th></tr></thead><tbody>${r.satirlar.map((x) => `<tr><td>${H.tarihTR(x.vade)}</td><td class="r">${H.tl(x.tutar)}</td><td class="r">${H.sayi(x.gun, 0)}</td></tr>`).join('')}</tbody></table></div>`
+      + (r.gun < 0 ? H.not('Ortalama vade hesap tarihinden önce kalıyor. Vade farkı yalnız ileri vade için hesaplanır, geçmiş vadede sıfır gösterilir.', 'uyari') : '');
+  }});</script>
+</body>
+</html>

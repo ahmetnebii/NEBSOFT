@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Stok Devir Hızı Hesaplama: Stok Günü ve Bağlı Para | NEBSOFT</title>
+<meta name="description" content="Dönem başı ve sonu stok ile satılan malın maliyetinden stok devir hızını ve stok gününü bulun. Hedef güne inerseniz kasaya ne kadar para döneceğini görün.">
+<meta name="robots" content="index,follow">
+<link rel="canonical" href="https://www.nebsoftapp.com/araclar/stok-devir-hizi-hesaplama/">
+<meta name="theme-color" content="#1d7bf5">
+<meta property="og:type" content="website"><meta property="og:locale" content="tr_TR"><meta property="og:site_name" content="NEBSOFT">
+<meta property="og:title" content="Stok Devir Hızı Hesaplama: Stok Günü ve Bağlı Para | NEBSOFT"><meta property="og:description" content="Dönem başı ve sonu stok ile satılan malın maliyetinden stok devir hızını ve stok gününü bulun. Hedef güne inerseniz kasaya ne kadar para döneceğini görün."><meta property="og:url" content="https://www.nebsoftapp.com/araclar/stok-devir-hizi-hesaplama/"><meta property="og:image" content="https://www.nebsoftapp.com/assets/og/og.png"><meta name="twitter:card" content="summary_large_image"><meta name="twitter:title" content="Stok Devir Hızı Hesaplama: Stok Günü ve Bağlı Para | NEBSOFT"><meta name="twitter:description" content="Dönem başı ve sonu stok ile satılan malın maliyetinden stok devir hızını ve stok gününü bulun. Hedef güne inerseniz kasaya ne kadar para döneceğini görün."><meta name="twitter:image" content="https://www.nebsoftapp.com/assets/og/og.png">
+<link rel="icon" href="/assets/icons/icon-32.png" sizes="32x32" type="image/png"><link rel="icon" href="/assets/favicon.svg" type="image/svg+xml"><link rel="apple-touch-icon" href="/assets/icons/apple-touch-icon.png">
+<link rel="stylesheet" href="/site/assets/site.css"><link rel="stylesheet" href="/site/assets/araclar.css">
+<style>:root{--c:#7c3aed}</style>
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"WebApplication","name":"Stok Devir Hızı Hesaplama","url":"https://www.nebsoftapp.com/araclar/stok-devir-hizi-hesaplama/","description":"Dönem başı ve sonu stok ile satılan malın maliyetinden stok devir hızını ve stok gününü bulun. Hedef güne inerseniz kasaya ne kadar para döneceğini görün.","inLanguage":"tr-TR","applicationCategory":"BusinessApplication","operatingSystem":"Web","browserRequirements":"JavaScript gerekir","isAccessibleForFree":true,"dateModified":"2026-10-31","offers":{"@type":"Offer","price":0,"priceCurrency":"TRY"},"publisher":{"@type":"Organization","name":"NEBSOFT","url":"https://www.nebsoftapp.com/"}}</script>
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"Organization","@id":"https://www.nebsoftapp.com/#kurulus","name":"NEBSOFT","url":"https://www.nebsoftapp.com/"}</script>
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"WebSite","@id":"https://www.nebsoftapp.com/#site","name":"NEBSOFT","url":"https://www.nebsoftapp.com/","inLanguage":"tr-TR","publisher":{"@id":"https://www.nebsoftapp.com/#kurulus"}}</script>
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"NEBSOFT","item":"https://www.nebsoftapp.com/"},{"@type":"ListItem","position":2,"name":"Ücretsiz Araçlar","item":"https://www.nebsoftapp.com/araclar"},{"@type":"ListItem","position":3,"name":"Stok Devir Hızı Hesaplama","item":"https://www.nebsoftapp.com/araclar/stok-devir-hizi-hesaplama/"}]}</script>
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[{"@type":"Question","name":"Stok devir hızı formülü nedir?","acceptedAnswer":{"@type":"Answer","text":"Satılan malın maliyeti, ortalama stoğa bölünür. Ortalama stok ise dönem başı ve dönem sonu stokunun yarısıdır."}},{"@type":"Question","name":"Stok devir hızı kaç olmalı?","acceptedAnswer":{"@type":"Answer","text":"Tek doğru rakam yoktur. Kendi önceki döneminizle ve benzer ürün gruplarınızla karşılaştırmak en sağlıklısıdır."}},{"@type":"Question","name":"Stok günü nasıl hesaplanır?","acceptedAnswer":{"@type":"Answer","text":"Dönem gün sayısı devir hızına bölünür. 365 gün ve 5,45 kez için yaklaşık 67 gün çıkar."}},{"@type":"Question","name":"Devir hızı çok yüksekse iyi midir?","acceptedAnswer":{"@type":"Answer","text":"Her zaman değil. Sürekli yok satıyorsanız yüksek hız kaçan satışı gizliyor olabilir."}},{"@type":"Question","name":"Eksi sonuç neden hata veriyor?","acceptedAnswer":{"@type":"Answer","text":"Dönem sonu stok, başlangıç ve alış toplamını aşarsa maliyet eksi çıkar. Bu genelde eksik girilmiş alış veya hatalı sayım demektir."}}]}</script>
+</head>
+<body>
+<a class="skip" href="#ana">İçeriğe geç</a>
+<header class="hd mk"><div class="w">
+  <a class="logo" href="/" aria-label="NEBSOFT ana sayfa"><img src="/assets/icons/icon-64.png" alt="" width="36" height="36"><span class="wm"><b>NEB</b><i>SOFT</i></span><span class="sub">Ücretsiz Araçlar</span></a>
+  <nav class="nav" aria-label="Ana menü"><a href="/programlar">Programlar</a><a href="/paketler/">Paketler</a><a href="/araclar">Araçlar</a><a href="/fiyatlar/">Fiyatlar</a><a href="/#/sektorler">Sektörler</a><a href="/#/iletisim">İletişim</a></nav>
+  <a class="btn g" href="/#/giris">Giriş yap</a><a class="btn p" href="/#/kayit">Ücretsiz başla <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
+</div></header>
+<main id="ana">
+<div class="w ar-hero">
+  <nav class="crumb" aria-label="Konum"><a href="/">NEBSOFT</a> / <a href="/araclar">Ücretsiz Araçlar</a> / Stok Devir Hızı Hesaplama</nav>
+  <h1>Stok Devir Hızı Hesaplama</h1>
+  <p class="lead">Dönem başı ve sonu stok ile satılan malın maliyetinden stok devir hızını ve stok gününü bulun. Hedef güne inerseniz kasaya ne kadar para döneceğini görün.</p>
+  <p class="ar-gizli"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg><span>İşlem tarayıcınızda yapılır. Girdiğiniz bilgiler sunucuya gönderilmez ve kaydedilmez.</span></p>
+</div>
+<div class="w ar-is">
+  <form class="ar-kart ar-form-k" id="ar-form" novalidate><h2>Bilgileri girin</h2><div class="ar-alanlar">
+<div class="ar-alan genis"><label for="a-mod">Satılan malın maliyetini biliyor musunuz?</label><select id="a-mod" data-alan="mod" data-tip="secim"><option value="alis" selected>Hayır, dönem alışlarından bulunsun</option><option value="smm">Evet, kendim yazacağım</option></select></div>
+<div class="ar-alan"><label for="a-acilis">Dönem başı stok (₺)</label><input id="a-acilis" type="text" autocomplete="off" inputmode="decimal" data-alan="acilis" data-tip="para" value="240000"><small>Maliyet değeriyle</small></div>
+<div class="ar-alan"><label for="a-kapanis">Dönem sonu stok (₺)</label><input id="a-kapanis" type="text" autocomplete="off" inputmode="decimal" data-alan="kapanis" data-tip="para" value="200000"><small>Maliyet değeriyle</small></div>
+<div class="ar-alan" data-goster="mod=alis" hidden><label for="a-alis">Dönem alışları (₺)</label><input id="a-alis" type="text" autocomplete="off" inputmode="decimal" data-alan="alis" data-tip="para" value="1160000"></div>
+<div class="ar-alan" data-goster="mod=smm" hidden><label for="a-smm">Satılan malın maliyeti (₺)</label><input id="a-smm" type="text" autocomplete="off" inputmode="decimal" data-alan="smm" data-tip="para" placeholder="Satış cirosu değil"></div>
+<div class="ar-alan"><label for="a-gun">Dönem uzunluğu (gün)</label><input id="a-gun" type="text" autocomplete="off" inputmode="decimal" data-alan="gun" data-tip="sayi" value="365"></div>
+<div class="ar-alan"><label for="a-hedefGun">Hedef stok günü (isteğe bağlı)</label><input id="a-hedefGun" type="text" autocomplete="off" inputmode="decimal" data-alan="hedefGun" data-tip="sayi" value="45"></div>
+  </div></form>
+  <section class="ar-kart ar-sonuc" aria-live="polite"><h2>Stok sonucu</h2><div id="sonuc"><p class="ar-bos">Aracın çalışması için tarayıcınızda JavaScript açık olmalı.</p></div></section>
+</div>
+<section class="ar-metin"><div class="w"><div class="ar-yazi">
+  <h2>Stok devir hızı işletmeye ne söyler?</h2>
+  <p>Rafta duran ürün, kasaya girmemiş paradır. Stok devir hızı, ortalama stoğunuzun dönem içinde kaç kez satılıp yenilendiğini söyler. Stok günü aynı bilgiyi daha kolay okunan bir biçimde verir: elinizdeki stok bugünkü satış temposuyla yaklaşık kaç gün yeter. Aynı ciroyla daha az stok taşıyan işletme, aradaki parayı tedarikçi ödemesine veya vadeli satışa ayırabilir.</p>
+  <p>Formülde pay satış cirosu değil, satılan malın maliyetidir. Ciroyu kullanırsanız hız kâr marjınız kadar yüksek çıkar ve iki ürünü karşılaştırmak anlamsızlaşır. Maliyeti bilmiyorsanız araç, dönem başı stok artı dönem alışları eksi dönem sonu stok formülüyle kendisi bulur. Stokları da satış fiyatıyla değil alış maliyetiyle girin, sayım tutarı bunun için en güvenilir kaynaktır.</p>
+  <p>Hedef gün alanı sonucu karara çevirir. Yazdığınız gün kadar satışı karşılayacak stok tutarı hesaplanır ve ortalama stokla farkı gösterilir. Bu para kendiliğinden gelmez: alımı kısarak ve yavaş ürünü eriterek ortaya çıkar. Hazır bir sektör ortalaması vermiyoruz, çünkü taze gıda ile hırdavatın doğru stok günü aynı olamaz ve elimizde bunu kanıtlayan güvenilir bir veri yok.</p>
+  <p>Hesap iki sayının ortalamasına dayanır, bu yüzden dönem başı ile sonu tesadüfen düşük olan mevsimlik işletmede hızı olduğundan iyi gösterebilir. Aylık sayım varsa ortalamayı siz hesaplayıp iki alana aynı rakamı yazabilirsiniz. Dönem uzunluğunu üç ay için 90, bir ay için 30 yazın. O zaman devir hızı yıllık değil, yazdığınız döneme ait olur.</p>
+  <h2>Örnek: yıllık 1,2 milyon ₺ maliyetli satış yapan mağaza</h2>
+  <p>Yıla 240.000 ₺ stokla giren, 1.160.000 ₺ alış yapan ve yılı 200.000 ₺ stokla kapatan mağazada satılan malın maliyeti 1.200.000 ₺ çıkar. Ortalama stok 220.000 ₺ olduğu için devir hızı 5,45 kez, stok günü 66,9’dur.</p>
+  <p>Yöneticisi stok gününü 45’e indirmek istesin. Kırk beş günlük satışın maliyeti 147.945,21 ₺ eder. Ortalama stokla aradaki 72.054,79 ₺, raftan kasaya dönebilecek paradır. Mağaza bunu ek krediyle değil, yavaş dönen ürünün alımını azaltarak sağlar.</p>
+  <h2>Kaynaklar ve son güncelleme</h2>
+  <p><b>Son güncelleme:</b> <time datetime="2026-10-31">31 Ekim 2026</time>. Bu araç mevzuat oranı kullanmaz; hesap girdiğiniz değerlerle yapılır.</p>
+  
+  
+  <div class="ar-prog"><p>Market programında sayım, kritik stok ve sipariş önerisi bir arada çalışır; alış faturası stoğu ve maliyeti kendiliğinden günceller.</p><a class="btn p" href="/marketprogrami">Market programı <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a></div>
+  <h2>Sık sorulan sorular</h2>
+  <div class="faq"><details open><summary>Stok devir hızı formülü nedir?</summary><p>Satılan malın maliyeti, ortalama stoğa bölünür. Ortalama stok ise dönem başı ve dönem sonu stokunun yarısıdır.</p></details><details><summary>Stok devir hızı kaç olmalı?</summary><p>Tek doğru rakam yoktur. Kendi önceki döneminizle ve benzer ürün gruplarınızla karşılaştırmak en sağlıklısıdır.</p></details><details><summary>Stok günü nasıl hesaplanır?</summary><p>Dönem gün sayısı devir hızına bölünür. 365 gün ve 5,45 kez için yaklaşık 67 gün çıkar.</p></details><details><summary>Devir hızı çok yüksekse iyi midir?</summary><p>Her zaman değil. Sürekli yok satıyorsanız yüksek hız kaçan satışı gizliyor olabilir.</p></details><details><summary>Eksi sonuç neden hata veriyor?</summary><p>Dönem sonu stok, başlangıç ve alış toplamını aşarsa maliyet eksi çıkar. Bu genelde eksik girilmiş alış veya hatalı sayım demektir.</p></details></div>
+</div>
+<h2 class="ar-grup">İlgili araçlar</h2><div class="ar-kartlar"><a href="/araclar/nakit-akisi-hesaplama/"><b>Nakit Akışı Hesaplama</b><span>Kasanın hangi ay eksiye düşeceğini ve tahsilat gecikirse ne olacağını görün</span></a><a href="/araclar/kar-marji-hesaplama/"><b>Kâr Marjı ve Başabaş Hesaplama</b><span>Marj ile kârlılık farkını, hedef fiyatı ve başabaş adedini bulun</span></a><a href="/araclar/zincirleme-iskonto-hesaplama/"><b>Zincirleme İskonto Hesaplama</b><span>10+5+3 gibi iskontoları ve mal fazlasını net fiyata çevirip teklifleri karşılaştırın</span></a><a href="/araclar/pazaryeri-komisyon-hesaplama/"><b>Pazaryeri Komisyon ve Kâr Hesaplama</b><span>Komisyon, kargo ve hizmet bedeli sonrası gerçek kârı ve hedef fiyatı görün</span></a></div>
+</div></section>
+</main>
+<footer class="ft"><div class="w">
+  <div class="cols">
+    <div><a class="logo" href="/"><img src="/assets/icons/icon-64.png" alt="" width="34" height="34"><span class="wm"><b>NEB</b><i>SOFT</i></span></a><p>Türkiye'deki işletmeler için bulut tabanlı yazılımlar ve ücretsiz iş araçları.</p><p><a href="tel:+908505550034">0850 555 00 34</a><a href="mailto:destek@nebsoft.com.tr">destek@nebsoft.com.tr</a></p></div>
+    <div><h4><a href="/programlar" style="color:inherit">Programlar</a></h4><a href="/randevusistemi">Randevu sistemi</a><a href="/klinikprogrami">Klinik programı</a><a href="/eczaneprogrami">Eczane programı</a><a href="/kuyumcuprogrami">Kuyumcu programı</a><a href="/nakliyatprogrami">Nakliyat programı</a><a href="/okulservisiprogrami">Okul servisi programı</a></div><div><h4>&nbsp;</h4><a href="/adisyonprogrami">Adisyon programı</a><a href="/emlakprogrami">Emlak programı</a><a href="/kargotakipprogrami">Kargo takip programı</a><a href="/otogaleriprogrami">Oto galeri programı</a><a href="/temizlikprogrami">Temizlik şirketi programı</a><a href="/kooperatifprogrami">Kooperatif programı</a></div><div><h4>&nbsp;</h4><a href="/marketprogrami">Market programı</a><a href="/kursprogrami">Kurs programı</a><a href="/biletsatisprogrami">Bilet satış programı</a><a href="/hukukburosuprogrami">Hukuk bürosu programı</a><a href="/mobilustaprogrami">Mobil usta programı</a><a href="/lastikciprogrami">Lastikçi programı</a></div>
+  </div>
+  <div class="copy">© 2026 NEBSOFT. Tüm hakları saklıdır. · <a href="/araclar" style="display:inline">Ücretsiz araçlar</a> · <a href="/kvkk/" style="display:inline">KVKK ve yasal metinler</a></div>
+</div></footer>
+<script src="/site/assets/araclar-hesap.js"></script>
+<script src="/site/assets/araclar.js"></script>
+<script>AR.baslat({dosyaAdi:"stok-devir-hizi-hesaplama",gerekli:[["acilis","Dönem başı stok (₺)"],["kapanis","Dönem sonu stok (₺)"]],hesap:function (v, H) {
+    const r = H.stokDevir({ smm: v.smm, alis: v.mod === 'alis' ? (v.alis || 0) : undefined, acilis: v.acilis, kapanis: v.kapanis, gun: v.gun > 0 ? v.gun : 365, hedefGun: v.hedefGun });
+    return H.tablo([['Stok devir hızı', `${H.sayi(r.devir)} kez`, 1], ['Stokta kalma süresi', `${H.sayi(r.gun, 1)} gün`, 1], ['Satılan malın maliyeti', H.tl(r.smm)], ['Ortalama stok', H.tl(r.ortalama)], r.hedefStok != null ? [`${H.sayi(v.hedefGun, 0)} günlük stok tutarı`, H.tl(r.hedefStok)] : null, r.hedefStok != null ? [r.serbest >= 0 ? 'Serbest kalacak para' : 'Ek stok yatırımı', H.tl(Math.abs(r.serbest)), 1] : null])
+      + H.not('Sonuç bütün stoğun ortalamasıdır. Çok satan ürün, rafta bekleyen ürünü gizleyebilir; mümkünse grup grup hesaplayın.');
+  }});</script>
+</body>
+</html>

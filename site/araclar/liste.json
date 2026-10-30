@@ -1,5 +1,5 @@
 {
-  "guncelleme": "2026-10-30",
+  "guncelleme": "2026-10-31",
   "dizin": "/araclar",
   "araclar": [
     {
@@ -399,6 +399,66 @@
       "index": true
     },
     {
+      "slug": "amortisman-hesaplama",
+      "yol": "/araclar/amortisman-hesaplama/",
+      "ad": "Amortisman Hesaplama",
+      "baslik": "Amortisman Hesaplama: Normal ve Azalan Bakiye Tablosu | NEBSOFT",
+      "ozet": "Alış bedelini ve faydalı ömrü girin, normal ve azalan bakiye amortismanını yıl yıl görün. Binek otomobilde ilk yıl ay hesabı eklenir, üyelik gerekmez.",
+      "kategori": "ticaret",
+      "program": "onmuhasebeprogrami",
+      "guncelleme": "2026-10-31",
+      "kelime": 400,
+      "index": true
+    },
+    {
+      "slug": "zincirleme-iskonto-hesaplama",
+      "yol": "/araclar/zincirleme-iskonto-hesaplama/",
+      "ad": "Zincirleme İskonto Hesaplama",
+      "baslik": "Zincirleme İskonto Hesaplama: 10+5+3 Net Fiyat Bulma | NEBSOFT",
+      "ozet": "Kademeli iskontoyu 10+5+3 biçiminde yazın, net fiyatı ve tek orana denk iskontoyu görün. Mal fazlası dahil tedarikçi tekliflerini yan yana karşılaştırın.",
+      "kategori": "ticaret",
+      "program": "toptanciprogrami",
+      "guncelleme": "2026-10-31",
+      "kelime": 346,
+      "index": true
+    },
+    {
+      "slug": "ortalama-vade-hesaplama",
+      "yol": "/araclar/ortalama-vade-hesaplama/",
+      "ad": "Ortalama Vade Hesaplama",
+      "baslik": "Ortalama Vade Hesaplama: Çek ve Senet Vadesi Bulma | NEBSOFT",
+      "ozet": "Çek ve senetlerin tutarını ve tarihini girin, tutar ağırlıklı ortalama vadeyi tarih olarak görün. Aylık oran yazarsanız basit vade farkı da hesaplanır.",
+      "kategori": "ticaret",
+      "program": "onmuhasebeprogrami",
+      "guncelleme": "2026-10-31",
+      "kelime": 326,
+      "index": true
+    },
+    {
+      "slug": "nakit-akisi-hesaplama",
+      "yol": "/araclar/nakit-akisi-hesaplama/",
+      "ad": "Nakit Akışı Hesaplama",
+      "baslik": "Nakit Akışı Hesaplama: Aylık Tablo ve Eksi Bakiye Uyarısı | NEBSOFT",
+      "ozet": "Aylık tahsilat ve ödemelerinizi girin, kasanın hangi ay eksiye düştüğünü ve gereken finansmanı görün. Tahsilat gecikirse tablonun nasıl değiştiğini deneyin.",
+      "kategori": "ticaret",
+      "program": "onmuhasebeprogrami",
+      "guncelleme": "2026-10-31",
+      "kelime": 366,
+      "index": true
+    },
+    {
+      "slug": "stok-devir-hizi-hesaplama",
+      "yol": "/araclar/stok-devir-hizi-hesaplama/",
+      "ad": "Stok Devir Hızı Hesaplama",
+      "baslik": "Stok Devir Hızı Hesaplama: Stok Günü ve Bağlı Para | NEBSOFT",
+      "ozet": "Dönem başı ve sonu stok ile satılan malın maliyetinden stok devir hızını ve stok gününü bulun. Hedef güne inerseniz kasaya ne kadar para döneceğini görün.",
+      "kategori": "ticaret",
+      "program": "marketprogrami",
+      "guncelleme": "2026-10-31",
+      "kelime": 366,
+      "index": true
+    },
+    {
       "slug": "kdv-hesaplama",
       "yol": "/araclar/kdv-hesaplama/",
       "ad": "KDV Hesaplama",
@@ -468,6 +528,18 @@
       "program": "butikprogrami",
       "guncelleme": "2026-10-30",
       "kelime": 265,
+      "index": true
+    },
+    {
+      "slug": "personel-maliyeti-hesaplama",
+      "yol": "/araclar/personel-maliyeti-hesaplama/",
+      "ad": "Personel Maliyeti Hesaplama",
+      "baslik": "Personel Maliyeti Hesaplama: İşverene Toplam Maliyet 2026 | NEBSOFT",
+      "ozet": "Brüt ücreti yazın, 2026 SGK ve işsizlik işveren primleriyle aylık ve yıllık maliyeti görün. Yan haklar, kıdem karşılığı ve gereken ek ciro da hesaplanır.",
+      "kategori": "calisma",
+      "program": "personeltakipprogrami",
+      "guncelleme": "2026-10-31",
+      "kelime": 402,
       "index": true
     },
     {
