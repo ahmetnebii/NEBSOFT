@@ -434,14 +434,14 @@
       if (this._flight) { this._again = true; return; }
       clearTimeout(this._rt); this._rt = null;
       if (!this._dirty) return;
-      this._flight = true; this._dirty = false; const sent = JSON.stringify(this.data); const onay = this._onay;
+      this._flight = true; this._dirty = false; const sent = JSON.stringify(this.data); const onay = (this._onay || []).filter((x) => Date.now() - x.at < 5 * 60e3); this._onay = onay; const onayGiden = onay.slice();
       syncState('Kaydediliyor…', 'run');
       try {
-        const res = await fetch('/api/data/' + this.name, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: `{"base":${this._v}${this.serverRole ? `,"rol":${JSON.stringify(this.serverRole)}` : ''}${onay ? `,"onay":${JSON.stringify(onay)}` : ''},"data":${sent}}` });
+        const res = await fetch('/api/data/' + this.name, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: `{"base":${this._v}${this.serverRole ? `,"rol":${JSON.stringify(this.serverRole)}` : ''}${onayGiden.length ? `,"onay":${JSON.stringify(onayGiden.map((x) => x.b))}` : ''},"data":${sent}}` });
         const j = await res.json().catch(() => ({}));
         if (res.ok) { this._v = j.version; this._base = sent; this._fails = 0; if (/"users":\[.*?"pin":/s.test(sent)) this._pinTemizle(sent); try { localStorage.removeItem(pendKey(this.name)); } catch (e) { /* yok */ } syncState('Kaydedildi', 'ok');
-          if (j.onayKullanildi && this._onay === onay) this._onay = null;
-          if (j.onayRed) { this._v = j.version - 1; this._dirty = true; syncState('Yetkili onayı olmayan değişiklik geri alındı', 'err'); toast('Yetkili onayı doğrulanamadı, bu değişiklik kaydedilmedi. İşlemi yeniden yapın.', 'err'); } } // eski sürümle gönderim çakışır, sunucudaki değer ekrana döner
+          if (Array.isArray(j.onayHarcanan)) { const giden = new Set(j.onayHarcanan.map((i) => onayGiden[i])); this._onay = (this._onay || []).filter((x) => !giden.has(x)); }
+          if (j.onayRed) { this._v = j.version - 1; this._dirty = true; syncState('Yetkili onayı olmayan değişiklik geri alındı', 'err'); toast('Yetkili onayı sunucuda doğrulanamadı, bu işlem geri alındı. İnternet yokken verilen onaylar internet gelince doğrulanır ve bu şekilde geri alınabilir. İşlemi yeniden yapın.', 'err', 9000); } } // eski sürümle gönderim çakışır, sunucudaki değer ekrana döner
         else if (res.status === 409 && j.code === 'rol') { this._backup(); this._dirty = false; this._flight = false; syncState(j.error || 'Hesap yetkiniz değişti', 'err'); location.reload(); return; } // rol değişti: bekleyen veri yeni görünümle birleşir
         else if (res.status === 409 && j.code === 'conflict') {
           // Başka cihaz kaydetmiş: birleştir ve yeniden gönder
@@ -596,7 +596,8 @@
     return rec.portalCode;
   }
   // Yetkili onayı: kullanıcının rolü yetmiyorsa yetkili kişi PIN'ini girer (kasada iade, büyük indirim, fiyat değiştirme gibi).
-  //   const by = await NS.approve(app, 'İade', ['admin']); if (!by) return;  → onaylayan kullanıcı (işlem geçmişine yazılır) ya da null
+  //   const by = await NS.approve(app, 'İade', ['admin'], 'iade'); if (!by) return;  → onaylayan kullanıcı (işlem geçmişine yazılır) ya da null
+  // Son bağımsız değişken sunucu kuralındaki işlem türüdür (rol-kural.js onayli, onayTurleri): belirteç yalnızca o işlemi açar. Sunucuda karşılığı olmayan onayda boş bırakılır.
   // PIN doğrulama. Bulutta sunucu karşılaştırır, özet tarayıcıya inmez; çevrimdışı giriş için son başarılı giriş bu cihazda özetli tutulur.
   // Sunucusuz kurulumda özet kullanıcı kaydındadır. o: { uid } personel girişi, { roles } yetkili onayı.
   const pinHex = (b) => [...new Uint8Array(b)].map((x) => x.toString(16).padStart(2, '0')).join('');
@@ -613,11 +614,11 @@
     const aday = db.all('users', (u) => u.active !== false && (o.uid ? u.id === o.uid : u.role === 'admin' || (o.roles || []).includes(u.role)));
     if (db.cloud) {
       try {
-        const r = await api('POST', `/api/data/${db.name}/pin`, { pin, uid: o.uid, roles: o.roles }); const u = r.user; if (r.onay) db._onay = r.onay; // yetkili onayı belirteci: sonraki kayıtla sunucuya gider
+        const r = await api('POST', `/api/data/${db.name}/pin`, { pin, uid: o.uid, roles: o.roles, islem: o.islem }); const u = r.user; if (r.onay) db._onay = [...(db._onay || []), { b: r.onay, at: Date.now() }].slice(-10); // yetkili onayı belirteci: işlem türüne bağlıdır, sonraki kayıtla sunucuya gider
         if (u && o.uid) { const h = await pinYap(pin); try { if (h) localStorage.setItem(pinCihaz(db, u.id), h); } catch (e) { /* yok */ } }
         return u || null;
       } catch (x) { if (x.status === 403) return null; if (x.status) throw x; }
-      for (const u of aday) { let k = null; try { k = localStorage.getItem(pinCihaz(db, u.id)); } catch (e) { /* yok */ } if (k && await pinEs(k, pin)) return u; }
+      for (const u of aday) { let k = null; try { k = localStorage.getItem(pinCihaz(db, u.id)); } catch (e) { /* yok */ } if (k && await pinEs(k, pin)) { if (db.serverRole && !o.uid) toast('İnternet yok: onay bu cihazda kabul edildi. Sunucu internet gelince doğrular, doğrulayamazsa işlem geri alınır.', 'warn', 8000); return u; } }
       throw new Error('İnternet yok. Çevrimdışı giriş yalnızca bu cihazda daha önce giriş yapan kullanıcıya açıktır.');
     }
     for (const u of aday) {
@@ -627,10 +628,10 @@
     }
     return null;
   }
-  async function approve(app, reason, roles = ['admin']) {
+  async function approve(app, reason, roles = ['admin'], islem = '') {
     const me = NS.currentUser; if (!app.opts.auth || !me || me.role === 'admin' || roles.includes(me.role)) return me || {};
     const v = await formModal({ title: 'Yetkili onayı', fields: [{ name: 'pin', label: `${reason} — yetkili PIN`, type: 'password', required: true }], submitLabel: 'Onayla' }); if (!v) return null;
-    let u = null; try { u = await pinKontrol(app.db, v.pin, { roles }); } catch (x) { toast(x.message, 'err'); return null; }
+    let u = null; try { u = await pinKontrol(app.db, v.pin, { roles, islem }); } catch (x) { toast(x.message, 'err'); return null; }
     if (!u) { toast('PIN hatalı — işlem yapılmadı', 'err'); app.db.log('Yetkili onayı reddedildi', reason); return null; }
     app.db.log('Yetkili onayı', `${reason} · onaylayan ${u.name} · isteyen ${me.name}`); return u;
   }

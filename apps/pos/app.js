@@ -213,7 +213,7 @@
 
   // ---------- Satış ekranı ----------
   function salePage(el, param, app) {
-    if (param === 'iade' && cart.mode !== 'return') okBy('İade (fişsiz)').then((u) => { if (u) { cart.mode = 'return'; saveCart(); drawCart(); } });
+    if (param === 'iade' && cart.mode !== 'return') okBy('İade (fişsiz)', 'iade').then((u) => { if (u) { cart.mode = 'return'; saveCart(); drawCart(); } });
     el.innerHTML = `<div class="pos">
       <div class="pos-left">
         <div class="scan">
@@ -298,14 +298,14 @@
     }
   }
   // Yetkili onayı + sepete kayıt (satış fişine "onaylar" olarak geçer; Raporlar > Onaylı işlemler)
-  async function okBy(reason) { const u = await NS.approve(NS.app, reason); if (u && NS.currentUser && u.id !== NS.currentUser.id) { (cart.approvals = cart.approvals || []).push({ by: u.name, reason, at: new Date().toISOString() }); saveCart(); } return u; }
+  async function okBy(reason, islem) { const u = await NS.approve(NS.app, reason, ['admin'], islem); if (u && NS.currentUser && u.id !== NS.currentUser.id) { (cart.approvals = cart.approvals || []).push({ by: u.name, reason, at: new Date().toISOString() }); saveCart(); } return u; }
   async function lineEdit(i) {
     const l = cart.lines[i];
     const v = await formModal({ title: l.name, fields: [{ name: 'qty', label: 'Miktar', type: 'number', step: '0.001' }, { name: 'price', label: 'Birim fiyat (₺)', type: 'number', step: '0.01' }, { name: 'disc', label: 'Satır indirimi (%)', type: 'number', min: 0, max: 100 }], values: l });
     if (v) {
       // Kasiyer: fiyat değiştirme ve sınırı aşan satır indirimi yetkili onayı ister (onaylayan işlem geçmişine yazılır)
       const disc = NS.clamp(v.disc || 0, 0, 100); const lim = Number(S().cashierDiscMax) || 0;
-      if ((Number(v.price) !== Number(l.price) || disc > Math.max(lim, Number(l.disc) || 0)) && !(await okBy(`${l.name}: ${Number(v.price) !== Number(l.price) ? 'fiyat ' + money(v.price) : ''}${disc ? ' indirim %' + disc : ''}`))) return focusScan();
+      if ((Number(v.price) !== Number(l.price) || disc > Math.max(lim, Number(l.disc) || 0)) && !(await okBy(`${l.name}: ${Number(v.price) !== Number(l.price) ? 'fiyat ' + money(v.price) : ''}${disc ? ' indirim %' + disc : ''}`, 'indirim'))) return focusScan();
       if (v.qty <= 0) cart.lines.splice(i, 1); else Object.assign(l, { qty: v.qty, price: v.price, disc }); saveCart(); drawCart();
     }
     focusScan();
@@ -320,7 +320,7 @@
     else if (t === 'pay') { if (c.lines.length) return payModal(); }
     else if (t === 'disc') {
       const v = await formModal({ title: 'Genel İndirim', fields: [{ name: 'type', label: 'Tür', type: 'select', options: [{ value: 'tl', label: 'Tutar (₺)' }, { value: 'pct', label: 'Yüzde (%)' }] }, { name: 'val', label: 'Değer', type: 'number', step: '0.01' }], values: { type: 'tl', val: cart.manual || '' } });
-      if (v) { const amt = v.type === 'pct' ? r2((c.total + (cart.manual || 0)) * (v.val || 0) / 100) : (v.val || 0); const lim = Number(S().cashierDiscMax) || 0; const base = c.total + (cart.manual || 0); if (amt > 0 && (!base || amt / base * 100 > lim) && !(await okBy(`Genel indirim ${money(amt)}`))) return; cart.manual = amt; saveCart(); drawCart(); }
+      if (v) { const amt = v.type === 'pct' ? r2((c.total + (cart.manual || 0)) * (v.val || 0) / 100) : (v.val || 0); const lim = Number(S().cashierDiscMax) || 0; const base = c.total + (cart.manual || 0); if (amt > 0 && (!base || amt / base * 100 > lim) && !(await okBy(`Genel indirim ${money(amt)}`, 'indirim'))) return; cart.manual = amt; saveCart(); drawCart(); }
     } else if (t === 'coupon') {
       const code = await NS.prompt('Kupon kodu', cart.coupon || '', { title: 'Kupon' });
       if (code !== null) {
@@ -332,7 +332,7 @@
       db.insert('held', { cart: JSON.parse(JSON.stringify(cart)), total: c.total, user: NS.currentUser && NS.currentUser.id });
       cart = newCart(); saveCart(); drawCart(); toast('Fiş bekletmeye alındı', 'ok');
     } else if (t === 'held') return heldModal();
-    else if (t === 'ret') { if (cart.mode !== 'return' && !(await okBy('İade (fişsiz)'))) return; cart.mode = cart.mode === 'return' ? 'sale' : 'return'; saveCart(); drawCart(); }
+    else if (t === 'ret') { if (cart.mode !== 'return' && !(await okBy('İade (fişsiz)', 'iade'))) return; cart.mode = cart.mode === 'return' ? 'sale' : 'return'; saveCart(); drawCart(); }
     focusScan();
   }
   function chooseCustomer() {
@@ -1047,7 +1047,7 @@
     draw();
   }
   async function refundSale(s) {
-    const u = await NS.approve(NS.app, `${s.no} iadesi`); if (!u) return;
+    const u = await NS.approve(NS.app, `${s.no} iadesi`, ['admin'], 'iade'); if (!u) return;
     cart = newCart(); cart.mode = 'return'; cart.customer = s.customer; cart.refundOf = s.id;
     if (NS.currentUser && u.id !== NS.currentUser.id) cart.approvals = [{ by: u.name, reason: `${s.no} iadesi`, at: new Date().toISOString() }];
     // Müşterinin ödediği net birim fiyat: satır iskontosu + o günkü kampanya/kupon/ek indirim oranı dağıtılır (bugünkü fiyat/kampanya değil)

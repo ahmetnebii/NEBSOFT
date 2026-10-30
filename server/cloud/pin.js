@@ -61,18 +61,31 @@ async function gecis(db) {
   return n;
 }
 
-// Yetkili onayı belirteci: PIN sunucuda doğrulandığında verilir, hesaba ve programa bağlıdır, 5 dakika geçerlidir, korunan bir değişiklikte bir kez kullanılır.
-// Hangi işlem için alındığı yazmaz: NS.approve'a işlem kimliği geçmek tüm programları değiştirirdi. Süre ve tek kullanım bu boşluğu daraltır.
-const ONAY_SURE = 5 * 60e3; const kullanilan = new Map();
+// Yetkili onayı belirteci: PIN sunucuda doğrulandığında verilir; hesaba, programa ve işlem türüne bağlıdır, 5 dakika geçerlidir, tek kullanımlıktır.
+// Harcanan belirteç veritabanında durur (onay_harcanan): süreç yeniden başlayınca da geçmez, birden çok süreç aynı listeyi görür. Kayıt, belirtecin süresi bitince silinir.
+const ONAY_SURE = 5 * 60e3;
 const onayMac = (g) => cfg.mac(`yetkili-onay:${g}`);
-function onayUret(tid, app, hesap, onaylayan) { const g = Buffer.from(JSON.stringify({ t: tid, a: app, h: hesap, o: onaylayan, n: crypto.randomBytes(9).toString('base64url'), e: Date.now() + ONAY_SURE })).toString('base64url'); return `${g}.${onayMac(g)}`; }
+function onayUret(tid, app, hesap, onaylayan, islem) { const g = Buffer.from(JSON.stringify({ t: tid, a: app, h: hesap, o: onaylayan, i: String(islem || ''), n: crypto.randomBytes(9).toString('base64url'), e: Date.now() + ONAY_SURE })).toString('base64url'); return `${g}.${onayMac(g)}`; }
 function onayOku(belirtec, tid, app, hesap) {
   if (typeof belirtec !== 'string' || belirtec.length > 400 || !belirtec.includes('.')) return null;
   const [g, imza] = belirtec.split('.'); if (!esit(onayMac(g), imza)) return null;
   let o; try { o = JSON.parse(Buffer.from(g, 'base64url').toString('utf8')); } catch (e) { return null; }
-  return o && o.t === tid && o.a === app && o.h === hesap && o.e > Date.now() && !kullanilan.has(o.n) ? o : null;
+  return o && o.t === tid && o.a === app && o.h === hesap && o.e > Date.now() && o.i ? o : null;
 }
-// Tek süreç belleğindedir (hız sınırları gibi). Yeniden başlatmada en çok 5 dakikalık belirteç tekrar geçerli olabilir.
-function onayHarca(o) { const an = Date.now(); if (kullanilan.size > 5000) for (const [n, e] of kullanilan) if (e < an) kullanilan.delete(n); kullanilan.set(o.n, o.e); }
+// İstemcinin gönderdiği listeden imzası doğru, süresi geçmemiş, harcanmamış belirteçler. sira: listedeki yeri (istemci harcananı bundan siler).
+async function onayAyikla(db, liste, tid, app, hesap) {
+  const adaylar = (Array.isArray(liste) ? liste : [liste]).slice(0, 10).map((b, sira) => { const o = onayOku(b, tid, app, hesap); return o ? { ...o, sira } : null; }).filter(Boolean); if (!adaylar.length) return [];
+  const var_ = new Set((await db.q(`SELECT n FROM onay_harcanan WHERE n IN (${adaylar.map(() => '?').join(',')})`, adaylar.map((o) => o.n))).map((r) => r.n)); return adaylar.filter((o) => !var_.has(o.n));
+}
+// ek.harcanan: Map(işlem → adet). Harcanacak belirteçler döner.
+const onaySec = (onaylar, harcanan) => { const sec = []; for (const [i, adet] of harcanan || []) sec.push(...onaylar.filter((o) => o.i === i).slice(0, adet)); return sec; };
+// Kayıt yazılamadıysa (sürüm çakışması) belirteç boşa gitmesin
+async function onayGeriVer(db, secilen) { for (const o of secilen) await db.q('DELETE FROM onay_harcanan WHERE n=?', [o.n]); }
+// false: aynı anda başka istek aynı belirteci harcadı
+async function onayHarca(db, secilen) {
+  await db.q('DELETE FROM onay_harcanan WHERE bitis < ?', [Date.now()]); const yazilan = [];
+  for (const o of secilen) { try { await db.q('INSERT INTO onay_harcanan (n, bitis) VALUES (?,?)', [o.n, o.e]); yazilan.push(o); } catch (e) { if (e.code !== 'ER_DUP_ENTRY') throw e; await onayGeriVer(db, yazilan); return false; } }
+  return true;
+}
 
-module.exports = { ozet, dogrula, yazimda, gorunum, gecis, onayUret, onayOku, onayHarca };
+module.exports = { ozet, dogrula, yazimda, gorunum, gecis, onayUret, onayOku, onayAyikla, onaySec, onayHarca, onayGeriVer };

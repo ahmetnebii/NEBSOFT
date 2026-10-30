@@ -15,26 +15,16 @@ Yeni oturum bu dosyayla başlar. Sonra `CLAUDE.md` ve `docs/DEVIR.md`. Ana dal: 
 - Kalan 9 programın rolleri sunucuya taşınacak.
 - Alt ajan serbest.
 
-## Arka planda çalışan dallar
+## Durum
 
-Bu dallar bu oturum bitmeden yayınlanmış olmayabilir. `git branch -a` ile bak, `devir/hepsi` içinde yoksa birleştir.
-
-| Dal | İçerik | Birleştirirken dikkat |
-|---|---|---|
-| `ozellik/dosya-deposu` | Dosya deposu, E-ticaret, Kiralama, Galeri fotoğrafları | Kiralama hasar fotoğrafı herkese açık olmamalı |
-| `guvenlik/roller-son` | Kalan 9 program rolü, işleme bağlı onay belirteci | `rol-kural.js`, `routes.js` |
-| `masaustu/electron-45` | Electron 45, küçük bulgular, `user` alanı şifreleme, test veritabanı adları | `secrets.js`, `sw.js` sürümü |
-
-Bir dal yoksa veya commit içermiyorsa o iş yarım kalmıştır: `.claude/worktrees/` altındaki çalışma ağacına bak, yoksa işi yeniden başlat.
-
-Birleştirme sırası: dosya deposu, roller, Electron. Her birleştirmeden sonra `sw.js` V artır, `node site/tools/build-sites.js`, sonunda tam `npm test` (MariaDB gerekir, aşağıda), `node scripts/hosting-paketi.js`, `git push`.
+Dosya deposu, kalan rol kuralları, işleme bağlı onay belirteci ve Electron 45 `devir/hepsi` içinde. Arka planda çalışan iş yok.
 
 ## Sıradaki iş
 
 1. Yukarıdaki dalları birleştir, tam `npm test` çalıştır.
 2. Son birleşik hâli tarayıcıda dene: telefon genişliği, koyu tema, boş liste, hata durumları (`CLAUDE.md` §3). Rollü hesapla henüz tarayıcıda açılmayanlar: musavir, otoservis, adisyon, kuyumcu, otel, randevu, site, galeri, eticaret.
-3. Dalga 0 satışa hazırlık (`docs/pazarlama/PAZAR-GENISLEME.md`), yalnız kod işi olanlar. Kullanıcı bilgisi isteyenleri beklet.
-4. `docs/DEVIR.md` ve `docs/GUVENLIK-RAPORU.md` güncelle.
+2. Dalga 0 satışa hazırlık (`docs/pazarlama/PAZAR-GENISLEME.md`), yalnız kod işi olanlar. Kullanıcı bilgisi isteyenleri beklet.
+3. `docs/DEVIR.md` ve `docs/GUVENLIK-RAPORU.md` güncelle.
 
 ## Kullanıcıdan beklenenler
 

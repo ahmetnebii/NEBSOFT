@@ -653,7 +653,7 @@ route('PUT', '/api/data/:app', { auth: 'user', bodyMax: 20e6, limit: ['data', 60
     if (!srv && prog) throw err(403, 'Programı önce hesap sahibi açmalıdır');
   }
   // Rolün yazamadığı alanlar, sürümü base'e eşit olan satırdan geri konur; UPDATE aynı sürüme koşulludur. Gizli bilgi mührü bundan sonra uygulanır (şifreli değerler aynen kalır).
-  const onay = prog && c.body.onay ? pinler.onayOku(c.body.onay, c.user.tenant_id, app, c.user.id) : null; const ek = { dept: k && k.dept, onay: !!onay };
+  const onaylar = prog && c.body.onay ? await pinler.onayAyikla(db, c.body.onay, c.user.tenant_id, app, c.user.id) : []; const ek = { dept: k && k.dept, onay: new Map() }; onaylar.forEach((o) => ek.onay.set(o.i, (ek.onay.get(o.i) || 0) + 1));
   const yaz = k ? kural.geriKoy(app, k.rol, data, srvDoc, ek) : data;
   // Kimlik bilgileri şifreli saklanır; programın geri gönderdiği yer tutucular mevcut şifreli değeri korur
   const text = await belge.kapat(c.user.tenant_id, app, JSON.stringify(secrets.seal(app, pinler.yazimda(c.user.tenant_id, app, yaz, srvDoc), srvDoc)));
@@ -662,17 +662,19 @@ route('PUT', '/api/data/:app', { auth: 'user', bodyMax: 20e6, limit: ['data', 60
     try { await db.q('INSERT INTO app_data (tenant_id, app, data, version, updated, updated_by) VALUES (?,?,?,?,?,?)', [c.user.tenant_id, app, text, 1, now(), c.user.id]); } catch (e) { if (e.code === 'ER_DUP_ENTRY') throw err(409, 'Sürüm çakışması', await conflict(c.user.tenant_id, app, k)); throw e; }
     return { ok: true, version: 1 };
   }
+  // Belirteç yazmadan önce harcanır: aynı belirteçle gelen ikinci istek ya burada ya sürüm denetiminde düşer. Kayıt yazılamazsa geri verilir.
+  const secilen = pinler.onaySec(onaylar, ek.harcanan); if (secilen.length && !(await pinler.onayHarca(db, secilen))) throw err(409, 'Sürüm çakışması', await conflict(c.user.tenant_id, app, k));
   const r = await db.q('UPDATE app_data SET data=?, version=version+1, updated=?, updated_by=? WHERE tenant_id=? AND app=? AND version=?', [text, now(), c.user.id, c.user.tenant_id, app, base]);
-  if (!r.affectedRows) throw err(409, 'Sürüm çakışması', await conflict(c.user.tenant_id, app, k));
-  if (ek.onayKullanildi) pinler.onayHarca(onay);
-  if (ek.reddedilen) await audit(c, 'Yetkili onayı olmadan değişiklik reddedildi', `${app} · ${ek.reddedilen.join(', ')}`);
+  if (!r.affectedRows) { await pinler.onayGeriVer(db, secilen); throw err(409, 'Sürüm çakışması', await conflict(c.user.tenant_id, app, k)); }
+  if (ek.reddedilen) await audit(c, 'Yetkili onayı olmadan değişiklik reddedildi', `${app} · ${(ek.redIslem || []).join(', ')} · ${ek.reddedilen.join(', ')}`);
+  if (secilen.length) await audit(c, 'Yetkili onayı kullanıldı', `${app} · ${secilen.map((o) => o.i).join(', ')}`);
   // Saatlik anlık görüntü (geri dönüş için son 48 saat)
   const last = await db.one('SELECT at FROM app_data_history WHERE tenant_id=? AND app=? ORDER BY id DESC LIMIT 1', [c.user.tenant_id, app]);
   if (!last || now() - new Date(last.at) > 3600e3) {
     await db.q('INSERT INTO app_data_history (tenant_id, app, version, data, at) VALUES (?,?,?,?,?)', [c.user.tenant_id, app, base + 1, text, now()]);
     await db.q('DELETE FROM app_data_history WHERE tenant_id=? AND app=? AND at < ?', [c.user.tenant_id, app, addDays(now(), -2)]);
   }
-  return { ok: true, version: base + 1, ...(ek.onayKullanildi ? { onayKullanildi: true } : {}), ...(ek.reddedilen ? { onayRed: ek.reddedilen } : {}) };
+  return { ok: true, version: base + 1, ...(ek.onayKullanildi ? { onayKullanildi: true, onayHarcanan: secilen.map((o) => o.sira) } : {}), ...(ek.reddedilen ? { onayRed: ek.reddedilen } : {}) };
 });
 async function conflict(tid, app, k) { const r = await db.one('SELECT data, version FROM app_data WHERE tenant_id=? AND app=?', [tid, app]); return { code: 'conflict', data: r ? gorunum(app, k, await belge.oku(tid, app, r)) : null, version: r ? r.version : 0, ...rolAlani(k) }; }
 // Yetkili onayı: PIN'ler rolü olan hesaba inmediği için karşılaştırma burada yapılır. Hesap + program başına 5 hatada 15 dakika kilit; PIN hiçbir kayda yazılmaz.
@@ -695,8 +697,8 @@ route('POST', '/api/data/:app/pin', { auth: 'user', limit: ['pin', 30, 60e3] }, 
   }
   pinHata.delete(key); if (!uidIn) await audit(c, 'Yetkili PIN onaylandı', `${app} · ${hit.id}`);
   // Rolü olan hesapta korunan alan yalnızca bu belirteçle değişir. PIN sahibinin rolüne sunucu kuralı karar verir, istemcinin gönderdiği roller değil.
-  const hr = !uidIn ? await hesapRolu(c.user, app) : null; const izin = hr && !hr.ortak && !hr.hata ? kural.onayRolleri(app, hr.rol) : null;
-  return { ok: true, user: { id: hit.id, name: hit.name, role: hit.role }, ...(izin && izin.includes(hit.role) ? { onay: pinler.onayUret(c.user.tenant_id, app, c.user.id, hit.id) } : {}) };
+  const hr = !uidIn ? await hesapRolu(c.user, app) : null; const izin = hr && !hr.ortak && !hr.hata ? kural.onayRolleri(app, hr.rol) : null; const islem = typeof c.body.islem === 'string' ? c.body.islem.slice(0, 30) : ''; const tur = izin && kural.onayIslemleri(app, hr.rol).includes(islem);
+  return { ok: true, user: { id: hit.id, name: hit.name, role: hit.role }, ...(tur && izin.includes(hit.role) ? { onay: pinler.onayUret(c.user.tenant_id, app, c.user.id, hit.id, islem) } : {}) };
 });
 
 // Hesap sahibi yönetici PIN'ini unutursa: hesap şifresiyle yeni PIN belirler. Şifre yalnızca doğrulanır, hiçbir kayda yazılmaz.

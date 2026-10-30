@@ -248,7 +248,7 @@
     const days = workDays(l.from, l.to); const e = emp(l.emp);
     if (days.some((d) => isClosed(d.slice(0, 7)))) return toast('İzin kapatılmış bir ayı kapsıyor. Önce dönemi açın.', 'err');
     if (overlaps(l)) return toast(`${e.name} için bu tarihlerde onaylı izin var`, 'err');
-    if (l.type === 'I') { const b = balance(e); if (days.length > b.left) { const msg = `Hak aşılıyor: ${b.left} gün kaldı, talep ${days.length} iş günü`; if (isSef()) { if (!(await NS.approve(app, msg, ['admin']))) return; } else if (!(await confirm(`${e.name}: ${msg}. Yine de onaylansın mı?`, { ok: 'Onayla', danger: false }))) return; } }
+    if (l.type === 'I') { const b = balance(e); if (days.length > b.left) { const msg = `Hak aşılıyor: ${b.left} gün kaldı, talep ${days.length} iş günü`; if (isSef()) { if (!(await NS.approve(app, msg, ['admin'], 'hak-asimi'))) return; } else if (!(await confirm(`${e.name}: ${msg}. Yine de onaylansın mı?`, { ok: 'Onayla', danger: false }))) return; } }
     l.status = 'onay'; l.prev = {}; days.forEach((d) => { const k = `${l.emp}|${d}`; l.prev[d] = db.data.ts[k] || null; db.data.ts[k] = { s: l.type, ot: 0 }; }); dirty();
     db.log('İzin onaylandı', e.name); db.save(); smsLeave(l, `${NS.date(l.from)} – ${NS.date(l.to)} izniniz onaylandı.`); app.refresh();
   }

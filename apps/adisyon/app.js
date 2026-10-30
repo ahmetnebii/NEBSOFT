@@ -222,7 +222,7 @@
           const reason = await NS.prompt('İptal nedeni', '', { title: 'Ürün iptali' });
           if (reason === null) return;
           // Mutfağa gitmiş ürünün iptali: garson için yetkili (yönetici / kasiyer) PIN'i
-          const by = await NS.approve(NS.app, `${i.name} iptali`, ['admin', 'kasa']); if (!by) return;
+          const by = await NS.approve(NS.app, `${i.name} iptali`, ['admin', 'kasa'], 'iptal'); if (!by) return;
           i.cancel = true; i.cancelReason = reason || 'Belirtilmedi'; if (NS.currentUser && by.id && by.id !== NS.currentUser.id) i.cancelBy = by.name;
           db.log('Ürün iptal', `${tName(c)} · ${i.name} · ${i.cancelReason}${i.cancelBy ? ' · onaylayan ' + i.cancelBy : ''}`); db.save(); done();
         } },
@@ -236,7 +236,7 @@
         } },
         { label: 'Kaydet', cls: 'primary', onClick: async (close, b) => { const comp = $('#ic', b).checked; const qty = Math.max(1, Number($('#iq', b).value) || 1);
           // İkram ve gönderilmiş üründe adet azaltma: yetkili onayı
-          if ((comp && !i.comp) || (sent && qty < i.qty)) { const by = await NS.approve(NS.app, comp && !i.comp ? `${i.name} ikram` : `${i.name} adet azaltma`, ['admin', 'kasa']); if (!by) return; if (comp && !i.comp) { i.compBy = by.name || ''; db.log('İkram', `${tName(c)} · ${i.name}${by.name ? ' · onaylayan ' + by.name : ''}`); } }
+          if ((comp && !i.comp) || (sent && qty < i.qty)) { const by = await NS.approve(NS.app, comp && !i.comp ? `${i.name} ikram` : `${i.name} adet azaltma`, ['admin', 'kasa'], comp && !i.comp ? 'ikram' : 'adet'); if (!by) return; if (comp && !i.comp) { i.compBy = by.name || ''; db.log('İkram', `${tName(c)} · ${i.name}${by.name ? ' · onaylayan ' + by.name : ''}`); } }
           i.qty = qty; i.note = $('#in', b).value.trim(); i.comp = comp; if (i.status === 'ready') i.status = 'ready'; db.save(); close(); done(); } },
       ],
     });

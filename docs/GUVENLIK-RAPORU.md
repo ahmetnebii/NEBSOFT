@@ -1,5 +1,7 @@
 # NEBSOFT güvenlik denetimi raporu
 
+> **Beşinci tur (30.10.2026, `guvenlik/roller-son`):** Kalan 9 programın 8'inde sunucu rolü (servis yalnız menü farkı, kural yok), yetkili onayı belirteci işlem türüne bağlandı ve harcanan belirteç veritabanına taşındı. Ayrıntı: Bölüm 6, "Beşinci tur".
+
 > **Dördüncü tur (30.10.2026, `guvenlik/ucuncu-tur`):** Platform yöneticisine uygulama tabanlı iki adımlı giriş (A6), `connect-src` daraltma (A4), eczane kalfa hesabında iade ve fiyat için sunucuda yetkili onayı belirteci (A1 kalanı), bilet koltuk kilidi sahibine bağlandı (A10), masaüstü `electron-updater` 6.8.11 ve `electron-builder` 26.18.0. Ayrıntı: Bölüm 6.
 
 > **Üçüncü tur (30.10.2026, `guvenlik/sifreleme`):** Klinik, eczane, veteriner, İK, anaokulu ve entegrasyon belgeleri veritabanında AES-256-GCM ile şifrelidir (`server/cloud/belge.js`, işletme + program başına anahtar, şifreli metin başka satıra taşınırsa açılmaz). Personel PIN'i tüm programlarda sunucu anahtarıyla özetlenir (`server/cloud/pin.js`), özet tarayıcıya gitmez, doğrulama sunucudadır. Sunucusuz kurulumda PIN ilk başarılı girişte PBKDF2 özetine geçer. Eski kayıtlar açılışta taşınır. Korumanın sınırı: veritabanı dökümü, yedek ve veritabanı erişimi için geçerlidir. Sunucuya erişen yazılım veriyi açar, tarayıcıya inen veri ve çevrimdışı bekleyen değişiklikler şifresizdir, yedek anahtarla aynı yerdeyse koruma yoktur. Eski yedekler düz metindir.
@@ -10,7 +12,7 @@ Tarih: 30.10.2026 · Dal: `guvenlik/denetim` (temel: `devir/hepsi` 4ec51e1) · K
 
 | # | Konu | Neden | Gereken |
 |---|---|---|---|
-| E1 | **Program rolleri sunucuda (A1): 20 programda GİDERİLDİ** (dallar `guvenlik/sunucu-rolleri`, `guvenlik/roller-tum`) | Ekip hesabına `team_roles` + `server/cloud/rol-kural.js`: okumada süzme, yazmada geri koyma, PIN sunucuda. Kural var: klinik, eczane, veteriner, ik, muhasebe, hukuk, musavir, crm, toptan, otoservis, pos, adisyon, kuyumcu, otel, randevu, kurs, anaokulu, site, galeri, eticaret. Rol atanmamış ekip hesabı eskisi gibi tam yetkili ve PIN'leri görür. Spor, kiralama: rol farkı yalnız menü, kural yok. Bilet, butik, emlak, fabrika, fiyatrobotu, kargo, oto, pazaryeri, servis: henüz kural yok, rol yalnızca arayüzde. | Üyelere rol atayın; kişiye bağlı rolde (temsilci, plasiyer, avukat, teknisyen, personel, öğretmen) kişiyi de seçin. Kalan 9 program için `RULES`e kayıt ekleyin |
+| E1 | **Program rolleri sunucuda (A1): 28 programda GİDERİLDİ** (dallar `guvenlik/sunucu-rolleri`, `guvenlik/roller-tum`, `guvenlik/roller-son`) | Ekip hesabına `team_roles` + `server/cloud/rol-kural.js`: okumada süzme, yazmada geri koyma, PIN sunucuda. Bu turda eklenen: fabrika, kargo, emlak, pazaryeri, bilet, butik, oto, fiyatrobotu. Rol atanmamış ekip hesabı eskisi gibi tam yetkili ve PIN'leri görür. Spor, kiralama, servis: rol farkı yalnız menü, kural yok. | Üyelere rol atayın; kişiye bağlı rolde (temsilci, plasiyer, avukat, teknisyen, personel, öğretmen, kurye, danışman) kişiyi de seçin |
 | ~~E2~~ | **Kapandı 30.10.2026 (A2):** telefon tek başına giriş açmıyor | Randevu kodu yalnız o randevuyu, işletmenin verdiği portal kodu tüm randevuları açar. Başkasının numarasıyla randevu alan kişi müşteri bilgisini göremez. | Kodu olmayan eski müşteriye program **Müşteriler → Randevu portalı kodu** ile kod verir |
 | ~~E3~~ | **Kapandı 30.10.2026:** mysql2 3.24.6, `npm audit --omit=dev` 0 açık | Masaüstü bağımlılıkları (Bölüm 3) ayrı duruyor. | exe yeniden derlenirken yükseltilecek |
 | ~~E4~~ | **Kapandı 30.10.2026:** `cloud.test.js` gerçek MariaDB ile geçiyor (43 test) | — | — |
@@ -216,9 +218,63 @@ Tarayıcıda (yerel sunucu, MariaDB): pazar yeri, POS, klinik, ön muhasebe, eml
 - Yeni kural alanı `onayli`: `sales.canceled` ve `drugs.price`. Belirteçsiz değişiklik sunucudaki değere döner, geri kalan belge kaydedilir, yanıtta `onayRed` gelir, denetime yazılır; arayüz hata gösterir ve sunucudaki değeri ekrana getirir. Satış kaydı silinemez (`silemez`).
 - Program kodu değişmedi. `core/core.js` yalnızca belirteci saklar ve PUT'a ekler.
 
-Sınırlar: Belirteç işleme özel değildir (`NS.approve` işlem kimliği almaz): 5 dakika içinde bir kayıtta herhangi bir korunan alanı açar. Tek kullanım bilgisi tek süreç belleğindedir. Çevrimdışı onaylanan iade geri alınır, kullanıcı hatayı görür. `lots` (stok) ve depo iade/imha sunucuda korunmuyor: kalfa satışta stok düşürdüğü için alan kuralı yetmez. Kontrole tabi satış onayı ve ik şefinin hak aşımı onayı hesaplanan koşuldur, sunucuda zorlanmıyor.
+Sınırlar (işlem türü ve kalıcı tek kullanım beşinci turda çözüldü, aşağıya bakın): Çevrimdışı onaylanan iade geri alınır, kullanıcı hatayı görür. `lots` (stok) ve depo iade/imha sunucuda korunmuyor: kalfa satışta stok düşürdüğü için alan kuralı yetmez. Kontrole tabi satış onayı ve ik şefinin hak aşımı onayı hesaplanan koşuldur, sunucuda zorlanmıyor.
 
-**Kalan 12 program (adisyon, anaokulu, bilet, emlak, eticaret, fiyatrobotu, kiralama, kurs, kuyumcu, pos, site, spor):** burada sunucu rolü olmadığı için onay arayüzdedir. Maliyet: her program için `RULES`e rol kaydı (ayrı iş) + `onayli` alan listesi, program başına küçük. Koşul hesaplı olanlar (kiralama liste fiyatı altı, kuyumcu kur sapması, POS indirim oranı) alan kuralına sığmaz, `sonra` adımında sunucu hesabı gerekir. Tüm programlar için işlem kimliği istenirse bu satırların hepsi değişir.
+**Beşinci tur öncesi durum (12 program):** o tarihte sunucu rolü olmadığı için onay arayüzdeydi, güncel durum aşağıda. Maliyet: her program için `RULES`e rol kaydı (ayrı iş) + `onayli` alan listesi, program başına küçük. Koşul hesaplı olanlar (kiralama liste fiyatı altı, kuyumcu kur sapması, POS indirim oranı) alan kuralına sığmaz, `sonra` adımında sunucu hesabı gerekir. Tüm programlar için işlem kimliği istenirse bu satırların hepsi değişir.
+
+### Beşinci tur: kalan programlar ve işlem türlü onay
+
+Dal `guvenlik/roller-son`. Hesap sahibi ve rol atanmamış üye kısıtlanmaz.
+
+| Program | Rol | Gizlenen / sınırlanan |
+|---|---|---|
+| fabrika | Satınalma | Genel gider, bakım gitmez. Müşteri kartı yalnız ad. Satış fiyatı gitmez. Sipariş, reçete, istasyon, eski iş emri değişmez |
+| fabrika | Depo / Lojistik | Genel gider, bakım, teklif gitmez. Talep yalnız eklenir. Müşteri, tedarikçi kartı, reçete değişmez |
+| fabrika | Kalite Kontrol | Satış siparişi, teklif, talep, gider, bakım gitmez. Müşteri yalnız ad. Malzeme kartında yalnız ortalama maliyet yazılır |
+| fabrika | Üretim Planlama | Teklif, tedarikçi iadesi gitmez. Satış ve alış fiyatı gitmez. Sipariş yalnız bitiş işareti alır |
+| fabrika | Operatör | Müşteri, sipariş, tedarikçi, satınalma, kabul, fason, gider gitmez. Maliyet (malzeme, makine saati, hareket, çıkış) gitmez, sunucuda hesaplanır. İş emrinde yalnız üretim alanları yazılır, hedef değişmez |
+| kargo | Kabul / şube | Mutabakat, kurye primi, cari faturası ve vergi bilgisi gitmez. Cari indirimi değişmez, gönderi silinmez |
+| kargo | Kurye (kişiye bağlı) | Yalnız kendi gönderisi. Cari, mutabakat, prim, gönderici gitmez. Yalnız teslim alanları yazılır, ücret ve tahsilat tutarı değişmez |
+| emlak | Danışman (kişiye bağlı) | Başkasının ilanında mal sahibi, telefon, kimlik no, teklif gitmez, ilan değişmez. Talep, kira, işlem kendi ilanıyla sınırlı. Komisyon payı, portal hesabı gitmez |
+| pazaryeri | Depo / paketleme | Ürün maliyeti, komisyon, hizmet bedeli gitmez. Kanal ayarı değişmez, sipariş ve ürün silinmez |
+| pazaryeri | Müşteri hizmetleri | Depodakine ek toplama listesi gitmez, ürün ve stok değişmez |
+| bilet | Gişe | Hesap kesimi gitmez, salon değişmez, bilet silinmez |
+| bilet | Kapı görevlisi | Fiyat, telefon, ödeme, kod indirimi, bekleme listesi gitmez. Yalnız giriş ve çıkış alanları yazılır |
+| butik | Satış danışmanı | Gizlenen alan yok (ürün formu maliyeti, satış kampanyayı kullanır). Satış silinmez, süresi geçmiş değişim onaylıdır |
+| oto | Yıkamacı | Abone adı, telefonu, ücreti, abonelik ödemesi gitmez. Hizmet fiyatı değişmez |
+| fiyatrobotu | İzleyici | Gizlenen alan yok, hiçbir kayıt yazılmaz |
+
+Kural eklenmeyenler: servis (teknisyen ve kabulde yalnız menü farkı, ekranlarda rol denetimi yok, alış fiyatı Parça Stoku'nda herkese açık), oto Gişe, fiyat robotu Fiyat uzmanı: yalnız menü farkı.
+
+**Onay belirteci.** `NS.approve(app, neden, roller, islem)`. `POST /api/data/:app/pin` yalnızca kuralda tanımlı işlem türüne belirteç verir; işlem türü olmayan onayda belirteç yoktur. Belirteç hesaba, programa, işlem türüne bağlı, 5 dakika geçerli, tek kullanımlıktır ve tek kayıt açar (toplu fiyat aktarımı için `onayToplu` tek PUT'u açar). Harcanan belirteç `onay_harcanan` tablosunda durur: yeniden başlatmada ve birden çok süreçte geçmez. Kayıt yazılamazsa (sürüm çakışması) geri verilir. Red ve kullanım denetime yazılır, PIN yazılmaz.
+
+| Program, rol | İşlem | Belirteçsizse |
+|---|---|---|
+| eczane kalfa | iade, fiyat | Alan sunucudaki değere döner |
+| pos kasiyer | iade | İade kaydı oluşmaz, stok geri düşer |
+| pos kasiyer | indirim (satır indirimi sınır üstü, birim fiyat liste altı) | Satış **silinmez**, `onaysiz` işaretlenir, denetime yazılır: para alınmıştır |
+| adisyon garson | iptal, ikram, adet (gönderilmiş kalem) | Kalem eski hâline döner. Kasiyer veya yönetici PIN'i geçerli |
+| kuyumcu tezgâhtar | kur, iptal | Kur ve kur günlüğü döner; iptalin stok, sikke, kasa, cari etkisi döner |
+| kuyumcu tezgâhtar | indirim (discMax üstü) | Satış silinmez, `onaysiz` işaretlenir, denetime yazılır |
+| ik şef | hak-asimi (kalan haktan fazla yeni izin günü) | Puantaj işareti ve izin onayı döner. Hak, arayüzün bordro hesabıyla sunucuda bulunur |
+| butik satış danışmanı | degisim (süresi geçmiş) | Kayıt oluşmaz, o istekteki stok, müşteri, çek, satış değişiklikleri döner |
+| bilet gişe | iade (süresi geçmiş) | Bilet ve kod kullanımı döner |
+| emlak danışman | kira-bitis | Sözleşme durumu döner |
+
+Çevrimdışı onay: internet yokken yerel PIN kabul edilirse "sunucu doğrulayamazsa işlem geri alınır" uyarısı çıkar. Belirteç olmadığı için kayıt internet gelince reddedilir, kullanıcı "bu işlem geri alındı, İnternet yokken verilen onaylar..." iletisini görür, ekran sunucudaki değere döner.
+
+Otoservis ve otel: `NS.approve` veya PIN onayı kullanmıyor, onay eklenmedi. Fiyat robotu Fiyat uzmanında kural yok, onay arayüzde kalır. Kurs, anaokulu, site, eczane kontrole tabi satış, depo iadesi, stok sayımı, kiralama, spor: onay arayüzde.
+
+Sınırlar:
+- POS genel indirimi kampanya ve kupon indirimiyle aynı alanda toplandığı için sunucuda ayrılamaz, yalnız arayüz PIN ister.
+- POS birim fiyat denetimi anlık ürün fiyatına bakar: bekletilen fişte fiyat yükselmişse doğru satış `onaysiz` işaretlenebilir (satış silinmez).
+- Bilet süre denetiminde bir gün pay vardır (saat farkı doğru işlemi reddetmesin diye).
+- Onay reddinde `onayGeri` koleksiyonları o PUT'un tamamı için sunucudaki hâline döner: aynı 350 ms içindeki başka değişiklik de döner.
+- `_settings` rol hesabına süzülmeden gider (kargo teslim primi varsayılanı, kuyumcu indirim sınırı gibi). Rolün gördüğü ayar değerleri ayrıca taranmadı.
+- `onaysiz` işareti henüz program ekranlarında gösterilmiyor, denetim kaydından izlenir.
+- Fabrika operatör maliyet hesabı arayüz koduyla iki yerde durur (`apps/fabrika`, `rol-kural.js`): biri değişirse diğeri de değişmeli.
+
+Sınanan: `server/test/roller-son.test.js` 45 kontrol; kargo, emlak, fabrika, eczane belirteci gerçek MariaDB ile (red, kabul, tür uyumsuzluğu, yeniden başlatma, sürüm çakışması). Tarayıcıda rollü hesapla, 375 px, kurye ekranı koyu tema: kurye teslim akışı, danışman portföy, ilan, özet, kira, operatör üretim bildirimi, kasiyer yanlış PIN, belirteçsiz iade reddi, doğru PIN ile iade. Taşma ve uygulama hatası yok; tek konsol iletisi tarayıcı panelinin bilinen service worker hatası. Denenmeyen: butik, bilet, oto, pazaryeri, fiyat robotu, adisyon, kuyumcu, ik ekranları rollü hesapla tarayıcıda (yalnız kural testi); büyük veriyle hız; gerçek çevrimdışı senaryo (uyarı metni tarayıcıda görülmedi, ret metni görüldü).
 
 ### A10: bilet koltuk kilidi
 
@@ -256,7 +312,7 @@ Bağımlılıklar yükseltildi, `electron-builder --win --x64` geçici klasöre 
 
 | # | Önem | Konu | Yer | Öneri |
 |---|---|---|---|---|
-| A1 | Yüksek → **20 programda giderildi** | Rolü atanan hesapta veri sunucuda süzülür, PIN inmez, yazma geri konur (`rol-kural.js`, `routes.js`). Kalan: rolsüz ekip hesabı tam yetkili; 9 programda veri ayrımı henüz sunucuda değil (E1), 2 programda rol farkı yalnız menü; `NS.approve` yalnızca eczane kalfada, iade ve fiyatta sunucuda zorlanır (Bölüm 6) | `server/cloud/rol-kural.js`, `routes.js`, `core/core.js` | PIN özeti; yeni programlara kural |
+| A1 | Yüksek → **28 programda giderildi** | Rolü atanan hesapta veri sunucuda süzülür, PIN inmez, yazma geri konur (`rol-kural.js`, `routes.js`). Kalan: rolsüz ekip hesabı tam yetkili; 3 programda rol farkı yalnız menü; `NS.approve` eczane, ik, pos, adisyon, kuyumcu, butik, bilet, emlak rollerinde işlem türüne bağlı olarak sunucuda zorlanır (Bölüm 6, Beşinci tur), kurs, anaokulu, site, fiyat robotu onayları arayüzde | `server/cloud/rol-kural.js`, `routes.js`, `pin.js`, `core/core.js` | Kalan onaylar; spor, kiralama için kural kararı |
 | A2 | Yüksek | Randevuda telefonla giriş | `public-rules.js:106` | SMS kodu veya portal kodu |
 | ~~A3~~ | Orta | **Kapandı 30.10.2026:** yer tutucu yalnız `core/integrations.js`, `integ-wizard.js`, `ubltr.js` içinde geçen sağlayıcı adresine veya o entegrasyonun kayıtlı adresine çözülür. Sınır: rolü atanmamış ekip üyesi entegrasyon adresini değiştirebilir | `secrets.js` | Rol atanan hesap `cfg` değiştiremez |
 | A4 | Orta | **Kısmen kapandı 30.10.2026:** `connect-src` yalnız aynı köken + EmailJS. Kalan: `unsafe-inline`, `img-src https:` | `security.js` | Gömülü betikleri taşımak büyük iş, aşamalı |

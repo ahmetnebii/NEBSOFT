@@ -10,10 +10,14 @@
 //   kapsam      { kok, alan, bagli, bosSerbest, anahtar }  yalnızca hesabın departmanına ait kayıtlar: kok koleksiyonu alan=departman; bagli koleksiyonda kişiye
 //               bağlı alan (bosSerbest'teki koleksiyonda kişisi boş kayıt açıktır: elle adı yazılmış belge); anahtar koleksiyonda "<kişi>|<tarih>" biçimli anahtar.
 //               Departmanı olmayan hesap kimseyi görmez (arayüz davranışı).
-//   onayli      { koleksiyon: ['alan'] }  var olan kayıtta yetkili onayı (NS.approve) belirteci olmadan değişmez: sunucudaki değer geri konur, ek.reddedilen'e yazılır
+//   onayli      { koleksiyon: { alan: 'işlem' } }  var olan kayıtta o işlem türünün yetkili onayı (NS.approve) belirteci olmadan değişmez: sunucudaki değer geri konur, ek.reddedilen'e yazılır
+//   onayAdim    (o, s, onayla, b) => void  alan kuralına sığmayan koşul (yeni kayıt, indirim oranı, hak aşımı). onayla(işlem, koleksiyon): belirteç varsa true, yoksa false + reddedilen. Geri alma kuralın işidir.
+//   onayTurleri ['işlem']                 onayAdim'in kullandığı işlem türleri (belirteç yalnızca bilinen türe verilir)
+//   onayToplu   ['işlem']                 bir belirteç tek PUT'taki tüm satırları açar (toplu fiyat aktarımı gibi); varsayılan tek kayıt
+//   onayGeri    { işlem: ['koleksiyon'] }  o işlem reddedilirse bu koleksiyonlar da sunucudaki hâline döner (iptalin stok ve kasa etkisi gibi)
 //   onayRol     ['rol']                   belirteci alabilecek program kullanıcıları (varsayılan yalnızca admin); istemcinin bildirdiği rol dikkate alınmaz
 //   satir       { koleksiyon: (kayıt, b) => bool }  yalnızca dönen satırlar gider; gizli satır yazmada aynen korunur, id'si taklit edilemez. Görünen satır ve yeni kayıt serbesttir.
-//               b: { dept, ad, ids(c), alanlar(c, a) }: dept seçilen kişi veya departman, ad bağlı kişinin adı, ids o koleksiyonun bu hesaba görünen id'leri, alanlar görünen kayıtların a alanı.
+//               b: { dept, ad, ids(c), alanlar(c, a), kume(c, f) }: dept seçilen kişi veya departman, ad bağlı kişinin adı, ids o koleksiyonun bu hesaba görünen id'leri, alanlar görünen kayıtların a alanı, kume belgedeki f'e uyan kayıtların id'leri (tek çağrıda saklanır).
 //               saltOkunur koleksiyonda izinli alanlar yalnızca görünen satırda yazılır.
 //   kisi        { kol, alan, suz, baslik, yok, kayitAdi }  hesabı programdaki bir kişiye bağlar (kol koleksiyonundan seçilir, seçim users.team_roles içinde "<app>_dept"te durur).
 //               Tarayıcıda NS.currentUser.id (alan yoksa) veya NS.currentUser[alan] bu kişi, name onun adı olur (kol bir kişi değilse kayitAdi: false ile hesabın adı kalır); programın "yalnız kendi kayıtlarım" süzgeci böyle çalışır.
@@ -21,13 +25,38 @@
 //   yeniSerbest ['koleksiyon']            saltOkunur koleksiyonda rol yeni kayıt açabilir, var olana dokunamaz
 //   yeniYazar   ['koleksiyon']            gizle alanları rolün açtığı yeni kayıtta silinmez (takas aracının alış değeri gibi)
 //   numara      { koleksiyon: 'alan' }    satır filtresi yüzünden sıra numarası çakışan yeni kayıt, sunucudaki en büyük numaranın devamını alır
-//   suz         (gorunum) => void         alan silmenin yetmediği görünüm düzeltmesi (iç içe alan, programın dizi beklediği alan). Girdiyi değiştirmez, kopya yazar.
-//   sonra       (sonuc, sunucudaki) => void  programa özel tutarlılık adımı
+//   suz         (gorunum, b) => void      alan silmenin yetmediği görünüm düzeltmesi (iç içe alan, satıra göre alan). Girdiyi değiştirmez, kopya yazar.
+//   sonra       (sonuc, sunucudaki, b) => void  programa özel tutarlılık adımı
 // Her kuralda ek olarak: users[].pin gizlenir ve users korunur, _meta.ownerPin gizlenir, _settings değişmez, işlem geçmişi (_log) okunmaz ve yalnızca eklenir.
 // Yeni program için RULES'e kayıt eklemek yeterlidir; diğer programların rolleri yalnızca arayüzdedir.
 // Dikkat: gizle/kapat yazılmadan önce rolün ekranı o alandan hesap yapıp kaydediyor mu bakılır. Örnek: POS satırı ürünün alış fiyatını kopyalar, toptan sevkiyatı cari bakiyeyi artırır,
 // kuyumcu tezgâhtarı kuru _settings'e yazar. Kaydetmeye giren alan gizlenecekse sonra, izinli veya ayarIzinli ile sunucu tarafı tamamlanır.
 const eslesir = (r, a, b) => !!b.dept && r[a] === b.dept;
+const sadeMusteri = (o) => { if (Array.isArray(o.customers)) o.customers = o.customers.map((c) => (nesne(c) ? { id: c.id, name: c.name } : c)); };
+// Belge satırlarından fiyat alanlarını çıkarır (lines dizili kayıtlar)
+const satirSil = (o, c, ...alanlar) => { if (Array.isArray(o[c])) o[c] = o[c].map((r) => (nesne(r) && Array.isArray(r.lines) ? { ...r, lines: r.lines.map((l) => { if (!nesne(l)) return l; const n = { ...l }; alanlar.forEach((a) => delete n[a]); return n; }) } : r)); };
+// Fabrika operatörü maliyeti görmez. Tüketim ve üretim hareketinin maliyeti arayüzdeki hesapla (apps/fabrika: unitCost, reportModal) sunucuda yazılır.
+function fabrikaMaliyet(o, s) {
+  const M = idHarita(s.materials), T = idHarita(s.stations), BI = idHarita(s.boms), B = new Map(); dizi(s.boms).forEach((b) => { if (nesne(b) && b.active && !B.has(b.mat)) B.set(b.mat, b); });
+  const r2 = (n) => Math.round(n * 100) / 100; const top = (l, f) => dizi(l).reduce((t, x) => t + (Number(f(x)) || 0), 0); const cph = (id) => Number((T.get(id) || {}).cph) || 0;
+  const mc = (b, d) => top(b.lines, (l) => l.qty * (1 + (l.scrap || 0) / 100) * birim(l.mat, d)) / (b.base || 1); const oc = (b) => top(b.ops, (x) => ((x.run || 0) / (b.base || 1)) * (cph(x.station) / 60));
+  function birim(id, d = 0) { const b = B.get(id); if (!b || d > 6) return Number((M.get(id) || {}).cost) || 0; return r2(mc(b, d + 1) + oc(b)); }
+  const eskiW = idHarita(s.wo), eskiH = idHarita(s.moves), W = idHarita(o.wo);
+  dizi(o.wo).forEach((w) => {
+    const e = nesne(w) ? eskiW.get(w.id) : null; if (!e) return; const eski = dizi(e.issued), n = eski.length; if (Array.isArray(w.issued)) w.issued = w.issued.map((i, x) => { if (x < n) return eski[x]; if (!nesne(i)) return i; const k = i.ret ? eski.find((y) => y.lot === i.lot && y.mat === i.mat) : null; return { ...i, cost: k && k.cost != null ? k.cost : birim(i.mat) }; });
+  });
+  if (Array.isArray(o.moves)) o.moves = o.moves.map((m) => {
+    if (!nesne(m) || eskiH.has(m.id)) return m; const w = W.get(m.ref); const v = { ...m };
+    if (m.type === 'uretim' && w) { const b = BI.get(w.bom) || B.get(w.mat); const madde = top(w.issued, (i) => i.qty * (i.cost || 0)); const tot = w.produced || 0; const bm = b ? mc(b, 1) : 0; const std = !(tot > 0) || madde / tot < bm * 0.9; v.cost = std ? birim(w.mat) : r2(madde / Math.max(tot, bm > 0 ? Math.min(madde / bm, w.qty) : tot) + (b ? oc(b) : 0)); if (std && Array.isArray(w.reports)) w.reports = w.reports.map((r) => (nesne(r) && r.lot === m.lot ? { ...r, costStd: true } : r)); } else { const i = w ? dizi(w.issued).find((x) => nesne(x) && x.lot === m.lot && x.mat === m.mat) : null; v.cost = i && i.cost != null ? i.cost : birim(m.mat); }
+    return v;
+  });
+}
+// Süresi geçmiş bilet iadesi: arayüzdeki gün farkı ile saat farkı yüzünden doğru işlem reddedilmesin diye bir gün pay bırakılır
+const biletGec = (t, s) => { const e = idHarita(s.events).get(t.event); const g = Number((nesne(s._settings) ? s._settings : {}).refundDays) || 0; return !!e && !!e.date && (new Date(e.date) - Date.now()) / 864e5 < g - 1; };
+const emlakYabanci = (r, b) => !eslesir(r, 'agent', b);
+// Reddedilen POS iadesi kayda geçmez: iadenin artırdığı stok geri düşer
+const posIadeGeri = (o, r) => { if (!Array.isArray(o.products)) return; const m = new Map(); dizi(r.items).forEach((i) => { if (nesne(i) && i.pid) m.set(i.pid, (m.get(i.pid) || 0) + (Number(i.qty) || 0)); }); o.products = o.products.map((p) => (nesne(p) && m.has(p.id) ? { ...p, stock: (Number(p.stock) || 0) - m.get(p.id) } : p)); };
+const bordro = () => { try { return require('../../apps/ik/bordro.js'); } catch (e) { return null; } };
 const RULES = {
   // apps/klinik/app.js: clinical() sekreterde kapalı (anamnez, muayene notu, tanı, reçete, e-Nabız). Yönetim menüsü (hakediş, tedavi listesi, hekimler, raporlar) yöneticide.
   // Hasta silme yöneticide (canDelete). Telefon, TC, kan grubu, Not alanı, tedavi planı, ödeme, randevu nedeni sekreterin ekranlarında kullanılır, açık kalır.
@@ -36,14 +65,25 @@ const RULES = {
   // Kalfanın satışı deftere kayıt ekler (ctrl), bu yüzden defter "ekle" kuralındadır. Eczacı PIN'iyle onaylanan iade defterde "iade" olarak işaretlenir (sonra).
   // Alerji, kronik ilaç, TC ve satış geçmişi satış ekranında gerekir, açık kalır.
   // İade (sales.canceled) ve fiyat (drugs.price) ekranda eczacı PIN'i ister; onayli bu kuralı sunucuda da zorlar. Satış kaydı silinemez: iade silerek taklit edilemesin.
-  eczane: { kalfa: { ad: 'Kalfa / teknisyen', kapat: ['claims'], ekle: ['ctrl'], silemez: ['patients', 'sales'], onayli: { sales: ['canceled'], drugs: ['price'] }, sonra: (o) => { const iptal = new Set(dizi(o.sales).filter((s) => s && s.canceled).map((s) => s.no)); if (iptal.size && Array.isArray(o.ctrl)) o.ctrl = o.ctrl.map((c) => (c && iptal.has(c.saleNo) && !c.canceled ? { ...c, canceled: true } : c)); } } },
+  eczane: { kalfa: { ad: 'Kalfa / teknisyen', kapat: ['claims'], ekle: ['ctrl'], silemez: ['patients', 'sales'], onayli: { sales: { canceled: 'iade' }, drugs: { price: 'fiyat' } }, onayToplu: ['fiyat'], sonra: (o) => { const iptal = new Set(dizi(o.sales).filter((s) => s && s.canceled).map((s) => s.no)); if (iptal.size && Array.isArray(o.ctrl)) o.ctrl = o.ctrl.map((c) => (c && iptal.has(c.saleNo) && !c.canceled ? { ...c, canceled: true } : c)); } } },
   // apps/veteriner/app.js: canAct → "muayene, aşı ve tedavi kaydı hekimindir; asistan görür, onam alır, satış yapar". Asistan muayene ve aşıyı görür, gizlenecek alan yoktur;
   // kayıtları değiştiremez. Aşı hatırlatma SMS'i asistana açık olduğu için hatırlatma işareti yazılabilir. Sahip silme yöneticide; hayvan silme ekranı yoktur.
   veteriner: { asistan: { ad: 'Asistan', saltOkunur: ['visits', 'vaccines'], izinli: { vaccines: ['reminded', 'remindTest'] }, silemez: ['owners', 'pets'] } },
   // apps/ik/app.js: şef yalnızca kendi departmanını görür (inScope), personel ekranı salt okunur, maaş sütunu ve TC araması kapalı; Bordro ve Belge & Zimmet yöneticide.
   // Telefon (vardiya ve izin SMS'i), doğum tarihi (doğum günü kartı, izin hakkı) ve izin hakkı alanları şefin ekranlarında gerekir, açık kalır.
   // Kapalı dönem bilgisi puantajı kilitlediği için payClosed görünür, maaş satırları (rows) gizlidir.
-  ik: { sef: { ad: 'Departman şefi', gizle: { employees: ['salary', 'salaryType', 'tc', 'iban', 'portalCode', 'exit'], payClosed: ['rows'] }, kapat: ['advances', 'files'], ekle: ['sms'], saltOkunur: ['employees', 'payClosed'], kapsam: { kok: 'employees', alan: 'dept', bagli: { leaves: 'emp', signedDocs: 'party' }, bosSerbest: ['signedDocs'], anahtar: ['ts', 'roster'] } } },
+  // Hak aşımı onayı: izin onayı puantaja "I" işareti yazar. Yeni işaret sayısı kalan haktan fazlaysa belirteç ister; hak, arayüzle aynı bordro hesabıyla sunucudaki puantajdan bulunur.
+  ik: { sef: { ad: 'Departman şefi', gizle: { employees: ['salary', 'salaryType', 'tc', 'iban', 'portalCode', 'exit'], payClosed: ['rows'] }, kapat: ['advances', 'files'], ekle: ['sms'], saltOkunur: ['employees', 'payClosed'], kapsam: { kok: 'employees', alan: 'dept', bagli: { leaves: 'emp', signedDocs: 'party' }, bosSerbest: ['signedDocs'], anahtar: ['ts', 'roster'] }, onayTurleri: ['hak-asimi'],
+    onayAdim: (o, s, onayla) => {
+      if (!nesne(o.ts) || !nesne(s.ts)) return; const say = (ts) => { const m = {}; let ilk = null; for (const [a, v] of Object.entries(ts)) { const [e, d] = [kisiAnahtar(a), a.slice(a.indexOf('|') + 1)]; if (!ilk || d < ilk) ilk = d; if (nesne(v) && v.s === 'I') m[e] = (m[e] || 0) + 1; } return { m, ilk }; };
+      const once = say(s.ts), sonra = say(o.ts); const bugun = new Date().toISOString().slice(0, 10); const P = idHarita(s.employees);
+      for (const [emp, n] of Object.entries(sonra.m)) {
+        const yeni = n - (once.m[emp] || 0); const e = P.get(emp); if (!(yeni > 0) || !e) continue;
+        const B = bordro(); const kalan = B ? B.leaveBalance(e, { asOf: bugun, used: once.m[emp] || 0, trackFrom: once.ilk || bugun }).left : null; if (kalan == null || yeni <= kalan || onayla('hak-asimi', 'leaves')) continue;
+        for (const a of Object.keys(o.ts)) if (kisiAnahtar(a) === emp && nesne(o.ts[a]) && o.ts[a].s === 'I' && !(nesne(s.ts[a]) && s.ts[a].s === 'I')) { if (a in s.ts) o.ts[a] = s.ts[a]; else delete o.ts[a]; }
+        const L = idHarita(s.leaves); if (Array.isArray(o.leaves)) o.leaves = o.leaves.map((l) => (nesne(l) && l.emp === emp && l.status === 'onay' && L.has(l.id) && L.get(l.id).status !== 'onay' ? L.get(l.id) : l));
+      }
+    } } },
   // apps/muhasebe/app.js: FIN/SAT/DEP. Satış; kasa, çek, tekrarlayan fatura, rapor ekranlarını görmez, fatura silemez (act=del). Cari ekstresi ve tahsilat için carili hareketler (txns) ve hesap adları gerekir;
   // cariye bağlı olmayan kasa hareketi (maaş, kira, virman) gitmez. Depo; irsaliye ve stok görür, irsaliyeden fatura açabilir (invoiceFromDispatches), bu yüzden faturalar "ekle"dir.
   // "muhasebe" rolü Ayarlar dışında her şeyi gördüğü için kural eklenmedi.
@@ -73,18 +113,47 @@ const RULES = {
     sonra: (o, s) => { const m = idHarita(s.parts); dizi(o.jobs).forEach((j) => { if (nesne(j)) dizi(j.items).forEach((i) => { if (nesne(i) && i.pid && i.cost == null && m.has(i.pid)) i.cost = m.get(i.pid).cost; }); }); } } },
   // apps/pos/app.js: kasiyer ürün, stok, alış, tedarikçi, kampanya, rapor, ayar ekranlarını görmez; satış ekranında barkodu kayıtsız ürünü tanımlayabilir (quickCreate → yeniSerbest).
   // Satış satırı ürünün alış fiyatını kopyalar (kâr raporu buna bakar): alış fiyatı kasiyere gitmez, yeni satışın satırlarına sunucuda yazılır; eski satışın kalemleri değiştirilemez. Depo sorumlusunda yalnız menü farkı vardır, kural eklenmedi.
-  pos: { kasiyer: { ad: 'Kasiyer', kapat: ['suppliers', 'purchases', 'priceLog', 'counts'], gizle: { products: ['buy'] }, saltOkunur: ['products', 'cats', 'campaigns'], izinli: { products: ['stock'] }, yeniSerbest: ['products'], silemez: ['sales'],
+  // Yetkili onayı: iade yeni satış kaydıdır (type return): belirteçsiz kayda geçmez, stok geri düşer. İndirim yapılmış satış gerçekleşmiş sayılır, para alınmıştır: kayıt silinmez, onaysiz işaretlenir ve denetime yazılır.
+  // Kontrol edilen: satır indirimi (cashierDiscMax üstü) ve ürün fiyatının altına inen birim fiyat. Genel indirim kampanya ve kuponla aynı alanda toplandığı için sunucuda ayrılamaz (arayüz PIN ister).
+  pos: { kasiyer: { ad: 'Kasiyer', kapat: ['suppliers', 'purchases', 'priceLog', 'counts'], gizle: { products: ['buy'] }, saltOkunur: ['products', 'cats', 'campaigns'], izinli: { products: ['stock'] }, yeniSerbest: ['products'], silemez: ['sales'], onayTurleri: ['iade', 'indirim'],
+    onayAdim: (o, s, onayla) => {
+      if (!Array.isArray(o.sales)) return; const eski = idHarita(s.sales), P = idHarita(s.products); const lim = Number((nesne(s._settings) ? s._settings : {}).cashierDiscMax) || 0;
+      o.sales = o.sales.flatMap((x) => {
+        if (!nesne(x) || eski.has(x.id)) return [x];
+        if (x.type === 'return') { if (onayla('iade', 'sales')) return [x]; posIadeGeri(o, x); return []; }
+        const fazla = dizi(x.items).some((i) => nesne(i) && ((Number(i.disc) || 0) > lim || (i.pid && P.has(i.pid) && Number(i.price) < Number(P.get(i.pid).price)))); if (!fazla || onayla('indirim', 'sales')) return [x];
+        return [{ ...x, onaysiz: ['indirim'] }];
+      });
+    },
     suz: (o) => { const kes = (l) => { if (!nesne(l)) return l; const { buy, ...r } = l; return r; }; if (Array.isArray(o.sales)) o.sales = o.sales.map((x) => (nesne(x) && Array.isArray(x.items) ? { ...x, items: x.items.map(kes) } : x)); if (Array.isArray(o.held)) o.held = o.held.map((h) => (nesne(h) && nesne(h.cart) && Array.isArray(h.cart.lines) ? { ...h, cart: { ...h.cart, lines: h.cart.lines.map(kes) } } : h)); },
     sonra: (o, s) => { if (!Array.isArray(o.sales)) return; const eski = idHarita(s.sales); const m = idHarita(s.products); o.sales = o.sales.map((x) => { if (!nesne(x)) return x; const e = eski.get(x.id); if (e) return { ...x, items: e.items }; return { ...x, items: dizi(x.items).map((i) => (nesne(i) ? { ...i, buy: i.pid && m.has(i.pid) ? m.get(i.pid).buy : i.buy } : i)) }; }); } } },
   // apps/adisyon/app.js: menü, reçete, malzeme stoku, raporlar yöneticide. Sipariş gönderme malzeme stoğunu düşer (izinli), maliyet gizli; paket ve QR ekranı ayar yazar (ayarIzinli).
   // Mutfak yalnızca kalem durumunu değiştirir (checks.items); ödeme bilgisi gitmez. Kapalı adisyonlar masa ekranında sayıldığı için garsonda açık kalır.
   adisyon: {
-    garson: { ad: 'Garson', kapat: ['platLog', 'platReviews'], gizle: { ingredients: ['cost'] }, saltOkunur: ['menu', 'mcats', 'ingredients'], izinli: { ingredients: ['stock'] }, ayarIzinli: ['platformPull', 'qrOrder'] },
+    // Mutfağa gitmiş kalemin iptali, ikramı, adet azaltması yönetici veya kasiyer PIN'i ister. Belirteçsiz değişiklikte kalem sunucudaki hâline döner, silinen gönderilmiş kalem geri gelir.
+    garson: { ad: 'Garson', kapat: ['platLog', 'platReviews'], gizle: { ingredients: ['cost'] }, saltOkunur: ['menu', 'mcats', 'ingredients'], izinli: { ingredients: ['stock'] }, ayarIzinli: ['platformPull', 'qrOrder'], onayRol: ['admin', 'kasa'], onayTurleri: ['iptal', 'ikram', 'adet'],
+      onayAdim: (o, s, onayla) => {
+        if (!Array.isArray(o.checks)) return; const eski = idHarita(s.checks); const gitti = (i) => !!i && !!i.status && i.status !== 'new';
+        o.checks = o.checks.map((c) => {
+          const e = nesne(c) ? eski.get(c.id) : null; if (!e) return c; const eS = idHarita(e.items); const yeni = dizi(c.items).map((i) => {
+            const y = nesne(i) ? eS.get(i.id) : null; if (!y || !gitti(y)) return i; const tur = i.cancel && !y.cancel ? 'iptal' : i.comp && !y.comp ? 'ikram' : Number(i.qty) < Number(y.qty) ? 'adet' : ''; return !tur || onayla(tur, 'checks') ? i : y; });
+          const var_ = new Set(yeni.map((i) => i && i.id)); const silinen = dizi(e.items).filter((i) => nesne(i) && gitti(i) && !var_.has(i.id) && !onayla('iptal', 'checks'));
+          return { ...c, items: [...yeni, ...silinen] };
+        });
+      } },
     kasa: { ad: 'Kasiyer', gizle: { ingredients: ['cost'] }, saltOkunur: ['menu', 'mcats', 'ingredients'], izinli: { ingredients: ['stock'] }, ayarIzinli: ['platformPull'] },
     mutfak: { ad: 'Mutfak', kapat: ['reservations', 'calls', 'areas', 'couriers', 'ingredients', 'platLog', 'platReviews'], gizle: { checks: ['payments', 'discount', 'tip', 'total'] }, saltOkunur: ['menu', 'mcats', 'tables', 'checks'], izinli: { checks: ['items'] } },
   },
   // apps/kuyumcu/app.js: Toptancı ekranı ve raporlar sahibinde. Tezgâhtar yetkili PIN'iyle kur girer, kur _settings'e yazılır (ayarIzinli). Stok formundaki tedarikçi öneri listesi boş kalır, alan serbest metindir.
-  kuyumcu: { tezgah: { ad: 'Tezgâhtar', kapat: ['suppliers', 'supMoves'], ayarIzinli: ['hasBuy', 'hasSell', 'usd', 'eur', 'coinBuyCut', 'coinSellAdd', 'scrapCut', 'laborDefault', 'rateSource', 'rateAt', 'fxSource'] } },
+  // Yetkili onayı: kur değişikliği her zaman, işlem iptali (tx.canceled) her zaman, indirim discMax üstünde. İptal reddedilirse iptalin stok, sikke, kasa ve cari etkisi de sunucudaki hâline döner.
+  // Reddedilen kurda arayüz ayarları sunucudaki değere döner. İndirimli satış gerçekleşmiştir: silinmez, onaysiz işaretlenir ve denetime yazılır.
+  kuyumcu: { tezgah: { ad: 'Tezgâhtar', kapat: ['suppliers', 'supMoves'], ayarIzinli: ['hasBuy', 'hasSell', 'usd', 'eur', 'coinBuyCut', 'coinSellAdd', 'scrapCut', 'laborDefault', 'rateSource', 'rateAt', 'fxSource'], onayli: { tx: { canceled: 'iptal' } }, onayGeri: { iptal: ['items', 'coins', 'cash', 'cashLog', 'customers', 'orders'], kur: ['rateLog'] }, onayTurleri: ['kur', 'indirim'],
+    onayAdim: (o, s, onayla) => {
+      const a = nesne(o._settings) ? o._settings : {}, e = nesne(s._settings) ? s._settings : {}; const lim = Number(e.discMax); const sinir = Number.isFinite(lim) ? lim : 5;
+      if (['hasBuy', 'hasSell'].some((f) => a[f] !== e[f]) && !onayla('kur', '_settings')) o._settings = e;
+      if (!Array.isArray(o.tx)) return; const eski = idHarita(s.tx);
+      o.tx = o.tx.map((t) => { if (!nesne(t) || eski.has(t.id) || !(Number(t.disc) > 0)) return t; const brut = dizi(t.lines).reduce((x, l) => x + (nesne(l) ? Number(l.price) || 0 : 0), 0); return !(Number(t.disc) > (brut * sinir) / 100) || onayla('indirim', 'tx') ? t : { ...t, onaysiz: ['indirim'] }; });
+    } } },
   // apps/otel/app.js: kat görevlisi yalnızca Odalar ekranını görür (isKat). Misafir kimliği ve fiyat gitmez; oda çakışması için rezervasyonun tarihi ve odası gerekir. assignee program kullanıcısının id'sidir (kisi).
   // Resepsiyonda yalnız menü farkı vardır, kural eklenmedi.
   otel: { kat: { ad: 'Kat Hizmetleri', kisi: { kol: 'users', suz: (u) => u.role === 'kat', baslik: 'Kat görevlisi', yok: 'Kat görevlisi seçin' }, kapat: ['guests', 'seasons', 'extras'], gizle: { reservations: ['price', 'deposit', 'folio', 'ota', 'source'] }, saltOkunur: ['reservations', 'types'] } },
@@ -114,7 +183,60 @@ const RULES = {
   galeri: { satis: { ad: 'Satış danışmanı', gizle: { vehicles: ['buy', 'expenses', 'ownerPays'] }, yeniYazar: ['vehicles'], silemez: ['vehicles'] } },
   // apps/eticaret/app.js: isAdm() maliyet alanını, ürün silmeyi, iptal ve iade kararını depodan alır; kupon, kategori ve sepet ekranları yöneticide.
   eticaret: { depo: { ad: 'Depo / sevkiyat', kapat: ['carts'], gizle: { products: ['cost'] }, saltOkunur: ['coupons', 'cats'], silemez: ['products'] } },
+  // apps/fabrika: OFIS rollerinin ortak ekranları (kontrol paneli OEE'si, stok değeri, malzeme kartı) wo, downtime, moves.cost ve materials.cost kullanır, açık kalır. İzlenebilirlik sevkiyat ve müşteri adı gösterir: müşteri kartı adla sınırlanır.
+  // Bakım (maint, plans) ve genel gider (overheads) yalnızca bakım ve maliyet ekranlarında. Teklif (offers) satınalmada. Mal kabul malzemenin ortalama maliyetini yazar (izinli). Operatör yalnızca kendi ekranını görür: ticari koleksiyon gitmez, maliyet gitmez, tüm yazma alan bazlıdır.
+  fabrika: {
+    satinalma: { ad: 'Satınalma', kapat: ['overheads', 'plans', 'maint'], saltOkunur: ['customers', 'so', 'shipments', 'boms', 'stations', 'wo'], yeniSerbest: ['wo'], suz: (o) => { sadeMusteri(o); satirSil(o, 'so', 'price'); } },
+    depo: { ad: 'Depo / Lojistik', kapat: ['overheads', 'plans', 'maint', 'offers'], ekle: ['prq'], saltOkunur: ['customers', 'boms', 'stations', 'suppliers'] },
+    kalite: { ad: 'Kalite Kontrol', kapat: ['so', 'offers', 'prq', 'overheads', 'plans', 'maint'], saltOkunur: ['customers', 'shipments', 'boms', 'stations', 'wo', 'fason', 'materials'], izinli: { materials: ['cost'] }, suz: sadeMusteri },
+    uretim: { ad: 'Üretim Planlama', kapat: ['offers', 'returns'], ekle: ['prq'], saltOkunur: ['customers', 'so', 'shipments', 'suppliers', 'po', 'receipts'], izinli: { so: ['woDone'] }, yeniSerbest: ['po'], suz: (o) => { sadeMusteri(o); satirSil(o, 'so', 'price'); satirSil(o, 'po', 'price', 'vat'); satirSil(o, 'receipts', 'price'); } },
+    operator: { ad: 'Operatör', kapat: ['customers', 'so', 'shipments', 'suppliers', 'po', 'prq', 'offers', 'receipts', 'returns', 'fason', 'overheads', 'plans'], ekle: ['maint', 'downtime'], gizle: { materials: ['cost', 'price', 'supplier'], stations: ['cph'], moves: ['cost'], lots: ['supplier', 'supLot'] },
+      saltOkunur: ['materials', 'stations', 'boms', 'warehouses', 'lots', 'moves', 'wo'], yeniSerbest: ['lots', 'moves'], izinli: { stations: ['status'], wo: ['status', 'produced', 'scrap', 'reports', 'issued', 'outLots', 'ops', 'startedAt', 'end', 'closeNote'] },
+      suz: (o) => { if (Array.isArray(o.wo)) o.wo = o.wo.map((w) => (nesne(w) && Array.isArray(w.issued) ? { ...w, issued: w.issued.map((i) => { if (!nesne(i)) return i; const { cost, ...r } = i; return r; }) } : w)); },
+      sonra: (o, s) => { fabrikaMaliyet(o, s); const biten = new Set(dizi(o.wo).filter((w) => nesne(w) && w.status === 'tamam' && w.so).map((w) => w.so)); if (biten.size && Array.isArray(o.so)) o.so = o.so.map((x) => (nesne(x) && biten.has(x.id) ? { ...x, woDone: true } : x)); } },
+  },
+  // apps/kargo: kurye yalnızca kendi ekranını görür (myCourier). Mutabakat, cari ve hakediş yöneticide. Kabulde cari indirimi gerekir, faturası ve vergi bilgisi gerekmez. Kurye teslimde yalnızca alan bazlı yazar: ücret ve kapıda tahsilat tutarı değişmez.
+  kargo: {
+    kabul: { ad: 'Kabul / şube', kapat: ['cashins', 'codPayouts'], gizle: { couriers: ['prim'], caris: ['invoices', 'taxNo', 'taxOffice'] }, saltOkunur: ['couriers', 'caris'], silemez: ['ships'] },
+    kurye: { ad: 'Kurye', kisi: { kol: 'couriers', alan: 'courier', baslik: 'Kurye', yok: 'Kurye seçin (seçilmezse gönderi görünmez)' }, kapat: ['caris', 'cashins', 'codPayouts'], gizle: { couriers: ['prim'], ships: ['sender', 'cari', 'ebelge'] }, saltOkunur: ['couriers', 'ships'],
+      izinli: { ships: ['status', 'history', 'failReason', 'failGeo', 'attempts', 'stopNo', 'deliveredTo', 'signature', 'geo', 'photo', 'codCollected', 'codPay', 'feeCollected', 'feePay'] }, satir: { ships: (x, b) => eslesir(x, 'courier', b), couriers: (c, b) => !!b.dept && c.id === b.dept } },
+  },
+  // apps/emlak: danışman tüm portföyü görür, başkasının ilanında mal sahibi ve teklif bilgisini görmez, ilanı değiştiremez (mine). Talep, kira ve işlem kendi ilanıyla sınırlıdır. Komisyon payı ve portal hesabı yöneticide.
+  // Başkasının ilanındaki gösterim satırı ilan sayfasında görünür, gösterilen kişinin kimlik no ve imzası gitmez. Danışman kira bitişinde yönetici PIN'i ister (kira-bitis).
+  emlak: { danisman: { ad: 'Danışman', kisi: { kol: 'agents', alan: 'agent', baslik: 'Danışman', yok: 'Danışman seçin (seçilmezse kendi ilanı görünmez)' }, kapat: ['portalCfg'], gizle: { agents: ['share'] }, saltOkunur: ['agents', 'portalListings'], silemez: ['props', 'deals', 'leases'], onayli: { leases: { status: 'kira-bitis' } },
+    satir: { requests: (r, b) => !r.agent || eslesir(r, 'agent', b), leases: (l, b) => b.kume('props', (p) => eslesir(p, 'agent', b)).has(l.prop), deals: (d, b) => eslesir(d, 'agent', b) },
+    suz: (o, b) => {
+      if (Array.isArray(o.props)) o.props = o.props.map((p) => { if (!nesne(p) || !emlakYabanci(p, b)) return p; const { owner, ownerPhone, ownerTc, offers, ...r } = p; return r; });
+      if (Array.isArray(o.showings)) o.showings = o.showings.map((x) => { if (!nesne(x) || !emlakYabanci(x, b)) return x; const { tc, sign, ...r } = x; return r; });
+    },
+    sonra: (o, s, b) => { for (const c of ['props', 'showings']) { if (!Array.isArray(o[c])) continue; const m = idHarita(s[c]); o[c] = o[c].map((r) => { const e = nesne(r) ? m.get(r.id) : null; return e && emlakYabanci(e, b) ? e : r; }); } } } },
+  // apps/pazaryeri: isAdm() maliyet, kâr ve komisyonu yöneticide tutar. Depo ürün ve stok yazar; müşteri hizmetleri stok ve iptal işlemi yapmaz (canOps). Durum çekme zamanı (lastStatusPull) kanal kaydına yazılır, bu alan korunur.
+  pazaryeri: {
+    depo: { ad: 'Depo / paketleme', gizle: { products: ['cost'] }, saltOkunur: ['channels'], silemez: ['products', 'orders'], suz: (o) => kanalSuz(o), sonra: (o, s, b, g) => kanalYaz(o, s, g) },
+    destek: { ad: 'Müşteri hizmetleri', kapat: ['picklists'], gizle: { products: ['cost'] }, saltOkunur: ['channels', 'products'], silemez: ['orders'], suz: (o) => kanalSuz(o), sonra: (o, s, b, g) => kanalYaz(o, s, g) },
+  },
+  // apps/bilet: gişe salon, rapor ve hesap kesimini görmez; süresi geçmiş iade Organizatör PIN'i ister, belirteçsiz iade uygulanmaz. Kapı görevlisi yalnızca Kapı Kontrol ve Canlı Giriş ekranını görür: fiyat, telefon, ödeme gitmez, biletlere yalnızca giriş alanları yazılır.
+  bilet: {
+    gise: { ad: 'Gişe', kapat: ['settlements'], saltOkunur: ['venues'], silemez: ['tickets'], onayTurleri: ['iade'], onayGeri: { iade: ['codes'] },
+      onayAdim: (o, s, onayla) => { if (!Array.isArray(o.tickets)) return; const m = idHarita(s.tickets); o.tickets = o.tickets.map((t) => { const e = nesne(t) ? m.get(t.id) : null; return !e || t.status !== 'refunded' || e.status === 'refunded' || !biletGec(t, s) || onayla('iade', 'tickets') ? t : e; }); } },
+    kapi: { ad: 'Kapı görevlisi', kapat: ['settlements', 'waitlist'], saltOkunur: ['tickets', 'events', 'venues', 'codes'], izinli: { tickets: ['status', 'usedAt', 'gate', 'out', 'outAt', 'reentries'] },
+      suz: (o) => { if (Array.isArray(o.tickets)) o.tickets = o.tickets.map((t) => { if (!nesne(t)) return t; const { price, paid, fee, pay, paidAt, cashier, refund, refundedAt, order, discount, ...r } = t; return { ...r, buyer: nesne(t.buyer) ? { name: t.buyer.name } : t.buyer }; }); if (Array.isArray(o.codes)) o.codes = o.codes.map((k) => (nesne(k) ? { id: k.id, code: k.code, note: k.note } : k)); } },
+  },
+  // apps/butik: satış danışmanı ürün formunda maliyeti görür ve kampanyayı satışta kullanır, gizlenen alan yoktur. Süresi geçmiş değişim ve iade yönetici PIN'i ister: belirteçsiz işlem ve o kayıttaki stok, müşteri, çek değişiklikleri geri alınır. Satış kaydı silinemez.
+  butik: { kasa: { ad: 'Satış danışmanı', silemez: ['sales'], onayTurleri: ['degisim'], onayGeri: { degisim: ['models', 'moves', 'customers', 'cheques', 'sales'] },
+    onayAdim: (o, s, onayla) => {
+      if (!Array.isArray(o.returns)) return; const eski = idHarita(s.returns); const g = Number((nesne(s._settings) ? s._settings : {}).exchangeDays) || 30; const fis = new Map(dizi(s.sales).filter(nesne).map((x) => [x.no, x]));
+      o.returns = o.returns.filter((r) => { if (!nesne(r) || eski.has(r.id)) return true; const f = fis.get(r.saleNo); return !f || (Date.now() - new Date(f.at)) / 864e5 <= g || onayla('degisim', 'returns'); });
+    } } },
+  // apps/oto: yıkamacı yalnızca Yıkama Kuyruğu ve Araç Geçmişi ekranını görür. Abone kartı, abonelik ödemesi ve hizmet fiyat listesi değişmez; iptalde abonenin yıkama hakkı geri yazılır (izinli). Gişede yalnız menü farkı vardır, kural eklenmedi.
+  oto: { yikama: { ad: 'Yıkamacı', kapat: ['subPays'], ekle: ['sms'], gizle: { subs: ['name', 'phone', 'price'] }, saltOkunur: ['subs', 'packages', 'workers'], izinli: { subs: ['washesLeft'] } } },
+  // apps/fiyatrobotu: izleyici tüm ekranları görür, hiçbir şeyi değiştiremez (canEdit). Gizlenecek alan yoktur, yazma kapalıdır. Fiyat uzmanında yalnız menü farkı vardır, kural eklenmedi.
+  fiyatrobotu: { izleyici: { ad: 'İzleyici', saltOkunur: ['products', 'listings', 'history', 'runs', 'channels', 'cargoOverride', 'comOverride', 'feeOverride', 'ratesOwn'] } },
+  // apps/servis: ROLES var, ekranlarda rol denetimi yok. Teknisyen ve kabul Özet, Teknisyenler, Ayarlar menüsünü görmez; parça alış fiyatı Parça Stoku ekranında herkese açık. Yalnız menü farkı: kural eklenmedi.
 };
+// Pazaryeri kanal kaydı: bağlantı alanları gerekir, komisyon ve hizmet bedeli kâr hesabıdır
+const kanalSuz = (o) => { if (nesne(o.channels)) o.channels = Object.fromEntries(Object.entries(o.channels).map(([k, v]) => { if (!nesne(v)) return [k, v]; const { commission, fixedFee, payoutDays, ...r } = v; return [k, r]; })); };
+const kanalYaz = (o, s, gelen) => { const g = nesne(gelen.channels) ? gelen.channels : null; if (!g || !nesne(s.channels)) return; o.channels = Object.fromEntries(Object.entries(s.channels).map(([k, v]) => [k, nesne(v) && nesne(g[k]) && g[k].lastStatusPull ? { ...v, lastStatusPull: g[k].lastStatusPull } : v])); };
 // Programlar arası ortak veri: rolü olan hesapta entegrasyon ayarı değişmez, gönderim günlüğü (e-Nabız TEST yükü gibi sağlık verisi taşıyabilir) okunmaz, yalnızca eklenir
 const ORTAK = { entegrasyon: { saltOkunur: ['cfg'], ekle: ['log'] } };
 
@@ -131,7 +253,7 @@ const kisiAnahtar = (anahtar) => String(anahtar).split('|')[0];
 function baglam(k, belge, ek) {
   const dept = (ek && ek.dept) || ''; const bak = {}; const satirlar = (c) => { if (!bak[c]) { const f = (k.satir || {})[c]; bak[c] = dizi(belge[c]).filter((r) => nesne(r) && (!f || f(r, b))); } return bak[c]; };
   const kayit = k.kisi && dept ? dizi(belge[k.kisi.kol]).find((r) => nesne(r) && r.id === dept) : null;
-  const b = { dept, ad: kayit ? kayit.name || '' : '', ids: (c) => new Set(satirlar(c).map((r) => r.id)), alanlar: (c, a) => new Set(satirlar(c).map((r) => r[a])) };
+  const kumeler = {}; const b = { dept, ad: kayit ? kayit.name || '' : '', ids: (c) => new Set(satirlar(c).map((r) => r.id)), alanlar: (c, a) => new Set(satirlar(c).map((r) => r[a])), kume: (c, f) => { if (!kumeler[c]) kumeler[c] = new Set(dizi(belge[c]).filter((r) => nesne(r) && f(r)).map((r) => r.id)); return kumeler[c]; } };
   return b;
 }
 // Satır filtresi görünen numaradan saydığı için çakışan yeni numarayı sunucudaki en büyük numaranın devamına taşır. Sondaki rakamlar artar (S7012, 2026/0104).
@@ -162,8 +284,19 @@ function filtrele(app, rol, belge, ek = {}) {
     for (const c of anahtar) if (nesne(o[c])) o[c] = Object.fromEntries(Object.entries(o[c]).filter(([a]) => ids.has(kisiAnahtar(a))));
   }
   if (k.satir) { const b = baglam(k, belge, ek); for (const [c, f] of Object.entries(k.satir)) if (Array.isArray(o[c])) o[c] = o[c].filter((r) => nesne(r) && f(r, b)); }
-  if (k.suz) k.suz(o);
+  if (k.suz) k.suz(o, baglam(k, belge, ek));
   return o;
+}
+
+// Yetkili onayı. ek.onay: Map(işlem → geçerli belirteç sayısı) veya true (tüm işlemler, saf testler). Bir belirteç tek kaydı açar; onayToplu'daki işlem tek PUT'taki tüm kayıtları.
+function onayci(k, ek) {
+  const kalan = ek.onay instanceof Map ? ek.onay : null; const toplu = k.onayToplu || []; const harcanan = new Map();
+  return (islem, c) => {
+    const acik = toplu.includes(islem) && harcanan.has(islem); const hak = ek.onay === true || acik || (kalan && (kalan.get(islem) || 0) > 0);
+    if (!hak) { ek.reddedilen = [...new Set([...(ek.reddedilen || []), c])]; ek.redIslem = [...new Set([...(ek.redIslem || []), islem])]; return false; }
+    ek.onayKullanildi = true; if (kalan && !acik) { kalan.set(islem, kalan.get(islem) - 1); harcanan.set(islem, (harcanan.get(islem) || 0) + 1); ek.harcanan = harcanan; }
+    return true;
+  };
 }
 
 // PUT ile gelen belgeyi, rolün yazamadığı her şeyi sunucudaki hâlinden alarak birleştirir. sunucudaki: version=base olan satırın ham belgesi.
@@ -173,7 +306,7 @@ function geriKoy(app, rol, gelen, sunucudaki, ek = {}) {
   const geri = (c) => { if (c in s) o[c] = s[c]; else delete o[c]; };
   ['users', '_settings', ...(k.kapat || [])].forEach(geri);
   if (k.ayarIzinli && nesne(g._settings)) { const y = { ...(nesne(s._settings) ? s._settings : {}) }; k.ayarIzinli.forEach((a) => { if (a in g._settings) y[a] = g._settings[a]; }); o._settings = y; }
-  const b = k.satir ? baglam(k, s, ek) : null;
+  const b = baglam(k, s, ek); const onayla = onayci(k, ek);
   o._meta = { ...(nesne(s._meta) ? s._meta : {}), ...(nesne(g._meta) ? g._meta : {}) };
   if (nesne(s._meta) && 'ownerPin' in s._meta) o._meta.ownerPin = s._meta.ownerPin; else delete o._meta.ownerPin;
   if (!nesne(g._meta) && !nesne(s._meta)) delete o._meta;
@@ -216,9 +349,8 @@ function geriKoy(app, rol, gelen, sunucudaki, ek = {}) {
   for (const [c, alanlar] of Object.entries(k.onayli || {})) {
     if (!Array.isArray(o[c]) || !Array.isArray(s[c])) continue; const m = idHarita(s[c]);
     o[c] = o[c].map((r) => {
-      const es = nesne(r) ? m.get(r.id) : null; if (!es) return r; const degisen = alanlar.filter((f) => JSON.stringify(r[f]) !== JSON.stringify(es[f])); if (!degisen.length) return r;
-      if (ek.onay) { ek.onayKullanildi = true; return r; }
-      const n = { ...r }; degisen.forEach((f) => { if (f in es) n[f] = es[f]; else delete n[f]; }); ek.reddedilen = [...new Set([...(ek.reddedilen || []), c])]; return n;
+      const es = nesne(r) ? m.get(r.id) : null; if (!es) return r; const degisen = Object.keys(alanlar).filter((f) => JSON.stringify(r[f]) !== JSON.stringify(es[f])); if (!degisen.length) return r;
+      const karar = new Map(); const n = { ...r }; degisen.forEach((f) => { const i = alanlar[f]; if (!karar.has(i)) karar.set(i, onayla(i, c)); if (karar.get(i)) return; if (f in es) n[f] = es[f]; else delete n[f]; }); return n;
     });
   }
   const ids = kapsamId(k, s, ek);
@@ -237,7 +369,9 @@ function geriKoy(app, rol, gelen, sunucudaki, ek = {}) {
       o[c] = n;
     }
   }
-  if (k.sonra) k.sonra(o, s);
+  if (k.onayAdim) k.onayAdim(o, s, onayla, b);
+  for (const i of ek.redIslem || []) for (const c of (k.onayGeri || {})[i] || []) geri(c);
+  if (k.sonra) k.sonra(o, s, b, g);
   return o;
 }
 
@@ -253,7 +387,9 @@ function rolCoz(app, metin) {
   return { rol, dept: typeof r[`${app}_dept`] === 'string' ? r[`${app}_dept`] : '' };
 }
 // Bu rolde yetkili onayı belirteci üretilir mi, üretilirse PIN sahibi hangi rollerde olmalı
-const onayRolleri = (app, rol) => { const k = kuralBul(app, rol); return k && k.onayli ? k.onayRol || ['admin'] : null; };
+const onayRolleri = (app, rol) => { const k = kuralBul(app, rol); return k && (k.onayli || k.onayAdim) ? k.onayRol || ['admin'] : null; };
+// Rolün belirteç alabileceği işlem türleri
+const onayIslemleri = (app, rol) => { const k = kuralBul(app, rol); if (!k) return []; return [...new Set([...(k.onayTurleri || []), ...Object.values(k.onayli || {}).flatMap((x) => Object.values(x))])]; };
 const kapsamli = (app, rol) => { const k = kuralBul(app, rol); return !!(k && (k.kapsam || k.kisi)); };
 // Tek programın rolünü günceller. rol boşsa kayıt kalkar; hiç kayıt kalmazsa null döner (tam yetki).
 function rolYaz(metin, app, rol, dept) {
@@ -291,4 +427,4 @@ function kisiBilgi(app, rol, dept, belge) {
 const yazabilir = (app, rol, kol) => { const k = kuralBul(app, rol); return !k || !((k.saltOkunur || []).includes(kol) || (k.kapat || []).includes(kol)); };
 const rolVar = (app, rol) => typeof rol === 'string' && !!kuralBul(app, rol) && rol !== '*';
 
-module.exports = { RULES, ORTAK, filtrele, geriKoy, rolCoz, rolYaz, rollerTemizle, rolVar, yazabilir, programlar, onayRolleri, kisiler, kisiBilgi };
+module.exports = { RULES, ORTAK, filtrele, geriKoy, rolCoz, rolYaz, rollerTemizle, rolVar, yazabilir, programlar, onayRolleri, onayIslemleri, kisiler, kisiBilgi };
