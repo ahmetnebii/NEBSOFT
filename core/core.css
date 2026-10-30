@@ -921,7 +921,7 @@ h1 { letter-spacing: -.025em; }
 .nsd.open .nsd-dot { display: none; }
 .nsd.in-app .nsd-fab { width: 48px; height: 48px; } .nsd.in-app .nsd-fab > svg { width: 22px; height: 22px; }
 .nsd-p { position: absolute; right: 0; bottom: 72px; width: 380px; height: min(580px, calc(100vh - 120px)); display: flex; flex-direction: column; border-radius: 22px; overflow: hidden; background: var(--surface); border: 1px solid var(--border); box-shadow: 0 30px 70px -24px rgba(15, 17, 40, .45); transform-origin: bottom right; animation: nsdIn .26s cubic-bezier(.2, .9, .25, 1.05); }
-.nsd-p[hidden] { display: none; }
+.nsd-p[hidden], #nskl[hidden], #ykl[hidden], .nsd-kl[hidden] { display: none; }
 @keyframes nsdIn { from { opacity: 0; transform: translateY(12px) scale(.96); } }
 .nsd-h { display: flex; align-items: center; gap: 12px; padding: 16px 16px 14px; color: #fff; background: radial-gradient(120% 140% at 0 0, #6366f1 0, #312e81 60%, #1e1b4b 100%); }
 .nsd-av { width: 40px; height: 40px; border-radius: 13px; display: grid; place-items: center; background: rgba(255, 255, 255, .14); } .nsd-av svg { width: 20px; height: 20px; }

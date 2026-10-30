@@ -1,0 +1,23 @@
+{
+ "eticaret": {
+  "id": "eticaret",
+  "sayfa": 68,
+  "boyut": 4599201,
+  "ekran": 38,
+  "tarih": "2026-10-31"
+ },
+ "pos": {
+  "id": "pos",
+  "sayfa": 71,
+  "boyut": 4796098,
+  "ekran": 50,
+  "tarih": "2026-10-31"
+ },
+ "terzi": {
+  "id": "terzi",
+  "sayfa": 55,
+  "boyut": 3440927,
+  "ekran": 34,
+  "tarih": "2026-10-31"
+ }
+}

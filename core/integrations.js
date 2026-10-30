@@ -784,6 +784,7 @@
   const USED = {
     dernek: ['sms', 'whatsapp', 'email', 'printer', 'backup'], egitim: ['sms', 'whatsapp', 'email', 'payment', 'printer', 'backup'], danisan: ['sms', 'email', 'printer', 'backup'],
     nakliyat: ['sms', 'whatsapp', 'email', 'printer', 'pos', 'efatura', 'webhook', 'backup'], temizlik: ['sms', 'whatsapp', 'email', 'printer', 'pos', 'efatura', 'webhook', 'backup'], usta: ['callerid', 'sms', 'whatsapp', 'email', 'printer', 'pos', 'efatura', 'webhook', 'backup'], peyzaj: ['sms', 'whatsapp', 'email', 'printer', 'pos', 'efatura', 'webhook', 'backup'],
+    terzi: ['sms', 'whatsapp', 'email', 'printer', 'efatura', 'backup'], cicekci: ['sms', 'whatsapp', 'email', 'printer', 'efatura', 'backup'], pastane: ['sms', 'whatsapp', 'email', 'printer', 'efatura', 'backup'], matbaa: ['sms', 'whatsapp', 'email', 'printer', 'efatura', 'backup'], kurutemizleme: ['sms', 'whatsapp', 'email', 'printer', 'label', 'efatura', 'backup'],
     dugun: ['sms', 'backup'], yurt: ['sms', 'backup'], fotograf: ['sms', 'backup'], oyun: ['sms', 'backup'],
     mobilya: ['sms', 'whatsapp', 'efatura', 'printer', 'backup'], okulservisi: ['sms', 'whatsapp', 'efatura', 'backup'], ciftci: ['sms', 'whatsapp', 'efatura', 'emustahsil', 'printer', 'backup'], lastik: ['sms', 'whatsapp', 'efatura', 'printer', 'backup'],
     adisyon: ['printer', 'pos', 'okc', 'yemekplatform', 'yemekkarti', 'callerid', 'webhook', 'backup'], anaokulu: ['sms', 'backup'], bilet: ['sms', 'turnike', 'backup'],
@@ -848,7 +849,7 @@
     draw();
   }
 
-  NS.integ = { nvCall, nvPayer, prsSession, ubl, uyCall, readPlc, trackUrl, trackShipment, trackOf, TRACK, meetingLinkOk, createMeeting, zoomToken, htmlToLines, cfg, setCfg, sms, whatsapp, email, printReceipt, openDrawer, printLabels, parseScaleBarcode, readScale, readKantar, parseWeight, cardPayment, sendEInvoice, emit, backupAll, restoreAll, page, bridgeStatus, log, DEFS, normPhone, call, isOn, SECTOR, CONN, USED, http: httpCall };
+  NS.integ = { nvCall, nvPayer, prsSession, ubl, uyCall, readPlc, trackUrl, trackShipment, trackOf, TRACK, meetingLinkOk, createMeeting, zoomToken, htmlToLines, cfg, setCfg, sms, whatsapp, email, printReceipt, openDrawer, printLabels, parseScaleBarcode, readScale, readKantar, parseWeight, cardPayment, sendEInvoice, emit, backupAll, restoreAll, page, bridgeStatus, log, DEFS, normPhone, call, isOn, SECTOR, CONN, USED, UNVERIFIED, http: httpCall };
 })();
 
 /* ===== e-Belge merkezi: e-Fatura, e-Arşiv, e-İrsaliye giden/gelen kutusu =====

@@ -77,6 +77,7 @@ Yazma yolları:
 | Söylenebilir iddialar | `docs/IDDIA-LISTESI.md` |
 | Kurulum | `DEPLOY.md`, klasör ayrımı `docs/KLASOR-YAPISI.md` |
 | Pazarlama | `docs/pazarlama/` |
+| PDF kullanım kılavuzu | `scripts/kilavuz/`, içerik `docs/kilavuz/<id>.js`, durum ve kullanım `docs/kilavuz/DURUM.md`, liste `core/kilavuz.json` |
 
 ## Komutlar
 

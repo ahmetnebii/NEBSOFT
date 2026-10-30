@@ -13,7 +13,7 @@ node scripts/hosting-paketi.js
 | `site/` | Üretilmiş tanıtım sayfaları (`site/src/`, `site/tools/` hariç) | Evet |
 | `server.js`, `index.html`, `sw.js`, `robots.txt`, `sunucu.json`, `package.json`, `package-lock.json` | Ana dosyalar | Evet |
 | `data/` | Şifreler, anahtarlar, imza dosyası. Depoya da girmez; sunucudaki `data/` silinmez | **Hayır** |
-| `indir/` | Derlenmiş exe ve apk. Gerekirse ayrı yüklenir | Ayrı |
+| `indir/` | Derlenmiş exe ve apk. Gerekirse ayrı yüklenir. `indir/kilavuz/` PDF kılavuzları hosting paketine girer | Ayrı |
 | `android/`, `desktop/` | Mobil ve masaüstü kaynak kodu | Hayır |
 | `docs/`, `CLAUDE.md`, `README.md`, `DEPLOY.md`, `DESIGN.md`, `.claude/`, `.agents/` | Belgeler ve geliştirme ayarları | Hayır |
 | `ic-araclar/` | Yalnızca sana özel araçlar (NEBSOFT Pazarlama) | **Hayır** |

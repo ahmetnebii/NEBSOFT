@@ -46,9 +46,10 @@
         <header class="nsd-h"><span class="nsd-av">${icon('message')}</span><div><b>NEBSOFT Destek</b><small><i></i> Asistan · anında yanıt</small></div><button class="nsd-c" data-nsd="close" aria-label="Kapat">${icon('x')}</button></header>
         <div class="nsd-log" aria-live="polite"></div>
         <form class="nsd-f"><input placeholder="Sorunuzu yazın…" aria-label="Sorunuz" maxlength="300" autocomplete="off"><button aria-label="Gönder">${icon('right')}</button></form>
-        <div class="nsd-foot"><a href="tel:${phone().replace(/\s/g, '')}">${icon('phone')} ${esc(phone())}</a><a href="mailto:destek@nebsoft.com.tr">${icon('mail')} E-posta</a></div>
+        <div class="nsd-foot"><a href="tel:${phone().replace(/\s/g, '')}">${icon('phone')} ${esc(phone())}</a><a href="mailto:destek@nebsoft.com.tr">${icon('mail')} E-posta</a><a class="nsd-kl" target="_blank" rel="noopener" hidden>${icon('file')} Kullanım kılavuzu (PDF)</a></div>
       </section>`;
     document.body.appendChild(w);
+    if (APP && NS.kilavuzAdres) NS.kilavuzAdres(APP).then((k) => { const a = w.querySelector('.nsd-kl'); if (a && k) { a.href = k.url; a.hidden = false; } });
     const fab = w.querySelector('.nsd-fab'), pan = w.querySelector('.nsd-p'), L = w.querySelector('.nsd-log'), inp = w.querySelector('input');
     let hist = ss.get();
     const scroll = () => requestAnimationFrame(() => { L.scrollTop = L.scrollHeight; });

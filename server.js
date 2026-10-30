@@ -26,7 +26,7 @@ const cfg = require('./server/cloud/config');
 const ROOT = __dirname;
 const PORT = Number(process.env.PORT) || 5050;
 const TYPES = {
-  '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8',
+  '.pdf': 'application/pdf', '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8',
   '.json': 'application/json; charset=utf-8', '.svg': 'image/svg+xml', '.png': 'image/png', '.jpg': 'image/jpeg', '.webp': 'image/webp',
   '.ico': 'image/x-icon', '.webmanifest': 'application/manifest+json', '.txt': 'text/plain; charset=utf-8', '.xml': 'application/xml; charset=utf-8', '.apk': 'application/vnd.android.package-archive',
 };
@@ -224,7 +224,7 @@ function serve(req, res, p) {
     const type = TYPES[ext] || 'application/octet-stream'; const gz = canGz(req, type, st.size);
     // Sürüm parametreli CSS (?v=<özet>) içerik değişince adresi de değiştiği için uzun süre önbellekte kalabilir
     const cache = ext === '.html' ? 'no-cache' : ext === '.css' && /[?&]v=[0-9a-f]{6,}/.test(req.url) ? 'public, max-age=31536000, immutable' : LONG.test(ext) ? 'public, max-age=604800' : 'public, max-age=300, must-revalidate';
-    const h = { 'Content-Type': type, ETag: etag, 'Cache-Control': cache, ...(GZ.test(type) ? { Vary: 'Accept-Encoding' } : {}) };
+    const h = { 'Content-Type': type, ETag: etag, 'Cache-Control': cache, ...(GZ.test(type) ? { Vary: 'Accept-Encoding' } : {}), ...(p.startsWith('/indir/kilavuz/') ? { 'X-Robots-Tag': 'noindex' } : {}) }; // kılavuz PDF'i arama sonucuna girmez: docs/SEO-KURALLARI.md
     // Tanıtım sitelerinde alan adı yer tutucusu panel ayarındaki adresle değiştirilir
     if (ext === '.html' && (p.startsWith('/site/') || p === '/index.html')) return fs.readFile(file, 'utf8', (er, txt) => { if (er) { res.writeHead(500); return res.end(); } cloud.seo.rewrite(txt, req).then((t) => cloud.guven.inject(t, p)).then((t) => sendText(req, res, t, h['Content-Type'], h['Cache-Control'])); });
     if (req.headers['if-none-match'] === etag) { res.writeHead(304, h); return res.end(); }
