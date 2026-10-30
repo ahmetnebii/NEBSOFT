@@ -86,7 +86,7 @@
   const seasonPct = (d) => sum(db.all('seasons', (x) => x.from <= d && d <= x.to), (x) => x.pct);
   // Doğrudan rezervasyon indirimi uygulanmış gecelik fiyatlar
   // Hafta sonu farkı (cuma, cumartesi geceleri) ve sezon artışı — ön büroyla aynı kural
-  const nightly = (t, ci, co) => { const out = []; for (let d = ci; d < co; d = iso(addDays(d, 1))) { const we = !NS.pub && [5, 6].includes(new Date(d + 'T12:00').getDay()) ? Number(t.weekendPct) || 0 : 0; /* bulutta fiyatı sunucu hesaplar ve hafta sonu farkını henüz bilmiyor (çekirdek isteği Ç7) */ out.push(Math.round((t.price * (1 + seasonPct(d) / 100) * (1 + we / 100)) / 10) * 10); } return out; };
+  const nightly = (t, ci, co) => { const out = []; for (let d = ci; d < co; d = iso(addDays(d, 1))) { const we = [5, 6].includes(new Date(d + 'T12:00').getDay()) ? Number(t.weekendPct) || 0 : 0; /* sunucu (RULES.otel) da aynı hafta sonu farkını uygular */ out.push(Math.round((t.price * (1 + seasonPct(d) / 100) * (1 + we / 100)) / 10) * 10); } return out; };
   // Satışa kapalı aralıklar ve oda değişikliği yapılmış konaklamalar da odayı kapatır; en az gece kuralı
   const freeRooms = (tid, ci, co) => (Number(type(tid).minNights) > daysBetween(ci, co) ? [] : db.all('rooms', (r) => r.type === tid && r.hk !== 'arizali').filter((rm) => !active().some((r) => (r.room === rm.id || (r.segs || []).some((x) => x.room === rm.id && x.from < co && ci < x.to)) && r.checkIn < co && ci < r.checkOut) && !db.all('blocks', (b) => b.room === rm.id && b.from < co && ci < b.to).length));
   const st = { ci: iso(addDays(new Date(), 7)), co: iso(addDays(new Date(), 10)), ad: 2, ch: 0 };

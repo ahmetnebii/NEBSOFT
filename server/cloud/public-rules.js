@@ -84,6 +84,17 @@ const strip = (r, fields) => { const o = { ...r }; fields.forEach((f) => delete 
 const RULES = {};
 
 // ---------- Randevu: online randevu (book.html) ----------
+// Online randevu saati uygun mu: uzman, hizmet, çalışma saati, 90 gün sınırı, çakışma (taşımada kendisi hariç)
+function randevuSlot(x, r, selfId) {
+  const st = x.get('staff', r.staff); const sv = x.get('services', r.service);
+  if (!st || st.active === false || !sv || (Array.isArray(sv.staff) && !sv.staff.includes(st.id))) bad('Uzman bulunamadı');
+  if (r.date < x.today || r.date > new Date(Date.now() + 90 * 864e5).toISOString().slice(0, 10)) bad('Geçersiz tarih');
+  const h = (st.hours || {})[new Date(r.date + 'T12:00').getDay()]; const a = toMin(r.start), b = a + Number(r.duration || 0);
+  if (!h || a < toMin(h.start) || b > toMin(h.end)) bad('Uzman bu saatte çalışmıyor');
+  const busy = x.col('appointments').some((o) => o.id !== selfId && o !== r && o.staff === r.staff && o.date === r.date && o.status !== 'iptal' && overlap(a, b, toMin(o.start), toMin(o.start) + Number(o.duration || 0)))
+    || x.col('blocks').some((o) => o.staff === r.staff && o.date === r.date && overlap(a, b, toMin(o.start), toMin(o.end)));
+  if (busy) throw Object.assign(new Error('Bu saat az önce doldu, lütfen başka saat seçin'), { status: 409 });
+}
 RULES.randevu = {
   pub: {
     services: { where: (r) => r.online, omit: ['cost'] },
@@ -111,18 +122,20 @@ RULES.randevu = {
         if (!sv || !sv.online) bad('Hizmet bulunamadı');
         return { duration: Number(sv.duration) || 30, price: Number(sv.price) || 0, status: s.autoConfirm ? 'onay' : 'bekliyor', source: 'online', paid: false };
       }, (r, x) => {
-        const st = x.get('staff', r.staff); const sv = x.get('services', r.service);
-        if (!st || st.active === false || (Array.isArray(sv.staff) && !sv.staff.includes(st.id))) bad('Uzman bulunamadı');
         if (!x.get('customers', r.customer)) bad('Müşteri bilgisi eksik');
-        if (r.date < x.today || r.date > new Date(Date.now() + 90 * 864e5).toISOString().slice(0, 10)) bad('Geçersiz tarih');
-        const h = (st.hours || {})[new Date(r.date + 'T12:00').getDay()]; const a = toMin(r.start), b = a + r.duration;
-        if (!h || a < toMin(h.start) || b > toMin(h.end)) bad('Uzman bu saatte çalışmıyor');
-        const busy = x.col('appointments').some((o) => o.staff === r.staff && o.date === r.date && o.status !== 'iptal' && overlap(a, b, toMin(o.start), toMin(o.start) + Number(o.duration || 0)))
-          || x.col('blocks').some((o) => o.staff === r.staff && o.date === r.date && overlap(a, b, toMin(o.start), toMin(o.end)));
-        if (busy) throw Object.assign(new Error('Bu saat az önce doldu, lütfen başka saat seçin'), { status: 409 });
+        randevuSlot(x, r);
       }),
-      upd: U({ status: 'enum:iptal', note: 'str:200?' }, (a, x) => a.customer === me(x, 'c') && !['iptal', 'tamam'].includes(a.status)
-        && (new Date(`${a.date}T${a.start}:00+03:00`) - Date.now()) / 3600e3 > Number((x.doc._settings || {}).cancelHours || 0)),
+      // Müşteri kendi randevusunu iptal eder ya da başka güne/saate taşır (iptal süresi kuralı ikisinde de geçerli; taşımada yeni saat yeniden denetlenir)
+      upd: (a, set, x, unset) => {
+        const s = x.doc._settings || {};
+        if (a.customer !== me(x, 'c') || ['iptal', 'tamam'].includes(a.status) || (new Date(`${a.date}T${a.start}:00+03:00`) - Date.now()) / 3600e3 <= Number(s.cancelHours || 0)) deny();
+        if (!('date' in set) && !('start' in set)) return U({ status: 'enum:iptal', note: 'str:200?' })(a, set, x, unset);
+        const keys = Object.keys(set).filter((k) => !['updated', 'reminded', 'remindTried', 'remindTest', 'status'].includes(k));
+        if (keys.some((k) => !['date', 'start', 'note'].includes(k)) || (unset || []).some((k) => !['reminded', 'remindTried', 'remindTest'].includes(k))) deny();
+        const p = clean({ date: 'date', start: 'time', note: 'str:400?' }, set);
+        randevuSlot(x, { ...a, date: p.date, start: p.start }, a.id);
+        return { ...p, status: s.autoConfirm ? a.status : 'bekliyor', reminded: null, remindTried: null, remindTest: null, updated: nowIso() };
+      },
     },
   },
   after: (x, list) => mergeByPhone(x, list, 'customers', [['appointments', 'customer']]),
@@ -282,39 +295,52 @@ const addDay = (d, n) => new Date(new Date(d + 'T12:00:00Z').getTime() + n * 864
 const otelSet = (x) => ({ directDiscount: 10, hbPrice: 650, freeCancelDays: 3, ...(x.doc._settings || {}) });
 function otelQuote(x, t, ci, co, board, ad, ch) {
   const S = otelSet(x); const ns = [];
-  for (let d = ci; d < co; d = addDay(d, 1)) { const pct = x.col('seasons').filter((s) => s.from <= d && d <= s.to).reduce((a, s) => a + (Number(s.pct) || 0), 0); ns.push(Math.round((Number(t.price) * (1 + pct / 100)) / 10) * 10); }
+  // Program ve rezervasyon.html ile aynı: sezon farkı + hafta sonu farkı (cuma ve cumartesi geceleri, types.weekendPct)
+  for (let d = ci; d < co; d = addDay(d, 1)) { const pct = x.col('seasons').filter((s) => s.from <= d && d <= s.to).reduce((a, s) => a + (Number(s.pct) || 0), 0); const we = [5, 6].includes(new Date(d + 'T12:00:00Z').getUTCDay()) ? Number(t.weekendPct) || 0 : 0; ns.push(Math.round((Number(t.price) * (1 + pct / 100) * (1 + we / 100)) / 10) * 10); }
   const room = ns.reduce((a, b) => a + b, 0); const disc = Math.round(room * S.directDiscount / 100);
   const hb = board === 'HB' ? S.hbPrice * (ad + ch * 0.5) * ns.length : 0; const ro = board === 'RO' ? Math.round((room - disc) * 0.1) : 0;
   return { n: ns.length, total: room - disc + hb - ro };
 }
 const daysTo = (a, b) => Math.round((new Date(b + 'T12:00:00Z') - new Date(a + 'T12:00:00Z')) / 864e5);
+// Bir rezervasyonun belirli bir odayı aralıkta kullanıp kullanmadığı (oda değişikliği: segs — geçmiş geceler eski odada)
+const otelUses = (o, roomId, ci, co) => { if (!(o.checkIn < co && ci < o.checkOut)) return false; if (!(o.segs || []).length) return o.room === roomId; for (let d = o.checkIn > ci ? o.checkIn : ci; d < co && d < o.checkOut; d = addDay(d, 1)) { const sg = o.segs.find((g) => g.from <= d && d < g.to); if ((sg ? sg.room : o.room) === roomId) return true; } return false; };
 RULES.otel = {
   pub: {
     types: true, seasons: true,
     rooms: { fields: ['id', 'no', 'type', 'hk', 'floor'] },
-    reservations: { where: (r, x) => r.checkOut >= x.today && r.status !== 'iptal', fields: ['id', 'room', 'checkIn', 'checkOut', 'status'] },
+    reservations: { where: (r, x) => r.checkOut >= x.today && r.status !== 'iptal' && r.status !== 'noshow', fields: ['id', 'room', 'checkIn', 'checkOut', 'status', 'segs'] },
+    blocks: { where: (b, x) => b.to >= x.today, fields: ['id', 'room', 'from', 'to'] }, // satışa kapalı aralıklar (neden gösterilmez)
   },
   login: (x, q) => { const no = norm(q.no); const r = no && x.col('reservations').find((r) => r.no === no); const g = r && x.get('guests', r.guest); return g && samePhone(g.phone, q.phone) ? { k: 'r', i: r.id } : null; },
   loginError: 'Eşleşen rezervasyon bulunamadı',
   view: (x) => {
     const r = x.get('reservations', me(x, 'r')); if (!r) return {};
     const g = x.get('guests', r.guest);
-    return { reservations: [...x.col('reservations').filter((o) => o.id !== r.id && o.checkOut >= x.today && o.status !== 'iptal').map((o) => x.pick(o, ['id', 'room', 'checkIn', 'checkOut', 'status'])), strip(r, ['folio', 'internal'])], guests: g ? [x.pick(g, ['id', 'name', 'phone', 'email'])] : [] };
+    return { reservations: [...x.col('reservations').filter((o) => o.id !== r.id && o.checkOut >= x.today && o.status !== 'iptal' && o.status !== 'noshow').map((o) => x.pick(o, ['id', 'room', 'checkIn', 'checkOut', 'status', 'segs'])), strip(r, ['folio', 'internal'])], guests: g ? [x.pick(g, ['id', 'name', 'phone', 'email'])] : [] };
   },
   write: {
     guests: { ins: I({ name: 'str:80', phone: 'phone', email: 'email?', nat: 'str:40?' }, { note: '' }) },
     reservations: {
-      ins: I({ room: 'id', guest: 'id', checkIn: 'date', checkOut: 'date', adults: 'int:1:12', children: 'int:0:10', board: 'enum:RO|BB|HB', note: 'str:400?', email: 'email?' }, (r, x) => ({ source: 'Web sitesi', direct: true, status: 'opsiyon', deposit: 0, folio: [] }), (r, x) => {
+      ins: I({ room: 'id', guest: 'id', checkIn: 'date', checkOut: 'date', adults: 'int:1:12', children: 'int:0:10', board: 'enum:RO|BB|HB', note: 'str:400?', email: 'email?', depositRequest: 'num:0:1e9?' }, (r, x) => ({ source: 'Web sitesi', direct: true, status: 'opsiyon', deposit: 0, folio: [] }), (r, x) => {
         const rm = x.get('rooms', r.room); const t = rm && x.get('types', rm.type);
         if (!rm || !t || rm.hk === 'arizali') bad('Oda bulunamadı');
         if (!x.get('guests', r.guest)) bad('Misafir bilgisi eksik');
         const n = daysTo(r.checkIn, r.checkOut); if (r.checkIn < x.today || n < 1 || n > 30 || daysTo(x.today, r.checkIn) > 400) bad('Geçersiz tarih');
         if (r.adults + r.children > (Number(t.capacity) || 4) + 1) bad('Kişi sayısı oda kapasitesini aşıyor');
-        if (x.col('reservations').some((o) => o !== r && o.room === r.room && o.status !== 'iptal' && o.checkIn < r.checkOut && r.checkIn < o.checkOut)) throw Object.assign(new Error('Üzgünüz, bu oda az önce doldu'), { status: 409 });
+        if (Number(t.minNights) > n) bad(`Bu oda tipinde en az ${t.minNights} gece konaklama gerekir`);
+        if (x.col('blocks').some((b) => b.room === r.room && b.from < r.checkOut && r.checkIn < b.to)) throw Object.assign(new Error('Bu oda seçilen tarihlerde satışa kapalı'), { status: 409 });
+        if (x.col('reservations').some((o) => o !== r && !['iptal', 'noshow'].includes(o.status) && otelUses(o, r.room, r.checkIn, r.checkOut))) throw Object.assign(new Error('Üzgünüz, bu oda az önce doldu'), { status: 409 });
         const q = otelQuote(x, t, r.checkIn, r.checkOut, r.board, r.adults, r.children);
         r.price = Math.round(q.total / q.n); r.no = x.seq('reservations', 'W');
+        // Kapora talebi: tutarı istemci belirlemez; istenmişse toplamın %30'u (rezervasyon.html ile aynı)
+        if (r.depositRequest) r.depositRequest = Math.round(q.total * 0.3); else delete r.depositRequest;
       }),
-      upd: U({ status: 'enum:iptal', cancelNote: 'str:200?' }, (r, x) => r.id === me(x, 'r') && ['rezerve', 'opsiyon'].includes(r.status) && daysTo(x.today, r.checkIn) >= otelSet(x).freeCancelDays),
+      // Misafir kendi rezervasyonunda: ücretsiz iptal süresi içinde iptal; ya da online ön check-in (kimlik, uyruk, doğum, plaka, varış, diğer kişiler)
+      upd: (cur, set, x, unset) => {
+        if (cur.id !== me(x, 'r') || !['rezerve', 'opsiyon'].includes(cur.status)) bad('Bu rezervasyon değiştirilemez');
+        if ('precheck' in set) { const pc = clean({ idNo: 'str:20', nat: 'str:40?', birth: 'date?', plate: 'str:15?', eta: 'str:20?', others: 'str:600?' }, set.precheck || {}); if (Object.keys(set).some((k) => !['precheck', 'updated'].includes(k)) || (unset || []).length) deny(); return { precheck: { ...pc, at: nowIso() }, updated: nowIso() }; }
+        return U({ status: 'enum:iptal', cancelNote: 'str:200?' }, (r) => daysTo(x.today, r.checkIn) >= otelSet(x).freeCancelDays)(cur, set, x, unset);
+      },
     },
   },
   after: (x, list) => mergeByPhone(x, list, 'guests', [['reservations', 'guest']]),
