@@ -22,7 +22,7 @@ const I = {
 // Ana siteyle aynı üst menü ve alt bilgi
 const USTBAR = () => `<header class="hd mk"><div class="w">
   <a class="logo" href="/" aria-label="${CFG.brand} ana sayfa"><img src="/assets/icons/icon-64.png" alt="" width="36" height="36"><span class="wm"><b>NEB</b><i>SOFT</i></span><span class="sub">Ücretsiz Araçlar</span></a>
-  <nav class="nav" aria-label="Ana menü"><a href="/programlar">Programlar</a><a href="/araclar">Araçlar</a><a href="/fiyatlar/">Fiyatlar</a><a href="/#/sektorler">Sektörler</a><a href="/#/iletisim">İletişim</a></nav>
+  <nav class="nav" aria-label="Ana menü"><a href="/programlar">Programlar</a><a href="/paketler/">Paketler</a><a href="/araclar">Araçlar</a><a href="/fiyatlar/">Fiyatlar</a><a href="/#/sektorler">Sektörler</a><a href="/#/iletisim">İletişim</a></nav>
   <a class="btn g" href="/#/giris">Giriş yap</a><a class="btn p" href="/#/kayit">Ücretsiz başla ${I.arrow}</a>
 </div></header>`;
 const ALTBAR = () => `<footer class="ft"><div class="w">

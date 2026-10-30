@@ -152,6 +152,7 @@ section.alt { background: var(--bg2); }
 .subnav nav a { padding: 6px 11px; border-radius: 8px; font-size: 14px; font-weight: 600; color: var(--ink2); text-decoration: none; white-space: nowrap; } .subnav nav a:hover { color: var(--ink); background: var(--bg2); }
 .btn.sm { padding: 7px 14px; font-size: 13.5px; }
 .hd.mk .nav a, .hd.mk .btn { white-space: nowrap; }
+@media (max-width: 1320px) { .hd.mk .nav a { padding: 9px 7px; font-size: 14px; } .hd.mk .btn { padding-left: 14px; padding-right: 14px; } }
 @media (max-width: 1120px) { .hd.mk .nav { display: none; } .hd.mk .logo .sub { display: none; } }
 @media (max-width: 520px) { .hd.mk .btn.g { display: none; } .hd.mk > .w { height: 64px; gap: 10px; } .wm { font-size: 14px; } .hd.mk .btn.p { padding: 9px 14px; font-size: 14px; } }
 .hubgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 18px; margin: 18px 0 44px; }
@@ -181,3 +182,23 @@ section.alt { background: var(--bg2); }
 .tablo .r { text-align: right; white-space: nowrap; }
 .tablo .grup th { background: var(--bg2); font-size: 13px; color: var(--ink3); }
 .rehber-l small { display: block; color: var(--ink3); margin-top: 8px; font-size: 13px; }
+/* Hazır paketler */
+.pkgrid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-top: 30px; }
+.pkcard { display: flex; flex-direction: column; gap: 6px; text-decoration: none; background: var(--card); border: 1px solid var(--line); border-top: 3px solid var(--c); border-radius: 14px; padding: 18px; transition: border-color .15s, transform .15s; color: var(--ink); }
+.pkcard:hover { border-color: var(--c); transform: translateY(-2px); }
+.pkcard b { font: 700 18px var(--dis); }
+.pkkim { font-size: 14px; color: var(--ink2); }
+.pkpr { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0 10px; }
+.pkpr i { font-style: normal; font-size: 13px; color: var(--ink2); background: var(--bg2); border: 1px solid var(--line); border-radius: 99px; padding: 2px 10px; }
+.pkcard em { margin-top: auto; font-style: normal; font-weight: 600; font-size: 14px; color: var(--ink); }
+.pkrol { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; }
+.pkrol a { display: flex; flex-direction: column; gap: 8px; text-decoration: none; background: var(--card); border: 1px solid var(--line); border-left: 3px solid var(--c); border-radius: 14px; padding: 20px; color: var(--ink); transition: transform .15s; }
+.pkrol a:hover { transform: translateY(-2px); }
+.pkrol b { font: 700 18px var(--dis); }
+.pkrol span { color: var(--ink2); font-size: 15px; flex: 1; }
+.pkrol em { font-style: normal; font-size: 14px; font-weight: 600; color: var(--c); }
+.pkeski { font-size: 14px; color: var(--ink3); margin-top: 10px; }
+.pkeski s { text-decoration: line-through; }
+.price .pkeski + .amt { font-size: clamp(30px, 3.4vw, 40px); }
+@media (max-width: 960px) { .pkgrid { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 620px) { .pkgrid { grid-template-columns: 1fr; } }
