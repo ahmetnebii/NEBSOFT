@@ -4,7 +4,10 @@
   'use strict';
   const r2 = (x) => Math.round(x * 100) / 100;
 
-  // Varsayılanlar 2026 yılı içindir; yıl başında ve ara dönem değişikliklerinde Ayarlar'dan güncelleyin
+  // Varsayılanlar 2026 yılı içindir; yıl başında ve ara dönem değişikliklerinde Ayarlar'dan güncelleyin.
+  // Doğrulama (30.10.2026): asgari ücret 33.030,00 ₺ brüt, SGK işçi %14, işsizlik işçi %1 — DOĞRULANDI (csgb.gov.tr/poco-pages/asgari-ucret/,
+  // 01/01/2026–31/12/2026). Gelir vergisi dilimleri, damga vergisi oranı, işveren payları ve kıdem tavanı — DOĞRULANAMADI (hafızadan; resmî
+  // metin okunamadı) → bordro ekranında uyarı gösterilir (VERIFIED dışındakiler).
   const DEFAULTS = {
     year: 2026,
     minGross: 33030, // asgari ücret (brüt, aylık)
@@ -16,6 +19,7 @@
     severanceCap: 64948.77, // kıdem tazminatı tavanı (dönemsel)
   };
 
+  const VERIFIED = ['minGross', 'sgkEmp', 'unempEmp'];
   const parse = (p) => {
     const b = String(p.brackets || DEFAULTS.brackets).split(',').map((x) => x.split(':').map(Number)).map(([lim, rate]) => [lim || Infinity, rate]);
     return { ...DEFAULTS, ...p, B: b.sort((a, c) => a[0] - c[0]) };
@@ -81,5 +85,5 @@
     return { years: r2(years), kidemBase: r2(kidemBase), capped: o.gross > P.severanceCap, kidem, kidemStamp, kidemNet: r2(kidem - kidemStamp), weeks, ihbar, ihbarTax, ihbarStamp, ihbarNet: r2(ihbar - ihbarTax - ihbarStamp), leaveDays, leavePay, leaveNet: r2(Math.max(0, leaveNet)) };
   }
 
-  root.BORDRO = { DEFAULTS, month, grossFromNet, severance, tax: (p, b) => tax(parse(p), b) };
+  root.BORDRO = { DEFAULTS, VERIFIED, month, grossFromNet, severance, tax: (p, b) => tax(parse(p), b) };
 })(typeof window !== 'undefined' ? window : globalThis);

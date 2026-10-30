@@ -27,7 +27,11 @@
   const cell = (eid, d) => db.data.ts[`${eid}|${d}`];
   const defaultStatus = (d) => (new Date(d + 'T12:00').getDay() === 0 ? 'H' : HOLIDAYS.includes(d.slice(5)) ? 'B' : 'C');
   const seniority = (e) => Math.floor(daysBetween(e.start, new Date()) / 365);
-  const entitlement = (e) => { const y = seniority(e); return y < 1 ? 0 : y < 5 ? 14 : y < 15 ? 20 : 26; };
+  // Yıllık ücretli izin — 4857 sayılı İş Kanunu md. 53 (mevzuat.gov.tr/mevzuatmetin/1.5.4857.htm, okundu 30.10.2026 — DOĞRULANDI):
+  // en az 1 yıl; 1–5 yıl (5 dahil) 14, 5'ten fazla 15'ten az 20, 15 ve üstü 26 gün; 18 yaş ve altı ile 50 yaş ve üstü en az 20 gün;
+  // yer altı işlerinde +4 gün (6552/5). Sözleşmeyle artırılabilir (e.leaveExtra).
+  const ageOf = (e) => (e.birth ? Math.floor(daysBetween(e.birth, new Date()) / 365.25) : null);
+  const entitlement = (e) => { const y = seniority(e); if (y < 1) return 0; let d = y <= 5 ? 14 : y < 15 ? 20 : 26; const a = ageOf(e); if (a !== null && (a <= 18 || a >= 50)) d = Math.max(d, 20); if (e.underground) d += 4; return d + (Number(e.leaveExtra) || 0); };
   const usedLeave = (e) => Object.entries(db.data.ts).filter(([k, v]) => k.startsWith(e.id + '|') && k.split('|')[1].startsWith(String(new Date().getFullYear())) && v.s === 'I').length;
   const myDept = () => (NS.currentUser && NS.currentUser.role === 'sef' ? NS.currentUser.dept : null);
   const emps = () => db.all('employees', (e) => e.active !== false && (!myDept() || e.dept === myDept()));
@@ -90,7 +94,8 @@
     $('#pdks', el).onclick = async () => {
       if (!NS.integ) return; const r = await NS.integ.call('pdks', 'hareketler', { month: ym }); if (!r || !r.ok) return;
       let recs = r.data && Array.isArray(r.data.records) ? r.data.records : [];
-      if (r.simulated) recs = emps().flatMap((e) => days.filter((d) => d <= today() && defaultStatus(d) === 'C' && !cell(e.id, d)).map((d) => { const out = 17 + (Math.random() < 0.2 ? NS.rand(1, 3) : 0); return { tc: e.tc, emp: e.id, date: d, in: '08:' + String(NS.rand(0, 15)).padStart(2, '0'), out: out + ':' + String(NS.rand(0, 59)).padStart(2, '0') }; })).filter(() => Math.random() > 0.03);
+      // Simülasyonda cihazdan kayıt okunmaz: uydurma giriş-çıkış puantaja (ve maaşa) yazılmaz
+      if (r.simulated) return toast('PDKS TEST — cihaz bağlı değil (simülasyon), puantaja kayıt işlenmedi', 'warn');
       let n = 0; recs.forEach((x) => { const e = x.emp ? emp(x.emp) : db.find('employees', (y) => y.tc === x.tc); if (!e || !e.id) return; const hrs = (Number(x.out.split(':')[0]) + Number(x.out.split(':')[1]) / 60) - (Number(x.in.split(':')[0]) + Number(x.in.split(':')[1]) / 60) - 1; db.data.ts[`${e.id}|${x.date}`] = { s: 'C', ot: Math.max(0, Math.round((hrs - 8) * 2) / 2), in: x.in, out: x.out }; n++; });
       db.save(); toast(`${n} giriş-çıkış kaydı puantaja işlendi`, 'ok'); app.refresh();
     };
@@ -99,7 +104,7 @@
   }
 
   // ---------- Personel ----------
-  const EF = [{ name: 'name', label: 'Ad soyad', required: true }, { name: 'tc', label: 'TC kimlik no' }, { name: 'dept', label: 'Departman', type: 'select', options: ['Üretim', 'Satış', 'Lojistik', 'İdari'] }, { name: 'title', label: 'Görev' }, { name: 'start', label: 'İşe giriş', type: 'date', required: true }, { name: 'salary', label: 'Maaş (₺)', type: 'number', required: true }, { name: 'salaryType', label: 'Maaş türü', type: 'select', options: [{ value: 'net', label: 'Net (anlaşılan ele geçen)' }, { value: 'brut', label: 'Brüt' }] }, { name: 'phone', label: 'Telefon' }, { name: 'birth', label: 'Doğum tarihi', type: 'date' }, { name: 'iban', label: 'IBAN', full: true }, { name: 'active', label: 'Aktif çalışan', type: 'checkbox' }];
+  const EF = [{ name: 'name', label: 'Ad soyad', required: true }, { name: 'tc', label: 'TC kimlik no' }, { name: 'dept', label: 'Departman', type: 'select', options: ['Üretim', 'Satış', 'Lojistik', 'İdari'] }, { name: 'title', label: 'Görev' }, { name: 'start', label: 'İşe giriş', type: 'date', required: true }, { name: 'salary', label: 'Maaş (₺)', type: 'number', required: true }, { name: 'salaryType', label: 'Maaş türü', type: 'select', options: [{ value: 'net', label: 'Net (anlaşılan ele geçen)' }, { value: 'brut', label: 'Brüt' }] }, { name: 'phone', label: 'Telefon' }, { name: 'birth', label: 'Doğum tarihi', type: 'date' }, { name: 'underground', label: 'Yer altı işlerinde çalışıyor (yıllık izne +4 gün)', type: 'checkbox' }, { name: 'leaveExtra', label: 'Sözleşmeyle ek yıllık izin (gün)', type: 'number' }, { name: 'iban', label: 'IBAN', full: true }, { name: 'active', label: 'Aktif çalışan', type: 'checkbox' }];
   let wasActive = true;
   function employeesPage(el, p, app) {
     NS.crud(el, app, {
@@ -114,10 +119,10 @@
         // SGK: yeni personelde işe giriş, pasife alınanda işten çıkış bildirimi
         if (!NS.integ || !NS.integ.isOn('sgk')) return;
         const e = rec ? db.get('employees', rec.id) : db.all('employees').slice(-1)[0];
-        if (!rec) NS.integ.call('sgk', 'ise-giris', { tc: e.tc, name: e.name, start: e.start, title: e.title, dept: e.dept }).then((r) => { if (r && r.ok) { e.sgkIn = r.ref; db.save(); } });
-        else if (wasActive && v.active === false) NS.integ.call('sgk', 'isten-cikis', { tc: e.tc, name: e.name, end: today(), code: '04' }).then((r) => { if (r && r.ok) { e.sgkOut = r.ref; e.end = today(); db.save(); } });
+        if (!rec) NS.integ.call('sgk', 'ise-giris', { tc: e.tc, name: e.name, start: e.start, title: e.title, dept: e.dept }).then((r) => { if (r && r.ok && !r.simulated) { e.sgkIn = r.ref; db.save(); } else if (r && r.simulated) { e.sgkInTest = true; db.save(); } });
+        else if (wasActive && v.active === false) NS.integ.call('sgk', 'isten-cikis', { tc: e.tc, name: e.name, end: today(), code: '04' }).then((r) => { if (r && r.ok && !r.simulated) { e.sgkOut = r.ref; e.end = today(); db.save(); } else if (r && r.simulated) { e.sgkOutTest = true; e.end = e.end || today(); db.save(); } });
       },
-      columns: [{ key: 'name', label: 'Personel', render: (e) => `<div class="row nw"><div class="avatar">${esc(NS.initials(e.name))}</div><div><b>${esc(e.name)}</b><div class="small faint">${esc(e.title || '')}${e.sgkIn ? ' · SGK giriş ✓' : ''}${e.sgkOut ? ' · SGK çıkış ✓' : ''}</div></div></div>` }, { key: 'dept', label: 'Departman', render: (e) => badge(e.dept, 'acc') }, { key: 'start', label: 'Kıdem', render: (e) => `${NS.date(e.start)}<div class="small faint">${seniority(e)} yıl</div>` }, { label: 'Yıllık izin', render: (e) => `${usedLeave(e)} / ${entitlement(e)} gün` }, { key: 'salary', label: 'Net maaş', cls: 'right', render: (e) => money(e.salary) }],
+      columns: [{ key: 'name', label: 'Personel', render: (e) => `<div class="row nw"><div class="avatar">${esc(NS.initials(e.name))}</div><div><b>${esc(e.name)}</b><div class="small faint">${esc(e.title || '')}${e.sgkIn ? ' · SGK giriş ✓' : e.sgkInTest ? ' · SGK giriş TEST (bildirilmedi)' : ''}${e.sgkOut ? ' · SGK çıkış ✓' : e.sgkOutTest ? ' · SGK çıkış TEST (bildirilmedi)' : ''}</div></div></div>` }, { key: 'dept', label: 'Departman', render: (e) => badge(e.dept, 'acc') }, { key: 'start', label: 'Kıdem', render: (e) => `${NS.date(e.start)}<div class="small faint">${seniority(e)} yıl</div>` }, { label: 'Yıllık izin', render: (e) => `${usedLeave(e)} / ${entitlement(e)} gün` }, { key: 'salary', label: 'Net maaş', cls: 'right', render: (e) => money(e.salary) }],
     });
   }
 
@@ -182,7 +187,8 @@
         { label: 'Ödenecek', cls: 'right', render: (r) => `<b>${money(r.net)}</b>` },
         { label: 'İşveren maliyeti', cls: 'right', render: (r) => money(r.cost) },
       ], actions: [{ icon: 'print', act: 'slip', title: 'Bordro pusulası' }], foot: `${rows.length} personel · kümülatif GV matrahı yılbaşından itibaren hesaplanır` })}</div>
-      <p class="small faint mt">SGK günü puantajdan (ücretsiz izin, devamsızlık, ay içi giriş/çıkış) gelir; gelir vergisi yılbaşından kümülatif matrahla ve asgari ücret istisnası düşülerek hesaplanır. ${P.year} parametreleri: asgari ücret ${money(P.minGross)} brüt · SGK tavanı ${money(P.minGross * P.ceilingX)} · işveren SGK %${P.sgkEr} (teşvik −${P.incentive} puan). Değerler Ayarlar &gt; Bordro'dan güncellenir; resmi beyan öncesi mali müşavirinizle teyit edin.</p>`;
+      <p class="small faint mt">SGK günü puantajdan (ücretsiz izin, devamsızlık, ay içi giriş/çıkış) gelir; gelir vergisi yılbaşından kümülatif matrahla ve asgari ücret istisnası düşülerek hesaplanır. ${P.year} parametreleri: asgari ücret ${money(P.minGross)} brüt · SGK tavanı ${money(P.minGross * P.ceilingX)} · işveren SGK %${P.sgkEr} (teşvik −${P.incentive} puan). Değerler Ayarlar &gt; Bordro'dan güncellenir; resmi beyan öncesi mali müşavirinizle teyit edin.</p>
+      ${(() => { const S0 = db.settings(); const un = { brackets: 'gelir vergisi dilimleri', stampPermille: 'damga vergisi oranı', sgkEr: 'işveren SGK payı', unempEr: 'işveren işsizlik payı', incentive: 'hazine teşviki', severanceCap: 'kıdem tazminatı tavanı (dönemseldir — Temmuz 2026’da değişti)', ceilingX: 'SGK tavan katsayısı' }; const left = Object.keys(un).filter((k) => S0[k] === undefined || S0[k] === ''); return left.length ? `<div class="card pad mt" style="border-color:var(--warn)"><b>Doğrulanmamış varsayılanlar kullanılıyor:</b> ${left.map((k) => un[k]).join(', ')}. Bu değerler resmî kaynaktan doğrulanamadı (asgari ücret ve SGK/işsizlik işçi payları Çalışma Bakanlığı sayfasından doğrulandı). Ayarlar &gt; Bordro'dan güncel değerleri girin; girilen değerler bu uyarıyı kaldırır.</div>` : ''; })()}`;
     const slip = (r) => `<div class="doc" style="page-break-after:always"><h2>${esc(S().bizName)}</h2><h3>ÜCRET BORDROSU — ${NS.MONTHS[Number(ym.slice(5)) - 1].toLocaleUpperCase('tr')} ${ym.slice(0, 4)}</h3>
       <p><b>${esc(r.e.name)}</b> · TC ${esc(r.e.tc || '-')} · ${esc(r.e.dept)} / ${esc(r.e.title || '')} · İşe giriş ${NS.date(r.e.start)}</p>
       <table><tr><th>Kazançlar</th><th style="text-align:right">Tutar</th><th>Kesintiler</th><th style="text-align:right">Tutar</th></tr>
@@ -203,11 +209,12 @@
       const miss = rows.filter((r) => !r.e.iban); if (miss.length && !(await confirm(`${miss.length} personelin IBAN’ı yok, listeye alınmayacak. Devam edilsin mi?`, { ok: 'Devam', danger: false }))) return;
       const list = rows.filter((r) => r.e.iban && r.net > 0).map((r) => ({ name: r.e.name, iban: r.e.iban, amount: r.net, desc: `${ym} maaş` }));
       const r = NS.integ ? await NS.integ.call('bankamaas', 'toplu-odeme', { month: ym, total: sum(list, (x) => x.amount), list }) : null;
-      if (r && r.ok) { db.saveSettings({ ['paid_' + ym]: r.ref }); toast(`${list.length} kişilik maaş talimatı bankaya iletildi (${r.ref})`, 'ok'); }
+      if (r && r.simulated) toast('Banka TEST — maaş talimatı gönderilmedi (simülasyon); ödendi işaretlenmedi', 'warn');
+      else if (r && r.ok) { db.saveSettings({ ['paid_' + ym]: r.ref }); toast(`${list.length} kişilik maaş talimatı bankaya iletildi (${r.ref})`, 'ok'); }
     };
     $('#eb', el).onclick = async () => {
       const r = NS.integ ? await NS.integ.call('ebordro', 'gonder', { month: ym, list: rows.map((x) => ({ tc: x.e.tc, name: x.e.name, phone: x.e.phone, gross: x.gross, days: x.days, sgk: x.sgk, unemp: x.unemp, incomeTax: x.incomeTax, stamp: x.stamp, netSalary: x.netSalary, net: x.net, ot: x.otPay, adv: x.adv })) }) : null;
-      if (r && r.ok) toast(`${rows.length} personele e-bordro iletildi`, 'ok');
+      if (r && r.simulated) toast('e-Bordro TEST — gönderilmedi (simülasyon)', 'warn'); else if (r && r.ok) toast(`${rows.length} personele e-bordro iletildi`, 'ok');
     };
     $('#ex', el).onclick = () => NS.csv(`maas-${ym}`, rows, [{ label: 'Ad Soyad', value: (r) => r.e.name }, { label: 'IBAN', value: (r) => r.e.iban }, { label: 'Tutar', value: (r) => r.net }, { label: 'Açıklama', value: () => `${ym} maaş` }]);
   }
