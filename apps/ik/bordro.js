@@ -5,21 +5,23 @@
   const r2 = (x) => Math.round(x * 100) / 100;
 
   // Varsayılanlar 2026 yılı içindir; yıl başında ve ara dönem değişikliklerinde Ayarlar'dan güncelleyin.
-  // Doğrulama (30.10.2026): asgari ücret 33.030,00 ₺ brüt, SGK işçi %14, işsizlik işçi %1 — DOĞRULANDI (csgb.gov.tr/poco-pages/asgari-ucret/,
-  // 01/01/2026–31/12/2026). Gelir vergisi dilimleri, damga vergisi oranı, işveren payları ve kıdem tavanı — DOĞRULANAMADI (hafızadan; resmî
-  // metin okunamadı) → bordro ekranında uyarı gösterilir (VERIFIED dışındakiler).
+  // Doğrulama (30.10.2026) — hepsi DOĞRULANDI:
+  // asgari ücret günlük 1.101 ₺ (RG 26.12.2025/33119, ACT Kararı 2025/1) × 30 = 33.030 ₺; SGK işçi %14, işsizlik işçi %1, işveren %21,75 + işsizlik %2,
+  // prim indirimi imalat 5 / diğer 2 puan (csgb.gov.tr/poco-pages/asgari-ucret/, 01/01–31/12/2026); SGK tavanı 9 kat (5510 md. 82, mevzuat.gov.tr/mevzuatmetin/1.5.5510.htm);
+  // ücret GV tarifesi (Gelir Vergisi Genel Tebliği Seri No 332, RG 31.12.2025/33124 5. Mük., md. 3/3); damga binde 7,59 (488 s.K. (1) s. tablo IV-1-b, mevzuat.gov.tr/mevzuatmetin/1.5.488.htm);
+  // kıdem tavanı 73.729,87 ₺ — 01.07.2026 itibarıyla (csgb.gov.tr kıdem tazminatı tavan tablosu, Temmuz 2026). Tavan her 6 ayda değişir.
   const DEFAULTS = {
     year: 2026,
     minGross: 33030, // asgari ücret (brüt, aylık)
     sgkEmp: 14, unempEmp: 1, // işçi payları (%)
-    sgkEr: 21.75, unempEr: 2, incentive: 5, // işveren payları (%) ve hazine teşviki (puan)
+    sgkEr: 21.75, unempEr: 2, incentive: 2, // işveren payları (%) ve prim indirimi (puan): imalat sektörü 5, diğer sektörler 2
     ceilingX: 9, // SGK prime esas kazanç tavanı = asgari ücretin katı
     stampPermille: 7.59, // damga vergisi (binde)
     brackets: '190000:15,400000:20,1500000:27,5300000:35,0:40', // ücret gelirleri için GV tarifesi (yıllık kümülatif üst sınır : oran)
-    severanceCap: 64948.77, // kıdem tazminatı tavanı (dönemsel)
+    severanceCap: 73729.87, // kıdem tazminatı tavanı (01.07.2026; 6 ayda bir değişir)
+    severanceAt: '2026-07-01',
   };
 
-  const VERIFIED = ['minGross', 'sgkEmp', 'unempEmp'];
   const parse = (p) => {
     const b = String(p.brackets || DEFAULTS.brackets).split(',').map((x) => x.split(':').map(Number)).map(([lim, rate]) => [lim || Infinity, rate]);
     return { ...DEFAULTS, ...p, B: b.sort((a, c) => a[0] - c[0]) };
@@ -85,5 +87,5 @@
     return { years: r2(years), kidemBase: r2(kidemBase), capped: o.gross > P.severanceCap, kidem, kidemStamp, kidemNet: r2(kidem - kidemStamp), weeks, ihbar, ihbarTax, ihbarStamp, ihbarNet: r2(ihbar - ihbarTax - ihbarStamp), leaveDays, leavePay, leaveNet: r2(Math.max(0, leaveNet)) };
   }
 
-  root.BORDRO = { DEFAULTS, VERIFIED, month, grossFromNet, severance, tax: (p, b) => tax(parse(p), b) };
+  root.BORDRO = { DEFAULTS, month, grossFromNet, severance, tax: (p, b) => tax(parse(p), b) };
 })(typeof window !== 'undefined' ? window : globalThis);
