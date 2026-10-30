@@ -1,6 +1,9 @@
 data/
 node_modules/
 
+# NEBSOFT Pazarlama iç aracı: API anahtarı ve aday verisi depoya girmez
+ic-araclar/nebsoftpazarlama/veri/
+
 # Tanıtım videosu çıktıları (büyük dosyalar)
 brag-output*/
 

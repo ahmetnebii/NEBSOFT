@@ -1,0 +1,214 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>NEBSOFT Pazarlama</title>
+<style>
+:root{--zemin:#f6f9fc;--yuzey:#fff;--yazi:#0d253d;--soluk:#566a82;--cizgi:#dbe3ec;--ana:#533afd;--ana-yazi:#fff;--ana-acik:#ecebff;--yuksek:#0a7a4b;--yuksek-z:#def5ea;--orta:#8a5a00;--orta-z:#fdf0d5;--dusuk:#566a82;--dusuk-z:#e9eef4;--uyari:#fff6e0;--uyari-c:#e6c368;--tehlike:#c0234f;--golge:0 1px 3px rgba(13,37,61,.08)}
+@media (prefers-color-scheme:dark){:root:not([data-theme=light]){--zemin:#0e1622;--yuzey:#172231;--yazi:#e8eef5;--soluk:#9db0c5;--cizgi:#2c3a4d;--ana:#8f83ff;--ana-yazi:#0e1622;--ana-acik:#252a55;--yuksek:#5fd6a3;--yuksek-z:#123a2b;--orta:#f0c36a;--orta-z:#3b2e12;--dusuk:#a9b9cb;--dusuk-z:#263345;--uyari:#33290f;--uyari-c:#7a6226;--tehlike:#ff7c9c;--golge:none}}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+a{color:var(--ana)}
+body{margin:0;background:var(--zemin);color:var(--yazi);font:15px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+.kap{max-width:1040px;margin:0 auto;padding:0 16px}
+header{background:var(--yuzey);border-bottom:1px solid var(--cizgi)}
+header .kap{display:flex;flex-wrap:wrap;align-items:center;gap:6px 18px;padding-top:12px}
+h1{font-size:18px;margin:0 0 8px}h1 small{font-weight:400;color:var(--soluk);font-size:13px;margin-left:6px}
+nav{display:flex;gap:4px;margin-left:auto;overflow-x:auto}
+nav button{background:none;border:0;border-bottom:3px solid transparent;color:var(--soluk);padding:8px 12px;font:inherit;cursor:pointer;white-space:nowrap}
+nav button[aria-selected=true]{color:var(--ana);border-color:var(--ana);font-weight:600}
+main{padding:16px 0 48px}
+.uyari{background:var(--uyari);border:1px solid var(--uyari-c);border-radius:8px;padding:10px 12px;margin:0 0 14px;font-size:14px}
+.uyari summary{cursor:pointer;font-weight:600}.uyari ul{margin:8px 0 0;padding-left:18px}
+.kart{background:var(--yuzey);border:1px solid var(--cizgi);border-radius:10px;padding:14px;box-shadow:var(--golge);margin-bottom:12px}
+.form{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;align-items:end}
+label{display:block;font-size:13px;color:var(--soluk)}
+input,select,textarea{width:100%;margin-top:3px;padding:8px 10px;border:1px solid var(--cizgi);border-radius:7px;background:var(--yuzey);color:var(--yazi);font:inherit}
+input[type=checkbox],input[type=radio]{width:auto;margin:0 6px 0 0}
+textarea{min-height:64px;resize:vertical}
+:focus-visible{outline:2px solid var(--ana);outline-offset:1px}
+button.d{background:var(--yuzey);color:var(--yazi);border:1px solid var(--cizgi);border-radius:7px;padding:7px 12px;font:inherit;cursor:pointer}
+button.d:hover{border-color:var(--ana)}button.d.ana{background:var(--ana);color:var(--ana-yazi);border-color:var(--ana);font-weight:600}
+button.d.teh{color:var(--tehlike)}button.d:disabled{opacity:.55;cursor:not-allowed}
+a.d{display:inline-block;background:var(--yuzey);color:var(--yazi);border:1px solid var(--cizgi);border-radius:7px;padding:7px 12px;text-decoration:none}
+.satir{display:flex;flex-wrap:wrap;gap:8px;align-items:center}.ara{justify-content:space-between}
+.etiket{display:inline-block;border-radius:999px;padding:1px 9px;font-size:12px;font-weight:600;background:var(--dusuk-z);color:var(--dusuk)}
+.etiket.yuksek{background:var(--yuksek-z);color:var(--yuksek)}.etiket.orta{background:var(--orta-z);color:var(--orta)}.etiket.dusuk{background:var(--dusuk-z);color:var(--dusuk)}.etiket.ana{background:var(--ana-acik);color:var(--ana)}.etiket.teh{color:var(--tehlike)}
+.bas{font-weight:600;font-size:16px;overflow-wrap:anywhere}.ks{color:var(--soluk);font-size:14px;overflow-wrap:anywhere}
+.kart a{color:var(--ana)}details.neden{margin-top:6px;font-size:14px}details.neden summary{cursor:pointer;color:var(--soluk)}details.neden ul{margin:6px 0;padding-left:18px}
+.aday{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:12px}.aday .mini{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.bos{text-align:center;color:var(--soluk);padding:32px 12px}.sayac{color:var(--soluk);font-size:13px}.at{color:var(--soluk);font-size:12.5px;margin-top:10px}
+#ileti{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);background:var(--yazi);color:var(--zemin);padding:8px 14px;border-radius:8px;font-size:14px;max-width:calc(100% - 32px);display:none;z-index:9}
+dialog{border:1px solid var(--cizgi);border-radius:12px;background:var(--yuzey);color:var(--yazi);width:min(640px,calc(100% - 32px));padding:16px}dialog::backdrop{background:rgba(5,12,20,.5)}dialog textarea{min-height:190px}
+h2{font-size:16px;margin:0 0 8px}h3{font-size:14px;margin:14px 0 4px}.yasal p,.yasal li{font-size:14px}
+@media (max-width:760px){.form{grid-template-columns:1fr 1fr}.aday{grid-template-columns:1fr}nav{margin-left:0;width:100%}}
+@media (max-width:420px){.form{grid-template-columns:1fr}.aday .mini{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<header><div class="kap"><h1>NEBSOFT Pazarlama <small>iç araç, yalnızca bu bilgisayarda</small></h1>
+<nav role="tablist"><button role="tab" data-sekme="ara" aria-selected="true">İşletme bul</button><button role="tab" data-sekme="adaylar" aria-selected="false">Adaylar <span id="adayN"></span></button><button role="tab" data-sekme="ayar" aria-selected="false">Ayarlar</button><button role="tab" data-sekme="yasal" aria-selected="false">Kurallar</button></nav></div></header>
+<div class="kap"><main>
+<details class="uyari" id="ustUyari" open><summary>Aramadan veya yazmadan önce: bu araç ileti göndermez, sorumluluk sizdedir</summary><ul>
+<li><b>Tanıtım araması, SMS ve e-posta ticari elektronik iletidir</b> (6563 s. Kanun md. 2). Tacir ve esnafa önceden onay gerekmez; ama göndermeden önce adresi İYS'ye kaydedip ret durumunu kontrol etmeniz gerekir. Ret eden işletmeye gönderemezsiniz.</li>
+<li><b>Tacir veya esnaf olmayanlara önceden onay gerekir.</b> Doktor, avukat, eczacı gibi serbest meslek sahiplerinin istisnaya girip girmediğini doğrulayamadık.</li>
+<li><b>Şahıs işletmesinin telefonu kişisel veri olabilir</b> (KVKK). Haritada görünmesi, pazarlama için kullanılabileceği anlamına gelmez. İlk temasta bilgilendirme yapın; silme isteğini yerine getirin.</li>
+<li>Fırsat puanı <b>tahmindir</b>, işletme hakkında kesin bilgi değildir. <a href="#" data-git="yasal">Ayrıntı ve kaynaklar</a></li></ul></details>
+
+<section id="s-ara">
+<div class="kart"><form id="araForm" class="form">
+<label>İl<select id="il" required></select></label>
+<label>İlçe (isteğe bağlı)<input id="ilce" maxlength="40" placeholder="Örnek: Kadıköy"></label>
+<label>Sektör<select id="sektor" required></select></label>
+<label>Kaynak<select id="kaynak"><option value="osm">OpenStreetMap (anahtarsız)</option><option value="google">Google Places (ücretli olabilir)</option><option value="ikisi">İkisi birden</option></select></label>
+<div class="satir" style="grid-column:1/-1"><button class="d ana" id="araBtn">Ara</button><span class="sayac" id="sektorBilgi"></span></div>
+</form></div>
+<div id="aramaUyari"></div><div id="sonucAlt" class="satir ara" hidden style="margin-bottom:10px"><label class="satir" style="margin:0"><input type="checkbox" id="filtreWeb">Yalnız web sitesi görünmeyenler</label><span class="satir"><span class="sayac" id="sonucN"></span><button class="d" id="topluEkle">Yüksek ve ortayı adaylara ekle</button></span></div>
+<div id="sonuc"><div class="kart bos">İl ve sektör seçip aramayı başlatın.</div></div>
+<div class="satir" id="dahaAlan" hidden style="justify-content:center"><button class="d" id="daha">Google'dan sonraki sayfa</button></div>
+<div class="at" id="atif"></div>
+</section>
+
+<section id="s-adaylar" hidden>
+<div class="kart satir ara"><span class="satir" style="flex:1 1 300px"><input id="aAra" placeholder="Ad, not veya ilçe ara" style="max-width:240px;margin:0"><select id="aDurum" style="max-width:150px;margin:0"></select><label class="satir" style="margin:0"><input type="checkbox" id="aBugun">Bugün aranacak</label></span><a class="d" href="/api/csv" download>CSV indir</a></div>
+<div class="sayac" id="aOzet" style="margin:0 0 8px"></div><div id="adayListe"></div><div class="satir" style="justify-content:center"><button class="d" id="aDaha" hidden>Daha fazla göster</button></div>
+<div class="at">Google kayıtlarında yalnızca place_id ve sizin girdikleriniz saklanır; ad, adres ve telefon her açılışta Google'dan istenir ve ücretli olabilir.</div>
+</section>
+
+<section id="s-ayar" hidden>
+<div class="kart"><h2>Google Places anahtarı</h2>
+<p class="ks">Anahtar yalnızca bu bilgisayarda, <code>veri</code> klasöründe düz metin olarak durur ve tarayıcıya geri gönderilmez. Metin araması bu alanlarla Enterprise katmanında ücretlendirilir; ayda 1.000 çağrı ücretsizdir, sonrası 1.000 çağrı başına 35 ABD dolarıdır (Google fiyat sayfası, 28.10.2026). Google Cloud'da bütçe sınırı koyun.</p>
+<div class="form"><label style="grid-column:span 2">API anahtarı<input id="gAnahtar" type="password" autocomplete="off" placeholder="Değiştirmek için yeni anahtar yazın"></label><button class="d ana" id="gKaydet" type="button">Kaydet</button><button class="d teh" id="gSil" type="button">Anahtarı sil</button></div>
+<p class="sayac" id="gDurum"></p>
+<label class="satir" style="margin-top:8px;align-items:flex-start"><input type="checkbox" id="gOnay" style="margin-top:4px"><span>Google kaynağını açıyorum. Canlı test yapılmadı, resmî logo eklenmedi ve aday listesi kullanımının Google şartlarına uygunluğu doğrulanamadı; kararı ben veriyorum.</span></label></div>
+<div class="kart"><h2>Veri saklama</h2><div class="form"><label>Saklama süresi (gün)<input id="saklama" type="number" min="7" max="1095"></label><button class="d" id="saklamaKaydet" type="button">Kaydet</button></div>
+<p class="ks">Son işlemden bu yana süresi dolan adaylar kendiliğinden silinir. Kazanılanlar ve ileri tarihli araması olanlar kalır. İletişim istemeyenlerin bilgisi silinir, yalnızca tekrar aranmaması için kaydın kimliği kalır. 180 gün aracın varsayılanıdır, yasal bir süre değildir.</p>
+<button class="d teh" id="hepsiniSil" type="button">Tüm adayları ve önbelleği sil</button></div>
+<div class="kart"><h2>İlk temas metni bilgileri</h2><p class="ks">Metinlerde kullanılır. Boş kalanlar köşeli parantezle görünür; göndermeden önce doldurun.</p><div class="form" id="gonderen"></div><div class="satir" style="margin-top:10px"><button class="d ana" id="gonderenKaydet" type="button">Kaydet</button></div></div>
+</section>
+
+<section id="s-yasal" hidden class="yasal"><div class="kart">
+<h2>Kurallar</h2><p class="ks">Hukuki danışmanlık değildir. Metinler 30.10.2026'da okundu; ayrıntı <code>docs/PAZARLAMA-ARACI.md</code> dosyasındadır.</p>
+<h3>6563 sayılı Kanun ve Yönetmelik</h3><ul>
+<li>Telefon, SMS ve e-posta ile ticari amaçlı gönderilen iletiler ticari elektronik iletidir (Kanun md. 2/1-c).</li>
+<li>Kural önceden onaydır (md. 6/1). Esnaf ve tacirlere önceden onay aranmaz (md. 6/2).</li>
+<li>Tacir ve esnaf reddederse onaysız gönderilemez (Yönetmelik md. 6/3). Göndermeden önce adresleri İYS'ye kaydedilir ve ret kontrol edilir (md. 6/6). Göndermek isteyen de İYS'ye kaydolur (md. 5/2).</li>
+<li>Metinde kimlik bilgileri, nitelik ibaresi ve ücretsiz ret yolu bulunur; sesli aramada unvan veya ad soyad ve görüşme başında nitelik söylenir (md. 8, 9). Ret, üç iş günü içinde uygulanır ve İYS'ye bildirilir (md. 9/6, 10).</li>
+<li>Kayıtlar üç yıl saklanır (md. 13/2). Bu, aracın saklama süresiyle çakışabilir: gönderim kayıtlarını ayrıca tutmanız gerekebilir; danışmanınıza sorun.</li>
+<li>2026 için md. 6/1 aykırılığında idari para cezası 2.859 TL ile 14.309 TL arasıdır (Kanun md. 12/1-a tablosu).</li>
+</ul><p><a href="https://www.mevzuat.gov.tr/MevzuatMetin/1.5.6563.pdf" target="_blank" rel="noopener noreferrer">6563 sayılı Kanun</a> · <a href="https://www.mevzuat.gov.tr/File/GeneratePdf?mevzuatNo=20914&amp;mevzuatTur=KurumVeKurulusYonetmeligi&amp;mevzuatTertip=5" target="_blank" rel="noopener noreferrer">Yönetmelik</a> · <a href="https://ticaret.gov.tr/ic-ticaret/ticari-elektronik-iletiler/genel-bilgiler" target="_blank" rel="noopener noreferrer">Ticaret Bakanlığı</a></p>
+<h3>KVKK</h3><ul>
+<li>Kişisel veri, kimliği belirli veya belirlenebilir gerçek kişiye ilişkin her bilgidir (6698 md. 3). Şahıs işletmesinin cep telefonu bu kapsamda olabilir; araç cep numaralarını işaretler.</li>
+<li>İşleme sebebi kalmayınca veri silinir (md. 7). Veri kişiden alınmadıysa aydınlatma en geç ilk iletişimde yapılır (Tebliğ md. 6).</li>
+<li>Kurul 21.07.2026 duyurusunda, üçüncü kişiden edinilen iletişim bilgisinin pazarlama için kendiliğinden dayanak olmadığını, dinlemeye devam etmenin rıza sayılmadığını belirtti. Duyuru internetten toplanan veriyi ayrıca ele almıyor; bu yüzden haritadan edinilen numaranın durumu <b>doğrulanamadı</b>.</li>
+</ul><p><a href="https://www.mevzuat.gov.tr/MevzuatMetin/1.5.6698.pdf" target="_blank" rel="noopener noreferrer">6698 sayılı Kanun</a> · <a href="https://www.kvkk.gov.tr/Icerik/8830/ucuncu-kisilerden-elde-edilen-kisisel-verilerin-reklam-ve-pazarlama-amacli-kullanilmasina-iliskin-kamuoyu-duyurusu" target="_blank" rel="noopener noreferrer">KVKK duyurusu</a></p>
+<h3>Veri kaynakları</h3><ul>
+<li><b>OpenStreetMap:</b> <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">© OpenStreetMap katkıda bulunanlar</a>, ODbL. Kamusal Overpass sunucusu ticari kullanım için kendi sunucunuzu veya ücretli sunucu öneriyor; araç bu yüzden aramaları sınırlar.</li>
+<li><b>Google Maps:</b> Google içeriği kopyalanıp saklanamaz (Hizmet Şartları md. 3.2.3); yalnızca place_id saklanabilir. Bu yüzden Google kayıtları dışa aktarılmaz ve diske yazılmaz.</li>
+</ul></div></section>
+</main></div>
+<div id="ileti" role="status" aria-live="polite"></div>
+<dialog id="temas"><h2 id="tBaslik">İlk temas metni</h2>
+<div class="uyari" id="tUyari"></div>
+<div class="satir" style="margin-bottom:8px"><button class="d ana" data-tur="telefon" type="button">Telefon</button><button class="d" data-tur="yazili" type="button">Yazılı</button></div>
+<textarea id="tMetin" aria-label="İlk temas metni"></textarea>
+<div class="satir" style="justify-content:flex-end;margin-top:10px"><button class="d" id="tKopya" type="button">Kopyala</button><button class="d ana" id="tKapat" type="button">Kapat</button></div></dialog>
+<script>
+'use strict';
+const $=(i)=>document.getElementById(i);
+const esc=(s)=>String(s==null?'':s).replace(/[&<>"']/g,(c)=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const guvenliUrl=(u)=>/^https?:\/\//i.test(String(u||''))?esc(u):'';
+const S={b:null,sonuc:[],arama:null,token:'',adaylar:[],gGecici:new Map(),aSinir:100,sSinir:100,gOnay:false,temas:null};
+const ileti=(m)=>{const e=$('ileti');e.textContent=m;e.style.display='block';clearTimeout(ileti.t);ileti.t=setTimeout(()=>{e.style.display='none'},4500)};
+async function api(y,b){const r=await fetch(y,b===undefined?{}:{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(b)});let j={};try{j=await r.json()}catch(e){throw new Error('Araç yanıt vermedi.')}if(!r.ok||j.ok===false)throw new Error(j.hata||'İşlem yapılamadı.');return j}
+const sekmeAc=(ad)=>{for(const b of document.querySelectorAll('nav button'))b.setAttribute('aria-selected',b.dataset.sekme===ad);for(const s of ['ara','adaylar','ayar','yasal'])$('s-'+s).hidden=s!==ad;if(ad==='adaylar')adaylarYukle()};
+const sektor=(id)=>S.b.sektorler.find((s)=>s.id===id);
+const prgYazi=(s)=>s.programlar.map((p)=>p.ad+(p.dolayli?' (dolaylı)':'')).join(', ');
+
+function kaynakEtiket(k){return k.kaynak==='google'?'<span class="etiket">Google Maps</span>':'<span class="etiket">OpenStreetMap</span>'}
+function kisiEtiket(k){return k.cep?' <span class="etiket teh" title="Cep numarası kişisel veri olabilir">cep: kişisel veri olabilir</span>':''}
+function telBag(k){if(!k.telefon)return '<span class="ks">Telefon kayıtlı değil</span>';if(k.ret)return '<span class="etiket teh">Aranmasın</span>';return '<a href="tel:'+esc(k.telefon.replace(/\s/g,''))+'">'+esc(k.telefon)+'</a>'+kisiEtiket(k)}
+function webBag(k){const u=guvenliUrl(k.web);if(!u)return '<span class="ks">Web sitesi görünmüyor</span>';return '<a href="'+u+'" target="_blank" rel="noopener noreferrer">'+esc(k.webAlan||'web')+'</a>'+(k.webTur==='sosyal'?' <span class="ks">(sosyal medya)</span>':'')}
+function yildiz(k){return k.puanYildiz!=null?'<span class="ks">Puan '+esc(k.puanYildiz)+' ('+esc(k.yorumSayisi||0)+' yorum)</span>':''}
+function firsat(k){if(k.puan==null)return '';return '<details class="neden"><summary><span class="etiket '+esc(k.seviye)+'">Fırsat tahmini: '+esc(k.seviyeAd)+' ('+esc(k.puan)+')</span> neden?</summary><ul>'+k.nedenler.map((n)=>'<li>'+esc(n)+'</li>').join('')+'</ul><div class="ks">Bu bir tahmindir, kaynakta gözlenen alanlara dayanır.</div></details>'}
+
+function sonucCiz(){
+  const webYok=$('filtreWeb').checked,l=S.sonuc.filter((k)=>!webYok||k.webTur==='yok'||k.webTur==='sosyal');
+  $('sonucAlt').hidden=!S.sonuc.length;$('sonucN').textContent=l.length+' işletme';
+  if(!l.length){$('sonuc').innerHTML='<div class="kart bos">'+(S.sonuc.length?'Bu filtreye uyan işletme yok.':'Sonuç yok.')+'</div>';return}
+  $('sonuc').innerHTML=l.slice(0,S.sSinir).map((k,i)=>'<article class="kart"><div class="satir ara"><span class="bas">'+esc(k.ad)+'</span>'+kaynakEtiket(k)+'</div><div class="ks">'+(esc(k.adres)||'Adres kayıtlı değil')+'</div><div class="satir" style="margin-top:4px">'+telBag(k)+' · '+webBag(k)+' '+yildiz(k)+(guvenliUrl(k.harita)?' · <a href="'+guvenliUrl(k.harita)+'" target="_blank" rel="noopener noreferrer">Haritada aç</a>':'')+'</div>'+firsat(k)+'<div class="satir" style="margin-top:8px"><button class="d" data-ekle="'+esc(k.anahtar)+'" '+(k.kayitli?'disabled':'')+'>'+(k.kayitli?'Adaylarda':'Adaylara ekle')+'</button><button class="d" data-temas="'+esc(k.anahtar)+'" '+(k.ret?'disabled':'')+'>İlk temas metni</button></div></article>').join('')+(l.length>S.sSinir?'<div class="satir" style="justify-content:center"><button class="d" id="sDaha">Daha fazla göster</button></div>':'');
+  atifCiz();
+}
+function atifCiz(){const g=S.sonuc.some((k)=>k.kaynak==='google'),o=S.sonuc.some((k)=>k.kaynak==='osm');$('atif').innerHTML=[o?'Veri: <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">© OpenStreetMap katkıda bulunanlar</a> (ODbL).':'',g?'Veri: Google Maps.':''].filter(Boolean).join(' ')}
+const uyariCiz=(u)=>{$('aramaUyari').innerHTML=(u||[]).map((m)=>'<div class="sayac" style="margin-bottom:6px">'+esc(m)+'</div>').join('')};
+function sektorBilgi(){const s=sektor($('sektor').value);if(!s)return;$('sektorBilgi').textContent='Program: '+prgYazi(s)+'.'+(s.dolayliEslesme?' Eşleşme dolaylıdır.':'')+(s.serbestMeslek?' Serbest meslek: önceden onay gerekebilir.':'')}
+
+async function ara(sayfa){
+  const a=sayfa?S.arama:{il:$('il').value,ilce:$('ilce').value,sektorId:$('sektor').value,kaynak:$('kaynak').value};
+  if(a.kaynak!=='osm'){if(!S.b.googleHazir){ileti('Google kaynağı kapalı. Ayarlar sekmesinden açın.');sekmeAc('ayar');return}if(!S.gOnay&&!confirm('Google araması ücretli olabilir. Her sayfa bir Enterprise çağrısıdır. Devam edilsin mi?'))return;S.gOnay=true}
+  const btn=sayfa?$('daha'):$('araBtn');btn.disabled=true;const eski=btn.textContent;btn.textContent='Aranıyor…';if(!sayfa){$('sonuc').innerHTML='<div class="kart bos">Aranıyor. OpenStreetMap yoğunsa bu işlem bir dakika sürebilir.</div>';$('sonucAlt').hidden=true;uyariCiz([]);$('dahaAlan').hidden=true}
+  try{const r=await api('/api/ara',{...a,sayfaToken:sayfa?S.token:undefined,onceki:sayfa?S.sonuc:undefined});S.arama={...a,...r.arama};S.sonuc=r.kayitlar;S.token=r.sonrakiToken||'';S.sSinir=100;uyariCiz(r.uyarilar);$('dahaAlan').hidden=!S.token;S.b.sayac=r.sayac;sonucCiz()}
+  catch(e){$('sonuc').innerHTML='<div class="kart bos">'+esc(e.message)+'</div>'}
+  finally{btn.disabled=false;btn.textContent=eski}
+}
+async function ekle(kayitlar){const r=await api('/api/aday/ekle',{kayitlar,sektorId:S.arama.sektorId,il:S.arama.il,ilce:S.arama.ilce});S.b.adaySayisi=r.adaySayisi;for(const k of kayitlar){k.kayitli=true;if(k.kaynak==='google')S.gGecici.set(k.placeId,k)}sonucCiz();sayiCiz();ileti(r.eklenen+' aday eklendi.')}
+const sayiCiz=()=>{$('adayN').textContent=S.b.adaySayisi?'('+S.b.adaySayisi+')':''};
+
+async function adaylarYukle(){try{const r=await api('/api/adaylar');S.adaylar=r.adaylar;S.b.adaySayisi=r.adaySayisi;sayiCiz();adayCiz()}catch(e){$('adayListe').innerHTML='<div class="kart bos">'+esc(e.message)+'</div>'}}
+const adayGor=(a)=>a.kaynak==='google'?{...a,...(S.gGecici.get(a.placeId)||{}),ret:a.ret,anahtar:a.anahtar,kaynak:'google',harita:a.harita}:a;
+function adayCiz(){
+  const q=$('aAra').value.toLocaleLowerCase('tr').trim(),f=$('aDurum').value,bug=$('aBugun').checked,bugun=new Date().toLocaleDateString('sv');
+  const l=S.adaylar.map(adayGor).filter((a)=>(!f||a.durum===f)&&(!bug||(a.sonrakiArama&&a.sonrakiArama<=bugun))&&(!q||[a.ad,a.not,a.ilce,a.il].join(' ').toLocaleLowerCase('tr').includes(q)));
+  const say=Object.fromEntries(S.b.durumlar.map((d)=>[d[0],0]));for(const a of S.adaylar)say[a.durum]=(say[a.durum]||0)+1;
+  $('aOzet').textContent=S.b.durumlar.map((d)=>d[1]+': '+say[d[0]]).join(' · ');
+  $('aDaha').hidden=l.length<=S.aSinir;
+  if(!l.length){$('adayListe').innerHTML='<div class="kart bos">'+(S.adaylar.length?'Bu filtreye uyan aday yok.':'Henüz aday yok. İşletme bul sekmesinden ekleyin.')+'</div>';return}
+  $('adayListe').innerHTML=l.slice(0,S.aSinir).map((a)=>{const g=a.kaynak==='google',gor=g?S.gGecici.has(a.placeId):!!a.ad,sekt=sektor(a.sektorId);
+  return '<article class="kart aday" data-an="'+esc(a.anahtar)+'"><div><div class="satir ara"><span class="bas">'+(gor?esc(a.ad):g?'Google kaydı (ad saklanmaz)':'Bilgisi silindi')+'</span>'+kaynakEtiket(a)+'</div><div class="ks">'+esc([a.ilce,a.il].filter(Boolean).join(', '))+(sekt?' · '+esc(sekt.ad)+' · '+esc(prgYazi(sekt)):'')+'</div>'+(gor?'<div class="ks">'+(esc(a.adres)||'Adres kayıtlı değil')+'</div><div class="satir">'+telBag(a)+' · '+webBag(a)+'</div>'+firsat(a):'')+'<div class="satir" style="margin-top:8px">'+(g&&!gor?'<button class="d" data-getir="'+esc(a.placeId)+'">Google\'dan getir</button>':'')+(guvenliUrl(a.harita)?'<a class="d" href="'+guvenliUrl(a.harita)+'" target="_blank" rel="noopener noreferrer">Haritada aç</a>':'')+'<button class="d" data-atemas="'+esc(a.anahtar)+'" '+(a.ret||!sekt?'disabled':'')+'>İlk temas metni</button><button class="d teh" data-sil="'+esc(a.anahtar)+'">Sil</button></div></div><div><div class="mini"><label>Durum<select data-alan="durum">'+S.b.durumlar.map((d)=>'<option value="'+d[0]+'" '+(d[0]===a.durum?'selected':'')+'>'+esc(d[1])+'</option>').join('')+'</select></label><label>Sonraki arama<input type="date" data-alan="sonrakiArama" value="'+esc(a.sonrakiArama)+'"></label></div><label>Not<textarea data-alan="not" maxlength="4000">'+esc(a.not)+'</textarea></label><label class="satir" style="margin-top:6px"><input type="checkbox" data-alan="ret" '+(a.ret?'checked':'')+'>İletişim istemiyor (İYS\'ye üç iş günü içinde bildirin)</label></div></article>'}).join('');
+}
+async function temasAc(k,sektorId){const s=sektor(sektorId);if(!s)return;try{const r=await api('/api/temas',{sektorId,kayit:{ad:k.ad,webTur:k.webTur}});S.temas=r;$('tBaslik').textContent='İlk temas metni: '+r.program;$('tUyari').textContent='Bu araç hiçbir şey göndermez. Metni tek tek, kendiniz kullanırsınız. Önce İYS ret kontrolünü yapın.'+(s.serbestMeslek?' Bu sektörde önceden onay gerekebilir; emin olmadan iletişime geçmeyin.':'')+(r.webYok?' Web sitesi gözlemi tahmindir; işletmeye kesin bilgi gibi söylemeyin.':'');temasTur('telefon');$('temas').showModal()}catch(e){ileti(e.message)}}
+function temasTur(t){$('tMetin').value=S.temas[t];for(const b of document.querySelectorAll('#temas [data-tur]'))b.classList.toggle('ana',b.dataset.tur===t)}
+
+function ayarCiz(){const b=S.b;$('gDurum').textContent=(b.googleKayitli?'Anahtar kayıtlı.':'Anahtar kayıtlı değil.')+' Bu ay: '+b.sayac.googleArama+' arama, '+b.sayac.googleAyrinti+' ayrıntı çağrısı. Bugün Overpass: '+b.sayac.overpass+'/'+b.sayac.overpassSinir+'.';$('gOnay').checked=b.googleOnay;$('gOnay').disabled=!b.googleKayitli;$('saklama').value=b.saklamaGun;$('gSil').disabled=!b.googleKayitli;
+ const alan=[['unvan','Ticaret unvanı veya ad soyad'],['kimlik','MERSİS, T.C. veya vergi no'],['telefon','İletişim telefonu'],['retYolu','Ücretsiz ret yolu'],['aydinlatma','Aydınlatma metni bağlantısı'],['site','Site adresi']];$('gonderen').innerHTML=alan.map((a)=>'<label>'+esc(a[1])+'<input data-g="'+a[0]+'" value="'+esc(b.gonderen[a[0]])+'" maxlength="300"></label>').join('')}
+async function ayarKaydet(g,m){try{const r=await api('/api/ayar',g);Object.assign(S.b,r);ayarCiz();sayiCiz();ileti(m)}catch(e){ileti(e.message);ayarCiz()}}
+
+document.addEventListener('click',async(e)=>{
+ const t=e.target.closest('button,a');if(!t)return;
+ if(t.dataset.sekme){sekmeAc(t.dataset.sekme);return}if(t.dataset.git){e.preventDefault();sekmeAc(t.dataset.git);return}
+ try{
+ if(t.dataset.ekle){await ekle([S.sonuc.find((k)=>k.anahtar===t.dataset.ekle)])}
+ else if(t.id==='topluEkle'){const l=S.sonuc.filter((k)=>!k.kayitli&&!k.ret&&k.seviye!=='dusuk');if(!l.length)return ileti('Eklenecek aday yok.');await ekle(l)}
+ else if(t.dataset.temas){const k=S.sonuc.find((x)=>x.anahtar===t.dataset.temas);await temasAc(k,S.arama.sektorId)}
+ else if(t.dataset.atemas){const a=adayGor(S.adaylar.find((x)=>x.anahtar===t.dataset.atemas));await temasAc(a,a.sektorId)}
+ else if(t.dataset.getir){t.disabled=true;t.textContent='Getiriliyor…';const r=await api('/api/google/ayrinti',{placeId:t.dataset.getir});S.gGecici.set(t.dataset.getir,r.kayit);S.b.sayac=r.sayac;adayCiz()}
+ else if(t.dataset.sil){if(!confirm('Bu aday ve notları kalıcı olarak silinsin mi?'))return;await api('/api/aday/sil',{anahtar:t.dataset.sil});adaylarYukle();ileti('Aday silindi.')}
+ else if(t.dataset.tur){temasTur(t.dataset.tur)}
+ else if(t.id==='tKapat'){$('temas').close()}
+ else if(t.id==='tKopya'){await navigator.clipboard.writeText($('tMetin').value);ileti('Metin kopyalandı.')}
+ else if(t.id==='sDaha'){S.sSinir+=100;sonucCiz()}
+ else if(t.id==='aDaha'){S.aSinir+=100;adayCiz()}
+ else if(t.id==='daha'){ara(true)}
+ else if(t.id==='gKaydet'){const v=$('gAnahtar').value;if(!v.trim())return ileti('Anahtar yazın.');await ayarKaydet({googleAnahtar:v},'Anahtar kaydedildi.');$('gAnahtar').value=''}
+ else if(t.id==='gSil'){if(confirm('Anahtar silinsin ve Google kaynağı kapatılsın mı?'))await ayarKaydet({googleSil:true},'Anahtar silindi.')}
+ else if(t.id==='saklamaKaydet'){await ayarKaydet({saklamaGun:$('saklama').value},'Saklama süresi kaydedildi.')}
+ else if(t.id==='gonderenKaydet'){const g={};for(const i of document.querySelectorAll('[data-g]'))g[i.dataset.g]=i.value;await ayarKaydet({gonderen:g},'Bilgiler kaydedildi.')}
+ else if(t.id==='hepsiniSil'){if(!confirm('Tüm adaylar, notlar ve önbellek kalıcı olarak silinecek. Emin misiniz?'))return;const r=await api('/api/temizle',{onay:'SİL'});Object.assign(S.b,r);S.adaylar=[];S.gGecici.clear();sayiCiz();ayarCiz();ileti('Tüm veri silindi.')}
+ }catch(er){ileti(er.message);adaylarYukle()}
+});
+document.addEventListener('change',async(e)=>{
+ const t=e.target;if(t.id==='gOnay'){await ayarKaydet({googleOnay:t.checked},t.checked?'Google kaynağı açıldı.':'Google kaynağı kapatıldı.');return}
+ if(t.id==='filtreWeb'){sonucCiz();return}if(t.id==='sektor'){sektorBilgi();return}if(t.id==='aDurum'||t.id==='aBugun'){adayCiz();return}
+ const al=t.dataset.alan,art=t.closest('[data-an]');if(!al||!art)return;
+ try{const r=await api('/api/aday/guncelle',{anahtar:art.dataset.an,[al]:t.type==='checkbox'?t.checked:t.value});const i=S.adaylar.findIndex((a)=>a.anahtar===r.aday.anahtar);S.adaylar[i]={...S.adaylar[i],...r.aday};if(al==='ret'||al==='durum')adayCiz();ileti('Kaydedildi.')}catch(er){ileti(er.message)}
+});
+try{if(localStorage.getItem('uyariKapali')==='1')$('ustUyari').open=false}catch(e){}
+$('ustUyari').addEventListener('toggle',()=>{try{localStorage.setItem('uyariKapali',$('ustUyari').open?'0':'1')}catch(e){}});
+$('aAra').addEventListener('input',()=>{clearTimeout(adayCiz.t);adayCiz.t=setTimeout(adayCiz,200)});
+$('araForm').addEventListener('submit',(e)=>{e.preventDefault();ara(false)});
+(async()=>{try{S.b=await api('/api/baslangic');$('il').innerHTML='<option value="">İl seçin</option>'+S.b.iller.slice().sort((a,b)=>a.localeCompare(b,'tr')).map((i)=>'<option>'+esc(i)+'</option>').join('');$('sektor').innerHTML='<option value="">Sektör seçin</option>'+S.b.sektorler.slice().sort((a,b)=>a.ad.localeCompare(b.ad,'tr')).map((s)=>'<option value="'+esc(s.id)+'">'+esc(s.ad)+'</option>').join('');$('aDurum').innerHTML='<option value="">Tüm durumlar</option>'+S.b.durumlar.map((d)=>'<option value="'+d[0]+'">'+esc(d[1])+'</option>').join('');sayiCiz();ayarCiz()}catch(e){document.querySelector('main').innerHTML='<div class="kart bos">'+esc(e.message)+'</div>'}})();
+</script>
+</body>
+</html>
