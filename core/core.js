@@ -289,6 +289,17 @@
       db.data._meta.ownerPin = pin;
     }
     db.data._meta.sample = true;
+    // Kurulum ilerlemesi yalnızca işletmenin eklediği kayıtları saysın diye açılıştaki örnek sayıları saklanır
+    db.data._meta.sampleBase = Object.fromEntries(Object.entries(db.data).filter(([k, v]) => Array.isArray(v) && !k.startsWith('_')).map(([k, v]) => [k, v.length]));
+  }
+  // İlk kurulum kartı: yalnızca bulutta ve deneme lisansında yüklenir (demo ve ücretli hesaplar etkilenmez)
+  function kurulumYukle(app) {
+    if (!CLOUD || !app.db || !app.db.cloud) return;
+    const L = (CLOUD.licenses || []).find((l) => l.product === app.db.name); if (!L || L.status !== 'deneme' || !L.valid) return;
+    const go = () => { if (NS.kurulum) NS.kurulum.mount(app, { pid: app.db.name }); };
+    if (NS.kurulum) return go();
+    const add = (src, cb) => { const s = document.createElement('script'); s.src = src; s.onload = cb; document.head.appendChild(s); };
+    add('/core/kurulum-adimlari.js', () => add('/core/kurulum.js', go));
   }
 
   // ---------- Veri katmanı (localStorage / bulut) ----------
@@ -1008,6 +1019,7 @@
           actions: [{ label: 'Kapat' }, { label: 'Çıkış yap', cls: 'danger', icon: 'logout', onClick: (c) => { c(); app.logout(); } }],
         });
       });
+      kurulumYukle(app);
     }
 
     function render() {

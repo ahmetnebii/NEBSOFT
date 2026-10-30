@@ -197,7 +197,7 @@ function serve(req, res, p) {
     const etag = `W/"${st.size.toString(16)}-${Math.floor(st.mtimeMs).toString(16)}"`;
     const h = { 'Content-Type': TYPES[ext] || 'application/octet-stream', ETag: etag, 'Cache-Control': ext === '.html' ? 'no-cache' : LONG.test(ext) ? 'public, max-age=604800' : 'public, max-age=300, must-revalidate' };
     // Tanıtım sitelerinde alan adı yer tutucusu panel ayarındaki adresle değiştirilir
-    if (ext === '.html' && (p.startsWith('/site/') || p === '/index.html')) return fs.readFile(file, 'utf8', (er, txt) => { if (er) { res.writeHead(500); return res.end(); } cloud.seo.rewrite(txt, req).then((t) => sendText(req, res, t, h['Content-Type'], h['Cache-Control'])); });
+    if (ext === '.html' && (p.startsWith('/site/') || p === '/index.html')) return fs.readFile(file, 'utf8', (er, txt) => { if (er) { res.writeHead(500); return res.end(); } cloud.seo.rewrite(txt, req).then((t) => cloud.guven.inject(t, p)).then((t) => sendText(req, res, t, h['Content-Type'], h['Cache-Control'])); });
     if (req.headers['if-none-match'] === etag) { res.writeHead(304, h); return res.end(); }
     res.writeHead(200, { ...h, 'Content-Length': st.size });
     if (req.method === 'HEAD') return res.end();

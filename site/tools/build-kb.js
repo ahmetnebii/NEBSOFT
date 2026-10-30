@@ -8,7 +8,7 @@
 const fs = require('fs'); const path = require('path');
 const ROOT = path.join(__dirname, '..', '..');
 global.window = {}; require(path.join(ROOT, 'market', 'catalog.js')); const C = window.CATALOG;
-const GEN = require('./kb-genel.js');
+const GEN = require('./kb-genel.js'); const YARDIM = require('./yardim-icerik.js');
 const out = []; const seen = new Set();
 const add = (m, t, q, alt, a, tags = []) => { const k = m + '|' + q.toLocaleLowerCase('tr'); if (seen.has(k)) return; seen.add(k); out.push({ id: 'k' + out.length.toString(36), m, t, q, alt: alt.filter(Boolean), a, tags }); };
 const tl = (n) => Number(n).toLocaleString('tr-TR');
@@ -51,10 +51,13 @@ for (const p of C.products) {
   add(m, 'tanitim', `${N} hangi işletmeler için uygun?`, [`${N} kimler kullanabilir`, `${N} hangi sektörler`], `${N}; ${p.sectors.join(', ')} gibi işletmeler için tasarlandı.`, ['sektör']);
   p.sectors.forEach((s) => add(m, 'sektor', `${s} için hangi program?`, [`${lc(s)} programı`, `${lc(s)} yazılımı`, `${lc(s)} otomasyonu`, `${lc(s)} için yazılım önerisi`], `${s} işletmeleri için **${N}** öneriyoruz: ${p.tagline}. [İncele](/#/urun/${m})`, ['sektör', lc(s)]));
   if (p.prices) add(m, 'fiyat', `${N} fiyatı ne kadar?`, [`${N} ücreti`, `${N} aylık fiyat`, `${lc(N)} kaç para`, `${N} paketleri`], `${N} aylık fiyatları: ${C.plans.map((pl, i) => `**${pl.name}** ${tl(p.prices[i])} ₺ (${pl.users})`).join(', ')}. Yıllık ödemede indirim uygulanır; güncel tutarlar [programın sayfasında](/#/urun/${m}).`, ['fiyat']);
-  add(m, 'tanitim', `${N} demosunu nasıl denerim?`, [`${N} demo`, `${N} canlı demo`, `${N} kayıtsız deneme`], `Programın sayfasındaki **Canlı demo** düğmesiyle kayıt olmadan örnek verilerle deneyebilirsiniz. Kendi verilerinizle 7 gün denemek için hesabınızla **Ücretsiz dene** talebi oluşturun. [${N}](/#/urun/${m})`, ['demo']);
+  add(m, 'tanitim', `${N} demosunu nasıl denerim?`, [`${N} demo`, `${N} canlı demo`, `${N} kayıtsız deneme`], `Programın sayfasındaki **Canlı demo** düğmesiyle kayıt olmadan örnek verilerle deneyebilirsiniz. Kendi verilerinizle 7 gün denemek için hesabınızla **Ücretsiz dene** düğmesine basın; deneme hemen başlar. [${N}](/#/urun/${m})`, ['demo']);
   (p.features || []).forEach((f) => { const short = f.split(/[:,;—(]/)[0].trim(); add(m, 'ozellik', `${ek(N, 'da')} ${lc(short)} var mı?`, [`${N} ${lc(short)}`, `${lc(short)} nasıl yapılır`, `${lc(short)} özelliği`], `Evet. ${f}.`.replace('..', '.'), ['özellik']); });
   (p.modules || []).forEach((mo) => add(m, 'modul', `${ek(N, 'da')} ${mo} modülü var mı?`, [`${N} ${lc(mo)}`, `${lc(mo)} modülü`], `Evet, ${N} içinde **${mo}** bölümü bulunur.`, ['modül']));
   (p.faq || []).forEach(([q, a]) => add(m, 'sss', q, [`${N} ${lc(q.replace(/\?$/, ''))}`], a, ['sss']));
+  // Kullanım rehberi (yardım merkezi ile aynı kaynak): görevler ve sık sorulanlar
+  const Y = YARDIM[m];
+  if (Y) { Y.gorevler.forEach(([b, a]) => add(m, 'rehber', `${ek(N, 'da')} ${lc(b)} nasıl yapılır?`, [`${lc(b)} nasıl yapılır`, `${N} ${lc(b)}`, `${lc(b)} adımları`], `${a.map((x, i) => `${i + 1}. ${x}`).join(' ')} [Rehberin tamamı](/#/yardim/${m})`, ['rehber'])); Y.sss.forEach(([q, a]) => add(m, 'sss', q, [`${N} ${lc(q.replace(/\?$/, ''))}`], a, ['sss'])); }
   // Gerçek menü: sayfa yeri, ne işe yarar, nasıl kullanılır
   if (fs.existsSync(appF)) {
     const src = fs.readFileSync(appF, 'utf8'); const items = [...src.matchAll(/\{ id: '([a-z0-9_-]+)', label: '([^']+)', icon: '[^']+'(?:, roles: \[([^\]]*)\])?/g)];

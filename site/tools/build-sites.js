@@ -112,7 +112,7 @@ ${SITEHEAD(c.name, `<b>${esc(c.name)}</b><nav aria-label="Sayfa içi"><a href="#
 
 <section class="s" id="fiyat"><div class="w">
   <div class="sh"><span class="eyebrow">Fiyatlar</span><h2>Şeffaf fiyat, taahhüt yok</h2><p>Fiyatlar aylıktır, KDV hariçtir. Yıllık ödemede 2 ay bedava. Her pakette ${CFG.trialDays} gün ücretsiz deneme.</p></div>
-  <div class="prices">${CAT.plans.map((pl, i) => `<div class="price${pl.popular ? ' pop' : ''}">${pl.popular ? '<span class="tag">En çok tercih edilen</span>' : ''}<h3>${esc(pl.name)}</h3><div class="amt"><span data-p="${c.id}:${i}">${tl(c.prices[i])}</span> ₺<small> /ay</small></div><p>${esc(pl.desc)} · ${esc(pl.users)}</p><a class="btn${pl.popular ? ' p' : ''}" href="${buy}">Ücretsiz başla</a></div>`).join('')}</div>
+  <div class="prices">${CAT.plans.map((pl, i) => `<div class="price${pl.popular ? ' pop' : ''}">${pl.popular ? '<span class="tag">Önerilen</span>' : ''}<h3>${esc(pl.name)}</h3><div class="amt"><span data-p="${c.id}:${i}">${tl(c.prices[i])}</span> ₺<small> /ay</small></div><p>${esc(pl.desc)} · ${esc(pl.users)}</p><a class="btn${pl.popular ? ' p' : ''}" href="${buy}">Ücretsiz başla</a></div>`).join('')}</div>
   <p class="note">Kurulum ve veri aktarımı ücretsizdir. Sorunuz mu var? <a href="tel:+90${tel.replace(/^0/, '')}">${esc(CFG.phone)}</a></p>
 </div></section>
 

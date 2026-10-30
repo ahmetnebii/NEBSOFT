@@ -4,7 +4,7 @@ const cfg = require('./config');
 const sec = require('./security');
 const auth = require('./auth');
 const { R, err } = require('./routes');
-require('./public'); require('./seo'); // müşteriye açık sayfaların uç noktaları (R listesine eklenir)
+require('./public'); require('./seo'); require('./deneme'); require('./guven'); // müşteriye açık sayfaların uç noktaları (R listesine eklenir)
 
 const send = (res, code, obj) => { if (res.headersSent) return; res.writeHead(code, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' }); res.end(JSON.stringify(obj)); };
 const readBody = (req, max) => new Promise((resolve, reject) => {
@@ -60,4 +60,4 @@ async function tenantSlug(req) {
   const u = await auth.current(req); if (!u || !u.tenant_id) return null;
   const t = await db.one('SELECT slug FROM tenants WHERE id=?', [u.tenant_id]); return t ? t.slug : null;
 }
-module.exports = { handle, init, send, tenantSlug, db, seo: require('./seo') };
+module.exports = { handle, init, send, tenantSlug, db, seo: require('./seo'), guven: require('./guven') };
