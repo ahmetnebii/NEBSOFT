@@ -404,7 +404,7 @@ RULES.kurs = {
   view: (x) => {
     const ph = me(x, 'p'); if (!ph) return {};
     const kids = x.col('students').filter((s) => digits(s.parentPhone) === ph); const ids = new Set(kids.map((s) => s.id)); const cls = new Set(kids.map((s) => s.cls));
-    return { students: kids.map((s) => strip(s, ['note', 'internal'])), attendance: x.col('attendance').filter((a) => ids.has(a.student)), exams: x.col('exams').filter((e) => cls.has(e.cls)).map((e) => anonScores(e, ids)), parentMsgs: x.col('parentMsgs').filter((m) => ids.has(m.student)), payments: x.col('payments').filter((p) => ids.has(p.student)) };
+    return { homework: x.col('homework').filter((h) => cls.has(h.cls)).map((h) => ({ ...h, done: Object.fromEntries(Object.entries(h.done || {}).filter(([k]) => ids.has(k))) })), students: kids.map((s) => strip(s, ['note', 'internal'])), attendance: x.col('attendance').filter((a) => ids.has(a.student)), exams: x.col('exams').filter((e) => cls.has(e.cls)).map((e) => anonScores(e, ids)), parentMsgs: x.col('parentMsgs').filter((m) => ids.has(m.student)), payments: x.col('payments').filter((p) => ids.has(p.student)) };
   },
   write: {
     parentMsgs: {

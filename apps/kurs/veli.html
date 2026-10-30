@@ -101,6 +101,10 @@
       <section class="tk-panel"><h3>${icon('chart')} Ders bazında · ${esc(last.name)}</h3><div class="b"><div class="bars">${last.subjects.map((sub) => { const v = last.scores[s.id][sub] || 0; const a = avg(sub); return `<div class="bar"><b>${esc(sub)}</b><div class="tr" title="Sınıf ort. ${a.toFixed(1)}"><i style="width:${(v / last.max) * 100}%"></i><u style="left:${(a / last.max) * 100}%"></u></div><span class="num" style="text-align:right">${v} <span class="small ${v >= a ? '' : 'muted'}" style="color:${v >= a ? 'var(--ok)' : 'var(--err)'}">${v >= a ? '▲' : '▼'}</span></span></div>`; }).join('')}</div><p class="small muted" style="margin:12px 0 0">Çizgi sınıf ortalamasını gösterir. Her ders ${last.max} soru üzerinden net.</p></div></section>
       <section class="tk-panel"><h3>${icon('trend')} Gelişim</h3><div class="b"><svg class="spark" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img" aria-label="Deneme gelişimi"><polyline fill="none" stroke="var(--accent)" stroke-width="2.5" points="${pts.map((p) => p.join(',')).join(' ')}"/>${pts.map((p) => `<circle cx="${p[0]}" cy="${p[1]}" r="4" fill="var(--accent)"/>`).join('')}</svg><div class="row between small muted">${ex.map((e) => `<span>${esc(e.name.replace(/^(TYT|LGS) /, ''))}<br><b style="color:var(--text)">${total(e, s.id)}</b></span>`).join('')}</div></div></section>`;
   }
+  function odev(s) {
+    const H = db.all('homework', (h) => h.cls === s.cls).sort((a, b) => String(b.due).localeCompare(String(a.due))).slice(0, 30);
+    return `<section class="tk-panel"><h3>${icon('book')} Ödevler</h3><div class="b">${H.map((h) => `<div class="row between small" style="padding:8px 0;border-bottom:1px solid var(--border)"><span><b>${esc(h.title)}</b><br><span class="muted">${esc(h.subject)} · teslim ${NS.date(h.due)}</span></span>${(h.done || {})[s.id] ? NS.badge('Yapıldı', 'ok') : h.due < NS.today() ? NS.badge('Yapılmadı', 'err') : NS.badge('Bekliyor', 'warn')}</div>`).join('') || '<span class="small muted">Ödev yok</span>'}</div></section>`;
+  }
   function odeme(s) {
     const ins = s.installments.slice().sort((a, b) => a.due.localeCompare(b.due));
     const debt = sum(ins.filter((i) => !i.paid && i.due <= today()), (i) => i.amount);
@@ -127,8 +131,8 @@
     $('#lo').onclick = () => { sset(null); db.pubLogout(); login(); };
     $('#root').innerHTML = `<div class="tk-view"><p class="small muted" style="margin:0 0 10px">Merhaba ${esc(String(s.parent || '').split(' ')[0])}</p>
       <div class="kids" role="group" aria-label="Öğrenciler">${kids.map((k) => `<button data-kid="${k.id}" aria-pressed="${k.id === s.id}"><span class="av">${esc(ini(k.name))}</span>${esc(k.name)}<span class="small muted">${esc(cls(k.cls).name)}</span></button>`).join('')}</div>
-      <div class="tabs2" role="tablist">${[['genel', 'Genel'], ['program', 'Ders programı'], ['deneme', 'Denemeler'], ['odeme', 'Ödemeler'], ['mesaj', 'Mesaj & mazeret']].map(([k, l]) => `<button role="tab" data-tab="${k}" aria-selected="${tab === k}">${l}</button>`).join('')}</div>
-      <div>${tab === 'program' ? program(s) : tab === 'deneme' ? denemeler(s) : tab === 'odeme' ? odeme(s) : tab === 'mesaj' ? mesaj(s, phone) : genel(s)}</div>
+      <div class="tabs2" role="tablist">${[['genel', 'Genel'], ['program', 'Ders programı'], ['deneme', 'Denemeler'], ['odev', 'Ödevler'], ['odeme', 'Ödemeler'], ['mesaj', 'Mesaj & mazeret']].map(([k, l]) => `<button role="tab" data-tab="${k}" aria-selected="${tab === k}">${l}</button>`).join('')}</div>
+      <div>${tab === 'program' ? program(s) : tab === 'deneme' ? denemeler(s) : tab === 'odev' ? odev(s) : tab === 'odeme' ? odeme(s) : tab === 'mesaj' ? mesaj(s, phone) : genel(s)}</div>
       <p class="tk-help">${icon('phone')} <a href="tel:${esc(String(S().bizPhone || '').replace(/\s/g, ''))}">${esc(S().bizPhone || '')}</a></p></div>`;
     if ($('#mt')) $('#mt').onchange = () => { $('#mdw').hidden = $('#mt').value !== 'mazeret'; };
   }
