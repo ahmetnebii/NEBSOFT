@@ -1,4 +1,4 @@
-// 31 program için tek duman testi (tarayıcısız, Node vm; ağ yok): node server/test/program-duman.test.js [-v]
+// Tüm programlar için tek duman testi (tarayıcısız, Node vm; ağ yok): node server/test/program-duman.test.js [-v]
 //  1. Sözdizimi: apps, core, market, admin altındaki her .js dosyası ve .html içindeki gömülü betik derlenir
 //  2. Yükleme: her programın index.html'indeki betikler sırayla çalışır, NS.shell yakalanır
 //  3. Yönlendirme: menüdeki her sayfanın yönlendirmesi var; açılış sayfası (home) tanımlı; katalogda ürün karşılığı var
@@ -155,8 +155,8 @@ function textAudit() {
 (() => {
   console.log('Program duman testi'); syntax();
   const cat = catalog(); const apps = fs.readdirSync(path.join(ROOT, 'apps')).filter((d) => fs.existsSync(path.join(ROOT, 'apps', d, 'index.html')));
-  assert.strictEqual(apps.length, 31, 'program sayısı 31 olmalı'); const out = apps.map((a) => program(a, cat)).filter(Boolean);
-  ok(`${out.length}/31 program yüklendi; ${out.reduce((t, x) => t + x.routes, 0)} yönlendirme, ${out.reduce((t, x) => t + x.rows, 0)} tohum kaydı, ${out.reduce((t, x) => t + x.req, 0)} zorunlu alan denetlendi`);
+  assert.strictEqual(apps.length, cat.products.length, 'her program katalogda olmalı'); const out = apps.map((a) => program(a, cat)).filter(Boolean);
+  ok(`${out.length}/${apps.length} program yüklendi; ${out.reduce((t, x) => t + x.routes, 0)} yönlendirme, ${out.reduce((t, x) => t + x.rows, 0)} tohum kaydı, ${out.reduce((t, x) => t + x.req, 0)} zorunlu alan denetlendi`);
   if (V) console.table(out);
   textAudit();
   if (fails.length) { console.error(`\n${fails.length} sorun:`); fails.forEach((x) => console.error('  ✗ ' + x)); process.exit(1); }

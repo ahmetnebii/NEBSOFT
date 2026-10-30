@@ -13,7 +13,7 @@ for (const p of C.products) {
   const L = K.list(p.id); assert.ok(L.length >= 3 && L.length <= 5, `${p.id}: ${L.length} adım`);
   for (const s of L) { assert.ok(new RegExp(`id: '${s.go}'`).test(SRC[p.id]), `${p.id}: menü yok ${s.go}`); s.n.forEach((c) => assert.ok(new RegExp(`\\b${c}\\b`).test(SRC[p.id]), `${p.id}: koleksiyon yok ${c}`)); }
 }
-ok('31 programın her birinde 3–5 adım; adres gerçek menüde, koleksiyon program kodunda');
+ok('her programda 3–5 adım; adres gerçek menüde, koleksiyon program kodunda');
 
 let e = K.ilerleme('pos', null); assert.deepStrictEqual([e.done, e.total, e.pct], [0, 4, 0]); ok('Veri yokken ilerleme 0');
 e = K.ilerleme('pos', { _meta: { sample: true, sampleBase: { products: 5, sales: 9 } }, products: [1, 2, 3, 4, 5], sales: new Array(9).fill(0) }); assert.strictEqual(e.done, 0); assert.ok(e.sample); ok('Örnek veriler adımı tamamlamaz');

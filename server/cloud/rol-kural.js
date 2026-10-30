@@ -57,6 +57,9 @@ const emlakYabanci = (r, b) => !eslesir(r, 'agent', b);
 // Reddedilen POS iadesi kayda geçmez: iadenin artırdığı stok geri düşer
 const posIadeGeri = (o, r) => { if (!Array.isArray(o.products)) return; const m = new Map(); dizi(r.items).forEach((i) => { if (nesne(i) && i.pid) m.set(i.pid, (m.get(i.pid) || 0) + (Number(i.qty) || 0)); }); o.products = o.products.map((p) => (nesne(p) && m.has(p.id) ? { ...p, stock: (Number(p.stock) || 0) - m.get(p.id) } : p)); };
 const bordro = () => { try { return require('../../apps/ik/bordro.js'); } catch (e) { return null; } };
+// Sipariş ve Teslim ailesi ortak rolleri
+const sipTezgah = (ad = 'Tezgâh') => ({ ad, saltOkunur: ['services', 'staff'], silemez: ['orders', 'customers'], ekle: ['sms'] });
+const sipKurye = (ad, kapat = []) => ({ ad, kisi: { kol: 'staff', alan: 'courier', baslik: ad, yok: `${ad} seçin (seçilmezse iş görünmez)` }, satir: { orders: (o, b) => eslesir(o, 'courier', b), customers: (c, b) => b.alanlar('orders', 'customer').has(c.id) }, kapat: ['requests', ...kapat], saltOkunur: ['services', 'staff', 'customers'], silemez: ['orders'], ekle: ['sms'] });
 const RULES = {
   // apps/klinik/app.js: clinical() sekreterde kapalı (anamnez, muayene notu, tanı, reçete, e-Nabız). Yönetim menüsü (hakediş, tedavi listesi, hekimler, raporlar) yöneticide.
   // Hasta silme yöneticide (canDelete). Telefon, TC, kan grubu, Not alanı, tedavi planı, ödeme, randevu nedeni sekreterin ekranlarında kullanılır, açık kalır.
@@ -233,6 +236,12 @@ const RULES = {
   // apps/fiyatrobotu: izleyici tüm ekranları görür, hiçbir şeyi değiştiremez (canEdit). Gizlenecek alan yoktur, yazma kapalıdır. Fiyat uzmanında yalnız menü farkı vardır, kural eklenmedi.
   fiyatrobotu: { izleyici: { ad: 'İzleyici', saltOkunur: ['products', 'listings', 'history', 'runs', 'channels', 'cargoOverride', 'comOverride', 'feeOverride', 'ratesOwn'] } },
   // apps/servis: ROLES var, ekranlarda rol denetimi yok. Teknisyen ve kabul Özet, Teknisyenler, Ayarlar menüsünü görmez; parça alış fiyatı Parça Stoku ekranında herkese açık. Yalnız menü farkı: kural eklenmedi.
+  // Sipariş ve Teslim ailesi (apps/siparisortak): şoför/kurye kendi işini görür ve yalnız iş aldığı müşterinin kaydını okur; fiyat listesi ve personel tezgâhta salt okunurdur; sipariş silinmez. Teslimde kurye tahsilat yazar (sipariş içinde), SMS günlüğü okunmaz yazılır.
+  kurutemizleme: { tezgah: sipTezgah(), kurye: sipKurye('Şoför') },
+  matbaa: { satis: sipTezgah('Satış'), uretim: { ad: 'Üretim', gizle: { services: ['cost'] }, saltOkunur: ['services', 'staff'], yeniSerbest: ['customers'], silemez: ['orders', 'customers'], ekle: ['sms'] } },
+  pastane: { tezgah: sipTezgah(), kurye: sipKurye('Kurye', ['ingredients', 'recipes', 'plans', 'waste']), usta: { ad: 'Usta', gizle: { ingredients: ['cost'], waste: ['cost'] }, saltOkunur: ['services', 'recipes', 'staff', 'ingredients'], izinli: { ingredients: ['stock'] }, yeniSerbest: ['customers'], silemez: ['orders', 'customers', 'plans', 'waste'], ekle: ['sms'] } },
+  cicekci: { tezgah: sipTezgah(), kurye: sipKurye('Kurye', ['stems', 'fire', 'occasions', 'zones']) },
+  terzi: { usta: { ad: 'Usta', saltOkunur: ['services', 'staff', 'mtpls'], silemez: ['orders', 'customers', 'measures'], ekle: ['sms'] } },
 };
 // Pazaryeri kanal kaydı: bağlantı alanları gerekir, komisyon ve hizmet bedeli kâr hesabıdır
 const kanalSuz = (o) => { if (nesne(o.channels)) o.channels = Object.fromEntries(Object.entries(o.channels).map(([k, v]) => { if (!nesne(v)) return [k, v]; const { commission, fixedFee, payoutDays, ...r } = v; return [k, r]; })); };
