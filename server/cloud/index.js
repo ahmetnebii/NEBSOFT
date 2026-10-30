@@ -4,13 +4,14 @@ const cfg = require('./config');
 const sec = require('./security');
 const auth = require('./auth');
 const { R, err } = require('./routes');
-require('./public'); require('./seo'); // müşteriye açık sayfaların uç noktaları (R listesine eklenir)
+require('./public'); require('./seo'); require('./odeme'); // müşteriye açık sayfaların ve ödemenin uç noktaları (R listesine eklenir)
 
 const send = (res, code, obj) => { if (res.headersSent) return; res.writeHead(code, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' }); res.end(JSON.stringify(obj)); };
-const readBody = (req, max) => new Promise((resolve, reject) => {
+// raw: gövde bayt olarak döner (webhook imzası ham gövde üzerinden hesaplanır, JSON'a çevrilirse imza bozulabilir)
+const readBody = (req, max, raw) => new Promise((resolve, reject) => {
   let size = 0; const chunks = [];
   req.on('data', (c) => { size += c.length; if (size > max) { reject(err(413, 'İstek çok büyük')); req.destroy(); } else chunks.push(c); });
-  req.on('end', () => { if (!size) return resolve({}); try { const v = JSON.parse(Buffer.concat(chunks).toString('utf8')); resolve(v && typeof v === 'object' ? v : {}); } catch (e) { reject(err(400, 'Geçersiz JSON')); } });
+  req.on('end', () => { if (raw) return resolve(Buffer.concat(chunks)); if (!size) return resolve({}); try { const v = JSON.parse(Buffer.concat(chunks).toString('utf8')); resolve(v && typeof v === 'object' ? v : {}); } catch (e) { reject(err(400, 'Geçersiz JSON')); } });
   req.on('error', reject);
 });
 
@@ -26,7 +27,7 @@ async function handle(req, res, path) {
     if (hit.opt.limit && !sec.limit(`${hit.opt.limit[0]}:${c.ip}`, hit.opt.limit[1], hit.opt.limit[2])) throw err(429, 'Çok fazla deneme. Lütfen daha sonra tekrar deneyin.');
     if (m !== 'GET') {
       if (hit.opt.csrf !== false && !sec.sameOrigin(req)) throw err(403, 'İstek reddedildi (kaynak doğrulanamadı)');
-      c.body = await readBody(req, hit.opt.bodyMax || 1e6);
+      if (hit.opt.raw) c.raw = await readBody(req, hit.opt.bodyMax || 1e6, true); else c.body = await readBody(req, hit.opt.bodyMax || 1e6);
     }
     if (hit.opt.db !== false && !db.ready() && !path.startsWith('/api/setup/')) throw err(503, 'Sistem bakımda (veritabanı bağlı değil)');
     if (hit.opt.auth && hit.opt.auth !== 'none') {

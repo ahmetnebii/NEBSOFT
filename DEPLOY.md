@@ -14,7 +14,7 @@ Bu rehber, sistemi gerçek müşterilere satışa açmak için sunucuya kurmayı
 - `server.js`: web sitesi, satış sayfası (pazar), 31 uygulama, yönetim paneli (`/admin/`) ve bulut API'si.
 - Veritabanı bağlantı bilgileri **yönetim panelinden** girilir ve diskte **AES-256-GCM ile şifreli** saklanır (`data/config.enc`).
 - Her işletmenin uygulama verisi MySQL'de tutulur. İşletmenin müşterilerine açık sayfaları `/t/<işletme>/` altında çalışır.
-- Ödeme yöntemi **havale/EFT**dir. Müşteri sipariş verir, admin panelinde **"Ödendi"** dendiğinde lisans açılır.
+- Ödeme yöntemi **havale/EFT**dir. Müşteri sipariş verir, admin panelinde **"Ödendi"** dendiğinde lisans açılır. İsteğe bağlı **Shopier** ile kart ödemesi için bkz. `docs/SHOPIER-DOGRULAMA.md`.
 - Her ürün **7 gün ücretsiz** denenir. Süre, panelde Site Ayarları'ndan değiştirilebilir.
 
 ## 2. Sunucu hazırlığı
@@ -210,7 +210,7 @@ Sistemde yerleşik olan korumalar:
 
 ## 12. Bilmeniz gerekenler (sınırlar)
 
-- **Kartla ödeme yoktur.** Satış havale/EFT ile yapılır. İşletmelerin müşteri sayfalarında kart formları bulutta kapalıdır. Ödeme işletmeye elden, kapıda veya havale ile yapılır; online bilet satışları **"ödeme bekliyor"** rezervasyonu olarak oluşur.
+- **Kart bilgisi bu sistemde alınmaz.** Satış havale/EFT ile yapılır; panelden (Kartla Ödeme) Shopier anahtarı girilip gerçek hesapla denendikten sonra müşteri Shopier'in kendi ödeme sayfasında da ödeyebilir. İşletmelerin müşteri sayfalarında kart formları bulutta kapalıdır. Ödeme işletmeye elden, kapıda veya havale ile yapılır; online bilet satışları **"ödeme bekliyor"** rezervasyonu olarak oluşur.
 - **SMS / e-posta gönderimi**, uygulamalarda Entegrasyon Merkezi'nden bir SMS sağlayıcısı (Netgsm, İleti Merkezi vb.) bağlanana kadar yalnızca kayda geçer, gerçekten gönderilmez.
 - e-Fatura/e-Arşiv, MEDULA/İTS, KBS ve pazaryeri entegrasyonları için ilgili entegratör sözleşmesi ve API bilgileri gerekir.
 - Yerel donanım (fiş yazıcısı, POS cihazı, terazi) bulut sunucusundan değil, işletmedeki bilgisayarda çalışan yerel köprüden (`node server.js`, veritabanısız mod) kullanılır.

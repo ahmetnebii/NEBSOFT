@@ -891,30 +891,40 @@
     if (!t.lines.length) { location.hash = '#/sepet'; return; }
     if (!CL.user) { toast('Sipariş için önce giriş yapın veya ücretsiz hesap açın', ''); location.hash = '#/giris'; return; }
     let banks = []; try { banks = (await NS.api('GET', '/api/banks')).banks; } catch (e) { /* yok */ }
+    let cardOn = false; try { cardOn = !!(await NS.api('GET', '/api/odeme/yontemler')).shopier; } catch (e) { /* kart seçeneği görünmez */ }
     const ten = CL.tenant || {};
     el.innerHTML = `<section class="sec" style="padding-top:40px"><div class="mk-wrap"><h1 class="mb">Ödeme</h1><div class="grid g-21">
       <div class="col" style="gap:16px"><div class="card pad" id="bf"><h3 class="mb">Fatura bilgileri</h3><div class="form-grid">${NS.fieldsHtml([{ name: 'name', label: 'Ad soyad', required: true }, { name: 'company', label: 'Firma / işletme', required: true }, { name: 'phone', label: 'Telefon', type: 'tel', required: true }, { name: 'taxType', label: 'Fatura tipi', type: 'select', options: [{ value: 'kurumsal', label: 'Kurumsal (Vergi no)' }, { value: 'bireysel', label: 'Bireysel (TCKN)' }] }, { name: 'taxNo', label: 'Vergi no / TCKN', required: true }, { name: 'taxOffice', label: 'Vergi dairesi' }, { name: 'city', label: 'İl', required: true }, { name: 'address', label: 'Fatura adresi', full: true, required: true }], { name: CL.user.name, phone: CL.user.phone, company: ten.name, city: ten.city, address: ten.address })}</div></div>
-        <div class="card pad"><h3 class="mb">Ödeme yöntemi</h3><div class="card pad row nw" style="border-color:var(--brand)"><span style="color:var(--brand)">${icon('building')}</span><div class="grow"><b>Havale / EFT</b><div class="small muted">Siparişten sonra IBAN ve açıklama bilgisi gösterilir. Ödemeniz onaylanınca lisansınız aktifleşir.</div></div></div>
-        ${banks.length ? '' : `<p class="small mt" style="color:var(--err)">${icon('alert')} Şu an tanımlı ödeme hesabı yok; lütfen bizimle iletişime geçin.</p>`}
+        <div class="card pad"><h3 class="mb">Ödeme yöntemi</h3>${cardOn ? `<label class="card pad row nw mb" style="cursor:pointer"><input type="radio" name="paym" value="shopier" ${banks.length ? '' : 'checked'}><div class="grow"><b>${icon('card')} Banka / kredi kartı (Shopier)</b><div class="small muted">Shopier güvenli ödeme sayfasına yönlendirileceksiniz. Kart bilgileriniz bu sitede alınmaz ve saklanmaz.</div></div></label>${banks.length ? `<label class="card pad row nw" style="cursor:pointer"><input type="radio" name="paym" value="havale" checked><div class="grow"><b>${icon('building')} Havale / EFT</b><div class="small muted">Siparişten sonra IBAN ve açıklama bilgisi gösterilir. Ödemeniz onaylanınca lisansınız aktifleşir.</div></div></label>` : ''}` : `<div class="card pad row nw" style="border-color:var(--brand)"><span style="color:var(--brand)">${icon('building')}</span><div class="grow"><b>Havale / EFT</b><div class="small muted">Siparişten sonra IBAN ve açıklama bilgisi gösterilir. Ödemeniz onaylanınca lisansınız aktifleşir.</div></div></div>`}
+        ${banks.length || cardOn ? '' : `<p class="small mt" style="color:var(--err)">${icon('alert')} Şu an tanımlı ödeme hesabı yok; lütfen bizimle iletişime geçin.</p>`}
         <label class="check small mt"><input type="checkbox" id="agree"> <span><a href="#/yasal/sozlesme" target="_blank">Mesafeli satış sözleşmesini</a> ve <a href="#/yasal/kvkk" target="_blank">KVKK aydınlatma metnini</a> okudum, kabul ediyorum.</span></label></div></div>
       <div><div class="card pad" style="position:sticky;top:86px"><h3 class="mb">Sipariş özeti</h3>${t.lines.map((l) => `<div class="list-item small"><span class="grow"><b>${esc(l.p.name)}</b><div class="faint">${planName(l.plan)} · ${l.period === 'yillik' ? 'Yıllık' : 'Aylık'}${l.qty > 1 ? ` · ${l.qty} şube` : ''}</div></span><b>${money(l.line)}</b></div>`).join('')}
         ${t.discount ? `<div class="list-item small" style="color:var(--ok)"><span class="grow">İndirim</span><b>-${money(t.discount)}</b></div>` : ''}<div class="list-item small"><span class="grow muted">KDV</span><b>${money(t.vat)}</b></div><div class="list-item"><span class="grow"><b>Ödenecek</b></span><b style="font-size:22px">${money(t.total)}</b></div>
-        <button class="btn primary lg block mt" id="pay" ${banks.length ? '' : 'disabled'}>${icon('check')} Siparişi oluştur</button><p class="small faint center mt">Tutar sunucuda yeniden hesaplanır.</p></div></div></div></div></section>`;
+        <button class="btn primary lg block mt" id="pay" ${banks.length || cardOn ? '' : 'disabled'}>${icon('check')} Siparişi oluştur</button><p class="small faint center mt">Tutar sunucuda yeniden hesaplanır.</p></div></div></div></div></section>`;
     $('#pay', el).onclick = async () => {
       const f = $('#bf', el); if (!NS.validate(f)) return; if (!$('#agree', el).checked) return toast('Sözleşmeyi onaylayın', 'err');
+      const pm = $('input[name="paym"]:checked', el); const card = !!pm && pm.value === 'shopier'; const btn = $('#pay', el); btn.disabled = true;
       try {
-        const r = await NS.api('POST', '/api/orders', { items: cart().items.map((i) => ({ pid: i.pid, plan: i.plan, period: i.period, qty: i.qty || 1 })), coupon: cart().coupon, billing: NS.readForm(f) });
-        db.data.cart = { items: [], coupon: null }; db.save(); drawNav(); location.hash = '#/basarili/' + r.order.id;
-      } catch (e) { toast(e.message, 'err'); }
+        const r = await NS.api('POST', '/api/orders', { items: cart().items.map((i) => ({ pid: i.pid, plan: i.plan, period: i.period, qty: i.qty || 1 })), coupon: cart().coupon, billing: NS.readForm(f), ...(card ? { method: 'shopier' } : {}) });
+        db.data.cart = { items: [], coupon: null }; db.save(); drawNav(); if (r.shopier && !r.shopier.ok) toast(r.shopier.error, 'err'); location.hash = '#/basarili/' + r.order.id;
+      } catch (e) { btn.disabled = false; toast(e.message, 'err'); }
     };
   }
   async function cloudSuccess(el, id) {
     let r; try { r = await NS.api('GET', '/api/orders'); } catch (e) { location.hash = '#/giris'; return; }
     const o = r.orders.find((x) => x.id === id); if (!o) { location.hash = '#/hesabim/siparisler'; return; }
-    el.innerHTML = `<section class="sec"><div class="mk-wrap" style="max-width:760px"><div class="card pad center"><div class="kpi" style="justify-content:center"><div class="ic ${o.status === 'odendi' ? 'ok' : 'warn'}" style="width:70px;height:70px">${icon(o.status === 'odendi' ? 'check' : 'clock', 'ico-lg')}</div></div>
-      <h1 class="mt">${o.status === 'odendi' ? 'Ödemeniz onaylandı' : 'Siparişiniz alındı'}</h1><p class="muted mt">Sipariş no: <b class="mono">${esc(o.no)}</b> · ${money(o.total)}</p>
-      ${o.status === 'odeme-bekliyor' ? `<div class="mt">${bankBox(r.banks, o.no, o.total)}</div>` : ''}
-      <div class="row mt" style="justify-content:center"><a class="btn primary" href="#/hesabim">${icon('user')} Hesabıma git</a></div></div></div></section>`;
+    let p = null; try { p = await NS.api('GET', `/api/orders/${id}/odeme`); } catch (e) { /* durum alınamazsa havale görünümü */ }
+    const sp = p && p.shopier; const paid = (p ? p.status : o.status) === 'odendi'; const pending = (p ? p.status : o.status) === 'odeme-bekliyor';
+    const live = sp && pending && sp.state !== 'kapandi'; // Shopier'de açık ödeme: ödeme doğrulanana kadar "kontrol ediliyor" görünür, başarı gösterilmez
+    el.innerHTML = `<section class="sec"><div class="mk-wrap" style="max-width:760px"><div class="card pad center"><div class="kpi" style="justify-content:center"><div class="ic ${paid ? 'ok' : 'warn'}" style="width:70px;height:70px">${icon(paid ? 'check' : 'clock', 'ico-lg')}</div></div>
+      <h1 class="mt">${paid ? 'Ödemeniz onaylandı' : live ? (sp.state === 'inceleme' ? 'Ödemeniz inceleniyor' : 'Ödeme kontrol ediliyor') : 'Siparişiniz alındı'}</h1><p class="muted mt">Sipariş no: <b class="mono">${esc(o.no)}</b> · ${money(o.total)}</p>
+      ${live && sp.state === 'inceleme' ? `<div class="card pad mt" style="background:var(--warn-soft);border:0;text-align:left">Ödemeniz otomatik olarak eşleştirilemedi. Ekibimiz kontrol ediyor; sonuç size bildirilecek. Lütfen yeniden ödeme yapmayın.</div>` : ''}
+      ${live && sp.state !== 'inceleme' ? `<div class="card pad mt" style="text-align:left"><b>${icon('card')} Banka / kredi kartı (Shopier)</b><p class="small muted mt">Shopier güvenli ödeme sayfasına yönlendirileceksiniz. Kart bilgileriniz bu sitede alınmaz ve saklanmaz.</p>${sp.url ? `<a class="btn primary lg block mt" href="${esc(sp.url)}" target="_blank" rel="noopener noreferrer">${icon('card')} Shopier'de ödemeye geç</a>` : ''}<div class="small mt row nw">${icon('clock')}<span>Ödemeyi tamamladıysanız bu sayfayı açık bırakın. Ödeme doğrulanana kadar burada <b>kontrol ediliyor</b> yazar; lisansınız ancak doğrulamadan sonra açılır.</span></div></div>` : ''}
+      ${pending && !live ? `<div class="mt">${bankBox(r.banks, o.no, o.total)}</div>${sp ? `<button class="btn mt" id="repay">${icon('card')} Yeni kart ödemesi bağlantısı al</button>` : ''}` : ''}
+      <div class="row mt" style="justify-content:center"><a class="btn ${live ? '' : 'primary'}" href="#/hesabim">${icon('user')} Hesabıma git</a></div></div></div></section>`;
+    if ($('#repay', el)) $('#repay', el).onclick = async () => { try { await NS.api('POST', `/api/orders/${id}/shopier`); cloudSuccess(el, id); } catch (x) { toast(x.message, 'err'); } };
+    if (live) setTimeout(() => { if (location.hash === '#/basarili/' + id && el.isConnected) cloudSuccess(el, id); }, 6000);
+    if (paid && sp) refreshMe();
   }
   async function cloudAccount(el, tab) {
     if (!CL.user) return authPage(el, 'giris');
@@ -936,8 +946,9 @@
       if ($('#cpu', tb)) $('#cpu', tb).onclick = async () => { try { await navigator.clipboard.writeText(pageUrl); toast('Kopyalandı', 'ok'); } catch (x) { NS.prompt('İşletme sayfanız', pageUrl); } };
       on(tb, 'click', '[data-buy]', (e, t) => { addCart(t.dataset.buy, 1, 'aylik'); location.hash = '#/sepet'; });
     } else if (tab === 'siparisler') {
-      const r = await NS.api('GET', '/api/orders');
-      tb.innerHTML = r.orders.length ? r.orders.map((o) => `<div class="card pad mb"><div class="row"><b class="mono">${esc(o.no)}</b>${badge(OST[o.status][0], OST[o.status][1])}<span class="grow small muted">${NS.dt(o.created)}</span><b>${money(o.total)}</b></div><div class="small muted mt">${o.items.map((i) => `${esc(prod(i.pid) ? prod(i.pid).name : i.pid)} · ${planName(i.plan)} · ${i.period === 'yillik' ? 'yıllık' : 'aylık'}`).join(' · ')}</div>${o.status === 'odeme-bekliyor' ? `<div class="mt">${bankBox(r.banks, o.no, o.total)}</div><button class="btn sm ghost mt" data-cancel="${o.id}">Siparişi iptal et</button>` : ''}</div>`).join('') : '<div class="card pad empty">Sipariş yok</div>';
+      const r = await NS.api('GET', '/api/orders'); let cardOn = false; try { cardOn = !!(await NS.api('GET', '/api/odeme/yontemler')).shopier; } catch (e) { /* kart seçeneği görünmez */ }
+      tb.innerHTML = r.orders.length ? r.orders.map((o) => `<div class="card pad mb"><div class="row"><b class="mono">${esc(o.no)}</b>${badge(OST[o.status][0], OST[o.status][1])}<span class="grow small muted">${NS.dt(o.created)}</span><b>${money(o.total)}</b></div><div class="small muted mt">${o.items.map((i) => `${esc(prod(i.pid) ? prod(i.pid).name : i.pid)} · ${planName(i.plan)} · ${i.period === 'yillik' ? 'yıllık' : 'aylık'}`).join(' · ')}</div>${o.status === 'odeme-bekliyor' ? `<div class="mt">${bankBox(r.banks, o.no, o.total)}</div><div class="row mt">${cardOn ? `<button class="btn sm primary" data-card="${o.id}">${icon('card')} Kartla öde (Shopier)</button>` : ''}<button class="btn sm ghost" data-cancel="${o.id}">Siparişi iptal et</button></div>` : ''}</div>`).join('') : '<div class="card pad empty">Sipariş yok</div>';
+      on(tb, 'click', '[data-card]', async (e, t) => { t.disabled = true; try { await NS.api('POST', `/api/orders/${t.dataset.card}/shopier`); location.hash = '#/basarili/' + t.dataset.card; } catch (x) { t.disabled = false; toast(x.message, 'err'); } });
       on(tb, 'click', '[data-cancel]', async (e, t) => { if (!(await confirm('Sipariş iptal edilsin mi?'))) return; try { await NS.api('POST', `/api/orders/${t.dataset.cancel}/cancel`); cloudAccount(fresh(el), 'siparisler'); } catch (x) { toast(x.message, 'err'); } });
     } else if (tab === 'ekip') {
       const r = await NS.api('GET', '/api/team');

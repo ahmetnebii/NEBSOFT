@@ -46,6 +46,10 @@ const SCHEMA = [
   `CREATE TABLE IF NOT EXISTS mail_log (id BIGINT AUTO_INCREMENT PRIMARY KEY, at DATETIME NOT NULL, to_addr VARCHAR(190), subject VARCHAR(200), status VARCHAR(20), detail VARCHAR(255), INDEX (at)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
   `CREATE TABLE IF NOT EXISTS login_links (id CHAR(64) PRIMARY KEY, user_id CHAR(16) NOT NULL, created DATETIME NOT NULL, expires DATETIME NOT NULL, used DATETIME NULL, ip VARCHAR(64), INDEX (user_id)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
   `CREATE TABLE IF NOT EXISTS inbox (id BIGINT AUTO_INCREMENT PRIMARY KEY, tenant_id CHAR(16) NOT NULL, channel VARCHAR(40) NOT NULL, payload MEDIUMTEXT NOT NULL, at DATETIME NOT NULL, INDEX (tenant_id, channel)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
+  // Shopier: sipariş başına tek ödeme ürünü · işlenen her Shopier siparişi (tekrar işlemeyi önler) · alınan webhook kimlikleri
+  `CREATE TABLE IF NOT EXISTS shopier_payments (order_id CHAR(16) PRIMARY KEY, product_id VARCHAR(64) NULL UNIQUE, product_url VARCHAR(400) NULL, amount DECIMAL(12,2) NOT NULL, status VARCHAR(20) NOT NULL, shop_order_id VARCHAR(64) NULL, alert VARCHAR(255) NULL, closed TINYINT NOT NULL DEFAULT 0, created DATETIME NOT NULL, updated DATETIME NOT NULL, last_check DATETIME NULL, INDEX (closed)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
+  `CREATE TABLE IF NOT EXISTS shopier_orders (shop_id VARCHAR(64) PRIMARY KEY, order_id CHAR(16) NOT NULL, product_id VARCHAR(64) NOT NULL, total VARCHAR(20), currency VARCHAR(8), result VARCHAR(20) NOT NULL, detail VARCHAR(255), at DATETIME NOT NULL, INDEX (order_id)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
+  `CREATE TABLE IF NOT EXISTS shopier_events (id VARCHAR(80) PRIMARY KEY, event VARCHAR(40) NOT NULL, at DATETIME NOT NULL, INDEX (at)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
 ];
 async function migrate() { for (const s of SCHEMA) await q(s); }
 

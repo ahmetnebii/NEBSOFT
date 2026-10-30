@@ -69,7 +69,7 @@
   }
 
   // ---------- Düzen ----------
-  const NAV = [{ sec: 'Satış' }, { id: 'ozet', label: 'Özet', icon: 'home' }, { id: 'havale', label: 'Havale Onayları', icon: 'cash', badge: true }, { id: 'siparisler', label: 'Tüm Siparişler', icon: 'receipt' }, { id: 'urunler', label: 'Ürünler & Fiyatlar', icon: 'box' }, { id: 'bankalar', label: 'Banka Hesapları', icon: 'building' }, { id: 'kuponlar', label: 'Kuponlar', icon: 'percent' },
+  const NAV = [{ sec: 'Satış' }, { id: 'ozet', label: 'Özet', icon: 'home' }, { id: 'havale', label: 'Havale Onayları', icon: 'cash', badge: true }, { id: 'siparisler', label: 'Tüm Siparişler', icon: 'receipt' }, { id: 'urunler', label: 'Ürünler & Fiyatlar', icon: 'box' }, { id: 'bankalar', label: 'Banka Hesapları', icon: 'building' }, { id: 'shopier', label: 'Kartla Ödeme (Shopier)', icon: 'card' }, { id: 'kuponlar', label: 'Kuponlar', icon: 'percent' },
     { sec: 'Müşteriler' }, { id: 'denemeler', label: 'Deneme talepleri', icon: 'key' }, { id: 'asistan', label: 'Destek asistanı', icon: 'message' }, { id: 'isletmeler', label: 'İşletmeler & Lisanslar', icon: 'users' }, { id: 'talepler', label: 'Satış Talepleri', icon: 'phone' }, { id: 'destek', label: 'Destek', icon: 'message' },
     { sec: 'İletişim' }, { id: 'eposta', label: 'E-posta ayarları', icon: 'mail' }, { id: 'kampanya', label: 'E-posta gönder', icon: 'send' },
     { sec: 'Sistem' }, { id: 'duyuru', label: 'Duyurular & Bakım', icon: 'bell' }, { id: 'ayarlar', label: 'Site Ayarları', icon: 'settings' }, { id: 'yoneticiler', label: 'Yöneticiler', icon: 'shield' }, { id: 'veritabani', label: 'Veritabanı', icon: 'data' }, { id: 'kayitlar', label: 'Güvenlik Kayıtları', icon: 'list' }];
@@ -108,7 +108,7 @@
       { label: 'İşletme', render: (o) => `<b>${esc(o.tenant)}</b><div class="small faint">${esc(o.email)} · ${esc(o.phone || '')}</div>` },
       { label: 'Ürünler', render: (o) => o.items.map((i) => `<div class="small">${esc(pname(i.pid))} · ${planName(i.plan)} · ${i.period === 'yillik' ? 'yıllık' : 'aylık'}${i.qty > 1 ? ` · ${i.qty} şube` : ''}</div>`).join('') },
       { label: 'Tutar', cls: 'right', render: (o) => `<b>${money(o.total)}</b>${o.discount ? `<div class="small faint">kupon ${esc(o.coupon)}</div>` : ''}` },
-      { label: 'Durum', render: (o) => badge(OST[o.status][0], OST[o.status][1]) + (o.paid_at ? `<div class="small faint">${dt(o.paid_at)}</div>` : '') + (o.note ? `<div class="small faint">${esc(o.note)}</div>` : '') },
+      { label: 'Durum', render: (o) => badge(OST[o.status][0], OST[o.status][1]) + (o.paid_at ? `<div class="small faint">${dt(o.paid_at)}</div>` : '') + (o.note ? `<div class="small faint">${esc(o.note)}</div>` : '') + (o.shopier ? `<div class="mt">${badge('Shopier', 'info')}</div>${o.shopier.alert ? `<div class="small" style="color:var(--err)">${icon('alert')} ${esc(o.shopier.alert)}</div>` : ''}` : '') },
     ], actions: [{ icon: 'check', act: 'ok', title: 'Ödendi — lisansı aç', show: (o) => o.status === 'odeme-bekliyor' }, { icon: 'x', act: 'no', title: 'Reddet', show: (o) => o.status === 'odeme-bekliyor' }, { icon: 'print', act: 'pr', title: 'Bilgi fişi' }] });
   }
   function bindOrders(el, rows, redraw) {
@@ -130,6 +130,32 @@
     on(el, 'click', '[data-f]', async (e, b) => { st = b.dataset.f; $$('[data-f]', el).forEach((x) => x.classList.toggle('active', x === b)); await draw(); });
     $('#csv', el).onclick = () => NS.csv('siparisler', rows, [{ key: 'no', label: 'No' }, { label: 'Tarih', value: (o) => dt(o.created) }, { key: 'tenant', label: 'İşletme' }, { key: 'email', label: 'E-posta' }, { label: 'Ürünler', value: (o) => o.items.map((i) => pname(i.pid)).join(' + ') }, { key: 'subtotal', label: 'Ara toplam' }, { key: 'vat', label: 'KDV' }, { key: 'total', label: 'Toplam' }, { label: 'Durum', value: (o) => OST[o.status][0] }, { label: 'VKN', value: (o) => o.billing.taxNo }]);
     bindOrders(el, { find: (f) => rows.find(f) }, draw); await draw();
+  };
+  // Shopier: anahtar yalnızca yazılır, geri okunmaz. Gerçek hesapla denenene kadar seçenek yalnızca deneme müşterisine görünür.
+  ROUTES.shopier = async (el) => {
+    const SHST = { uyusmazlik: ['Uyuşmazlık', 'err'], 'cift-odeme': ['Çift ödeme', 'err'] };
+    const call = async (fn, msg) => { try { const r = await fn(); if (msg) toast(msg, 'ok'); await draw(); return r; } catch (x) { toast(x.message, 'err'); return null; } };
+    const draw = async () => {
+      const r = await api('GET', '/api/admin/shopier');
+      el.innerHTML = pageHead('Kartla Ödeme (Shopier)', 'Müşteri Shopier güvenli ödeme sayfasında öder; kart bilgisi bu sisteme hiç gelmez.', !r.hasPat ? badge('Anahtar yok', 'warn') : r.live ? badge('Müşterilere açık', 'ok') : badge('Müşterilere kapalı', 'warn')) + `
+        ${r.verifiedAt ? `<div class="card pad mb small">${icon('check')} Gerçek hesapla denendi olarak işaretlendi: ${dt(r.verifiedAt)} · ${esc(r.verifiedBy)}</div>` : `<div class="card pad mb" style="background:var(--err-soft,var(--warn-soft));border:0"><b style="color:var(--err)">${icon('alert')} Gerçek hesapla denenmedi</b><div class="small mt">Bu bağlantı Shopier'in resmî dokümanına göre yazıldı ve sahte sunucuyla sınandı; Shopier'in deneme ortamı olmadığı için gerçek mağazada hiç denenmedi. Müşteriler bu seçeneği görmez. Aşağıdaki deneme müşterisiyle düşük tutarlı gerçek bir ödeme yapın; lisans açıldığını, ürünün silindiğini ve tutarın doğru geldiğini gördükten sonra müşterilere açın.</div></div>`}
+        ${r.alerts.length ? `<div class="card mb"><div class="card-h"><h3 style="color:var(--err)">${icon('alert')} Elle kontrol gereken ödemeler</h3></div>${table({ rows: r.alerts.map((a) => ({ ...a, id: a.order_id })), empty: '', columns: [{ label: 'Sipariş', render: (a) => `<b class="mono">${esc(a.no)}</b><div class="small faint">${dt(a.updated)}</div>` }, { label: 'Tutar', cls: 'right', render: (a) => money(a.total) }, { label: 'Sorun', render: (a) => `${badge((SHST[a.status] || [a.status, 'err'])[0], 'err')}<div class="small">${esc(a.alert || '')}</div>` }], actions: [{ icon: 'refresh', act: 'recheck', title: 'Shopier’den yeniden sorgula' }] })}<div class="card-b small muted">Lisans otomatik açılmadı. Shopier panelinden ödemeyi kontrol edin; doğruysa Havale Onayları'ndan "Ödendi" ile onaylayın, yanlışsa reddedip Shopier'den iade edin.</div></div>` : ''}
+        <div class="grid g-21"><div class="card pad" id="sf"><div class="form-grid">${NS.fieldsHtml([
+          { name: 'pat', label: r.hasPat ? 'Kişisel erişim anahtarı (PAT) — kayıtlı, değiştirmek için yazın' : 'Kişisel erişim anahtarı (PAT)', type: 'password', full: true, placeholder: r.hasPat ? '••••••••' : 'Shopier > Hesap > Personal Access Token', hint: 'Şifreli saklanır, bu ekrana ve tarayıcıya geri dönmez.' },
+          { name: 'testEmail', label: 'Deneme müşterisi e-postası', type: 'email', full: true, hint: 'Müşterilere açılmadan önce seçeneği yalnızca bu hesap görür.' },
+          { name: 'imageUrl', label: 'Ürün görseli adresi (isteğe bağlı)', full: true, placeholder: esc(r.image || 'https://…/gorsel.png'), hint: 'Shopier ürün için görsel ister (jpg, png, bmp; https). Boşsa site adresindeki NEBSOFT simgesi kullanılır.' }], { testEmail: r.testEmail, imageUrl: r.imageUrl })}</div>
+          <div class="row mt"><button class="btn primary" id="sv">${icon('check')} Kaydet</button><button class="btn" id="ts" ${r.hasPat ? '' : 'disabled'}>${icon('zap')} Bağlantıyı dene</button><button class="btn" id="wh" ${r.hasPat ? '' : 'disabled'}>${icon('link')} Webhook'u kaydet</button></div>
+          <div class="row mt">${r.verifiedAt ? `<button class="btn" id="off">${icon('x')} Müşterilere kapat</button>` : `<button class="btn" id="on" ${r.hasPat ? '' : 'disabled'}>${icon('check')} Gerçek hesapla denedim, müşterilere aç</button>`}${r.hasPat ? `<button class="btn ghost" id="del">${icon('trash')} Anahtarı sil</button>` : ''}</div></div>
+        <div class="card pad small"><h3 class="mb">${icon('info')} Durum</h3><div class="list-item"><span class="grow muted">Bekleyen ödeme bağlantısı</span><b>${r.pending}</b></div><div class="list-item"><span class="grow muted">Webhook</span>${r.webhook.registered ? badge('Kayıtlı', 'ok') : badge('Kayıtlı değil', 'warn')}</div><div class="list-item"><span class="grow muted">Son geçerli webhook</span><span>${r.webhook.lastAt ? dt(r.webhook.lastAt) : 'Henüz yok'}</span></div><p class="muted mt">Webhook yoksa veya imza tutmazsa ödemeler yine de Shopier'den sorgulanarak yakalanır, yalnızca biraz daha geç görünür. Lisans her durumda Shopier'den okunan siparişte ürün, adet, para birimi ve tutar tuttuktan sonra açılır.</p><p class="mono" style="word-break:break-all">${esc(r.webhook.url)}</p></div></div>`;
+      $('#sv', el).onclick = () => { const v = NS.readForm($('#sf', el)); if (!v.pat) delete v.pat; call(() => api('PUT', '/api/admin/shopier', v), 'Kaydedildi'); };
+      $('#ts', el).onclick = () => call(() => api('POST', '/api/admin/shopier/test'), 'Shopier bağlantısı çalışıyor');
+      $('#wh', el).onclick = () => call(() => api('POST', '/api/admin/shopier/webhook'), 'Webhook kaydedildi');
+      if ($('#on', el)) $('#on', el).onclick = async () => { if (await confirm('Gerçek hesapla ödeme denemesi yaptınız mı? Bu işlemden sonra tüm müşteriler kartla ödeme seçeneğini görür.')) call(() => api('PUT', '/api/admin/shopier', { verified: true }), 'Müşterilere açıldı'); };
+      if ($('#off', el)) $('#off', el).onclick = () => call(() => api('PUT', '/api/admin/shopier', { verified: false }), 'Müşterilere kapatıldı');
+      if ($('#del', el)) $('#del', el).onclick = async () => { if (await confirm('Anahtar silinsin mi? Bekleyen ödemeler sorgulanamaz.')) call(() => api('PUT', '/api/admin/shopier', { clear: true }), 'Anahtar silindi'); };
+    };
+    on(el, 'click', '[data-act="recheck"]', (e, x) => call(() => api('POST', `/api/admin/shopier/kontrol/${x.dataset.id}`), 'Sorgulandı'));
+    await draw();
   };
   ROUTES.bankalar = async (el) => {
     let r = { banks: [] };
