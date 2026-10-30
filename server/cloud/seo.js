@@ -23,7 +23,7 @@ const PAGES = {
   veteriner: ['karne.html', 'Pati karnesi', 'paw'], otel: ['rezervasyon.html', 'Online rezervasyon', 'bed'], spor: ['uye.html', 'Üye girişi', 'dumbbell'],
   kurs: ['veli.html', 'Kurs veli portalı', 'book'], site: ['sakin.html', 'Sakin portalı', 'building'], kiralama: ['kirala.html', 'Araç kirala', 'car'],
   oto: ['arac.html', 'Aracım nerede?', 'car'], eczane: ['recete.html', 'Reçete ve stok sorgula', 'pill'], fabrika: ['bayi.html', 'Bayi portalı', 'factory'],
-  toptan: ['bayi.html', 'Bayi sipariş', 'truck'], musavir: ['portal.html', 'Mükellef portalı', 'book'], muhasebe: ['cari.html', 'Cari hesap portalı', 'wallet'], hukuk: ['muvekkil.html', 'Müvekkil portalı', 'scale'],
+  ik: ['calisan.html', 'Çalışan portalı', 'users'], toptan: ['bayi.html', 'Bayi sipariş', 'truck'], musavir: ['portal.html', 'Mükellef portalı', 'book'], muhasebe: ['cari.html', 'Cari hesap portalı', 'wallet'], hukuk: ['muvekkil.html', 'Müvekkil portalı', 'scale'],
   anaokulu: ['veli.html', 'Anaokulu veli portalı', 'heart'], emlak: ['ilan.html', 'İlanlarımız', 'home'], galeri: ['vitrin.html', 'Araç vitrini', 'car'],
   kuyumcu: ['ekran.html', 'Güncel altın fiyatları', 'coins'], eticaret: ['magaza.html', 'Online mağaza', 'bag'], bilet: ['bilet.html', 'Etkinlikler ve bilet', 'ticket'],
 };

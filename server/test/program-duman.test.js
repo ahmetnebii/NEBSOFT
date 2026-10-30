@@ -93,14 +93,16 @@ function program(id, cat) {
 }
 
 // ---------- Kişisel veri araçları (sağlık programları) ----------
-const KV = { klinik: { col: 'patients', link: 'patient' }, eczane: { col: 'patients', link: 'patient' }, veteriner: { col: 'owners', link: 'owner', sub: [{ col: 'pets', link: 'owner', as: 'pet' }] } };
+const KV = { klinik: { col: 'patients', link: 'patient' }, eczane: { col: 'patients', link: 'patient', phoneCols: ['rxOrders'] }, veteriner: { col: 'owners', link: 'owner', sub: [{ col: 'pets', link: 'owner', as: 'pet' }] } };
 function kvkk(id, ctx, data) {
   const K = ctx.NS.kvkk; if (!K) return bad(`${id}: core/kvkk.js yüklenmedi`);
   const plan = KV[id]; const p = data[plan.col].find((r) => data.visits ? data.visits.some((v) => v[plan.link] === r.id) || (plan.sub && data.pets.some((x) => x.owner === r.id)) : true) || data[plan.col][0];
+  if (plan.phoneCols) { assert.ok(String(p.phone || '').replace(/\D/g, '').length >= 10, 'hastanın telefonu olmalı'); data.rxOrders = [...(data.rxOrders || []), { id: 'rx-duman', phone: '+90 ' + String(p.phone).replace(/^0/, ''), name: 'Online Hasta Duman', rxNo: 'RXDUMAN1', note: 'ozel-recete-notu' }, { id: 'rx-baska', phone: '05000000000', name: 'Baska Hasta Duman' }]; }
   p.note = 'ozel-not-duman'; if (data._log) data._log.unshift({ id: 'l', action: 'x', detail: p.name });
   const c = JSON.parse(JSON.stringify(K.collect(data, plan, p.id))); assert.strictEqual(c.kisi.id, p.id); if (id === 'klinik') assert.ok(Object.keys(c).length > 1, 'bağlı kayıtlar dışa aktarılmalı');
   const r = K.anonymizeData(data, plan, p.id); const s = JSON.stringify(r.data); const before = JSON.stringify(data);
   for (const v of [p.name, p.phone, p.tc, 'ozel-not-duman']) if (v && String(v).length >= 5) { assert.ok(before.includes(JSON.stringify(String(v)).slice(1, -1))); if (s.includes(JSON.stringify(String(v)).slice(1, -1))) bad(`${id}: anonimleştirme sonrası veri kaldı: ${v}`); }
+  if (plan.phoneCols) { assert.ok(c.rxOrders.some((x) => x.id === 'rx-duman'), 'online reçete dışa aktarılmalı'); const o = r.data.rxOrders.find((x) => x.id === 'rx-duman'); if (o.name || o.phone || o.rxNo || o.note) bad(`${id}: online reçete kaydında kişisel veri kaldı`); assert.strictEqual(r.data.rxOrders.find((x) => x.id === 'rx-baska').name, 'Baska Hasta Duman', 'başka hastanın kaydı değişmemeli'); }
   const a = r.data[plan.col].find((x) => x.id === p.id); assert.ok(a.anonAt && a.passive && /^Anonim-/.test(a.name));
   assert.strictEqual(r.data[plan.col].length, data[plan.col].length, 'kayıt sayısı değişmemeli'); ['payments', 'sales'].forEach((col) => { if (data[col]) assert.strictEqual(JSON.stringify(r.data[col].map((x) => x.total ?? x.amount)), JSON.stringify(data[col].map((x) => x.total ?? x.amount)), 'tutarlar değişmemeli'); });
 }

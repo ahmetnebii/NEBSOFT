@@ -29,7 +29,8 @@
   const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const $ = (sel, root = document) => root.querySelector(sel);
   const $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel));
-  const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+  // Sayaç: aynı milisaniyede binlerce kayıt üretilse de (örnek veri, içe aktarma) kimlik çakışmaz
+  let uidN = 0; const uid = () => Date.now().toString(36) + (uidN = (uidN + 1) % 46656).toString(36).padStart(3, '0') + Math.random().toString(36).slice(2, 7);
   const rand = (a, b) => Math.floor(Math.random() * (b - a + 1)) + a;
   const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
   const sum = (arr, f = (x) => x) => arr.reduce((t, x) => t + (Number(f(x)) || 0), 0);

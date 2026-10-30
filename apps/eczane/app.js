@@ -6,7 +6,7 @@
   const RX = { yok: 'Reçetesiz (OTC)', normal: 'Normal reçete', kirmizi: 'Kırmızı reçete', yesil: 'Yeşil reçete', mor: 'Mor reçete', turuncu: 'Turuncu reçete' };
   const CTRL = ['kirmizi', 'yesil']; // Kontrole tabi: defter kaydı ve eczacı onayı
   const INST = { sgk: 'SGK', ozel: 'Özel sigorta', ucretli: 'Ücretli (kendisi)' };
-  const KV = { col: 'patients', link: 'patient' };
+  const KV = { col: 'patients', link: 'patient', phoneCols: ['rxOrders'] };
 
   function seed(db) {
     db.data._settings = { bizName: 'Şifa Eczanesi', bizPhone: '0216 345 67 89', bizAddress: 'Kadıköy, Söğütlüçeşme Cad. No:12', pharmacist: 'Ecz. Selin Aydın', gln: '8680000123456', patientPct: 20, retiredPct: 10, rxFee: 3.76, rxFeeExtra: 1.25, privatePct: 10, sktWarnDays: 90 };

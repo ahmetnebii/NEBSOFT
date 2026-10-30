@@ -4,9 +4,12 @@
 (function () {
   'use strict';
   // Hesap ve tutarlar kalır; kişiyi tanıtan serbest metin ve imza alanları temizlenir
-  const FREE = /^(name|ad|soyad|phone|tel|tc|tckn|email|address|adres|birth|text|note|notes|desc|description|reason|msg|message|body|diagnosis|complaint|treatment|icd|allergy|meds|medication|anamnez|chronic|photo|img|image|file|signer)$/i;
+  const FREE = /^(name|ad|soyad|phone|tel|tc|tckn|email|address|adres|birth|rxNo|text|note|notes|desc|description|reason|msg|message|body|diagnosis|complaint|treatment|icd|allergy|meds|medication|anamnez|chronic|photo|img|image|file|signer)$/i;
   const SIGN = /sign|imza|consent|onam|kvkk|kps|enabiz/i;
   const uniq = (a) => [...new Set(a.filter(Boolean))];
+  const tel = (x) => String(x || '').replace(/\D/g, '').slice(-10);
+  // Kişi kimliği taşımayan, yalnız telefonla bağlı kayıtlar (eczanede online reçete): plan.phoneCols
+  const byPhone = (plan, src, col, r) => (plan.phoneCols || []).includes(col) && tel(src.phone).length === 10 && tel(r.phone) === tel(src.phone);
   // Kayıtta kişi kimliğini taşıyan alan ve kişiye bağlı alt kayıtlar (veterinerde sahip → hayvan → muayene)
   function related(data, plan, id) {
     const ids = { [plan.link]: new Set([id]) };
@@ -27,7 +30,7 @@
       const subOf = (plan.sub || []).find((s) => s.col === col);
       out[col] = out[col].map((r) => {
         if (!r || typeof r !== 'object') return r;
-        const own = (subOf && ids[subOf.as].has(r.id)) || Object.keys(ids).some((k) => ids[k].has(r[k]));
+        const own = (subOf && ids[subOf.as].has(r.id)) || Object.keys(ids).some((k) => ids[k].has(r[k])) || byPhone(plan, src, col, r);
         if (!own) return r; touched++; const n = {};
         Object.entries(r).forEach(([k, v]) => { if (SIGN.test(k)) return; n[k] = typeof v === 'string' && FREE.test(k) ? '' : Array.isArray(v) && FREE.test(k) ? [] : v; });
         if (subOf && 'name' in n) n.name = tag;
@@ -41,11 +44,11 @@
   const allowed = (app) => { if (app.can('admin')) return true; NS.toast('Bu işlem yalnızca yöneticiye açıktır', 'err'); return false; };
   // Bir kişinin tüm kayıtları tek dosyada (ilgili kişinin başvurusu için)
   function collect(data, plan, id) {
-    const ids = related(data, plan, id); const out = { kisi: (data[plan.col] || []).find((r) => r.id === id) || null };
+    const ids = related(data, plan, id); const src = (data[plan.col] || []).find((r) => r.id === id) || {}; const out = { kisi: src.id ? src : null };
     Object.keys(data).forEach((col) => {
       if (col === plan.col || col === 'users' || col.startsWith('_') || !Array.isArray(data[col])) return;
       const subOf = (plan.sub || []).find((s) => s.col === col);
-      const rows = data[col].filter((r) => r && ((subOf && ids[subOf.as].has(r.id)) || Object.keys(ids).some((k) => ids[k].has(r[k])))); if (rows.length) out[col] = rows;
+      const rows = data[col].filter((r) => r && ((subOf && ids[subOf.as].has(r.id)) || Object.keys(ids).some((k) => ids[k].has(r[k])) || byPhone(plan, src, col, r))); if (rows.length) out[col] = rows;
     });
     return out;
   }
