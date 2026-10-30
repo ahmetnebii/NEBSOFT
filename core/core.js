@@ -333,7 +333,7 @@
       if (r.status === 401) stopPage('Oturumunuz kapandı, tekrar giriş yapın', '/#/giris');
       if (r.status === 402) stopPage(r.j.error || 'Lisans gerekli', `/#/urun/${this.name}`);
       if (r.status !== 200) { syncState('Sunucuya ulaşılamadı', 'err'); throw new Error('Veri yüklenemedi: ' + (r.j.error || r.status)); }
-      this._v = r.j.version; let data = r.j.data; this.serverRole = r.j.rol || null; this.serverDept = r.j.rolDept || ''; // sunucudaki hesap rolü: veri süzülmüş gelir, PIN ekranı yok
+      this._v = r.j.version; let data = r.j.data; this.serverRole = r.j.rol || null; this.serverDept = r.j.rolDept || ''; this.hesapSahibi = !!r.j.hesapSahibi; // sunucudaki hesap rolü: veri süzülmüş gelir, PIN ekranı yok
       // Çevrimdışıyken bekleyen değişiklik varsa birleştir
       let pend = null; try { pend = JSON.parse(localStorage.getItem(pendKey(this.name))); } catch (e) { pend = null; }
       if (pend && pend.data) { data = data ? merge3(pend.base ? JSON.parse(pend.base) : null, pend.data, data) : pend.data; this._dirty = true; }
@@ -938,6 +938,10 @@
     document.title = `${opts.name} · NEBSOFT`;
     setFavicon(opts.accent);
     const SESSION = 'nebsoft:session:' + opts.id;
+    // Bulutta tek kullanıcılı işletme doğrudan açılır. Birden çok kullanıcı varsa veya çıkış yapıldıysa PIN sorulur: paylaşılan cihazda sekmeyi yeniden açmak yönetici yetkisi vermez.
+    const KILIT = 'nebsoft:kilit:' + opts.id;
+    const kilitli = () => { try { return !!localStorage.getItem(KILIT); } catch (e) { return false; } };
+    const pinGerekli = () => kilitli() || app.db.all('users', (u) => u.active !== false).length > 1;
 
     const currentUser = () => {
       if (!opts.auth) return null;
@@ -946,7 +950,7 @@
       let id = null;
       try { id = sessionStorage.getItem(SESSION); } catch (e) { /* yok */ }
       // Pazar yerindeki "canlı demo" linkleri ?demo=1 ile yönetici olarak açılır
-      if (!id && (/[?&]demo=1/.test(location.search) || (CLOUD && app.db.cloud))) {
+      if (!id && (/[?&]demo=1/.test(location.search) || (CLOUD && app.db.cloud && !pinGerekli()))) {
         const admin = app.db.find('users', (u) => u.role === 'admin' && u.active !== false);
         if (admin) { id = admin.id; try { sessionStorage.setItem(SESSION, id); } catch (e) { /* yok */ } }
       }
@@ -963,7 +967,7 @@
     // Aynı adrese yönlendirmede hashchange tetiklenmez; sayfa yine de yenilenir
     app.go = (route, param) => { const h = '#/' + route + (param ? '/' + encodeURIComponent(param) : ''); if (location.hash === h) render(); else location.hash = h; };
     app.refresh = () => render();
-    app.logout = () => { try { sessionStorage.removeItem(SESSION); } catch (e) { /* yok */ } NS.currentUser = null; boot(); };
+    app.logout = () => { try { sessionStorage.removeItem(SESSION); if (app.db.cloud) localStorage.setItem(KILIT, '1'); } catch (e) { /* yok */ } NS.currentUser = null; boot(); };
 
     function loginScreen() {
       const users = app.db.all('users', (u) => u.active !== false);
@@ -976,7 +980,7 @@
         <div class="ax-lock-mid"><div class="ax-users" role="listbox" aria-label="Kullanıcı seçin">${users.map((u) => `<button class="ax-user${u.id === sel ? ' on' : ''}" role="option" aria-selected="${u.id === sel}" data-u="${u.id}"><span class="av">${esc(initials(u.name))}</span><span>${esc(u.name)}</span><small>${esc(role(u))}</small></button>`).join('')}</div>
           <div class="ax-pinbox"><div class="who" id="axw"></div><div class="ax-dots" id="pd">${'<i></i>'.repeat(4)}</div>
             <div class="ax-pad">${[[1, ''], [2, 'ABC'], [3, 'DEF'], [4, 'GHI'], [5, 'JKL'], [6, 'MNO'], [7, 'PRS'], [8, 'TUV'], [9, 'YZ'], ['C', ''], [0, ''], ['⌫', '']].map(([k, sub]) => `<button data-k="${k}" class="${['C', '⌫'].includes(k) ? 'fn' : ''}" aria-label="${k === 'C' ? 'Temizle' : k === '⌫' ? 'Sil' : k}">${k === '⌫' ? icon('back') : k === 'C' ? 'Temizle' : `${k}${sub ? `<small>${sub}</small>` : ''}`}</button>`).join('')}</div></div></div>
-        <div class="ax-lock-foot">${back}<span>${/[?&]demo=1/.test(location.search) || !CLOUD ? 'Demo PIN: <b style="color:#fff">1234</b> · ' : ''}Klavyeden de yazabilirsiniz</span></div></div></div>`;
+        <div class="ax-lock-foot">${back}<span>${/[?&]demo=1/.test(location.search) || !CLOUD ? 'Demo PIN: <b style="color:#fff">1234</b> · ' : ''}Klavyeden de yazabilirsiniz${app.db.cloud && app.db.hesapSahibi ? ' · <a href="#" id="axf">PIN\'imi unuttum</a>' : ''}</span></div></div></div>`;
       if (A) A.bind(document.body);
       const tick = () => { const c = document.getElementById('axc'); if (!c) return clearInterval(clk); const d = new Date(); c.textContent = d.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }); document.getElementById('axd').textContent = d.toLocaleDateString('tr-TR', { weekday: 'long', day: 'numeric', month: 'long' }); };
       const clk = setInterval(tick, 1000); tick();
@@ -994,7 +998,7 @@
           let oldu = null; let hata = ''; try { oldu = u ? await pinKontrol(app.db, pin, { uid: u.id }) : null; } catch (x) { hata = x.message; }
           if (oldu) {
             $('#pd').classList.add('ok');
-            try { sessionStorage.setItem(SESSION, u.id); localStorage.setItem('nebsoft:lastUser:' + opts.id, u.id); } catch (e) { /* yok */ }
+            try { sessionStorage.setItem(SESSION, u.id); localStorage.setItem('nebsoft:lastUser:' + opts.id, u.id); localStorage.removeItem(KILIT); } catch (e) { /* yok */ }
             setTimeout(() => { clearInterval(clk); document.onkeydown = null; boot(); if (NS.pwa && NS.pwa.offer) setTimeout(() => NS.pwa.offer(), 1800); }, 420);
           } else {
             $('#pd').classList.add('bad'); if (A) A.shake($('.ax-pinbox')); if (hata) toast(hata, 'err');
@@ -1005,7 +1009,17 @@
       };
       $$('[data-k]').forEach((b) => { b.onclick = () => press(b.dataset.k); });
       $$('[data-u]').forEach((b) => { b.onclick = () => { sel = b.dataset.u; pin = ''; dots(); $$('[data-u]').forEach((x) => { x.classList.toggle('on', x === b); x.setAttribute('aria-selected', x === b); }); who(); }; });
-      document.onkeydown = (e) => { if (/^\d$/.test(e.key)) press(e.key); else if (e.key === 'Backspace') press('⌫'); else if (e.key === 'Escape') press('C'); };
+      const unuttum = $('#axf'); if (unuttum) unuttum.onclick = async (e) => {
+        e.preventDefault();
+        const v = await formModal({ title: 'Yönetici PIN\'ini sıfırla', fields: [{ type: 'section', label: 'Hesabınıza giriş yaptığınız şifreyi yazın, yeni PIN belirleyin.' }, { name: 'pass', label: 'Hesap şifreniz', type: 'password', required: true, full: true }, { name: 'pin', label: 'Yeni PIN (4 hane)', type: 'password', required: true, full: true }], submitLabel: 'PIN\'i değiştir' }); if (!v) return;
+        if (!/^\d{4}$/.test(String(v.pin).trim())) return toast('PIN 4 haneli rakam olmalı', 'err');
+        try {
+          const r = await api('POST', `/api/data/${app.db.name}/pin-sifirla`, { pass: v.pass, pin: String(v.pin).trim(), uid: sel });
+          try { sessionStorage.setItem(SESSION, r.user.id); localStorage.setItem('nebsoft:lastUser:' + opts.id, r.user.id); localStorage.removeItem(KILIT); } catch (x) { /* yok */ }
+          location.reload();
+        } catch (x) { toast(x.message, 'err'); }
+      };
+      document.onkeydown = (e) => { if (document.querySelector('.ns-modal')) return; if (/^\d$/.test(e.key)) press(e.key); else if (e.key === 'Backspace') press('⌫'); else if (e.key === 'Escape') press('C'); };
     }
 
     function layout() {

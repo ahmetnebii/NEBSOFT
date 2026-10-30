@@ -607,7 +607,7 @@ route('GET', '/api/data/:app', { auth: 'user' }, async (c) => {
   const r = await db.one('SELECT data, version FROM app_data WHERE tenant_id=? AND app=?', [c.user.tenant_id, app]);
   if (HEALTH.includes(app)) { const k = `${c.user.id}:${app}`; if (Date.now() - (readLog.get(k) || 0) > 3600e3) { if (readLog.size > 50000) readLog.clear(); readLog.set(k, Date.now()); await audit(c, 'Sağlık verisi okundu', app); } }
   const t = await tenantOf(c.user);
-  return { ok: true, data: r ? gorunum(app, k, await belge.oku(c.user.tenant_id, app, r)) : null, version: r ? r.version : 0, tenant: { name: t.name, phone: t.phone, address: t.address, slug: t.slug }, owner: { name: c.user.name }, ...rolAlani(k) };
+  return { ok: true, data: r ? gorunum(app, k, await belge.oku(c.user.tenant_id, app, r)) : null, version: r ? r.version : 0, tenant: { name: t.name, phone: t.phone, address: t.address, slug: t.slug }, owner: { name: c.user.name }, ...(await isOwner(c.user) ? { hesapSahibi: true } : {}), ...rolAlani(k) };
 });
 route('GET', '/api/data/:app/v', { auth: 'user' }, async (c) => {
   const r = await db.one('SELECT version FROM app_data WHERE tenant_id=? AND app=?', [c.user.tenant_id || '-', String(c.params.app)]);
@@ -669,6 +669,31 @@ route('POST', '/api/data/:app/pin', { auth: 'user', limit: ['pin', 30, 60e3] }, 
   }
   pinHata.delete(key); if (!uidIn) await audit(c, 'Yetkili PIN onaylandı', `${app} · ${hit.id}`);
   return { ok: true, user: { id: hit.id, name: hit.name, role: hit.role } };
+});
+
+// Hesap sahibi yönetici PIN'ini unutursa: hesap şifresiyle yeni PIN belirler. Şifre yalnızca doğrulanır, hiçbir kayda yazılmaz.
+route('POST', '/api/data/:app/pin-sifirla', { auth: 'user', limit: ['pinrst', 10, 600e3] }, async (c) => {
+  const app = c.params.app; if (!sec.V.app(app)) throw err(400, 'Geçersiz uygulama');
+  if (!(await canUseApp(c.user, app))) throw err(402, 'Lisans süresi doldu — PIN kaydedilemez', { code: 'license', app });
+  await ownerOnly(c);
+  const key = `rst:${c.user.id}`; const d = pinHata.get(key); if (d && d.until > Date.now()) throw err(429, 'Çok fazla hatalı deneme. 15 dakika sonra tekrar deneyin.');
+  const yeni = String(c.body.pin == null ? '' : c.body.pin).trim(); if (!/^\d{4}$/.test(yeni)) throw err(400, 'PIN 4 haneli rakam olmalı');
+  const u = await db.one('SELECT pass FROM users WHERE id=?', [c.user.id]);
+  if (!u || !(await auth.verify(String(c.body.pass || ''), u.pass))) {
+    const n = (d && d.until === 0 ? d.n : 0) + 1; if (pinHata.size > 50000) pinHata.clear();
+    pinHata.set(key, { n: n >= 5 ? 0 : n, until: n >= 5 ? Date.now() + PIN_KILIT : 0 });
+    await audit(c, 'PIN sıfırlama şifresi hatalı', `${app} · ${n >= 5 ? 'kilitlendi' : `${n}. deneme`}`);
+    throw err(403, 'Hesap şifresi hatalı');
+  }
+  const r = await db.one('SELECT data, version FROM app_data WHERE tenant_id=? AND app=?', [c.user.tenant_id, app]); const belgeV = await belge.oku(c.user.tenant_id, app, r);
+  const users = belgeV && Array.isArray(belgeV.users) ? belgeV.users : []; const admins = users.filter((x) => x && x.role === 'admin' && x.active !== false);
+  const hedef = admins.find((x) => x.id === c.body.uid) || admins[0]; if (!hedef) throw err(400, 'Bu programda yönetici kullanıcı bulunamadı');
+  belgeV.users = users.map((x) => { if (x !== hedef) return x; const { pin, ...y } = x; return { ...y, pinH: pinler.ozet(c.user.tenant_id, app, x.id, yeni) }; });
+  const q = await db.q('UPDATE app_data SET data=?, version=version+1, updated=?, updated_by=? WHERE tenant_id=? AND app=? AND version=?', [await belge.kapat(c.user.tenant_id, app, JSON.stringify(belgeV)), now(), c.user.id, c.user.tenant_id, app, r.version]);
+  if (!q.affectedRows) throw err(409, 'Kayıt o sırada değişti, lütfen tekrar deneyin');
+  pinHata.delete(key); pinHata.delete(`${c.user.id}:${app}:${hedef.id}`); pinHata.delete(`${c.user.id}:${app}:`);
+  await audit(c, 'Yönetici PIN\'i sıfırlandı', `${app} · ${hedef.id}`);
+  return { ok: true, user: { id: hedef.id, name: hedef.name, role: hedef.role } };
 });
 
 // ---------- Yönetim (admin) ----------

@@ -47,7 +47,7 @@ ebsoft güncel`). Node 24, .NET 8 var → `npm test`: 8 test dosyası geçti (XS
 - **Katalog ve şablon:** OFF betiği gerçek dosyayla, canlı OFF akışı gerçek API ile denenmedi; GS1 ve ODbL yükümlülüğü DOĞRULANAMADI; `product_pool` tablosu silinmedi, göç sonrası incelenecek.
 - **Güvenlik ikinci tur (`docs/GUVENLIK-RAPORU.md`):** klinik, eczane, veteriner ve İK rolleri sunucuda (`rol-kural.js`), randevu kodla giriş, mysql2 3.24.6, gizli bilgi adres sınırı, müşteri sayfası kotası, alan adı TXT doğrulaması.
 - **Şifreleme:** hassas belgeler `belge.js`, PIN `pin.js`. `NEBSOFT_SECRET` kaybolursa bu veri geri gelmez (`DEPLOY.md`).
-- **Hâlâ açık:** kalan 27 programın rolleri arayüzde, bulutta çıkış sonrası PIN ekranı gelmiyor (rolsüz hesap yönetici açılıyor), yetkili onayı sunucuda zorlanmıyor, CSP `unsafe-inline`, TOTP yok, `sunucu.json` HTTP, masaüstü bağımlılıkları; hosting paketi, exe ve apk yeniden derlenmeli; pazar genişleme planı ile video ve sosyal medya içeriği yapılmadı; 6 mevzuat yazısı hukuk/mali müşavir kontrolü bekliyor.
+- **Hâlâ açık:** kalan 27 programın rolleri arayüzde, yetkili onayı sunucuda zorlanmıyor, CSP `unsafe-inline`, TOTP yok, `sunucu.json` HTTP, masaüstü bağımlılıkları; hosting paketi, exe ve apk yeniden derlenmeli; pazar genişleme planı ile video ve sosyal medya içeriği yapılmadı; 6 mevzuat yazısı hukuk/mali müşavir kontrolü bekliyor.
 
 ---
 
