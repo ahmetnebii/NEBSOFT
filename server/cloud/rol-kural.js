@@ -232,6 +232,16 @@ const RULES = {
   oto: { yikama: { ad: 'Yıkamacı', kapat: ['subPays'], ekle: ['sms'], gizle: { subs: ['name', 'phone', 'price'] }, saltOkunur: ['subs', 'packages', 'workers'], izinli: { subs: ['washesLeft'] } } },
   // apps/fiyatrobotu: izleyici tüm ekranları görür, hiçbir şeyi değiştiremez (canEdit). Gizlenecek alan yoktur, yazma kapalıdır. Fiyat uzmanında yalnız menü farkı vardır, kural eklenmedi.
   fiyatrobotu: { izleyici: { ad: 'İzleyici', saltOkunur: ['products', 'listings', 'history', 'runs', 'channels', 'cargoOverride', 'comOverride', 'feeOverride', 'ratesOwn'] } },
+  // apps/dugun: operasyon etkinlik, hazırlık ve notu görür; fiyat, ödeme, sözleşme ve müşteri notu gitmez, kayıtlara yalnız hazırlık ve operasyon notu yazar. Satış iptal ve üst sınır üstü indirimde yönetici PIN'i ister: belirteçsiz değişiklik sunucudaki hâline döner, iadesi de işlenmez.
+  dugun: {
+    satis: { ad: 'Satış temsilcisi', saltOkunur: ['halls', 'packages', 'extras', 'seasons'], silemez: ['events', 'payments', 'customers'], onayTurleri: ['iptal', 'indirim'], onayGeri: { iptal: ['payments'] },
+      onayAdim: (o, s, onayla) => {
+        if (!Array.isArray(o.events)) return; const eski = idHarita(s.events); const lim = Number((nesne(s._settings) ? s._settings : {}).discMax); const sinir = Number.isFinite(lim) ? lim : 5; const ara = (e) => (Number(e.pkgPrice) || 0) + dizi(e.extras).reduce((t, x) => t + (nesne(x) ? (Number(x.qty) || 0) * (Number(x.price) || 0) : 0), 0);
+        o.events = o.events.map((e) => { if (!nesne(e)) return e; const y = eski.get(e.id); if (y && e.status === 'iptal' && y.status !== 'iptal' && !onayla('iptal', 'events')) return y; const fazla = Number(e.discount) > (ara(e) * sinir) / 100 && (!y || Number(e.discount) !== Number(y.discount)); if (fazla && !onayla('indirim', 'events')) return y || { ...e, discount: 0, onaysiz: ['indirim'] }; return e; });
+      } },
+    operasyon: { ad: 'Operasyon', kapat: ['payments', 'leads', 'signedDocs', 'sms'], gizle: { events: ['pkgPrice', 'discount', 'plan', 'contract', 'cancel', 'log', 'addenda', 'note'], packages: ['price', 'weekendPct'], customers: ['note', 'portalCode'] }, saltOkunur: ['events', 'halls', 'packages', 'extras', 'seasons', 'customers'], izinli: { events: ['tasks', 'opsNote'] },
+      suz: (o) => { if (Array.isArray(o.events)) o.events = o.events.map((e) => (nesne(e) ? { ...e, extras: dizi(e.extras).map((x) => (nesne(x) ? { id: x.id, name: x.name, qty: x.qty } : x)) } : e)); if (Array.isArray(o.extras)) o.extras = o.extras.map((x) => (nesne(x) ? { id: x.id, name: x.name } : x)); } },
+  },
   // apps/servis: ROLES var, ekranlarda rol denetimi yok. Teknisyen ve kabul Özet, Teknisyenler, Ayarlar menüsünü görmez; parça alış fiyatı Parça Stoku ekranında herkese açık. Yalnız menü farkı: kural eklenmedi.
 };
 // Pazaryeri kanal kaydı: bağlantı alanları gerekir, komisyon ve hizmet bedeli kâr hesabıdır

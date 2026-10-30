@@ -62,6 +62,15 @@ window.CATALOG = {
       extraDemos: [{ label: 'Online randevu sayfasını aç', url: 'apps/randevu/book.html' }],
       faq: [['SMS ücreti pakete dahil mi?', 'Hayır. SMS, kendi SMS sağlayıcı hesabınızla gönderilir ve ücreti sağlayıcıya ödenir. Hesap bağlı değilken mesaj gönderilmiş sayılmaz; WhatsApp ile elle hatırlatma kullanılabilir.'], ['Google takvim ile çalışır mı?', 'Müşteriler randevuyu tek tıkla kendi takvimlerine ekleyebilir.'], ['Personel kendi takvimini görebilir mi?', 'Evet, personel rolü yalnızca kendi randevularını görür.']],
     },
+    // ÖRNEK FİYAT: dört program için fiyatlar yakın programlardan alındı, kullanıcı onayı bekliyor (ornekFiyat)
+    {
+      id: 'dugun', ready: true, ornekFiyat: true, extraDemos: [{ label: 'Müşteri sayfasını aç', url: 'apps/dugun/salon.html' }], cat: 'etkinlik', name: 'Düğün Salonu & Organizasyon', tagline: 'Salon takvimi, kapora, sözleşme ve ödeme planı', icon: 'heart', accent: '#be185d',
+      prices: [799, 1490, 2790], sectors: ['Düğün salonu', 'Kır düğünü', 'Organizasyon firması', 'Balo salonu', 'Nişan ve kına salonu'],
+      desc: 'Salon ve seans takvimi, süreli opsiyon, kapora, paket fiyatı, sözleşme, ödeme planı, ek protokol ve iptal kaydı. Müşteri müsait günleri görür, teklif ister, ödeme planını izler.',
+      features: ['Salon ve seans bazlı takvim, aynı seansa ikinci kayıt girilemez', 'Süreli opsiyon: süresi dolan tarih boşalır, kayıt silinmez', 'Kişi başı veya sabit paket, hafta sonu ve sezon farkı', 'Kayıt anında donan fiyat: liste değişse sözleşme değişmez', 'Kapora ve taksitli ödeme planı, gecikme takibi', 'Ekranda imzalı sözleşme ve ek protokol', 'İşletmenin kendi iptal kademelerine göre iade önerisi ve iade makbuzu', 'Hazırlık listesi ve etkinlik föyü', 'Müşteri sayfası: müsait tarih, teklif talebi, ödeme planı', 'Satış ve operasyon rolleri, sunucuda fiyat gizleme'],
+      modules: ['Takvim', 'Etkinlikler', 'Talepler', 'Tahsilatlar', 'Paketler', 'İmzalı Belgeler', 'Raporlar', 'Müşteri Sayfası'],
+      faq: [['Aynı tarih iki müşteriye verilebilir mi?', 'Hayır. Aynı salon ve seansta açık opsiyon veya kesin kayıt varsa ikinci kayıt alınmaz.'], ['Sözleşme metni hazır mı?', 'Program örnek bir şablonla gelir. Bağlayıcı metin değildir, kullanmadan önce avukatınıza gösterin.'], ['Kapora iadesini program mı belirler?', 'Hayır. Ayarlara işletmenizin yazdığı iptal kademeleri öneri olarak hesaplanır, tutarı siz belirlersiniz.']],
+    },
     {
       id: 'otel', ready: true, extraDemos: [{ label: 'Web rezervasyon motorunu aç', url: 'apps/otel/rezervasyon.html' }], cat: 'konaklama', name: 'Otel & Pansiyon', tagline: 'Rezervasyon takvimi, oda durumu ve folyo', icon: 'bed', accent: '#0891b2',
       prices: [990, 1890, 3490], sectors: ['Butik otel', 'Pansiyon', 'Apart', 'Bungalov', 'Hostel'],

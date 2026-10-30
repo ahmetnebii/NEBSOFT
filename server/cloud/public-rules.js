@@ -987,5 +987,28 @@ RULES.adisyon = {
   },
 };
 
+// ---------- Düğün salonu: müsaitlik, teklif talebi, müşteri planı (salon.html) ----------
+// Dolu günler isimsiz gider. Ödeme planı ve kalemler yalnızca kendi telefonu + koduyla giren müşteriye gider; iç not, işlem geçmişi ve imza görseli gitmez.
+const DH = require('../../apps/dugun/hesap.js');
+const dgnCode = (c) => (c.portalCode ? norm(c.portalCode) : null);
+RULES.dugun = {
+  settings: ['bizName', 'bizPhone', 'bizAddress', 'iban', 'showPrices'],
+  pub: { halls: { fields: ['id', 'name', 'capacity', 'desc', 'color'] } },
+  login: (x, q) => { const code = norm(q.code); const d = digits(q.phone); const c = code && d.length === 10 ? x.col('customers').find((r) => digits(r.phone) === d && dgnCode(r) === code) : null; return c ? { k: 'm', i: c.id } : null; },
+  loginError: 'Telefon veya kod hatalı',
+  view: (x) => {
+    const fiyat = (x.doc._settings || {}).showPrices !== false; const out = { busy: x.col('events').filter((e) => DH.aktif(e, x.today)).map((e) => ({ d: e.date, h: e.hall, s: e.seans })), packages: x.col('packages').map((p) => { const r = { id: p.id, name: p.name, desc: p.desc, perPerson: p.perPerson }; if (fiyat) r.price = p.price; return r; }) };
+    const m = me(x, 'm'); if (!m) return out; const c = x.get('customers', m); if (!c) return out;
+    const ev = x.col('events').filter((e) => e.customer === m && e.status !== 'iptal'); const ids = new Set(ev.map((e) => e.id));
+    return { ...out, customers: [{ id: c.id, name: c.name, phone: c.phone }], events: ev.map((e) => ({ ...strip(e, ['note', 'opsNote', 'log', 'tasks', 'contract', 'cancel']), hallName: (x.get('halls', e.hall) || {}).name, addenda: (e.addenda || []).map((a) => ({ text: a.text, amount: a.amount, sign: a.sign ? { name: a.sign.name } : undefined })) })), payments: x.col('payments').filter((p) => ids.has(p.event)).map((p) => ({ id: p.id, event: p.event, amount: p.amount, at: p.at })) };
+  },
+  write: {
+    leads: { ins: I({ name: 'str:80', phone: 'phone', date: 'date?', seans: 'enum:gunduz|aksam?', hall: 'id?', type: 'str:30?', guests: 'int:0:5000?', note: 'str:500?', consent: 'bool' }, () => ({ status: 'yeni', src: 'web' }), (r, x) => {
+      if (!r.consent) bad('Aranma izni gerekli'); if (r.date && r.date < x.today) bad('Geçmiş tarih seçilemez'); if (r.hall && !x.get('halls', r.hall)) bad('Salon bulunamadı');
+      const gun = x.col('leads').filter((l) => samePhone(l.phone, r.phone) && String(l.created || '').slice(0, 10) === x.today).length; if (gun >= 3) bad('Bugün için talebiniz alındı, işletme sizi arayacak');
+    }) },
+  },
+};
+
 module.exports = RULES;
 module.exports._lib = { appendOnly, strip, bad, deny, val, clean, I, U, me, mergeByPhone, samePhone, digits, norm, overlap, toMin, nowIso };

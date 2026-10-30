@@ -1,0 +1,31 @@
+// Düğün salonu, yurt, fotoğrafçı, oyun salonu: müşteri sayfası beyaz listesi ve sunucu rolleri. Saf kural işlevleri, MySQL gerekmez.
+//   node server/test/rezervasyon-aile.test.js
+const assert = require('assert'); const R = require('../cloud/public-rules'); const K = require('../cloud/rol-kural');
+let n = 0; const ok = (m) => { n++; console.log('✓ ' + m); };
+const today = new Date(Date.now() + 3 * 3600e3).toISOString().slice(0, 10);
+const addDay = (d, k) => new Date(new Date(d + 'T12:00:00Z').getTime() + k * 864e5).toISOString().slice(0, 10);
+const kopya = (x) => JSON.parse(JSON.stringify(x));
+const X = (doc, ident) => { const col = (k) => (doc[k] = doc[k] || []); return { doc, ident: ident || null, q: {}, today, now: new Date(), col, get: (k, id) => col(k).find((r) => r.id === id), seq: () => 'W1' }; };
+const yasla = (fn, m) => assert.throws(fn, m);
+
+// ---------- Düğün ----------
+{
+  const D = R.dugun; const gelecek = addDay(today, 40);
+  const doc = () => ({ _settings: { bizName: 'S', showPrices: false, iban: 'TR1', cancelTiers: [], discMax: 5, contractText: 'gizli' },
+    halls: [{ id: 'h1', name: 'K', capacity: 100, color: '#000', iç: 1 }], packages: [{ id: 'p1', name: 'P', price: 1000, weekendPct: 10 }],
+    customers: [{ id: 'c1', name: 'Ada', phone: '0532 111 22 33', portalCode: 'ABC123', note: 'iç not' }, { id: 'c2', name: 'Bora', phone: '0533 111 22 33', portalCode: 'XYZ999' }],
+    events: [{ id: 'e1', no: 'D1', customer: 'c1', hall: 'h1', date: gelecek, seans: 'aksam', status: 'kesin', note: 'iç', opsNote: 'op', log: [{ text: 'x' }], tasks: [{ id: 't' }], contract: { text: 's', sign: { img: 'İMZA' } }, plan: [], extras: [], addenda: [{ text: 'a', amount: 5, sign: { img: 'İMZA2', name: 'Ada' } }], pkgPrice: 100 }, { id: 'e2', customer: 'c2', hall: 'h1', date: addDay(gelecek, 1), seans: 'gunduz', status: 'iptal' }, { id: 'e3', customer: 'c2', hall: 'h1', date: addDay(gelecek, 2), seans: 'gunduz', status: 'opsiyon', holdUntil: addDay(today, -1) }],
+    payments: [{ id: 'p1', event: 'e1', amount: 50, at: 'x', by: 'Personel', receipt: 'M1' }, { id: 'p2', event: 'e2', amount: 9, at: 'x' }], leads: [] });
+  const v0 = D.view(X(doc())); assert.deepStrictEqual(v0.busy, [{ d: gelecek, h: 'h1', s: 'aksam' }]); assert.ok(!('customers' in v0) && !('events' in v0)); assert.strictEqual(v0.packages[0].price, undefined); assert.ok(!/Ada|Bora/.test(JSON.stringify(v0))); ok('Düğün: ziyaretçiye dolu gün isimsiz gider, iptal ve süresi dolan opsiyon gitmez, ayar kapalıysa fiyat gitmez');
+  assert.ok(D.settings.every((k) => !['contractText', 'cancelTiers', 'discMax'].includes(k))); ok('Düğün: sözleşme metni ve iç ayarlar sayfaya gitmez');
+  assert.strictEqual(D.login(X(doc()), { phone: '0532 111 22 33', code: 'YANLIS' }), null); assert.strictEqual(D.login(X(doc()), { phone: '0533 111 22 33', code: 'ABC123' }), null); assert.strictEqual(D.login(X(doc()), { phone: '', code: '' }), null); assert.deepStrictEqual(D.login(X(doc()), { phone: '0532 111 22 33', code: 'abc123' }), { k: 'm', i: 'c1' }); ok('Düğün: giriş telefon + kod ister, kod başka müşteride geçmez');
+  const v1 = D.view(X(doc(), { k: 'm', i: 'c1' })); const t = JSON.stringify(v1); assert.deepStrictEqual(v1.events.map((e) => e.id), ['e1']); assert.deepStrictEqual(v1.payments.map((p) => p.id), ['p1']); assert.ok(!/iç|İMZA|portalCode|Personel|Bora/.test(t)); assert.strictEqual(v1.events[0].addenda[0].sign.name, 'Ada'); ok('Düğün: müşteri yalnız kendi kaydını görür; not, imza görseli, kod ve personel adı gitmez');
+  const ins = D.write.leads.ins; const L = (o) => ({ name: 'Ece', phone: '0532 000 00 00', consent: true, ...o }); assert.strictEqual(ins(L(), X(doc())).status, 'yeni'); assert.strictEqual(ins(L({ status: 'donustu', src: 'x' }), X(doc())).status, 'yeni'); yasla(() => ins(L({ consent: false }), X(doc())), /izni/); yasla(() => ins(L({ date: addDay(today, -1) }), X(doc())), /Geçmiş/); yasla(() => ins(L({ hall: 'yok' }), X(doc())), /Salon/);
+  const d3 = doc(); d3.leads = [1, 2, 3].map((i) => ({ id: 'l' + i, phone: '0532 000 00 00', created: today + 'T10:00:00Z' })); yasla(() => ins(L(), X(d3)), /alındı/); assert.ok(!D.write.events && !D.write.payments); ok('Düğün: talep yalnız izinli alanlarla, izinli ve günlük sınırla yazılır; etkinlik ve ödeme yazılamaz');
+  const s = doc(); const f = K.filtrele('dugun', 'operasyon', s); const ft = JSON.stringify(f); assert.deepStrictEqual(f.payments, []); assert.deepStrictEqual(f.leads, []); assert.strictEqual(f.events[0].pkgPrice, undefined); assert.strictEqual(f.events[0].plan, undefined); assert.strictEqual(f.packages[0].price, undefined); assert.ok(!/portalCode|İMZA/.test(ft)); assert.strictEqual(f.events[0].opsNote, 'op');
+  const g = kopya(f); g.events[0].opsNote = 'yeni not'; g.events[0].tasks = [{ id: 't', done: true }]; g.events[0].date = '2099-01-01'; g.events[0].pkgPrice = 1; g.events.pop(); const o = K.geriKoy('dugun', 'operasyon', g, s); const e1 = o.events.find((e) => e.id === 'e1'); assert.strictEqual(e1.opsNote, 'yeni not'); assert.strictEqual(e1.tasks[0].done, true); assert.strictEqual(e1.date, gelecek); assert.strictEqual(e1.pkgPrice, 100); assert.strictEqual(o.events.length, 3); assert.strictEqual(o.payments.length, 2); ok('Düğün: operasyon fiyat ve ödeme görmez, yalnız hazırlık ve not yazar');
+  const a = doc(); const b = kopya(a); b.events[0].status = 'iptal'; b.payments.push({ id: 'p9', event: 'e1', amount: -50 }); const ek = {}; const c = K.geriKoy('dugun', 'satis', b, a, ek); assert.strictEqual(c.events[0].status, 'kesin'); assert.strictEqual(c.payments.length, 2); assert.ok(ek.reddedilen.includes('events')); const ek2 = { onay: true }; const c2 = K.geriKoy('dugun', 'satis', b, a, ek2); assert.strictEqual(c2.events[0].status, 'iptal'); assert.strictEqual(c2.payments.length, 3); ok('Düğün: satış belirteçsiz iptal edemez, iadesi de işlenmez; onaylı iptal geçer');
+  const i0 = doc(); const i1 = kopya(i0); i1.events[0].discount = 50; const ci = K.geriKoy('dugun', 'satis', i1, i0, {}); assert.strictEqual(ci.events[0].discount, undefined); const i2 = kopya(i0); i2.events[0].discount = 5; assert.strictEqual(K.geriKoy('dugun', 'satis', i2, i0, {}).events[0].discount, 5); ok('Düğün: üst sınır üstü indirim onay ister, sınır içi geçer');
+}
+
+console.log(`rezervasyon-aile: ${n} kontrol geçti`);
