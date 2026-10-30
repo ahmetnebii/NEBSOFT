@@ -8,7 +8,7 @@ Tarih: 29.10.2026 · Dal: `claude/urun-randevu-uyelik-cfb186` · Yöntem: `CLAUD
 | Dalga | Durum | Kanıt |
 |---|---|---|
 | 1. dalga (H1–H4) | **Tamam** | Simülasyonda VETBİS aşı bildirimi → "TEST: VETBİS aşı bildirimi — gerçek gönderim yapılmadı", kayda ref yazılmadı (e-reçete, PETVET, e-SMM aynı kural); online randevu onayında SMS sonucu gerçek durumla bildiriliyor; hayvan kartı > Karne kodu (WhatsApp ile gönder, yenile); karnede yanlış kodla giriş reddedildi, kodsuz "giriş kodunu yazın", doğru kodla açıldı (yerel mod; bulut için Ç7); 25 stoklu ürün sepete 26. kez eklenemedi; aynı saat/hekim randevusunda uyarı (Ç8) |
-| 2. dalga (B1–B3) | sırada | |
+| 2. dalga (B1–B3) | **Tamam** (30.10.2026, devir oturumu; "YARIM" commit `445e35b` denendi ve tamamlandı) | B1: Özet > Aşı hatırlatmaları > "Hepsine SMS (18)" → SMS sağlayıcısı yokken "18 TEST (gönderilmedi…)", satırlarda "TEST — gönderilmedi", hiçbiri "hatırlatıldı" sayılmadı (düğme yine 18). B2: hasta düzenle > Durum "Vefat etti" → başlıkta rozet, aşı listesinden düştü (18 → 17). B3: Pet Otel > konaklama "Çıkış yaptı" → "Çıkış ödemesi" (gece × günlük, tutar düzenlenebilir); Vazgeç → listede "Ödenmedi" rozeti (bu oturumda eklendi), tekrar kaydedince ödeme yeniden sorulur; Tahsil et → "Ödendi" ve Satış & Stok'ta satış kaydı. 375 px'te 4 sayfada taşma yok, konsol hatası yok. Not: erken çıkışta tutar planlanan bitiş tarihine göre önerilir (elle düzeltilir). Eski kayıtlara "Ödenmedi" yazılmaz (yalnızca ödeme alınmadan çıkış yapılanlara) |
 | 3. dalga (F1) | sırada | |
 
 ---
