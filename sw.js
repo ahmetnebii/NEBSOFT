@@ -1,6 +1,6 @@
 /* NEBSOFT service worker — uygulama kabuğunu önbelleğe alır: telefonda/masaüstünde "uygulama gibi" açılır, bağlantı
    koptuğunda son açılan ekran yine gelir. Veriler (API) asla önbellekten verilmez; çevrimdışı kayıtlar core.js kuyruğundadır. */
-const V = 'nebsoft-v3-86';
+const V = 'nebsoft-v3-87';
 const SHELL = ['/', '/core/sablon.js', '/core/katalog.js', '/apps/eczane/calc.js', '/index.html', '/core/core.css', '/core/core.js', '/core/notify.js', '/core/docs.js', '/core/forms.js', '/core/auth.js', '/core/pwa.js', '/core/scan.js', '/core/labels.js', '/core/support.js', '/core/integ-guides.js', '/core/integ-guides-ek.js', '/core/integ-wizard.js', '/core/integrations.js', '/core/kvkk.js', '/core/olay.js', '/core/kurulum-adimlari.js', '/core/kurulum.js', '/core/yardim.json', '/market/yardim.js', '/market/market.css', '/market/sepet-ek.js', '/market/market.js', '/market/catalog.js', '/market/eklentiler.js', '/core/bizsite.js', '/assets/favicon.svg', '/market/paketler.js', '/market/paket-ek.js', '/apps/siparisortak/hesap.js', '/apps/siparisortak/tohum.js', '/apps/siparisortak/siparis.js', '/apps/siparisortak/siparis.css', '/apps/siparisortak/takip.js'];
 
 self.addEventListener('install', (e) => { e.waitUntil(caches.open(V).then((c) => c.addAll(SHELL.map((u) => new Request(u, { cache: 'reload' })))).catch(() => {}).then(() => self.skipWaiting())); });

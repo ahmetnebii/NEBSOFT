@@ -7,7 +7,7 @@ const M = require('../../core/sablon');
 const B = require('../../core/bizsite');
 let n = 0; const ok = (a) => { n++; console.log('  ✓', a); };
 
-// ---------- 31 program: her dosya şemadan geçer ----------
+// ---------- Şablonlu programlar: her dosya şemadan geçer ----------
 const tum = [];
 for (const p of S.PROGRAMLAR) {
   const d = path.join(S.KOK, p); assert.ok(fs.existsSync(d), p + ': şablon klasörü yok');
@@ -16,7 +16,7 @@ for (const p of S.PROGRAMLAR) {
   assert.equal(S.liste(p).length, f.length, p + ': sunucu listesi eksik');
   ok(`${p}: ${f.length} şablon şemadan geçti`);
 }
-assert.ok(S.PROGRAMLAR.length >= 31); ok('tüm programlarda şablon var');
+assert.equal(S.PROGRAMLAR.length, 40); ok('şablon listesindeki 40 programın hepsinde şablon var');
 for (const s of tum) assert.deepEqual(S.fiyatBul({ v: s.varsayilan, k: s.kayitlar }), [], s.sablon);
 ok('hiçbir şablonda fiyat yok (boş gelir)');
 for (const s of tum.filter((x) => x.tur === 'form')) { assert.match(s.uyari, /örnek/i); assert.match(s.uyari, /avukat/i); } ok('her form şablonunda "örnek metin, avukata gösterin" uyarısı var');

@@ -12,6 +12,7 @@
   const DAMAGE = T('damage', 'Hasar krokisi', 'damage');
   // coll: kişi listesi (yoksa elle yazılır) · party: karşı tarafın başlığı · sign: imza başlıkları [işletme, karşı taraf]
   const FORMS = {
+    mobilya: { coll: 'customers', party: 'Müşteri', kinds: [] }, okulservisi: { coll: 'students', party: 'Veli', kinds: [] }, ciftci: { coll: 'producers', party: 'Üretici', kinds: [] }, lastik: { coll: 'customers', party: 'Müşteri', kinds: [] },
     otel: { coll: 'guests', party: 'Misafir', kinds: [
       { id: 'konaklama', label: 'Konaklama kayıt formu', sign: ['Resepsiyon', 'Misafir'], fields: [T('oda', 'Oda no'), T('giris', 'Giriş tarihi', 'date'), T('cikis', 'Çıkış tarihi', 'date'), T('kisi', 'Kişi sayısı', 'number'), T('kimlik', 'Kimlik / pasaport no')],
         body: 'Ben {{musteri}}, {{giris}} – {{cikis}} tarihleri arasında {{oda}} numaralı odada konaklayacağımı; tesis kurallarına uyacağımı, odada ve ortak alanlarda vereceğim zararları ödeyeceğimi, kimlik bilgilerimin yasal bildirim (KBS) amacıyla işlenmesine onay verdiğimi beyan ederim.' },

@@ -782,6 +782,10 @@
   // ---------- Program bazında kullanım: yalnızca o programda gerçekten çalışan bağlantılar listelenir ----------
   // Kaynak: ürün kodunda çağrılan entegrasyonlar. Burada olmayan bağlantı o programda işe yaramadığı için gösterilmez.
   const USED = {
+    dernek: ['sms', 'whatsapp', 'email', 'printer', 'backup'], egitim: ['sms', 'whatsapp', 'email', 'payment', 'printer', 'backup'], danisan: ['sms', 'email', 'printer', 'backup'],
+    nakliyat: ['sms', 'whatsapp', 'email', 'printer', 'pos', 'efatura', 'webhook', 'backup'], temizlik: ['sms', 'whatsapp', 'email', 'printer', 'pos', 'efatura', 'webhook', 'backup'], usta: ['callerid', 'sms', 'whatsapp', 'email', 'printer', 'pos', 'efatura', 'webhook', 'backup'], peyzaj: ['sms', 'whatsapp', 'email', 'printer', 'pos', 'efatura', 'webhook', 'backup'],
+    dugun: ['sms', 'backup'], yurt: ['sms', 'backup'], fotograf: ['sms', 'backup'], oyun: ['sms', 'backup'],
+    mobilya: ['sms', 'whatsapp', 'efatura', 'printer', 'backup'], okulservisi: ['sms', 'whatsapp', 'efatura', 'backup'], ciftci: ['sms', 'whatsapp', 'efatura', 'emustahsil', 'printer', 'backup'], lastik: ['sms', 'whatsapp', 'efatura', 'printer', 'backup'],
     adisyon: ['printer', 'pos', 'okc', 'yemekplatform', 'yemekkarti', 'callerid', 'webhook', 'backup'], anaokulu: ['sms', 'backup'], bilet: ['sms', 'turnike', 'backup'],
     butik: ['sms', 'pazaryeri', 'printer', 'label', 'barcode', 'pos', 'backup'], crm: ['email', 'whatsapp', 'callerid', 'takvim', 'backup'], eczane: ['printer', 'pos', 'medula', 'its', 'sms', 'whatsapp', 'webhook', 'backup'],
     emlak: ['ilan', 'whatsapp', 'backup'], eticaret: ['efatura', 'eirsaliye', 'kargofirma', 'pazaryeri', 'sms', 'whatsapp', 'backup'],
@@ -867,7 +871,8 @@
   const ST = { taslak: ['Taslak', ''], kuyrukta: ['Kuyrukta', 'warn'], 'gonderildi': ['Gönderildi', 'info'], 'yanit-bekliyor': ['Yanıt bekliyor', 'warn'], kabul: ['Kabul edildi', 'ok'], red: ['Reddedildi', 'err'], raporlandi: ['GİB’e raporlandı', 'ok'], test: ['Test — gönderilmedi', 'warn'], iptal: ['İptal', 'err'], hata: ['Hata', 'err'], 'iptal-talebi': ['İptal talebi', 'warn'] };
   const sellerInfo = () => { const s = NS.app && NS.app.db ? NS.app.db.settings() : {}; return { name: s.bizName || 'İşletme', vkn: s.taxNo || '', taxOffice: s.taxOffice || '', address: s.bizAddress || '', district: s.bizDistrict || '', city: s.bizCity || '', phone: s.bizPhone || '', iban: s.iban || '' }; };
   const appId = () => (NS.app && NS.app.opts ? NS.app.opts.id : 'pazar');
-  const appName = (id) => ({ muhasebe: 'Ön Muhasebe', pos: 'Market POS', eticaret: 'E-ticaret', otel: 'Otel', adisyon: 'Adisyon', fabrika: 'Fabrika ERP', eczane: 'Eczane', kiralama: 'Kiralama', klinik: 'Klinik', randevu: 'Randevu', servis: 'Teknik Servis', spor: 'Spor', kurs: 'Kurs', site: 'Site', emlak: 'Emlak', veteriner: 'Veteriner', crm: 'CRM', kargo: 'Kargo', bilet: 'Bilet', oto: 'Otopark', ik: 'İK' }[id] || id || '-');
+  const appAd = { dernek: 'Dernek', egitim: 'Eğitim', danisan: 'Danışan', kurutemizleme: 'Kuru Temizleme', matbaa: 'Matbaa', pastane: 'Fırın & Pastane', cicekci: 'Çiçekçi', terzi: 'Terzi', nakliyat: 'Evden Eve Nakliyat', temizlik: 'Temizlik & Tesis', usta: 'Mobil Usta & Tesisat', peyzaj: 'Peyzaj & İlaçlama', dugun: 'Düğün Salonu', yurt: 'Öğrenci Yurdu', fotograf: 'Fotoğrafçı', oyun: 'Oyun Salonu', mobilya: 'Mobilya', okulservisi: 'Okul Servisi', ciftci: 'Çiftçi & Kooperatif', lastik: 'Lastikçi' }; // yeni programlar
+  const appName = (id) => ({ muhasebe: 'Ön Muhasebe', pos: 'Market POS', eticaret: 'E-ticaret', otel: 'Otel', adisyon: 'Adisyon', fabrika: 'Fabrika ERP', eczane: 'Eczane', kiralama: 'Kiralama', klinik: 'Klinik', randevu: 'Randevu', servis: 'Teknik Servis', spor: 'Spor', kurs: 'Kurs', site: 'Site', emlak: 'Emlak', veteriner: 'Veteriner', crm: 'CRM', kargo: 'Kargo', bilet: 'Bilet', oto: 'Otopark', ik: 'İK' }[id] || appAd[id] || id || '-');
 
   // Satırları tek biçime getirir; tutarı KDV dahil gelen satırlar (yalnız "total") ayrıştırılır
   function normLines(doc) {

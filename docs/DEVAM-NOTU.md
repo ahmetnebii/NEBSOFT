@@ -19,9 +19,9 @@ Yeni oturum bu dosyayla başlar. Sonra `CLAUDE.md` ve `docs/DEVIR.md`. Ana dal: 
 
 Dosya deposu, kalan rol kuralları, işleme bağlı onay belirteci ve Electron 45 `devir/hepsi` içinde. Arka planda çalışan iş yok.
 
-## Paralel oturumlar (30.10.2026)
+## Birleşen işler (30.10.2026)
 
-Her biri kendi dalında, `devir/hepsi`e birleştirilmedi: Hazır Paketler ve sihirbaz, Sipariş-Teslim 5 program, saha hizmeti 4 program, rezervasyon 4 program, imalat-taşıma 4 program, üyelik-eğitim-danışan 3 program + 2 modül, güven sayfaları. Birleştirme kullanıcı onayıyla yapılır. Alan adı `www.nebsoftapp.com` olarak ayarlandı.
+Görsel ve PDF araçları ile yedi oturumun dalı `devir/hepsi`e birleşti, çekirdek yamaları uygulandı. Kalan çekirdek istekleri `docs/urun/CEKIRDEK-ISTEKLERI-*.md` içinde: `core/bizsite.js` sektör türleri (schema.org doğrulanmadan bağlanmaz), `NS.dosya` PDF desteği, müşteri belirteçli dosya sınıfı, `NS.crud` sayfalama. Yeni 11 programın şablonu yok (`server/cloud/sablon.js`). Spec, fiyat ve sözleşme metinleri onay bekliyor. `danisan` avukat onayına kadar satışa kapalı.
 
 ## Sıradaki iş
 

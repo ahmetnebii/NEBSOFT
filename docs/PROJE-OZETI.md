@@ -4,9 +4,9 @@ Yeni oturum için hızlı giriş. Bu dosyayı okuyan oturum projeyi baştan tara
 
 ## Ne bu
 
-Türkiye'deki işletmeler için 31 sektörel web programı, ortak çekirdek, pazar yeri sitesi, bulut sunucusu, masaüstü (Electron) ve Android kabuğu. Arayüz dili Türkçe. Ana dal: `devir/hepsi`. Depo: `ahmetnebii/NEBSOFT`.
+Türkiye'deki işletmeler için 51 sektörel web programı (`danisan` satışa kapalı), ortak çekirdek, pazar yeri sitesi, bulut sunucusu, masaüstü (Electron) ve Android kabuğu. Arayüz dili Türkçe. Ana dal: `devir/hepsi`. Depo: `ahmetnebii/NEBSOFT`.
 
-Programlar (`apps/<id>/`): adisyon, anaokulu, bilet, butik, crm, eczane (yeni satışa kapalı), emlak, eticaret, fabrika, fiyatrobotu, galeri, hukuk, ik, kargo, kiralama, klinik, kurs, kuyumcu, muhasebe, musavir, otel, oto, otoservis, pazaryeri, pos, randevu, servis, site, spor, toptan, veteriner.
+Programlar (`apps/<id>/`): adisyon, anaokulu, bilet, butik, crm, eczane (yeni satışa kapalı), emlak, eticaret, fabrika, fiyatrobotu, galeri, hukuk, ik, kargo, kiralama, klinik, kurs, kuyumcu, muhasebe, musavir, otel, oto, otoservis, pazaryeri, pos, randevu, servis, site, spor, toptan, veteriner. Yeni: cicekci, ciftci, danisan, dernek, dugun, egitim, fotograf, kurutemizleme, lastik, matbaa, mobilya, nakliyat, okulservisi, oyun, pastane, peyzaj, temizlik, terzi, usta, yurt. Program değil, ortak kod: `apps/saha-ortak/`, `apps/siparisortak/`.
 Saha hizmeti programları (nakliyat, temizlik, usta, peyzaj) ortak motoru kullanır: `apps/saha-ortak/` (`hesap.js`, `saha.js`, `portal.js`), yeni kural `sahaKural` ve `sahaEkip`.
 
 ## Teknoloji
@@ -34,7 +34,7 @@ Yazma yolları:
 | Yol | İçerik |
 |---|---|
 | `apps/<id>/` | `app.js`, `index.html`, varsa `data.js`, müşteri sayfaları (`book.html`, `veli.html`) |
-| `core/` | 31 programın ortak çekirdeği. Değişiklik hepsini etkiler |
+| `core/` | Tüm programların ortak çekirdeği. Değişiklik hepsini etkiler |
 | `server.js` | HTTP sunucusu, statik dosya, güvenlik filtresi |
 | `server/cloud/` | Bulut API'si, aşağıda |
 | `server/connectors/` | Pazaryeri bağlayıcıları (Trendyol, n11) |
