@@ -35,7 +35,7 @@
   const mobile = () => matchMedia('(max-width: 820px)').matches || /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
   const android = /Android/i.test(navigator.userAgent);
   function offer({ force } = {}) {
-    if (installed() || (!force && !mobile()) || document.querySelector('.nv-sheet')) return;
+    if (installed() || (!force && !mobile()) || document.querySelector('.nv-sheet, .ax-pinbox')) return; // PIN ekranının üstünü kapatmasın
     let last = 0; try { last = Number(localStorage.getItem('nebsoft:installAsk')) || 0; } catch (e) { /* yok */ }
     if (!force && Date.now() - last < 14 * 864e5) return;
     const name = (document.title.split('·')[0] || 'NEBSOFT').trim();
