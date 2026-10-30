@@ -32,6 +32,8 @@
 // Dikkat: gizle/kapat yazılmadan önce rolün ekranı o alandan hesap yapıp kaydediyor mu bakılır. Örnek: POS satırı ürünün alış fiyatını kopyalar, toptan sevkiyatı cari bakiyeyi artırır,
 // kuyumcu tezgâhtarı kuru _settings'e yazar. Kaydetmeye giren alan gizlenecekse sonra, izinli veya ayarIzinli ile sunucu tarafı tamamlanır.
 const eslesir = (r, a, b) => !!b.dept && r[a] === b.dept;
+// Mobilya: iş kalemlerinde fiyat ve maliyet, işte teklif sürümleri atölyeye gitmez
+const mobilyaSuz = (o) => { if (Array.isArray(o.jobs)) o.jobs = o.jobs.map((j) => (j && typeof j === 'object' ? { ...j, disc: 0, quotes: [], items: (Array.isArray(j.items) ? j.items : []).map((i) => { if (!i || typeof i !== 'object') return i; const { price, cost, ...r } = i; return r; }) } : j)); };
 const sadeMusteri = (o) => { if (Array.isArray(o.customers)) o.customers = o.customers.map((c) => (nesne(c) ? { id: c.id, name: c.name } : c)); };
 // Belge satırlarından fiyat alanlarını çıkarır (lines dizili kayıtlar)
 const satirSil = (o, c, ...alanlar) => { if (Array.isArray(o[c])) o[c] = o[c].map((r) => (nesne(r) && Array.isArray(r.lines) ? { ...r, lines: r.lines.map((l) => { if (!nesne(l)) return l; const n = { ...l }; alanlar.forEach((a) => delete n[a]); return n; }) } : r)); };
@@ -232,6 +234,24 @@ const RULES = {
   oto: { yikama: { ad: 'Yıkamacı', kapat: ['subPays'], ekle: ['sms'], gizle: { subs: ['name', 'phone', 'price'] }, saltOkunur: ['subs', 'packages', 'workers'], izinli: { subs: ['washesLeft'] } } },
   // apps/fiyatrobotu: izleyici tüm ekranları görür, hiçbir şeyi değiştiremez (canEdit). Gizlenecek alan yoktur, yazma kapalıdır. Fiyat uzmanında yalnız menü farkı vardır, kural eklenmedi.
   fiyatrobotu: { izleyici: { ad: 'İzleyici', saltOkunur: ['products', 'listings', 'history', 'runs', 'channels', 'cargoOverride', 'comOverride', 'feeOverride', 'ratesOwn'] } },
+  // apps/mobilya: usta ve montaj ekibi fiyat, ödeme ve maliyet görmez (canMoney). Usta yalnız üretim aşaması, koli sayısı ve not yazar; montaj ekibi yalnız kendi işini görür, eksik listesi yazar.
+  mobilya: {
+    usta: { ad: 'Atölye ustası', kapat: ['payments', 'claims', 'catalog'], gizle: { materials: ['cost'], customers: ['taxNo', 'address', 'phone'] }, saltOkunur: ['jobs', 'customers', 'materials', 'teams'], izinli: { jobs: ['stages', 'history', 'workNote', 'pkgCount', 'revised'] }, suz: mobilyaSuz },
+    montaj: { ad: 'Montaj ekibi', kisi: { kol: 'teams', alan: 'team', kayitAdi: false, baslik: 'Montaj ekibi', yok: 'Ekip seçin (seçilmezse iş görünmez)' }, kapat: ['payments', 'claims', 'catalog', 'materials'], gizle: { customers: ['taxNo'] }, saltOkunur: ['jobs', 'customers', 'teams'], izinli: { jobs: ['punch', 'history', 'photos'] }, satir: { jobs: (j, b) => eslesir(j, 'team', b) }, suz: mobilyaSuz },
+  },
+  // apps/okulservisi: şoför ve rehber yalnız kendi güzergâhını, o güzergâhın öğrenci adını, durağını ve notunu görür. Veli telefonu, ücret, kod, sözleşme, tahsilat ve mesaj gitmez. Yalnız sefer yoklaması ve gecikme duyurusu yazar.
+  okulservisi: {
+    sofor: { ad: 'Şoför ve rehber', kisi: { kol: 'staff', alan: 'staffId', baslik: 'Personel', yok: 'Personel seçin (seçilmezse güzergâh görünmez)' }, kapat: ['fees', 'payments', 'corpBills', 'messages', 'changes', 'sms'], gizle: { students: ['parentName', 'parentPhone', 'fee', 'portalCode', 'consent', 'contract', 'free'], staff: ['docs', 'phone'], vehicles: ['docs'], routes: ['corp', 'corpFee'] },
+      saltOkunur: ['students', 'routes', 'vehicles', 'staff', 'schools', 'absences', 'notices'], yeniSerbest: ['notices'], satir: { routes: (r, b) => !!b.dept && (r.driver === b.dept || r.hostess === b.dept), students: (s, b) => b.ids('routes').has(s.route), trips: (t, b) => b.ids('routes').has(t.route), absences: (a, b) => b.ids('students').has(a.student) } },
+  },
+  // apps/ciftci: kantar yalnız alım fişi yazar, üretici kartını adıyla okur. Kimlik, IBAN, limit, ödeme, girdi satışı ve dağıtım gitmez; makbuz silemez. Muhasebede yalnız Ayarlar kapalıdır, kural eklenmedi.
+  ciftci: {
+    kantar: { ad: 'Kantar', kapat: ['payments', 'sales', 'distributions', 'sms'], gizle: { producers: ['tc', 'iban', 'limit', 'portalCode', 'shares'], products: ['cost'] }, saltOkunur: ['producers', 'fields', 'fieldOps'], izinli: {}, silemez: ['purchases', 'products'] },
+  },
+  // apps/lastik: usta iş emri ve otel kaydını yazar, stok alışı, ödeme, cari ve garanti görmez (canMoney). Fiyat alanı açık kalır: usta işçilik kalemi girer.
+  lastik: {
+    usta: { ad: 'Lastik ustası', kapat: ['payments', 'claims', 'sms'], gizle: { stock: ['cost'], customers: ['taxNo', 'limit'] }, saltOkunur: ['stock', 'customers'], izinli: { stock: ['stock'] }, yeniSerbest: ['customers'], silemez: ['jobs', 'hotels', 'vehicles'] },
+  },
   // apps/servis: ROLES var, ekranlarda rol denetimi yok. Teknisyen ve kabul Özet, Teknisyenler, Ayarlar menüsünü görmez; parça alış fiyatı Parça Stoku ekranında herkese açık. Yalnız menü farkı: kural eklenmedi.
 };
 // Pazaryeri kanal kaydı: bağlantı alanları gerekir, komisyon ve hizmet bedeli kâr hesabıdır

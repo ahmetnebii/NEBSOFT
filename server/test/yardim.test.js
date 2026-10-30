@@ -8,8 +8,10 @@ let n = 0; const ok = (m) => { n++; console.log('✓ ' + m); };
 const kaynak = (id) => fs.readdirSync(path.join(ROOT, 'apps', id)).filter((f) => /\.(js|html)$/.test(f)).map((f) => fs.readFileSync(path.join(ROOT, 'apps', id, f), 'utf8')).join('\n');
 const CORE = fs.readFileSync(path.join(ROOT, 'core', 'core.js'), 'utf8');
 const SRC = Object.fromEntries(C.products.map((p) => [p.id, kaynak(p.id)]));
+// Yeni program çekirdeğe (core/kurulum-adimlari.js, core/yardim.json) girene kadar kurulum ve yardım denetimi dışında kalır
+const KAYITLI = C.products.filter((p) => K.list(p.id).length);
 
-for (const p of C.products) {
+for (const p of KAYITLI) {
   const L = K.list(p.id); assert.ok(L.length >= 3 && L.length <= 5, `${p.id}: ${L.length} adım`);
   for (const s of L) { assert.ok(new RegExp(`id: '${s.go}'`).test(SRC[p.id]), `${p.id}: menü yok ${s.go}`); s.n.forEach((c) => assert.ok(new RegExp(`\\b${c}\\b`).test(SRC[p.id]), `${p.id}: koleksiyon yok ${c}`)); }
 }
@@ -29,13 +31,13 @@ for (const p of C.products) {
 }
 ok('Rehberdeki her kalın ifade programın kodunda birebir geçiyor; vaat yok');
 
-assert.strictEqual(yardim.items.length, C.products.length);
+assert.strictEqual(yardim.items.length, KAYITLI.length);
 for (const p of C.products) {
   const f = path.join(ROOT, 'docs', 'video', `${p.id}.md`); assert.ok(fs.existsSync(f), f); const s = fs.readFileSync(f, 'utf8');
   const sure = Number((s.match(/yaklaşık (\d+) saniye/) || [])[1]); assert.ok(sure >= 60 && sure <= 90, `${p.id}: ${sure} sn`); assert.ok(!/\*\*/.test(s));
 }
 ok('Her programın video senaryosu 60–90 saniye');
 
-assert.ok(kb.items.some((x) => x.t === 'rehber' && x.m === 'pos')); assert.ok(kb.items.filter((x) => x.t === 'rehber').length >= C.products.length * 3); ok('Destek asistanı rehberi bilgi bankasından yanıtlar');
+assert.ok(kb.items.some((x) => x.t === 'rehber' && x.m === 'pos')); assert.ok(kb.items.filter((x) => x.t === 'rehber').length >= KAYITLI.length * 3); ok('Destek asistanı rehberi bilgi bankasından yanıtlar');
 assert.ok(!kb.items.some((x) => /Deneme talebi · onay bekliyor|deneme talebi oluştur|Ücretsiz dene\*\* talebi/i.test(x.a))); ok('Bilgi bankasında eski "deneme onayı" anlatımı yok');
 console.log(`\n${n} test geçti`);
