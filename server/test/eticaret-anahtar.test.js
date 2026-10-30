@@ -1,4 +1,4 @@
-// E-ticaret pazaryeri anahtarları: mpChannels şifreli yazılır, tarayıcıya yer tutucu iner, /api/kanal sunucuda çözer, depo rolü alanları görmez ve kanal kaydını değiştiremez
+// E-ticaret ve fiyat robotu pazaryeri anahtarları: mpChannels ve channels şifreli yazılır, tarayıcıya yer tutucu iner, /api/kanal sunucuda çözer, kısıtlı rol alanları görmez ve kanal kaydını değiştiremez
 //   node server/test/eticaret-anahtar.test.js
 const assert = require('assert'); const fs = require('fs'); const path = require('path'); const vm = require('vm');
 process.env.NEBSOFT_SECRET = 'test-secret-anahtar'; delete process.env.NEBSOFT_SECRET_ESKI;
@@ -74,7 +74,21 @@ async function istemci() {
   giden.length = 0; MP.ensure(db(false, { mpChannels: { n11: { connected: true, mode: 'live' } } })); await MP.pullOrders(); assert.ok(!/__nsg_/.test(js(giden))); ok('yerel kipte yer tutucu üretilmez');
 }
 
+// Fiyat robotu: anahtar channels içinde durur. Fiyat gönderimi /api/kanal, Trendyol buybox isteği /api/istek ile gider
+async function fiyatRobotu() {
+  const A = 'fiyatrobotu'; const tkF = (k, f) => s.token(A, k, f); const ham = () => ({ products: [{ id: 'p', cost: 5 }], channels: { trendyol: { on: true, mode: 'live', sellerId: '482913', apiKey: 'fr-gercek-key', apiSecret: 'fr-gercek-secret' }, n11: { on: true, mode: 'demo' } } });
+  const m = s.seal(A, ham(), null); const c = m.channels.trendyol; assert.ok(c.apiKey.startsWith(PFX) && c.apiSecret.startsWith(PFX)); assert.strictEqual(c.sellerId, '482913'); assert.strictEqual(c.mode, 'live'); assert.strictEqual(js(m.channels.n11), js(ham().channels.n11)); ok('fiyat robotu: anahtar şifreli yazılır, kalan alanlar düz kalır');
+  const v = s.mask(A, m); assert.strictEqual(v.channels.trendyol.apiSecret, tkF('trendyol', 'apiSecret')); assert.ok(!/fr-gercek|enc:v1:/.test(js(v))); const g = s.seal(A, v, m); assert.strictEqual(g.channels.trendyol.apiKey, c.apiKey); assert.strictEqual(g.channels.trendyol.apiSecret, c.apiSecret); ok('fiyat robotu: istemciye yer tutucu iner, geri gelince değer korunur');
+  const eski = ham(); const vE = s.mask(A, eski); assert.ok(!/fr-gercek/.test(js(vE))); assert.strictEqual(s.dec(s.seal(A, vE, eski).channels.trendyol.apiKey), 'fr-gercek-key'); ok('fiyat robotu: eski düz metin kayıt maskeli okunur, ilk yazımda şifrelenir');
+  const y = await s.resolve(satir(m), 't', { channel: 'trendyol', action: 'stok-fiyat', creds: { apiKey: tkF('trendyol', 'apiKey'), apiSecret: tkF('trendyol', 'apiSecret') } }); assert.strictEqual(y.creds.apiKey, 'fr-gercek-key'); assert.strictEqual(y.creds.apiSecret, 'fr-gercek-secret'); ok('fiyat robotu: /api/kanal yer tutucuyu sunucuda çözer');
+  const w0 = global.window; global.window = {}; require('../../apps/fiyatrobotu/data.js'); const F = global.window.FRB; global.window = w0; const istek = F.buyboxReq(v.channels.trendyol, ['111']); assert.ok(!/fr-gercek/.test(js(istek)));
+  const r = await s.resolve(satir(m), 't', istek); assert.strictEqual(r.headers.Authorization, 'Basic ' + Buffer.from('fr-gercek-key:fr-gercek-secret').toString('base64')); ok('fiyat robotu: buybox isteği /api/istek köprüsünde maskeli değerle çalışır');
+  await assert.rejects(s.resolve(satir(m), 't', { ...istek, url: 'https://kotu.example.com/topla' }), (x) => x.status === 400); ok('fiyat robotu: anahtar yabancı adrese gönderilemez');
+  const f = K.filtrele(A, 'izleyici', v); assert.ok(!/apiKey|apiSecret|__nsg_|fr-gercek/.test(js(f))); assert.strictEqual(f.channels.trendyol.mode, 'live'); assert.strictEqual(v.channels.trendyol.apiKey, tkF('trendyol', 'apiKey')); ok('fiyat robotu izleyici: anahtar alanı görünümde yok, girdi değişmez');
+  const k = kopya(f); Object.assign(k.channels.trendyol, { apiKey: 'degisti', hook: 'https://kotu.example.com/topla', lastStatusPull: 'https://kotu.example.com/topla' }); const o = K.geriKoy(A, 'izleyici', k, m); assert.strictEqual(js(o.channels), js(m.channels)); await assert.rejects(s.resolve(satir(s.seal(A, o, m)), 't', { url: 'https://kotu.example.com/topla', headers: { A: tkF('trendyol', 'apiSecret') } }), (x) => x.status === 400); ok('fiyat robotu izleyici: kanal kaydı değişmez, adres yazarak anahtar çıkarılamaz');
+}
+
 (async () => {
-  yazma(); await gecis(); await kopru(); await depo(); pazaryeriDepo(); await istemci();
-  console.log(`E-ticaret anahtar testleri: ${n} kontrol geçti`);
+  yazma(); await gecis(); await kopru(); await depo(); pazaryeriDepo(); await istemci(); await fiyatRobotu();
+  console.log(`Pazaryeri anahtar testleri: ${n} kontrol geçti`);
 })().catch((e) => { console.error(e); process.exit(1); });

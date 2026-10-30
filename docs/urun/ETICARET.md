@@ -20,7 +20,7 @@
 **Çözüm:**
 - `GROUPS` listesine `eticaret: 'mpChannels'` eklendi. Değer `enc:v1:` ile yazılır, istemciye `__nsg_eticaret_<kanal>_<alan>__` iner, yer tutucu geri gelince şifreli değer korunur. Eski düz kayıt okunur, açılış geçişi (`migrate`) `app_data` ve `app_data_history` satırlarını şifreler.
 - `/api/kanal`: `pazaryeri` ve `pos` ile aynı yol. `live()` yer tutucuyu gönderir, `secrets.resolve` sunucuda çözer, adaptör gerçek değerle gider. Tarayıcıda anahtar yoktur.
-- `depo` rolü: `apiKey` ve `apiSecret` alanları görünümden çıkar (`mpSuz`). Sevkiyat bildirimi, stok gönderimi ve sipariş çekme sürsün diye `live()` alan yoksa bulutta yer tutucu gönderir.
+- `depo` rolü: `apiKey` ve `apiSecret` alanları görünümden çıkar (`anahtarSuz`). Sevkiyat bildirimi, stok gönderimi ve sipariş çekme sürsün diye `live()` alan yoksa bulutta yer tutucu gönderir.
 - `mpChannels` depoya salt okunur, yalnız `lastPull` ve `lastStatusPull` yazılır, o da yalnız zaman damgası biçiminde. Bu kilit şarttır: `secrets.resolve` kanal kaydındaki adresi kayıtlı adres sayar, kilit olmadan depo kendi adresini yazıp anahtarı `/api/istek` ile oraya çözdürebilirdi. Aynı biçim denetimi `pazaryeri` rollerinin `lastStatusPull` alanına da uygulandı.
 - Kanal ayar penceresinde API anahtarı alanı parola alanı oldu; yer tutucu ekranda okunmaz.
 

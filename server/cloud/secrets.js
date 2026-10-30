@@ -1,6 +1,6 @@
 // Entegrasyon kimlik bilgilerinin korunması (AES-256-GCM, anahtar: NEBSOFT_SECRET veya data/secret.key).
 // Kapsam (program → gizli alanların bulunduğu grup):
-//   entegrasyon → cfg.<tür>.<alan>      pazaryeri → channels.<kanal>.<alan>      pos → qcChannels.<kanal>.<alan>      eticaret → mpChannels.<kanal>.<alan>
+//   entegrasyon → cfg.<tür>.<alan>      pazaryeri → channels.<kanal>.<alan>      pos → qcChannels.<kanal>.<alan>      eticaret → mpChannels.<kanal>.<alan>      fiyatrobotu → channels.<kanal>.<alan>
 // Akış:
 //  • Yazarken (PUT /api/data/:app): gizli alanlar "enc:v1:<base64>" olarak şifrelenir. Program yer tutucuyu (aşağıda) geri gönderirse
 //    mevcut şifreli değer korunur; yeni bir değer yazılmışsa o şifrelenir.
@@ -12,7 +12,7 @@
 const cfg = require('./config');
 const fs = require('fs');
 const path = require('path');
-const GROUPS = { entegrasyon: 'cfg', pazaryeri: 'channels', pos: 'qcChannels', eticaret: 'mpChannels' };
+const GROUPS = { entegrasyon: 'cfg', pazaryeri: 'channels', pos: 'qcChannels', eticaret: 'mpChannels', fiyatrobotu: 'channels' };
 const SECRET = new Set(['pass', 'password', 'secret', 'token', 'apiSecret', 'apiKey', 'hash', 'key', 'clientSecret', 'clientId', 'merchantKey', 'merchantSalt', 'headers']);
 const PFX = 'enc:v1:';
 const TOKEN_RE = /__nsg_([a-z0-9]+)_([a-z0-9]+)_([A-Za-z0-9]+)__/g;
@@ -50,7 +50,8 @@ const hostOf = (u) => { try { return new URL(String(u)).hostname.toLowerCase(); 
 let KNOWN = null;
 function knownHosts() {
   if (KNOWN) return KNOWN; KNOWN = new Set();
-  for (const f of ['integrations.js', 'integ-wizard.js', 'ubltr.js']) { try { for (const m of fs.readFileSync(path.join(__dirname, '..', '..', 'core', f), 'utf8').matchAll(/https:\/\/[a-z0-9.-]+\.[a-z]{2,}/gi)) KNOWN.add(hostOf(m[0])); } catch (e) { /* dosya yoksa yalnızca kayıtlı adresler geçerli */ } }
+  // Pazaryeri adresleri bağlayıcı listesindedir: fiyat robotunun buybox isteği /api/istek üzerinden gider
+  for (const f of [['core', 'integrations.js'], ['core', 'integ-wizard.js'], ['core', 'ubltr.js'], ['server', 'connectors', 'endpoints.json']]) { try { for (const m of fs.readFileSync(path.join(__dirname, '..', '..', ...f), 'utf8').matchAll(/https:\/\/[a-z0-9.-]+\.[a-z]{2,}/gi)) KNOWN.add(hostOf(m[0])); } catch (e) { /* dosya yoksa yalnızca kayıtlı adresler geçerli */ } }
   return KNOWN;
 }
 const registered = (conf, host) => Object.values(conf || {}).some((v) => typeof v === 'string' && !v.startsWith(PFX) && (v.match(/https?:\/\/[^\s"'<>]+/g) || []).some((u) => hostOf(u) === host));
