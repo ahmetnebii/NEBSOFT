@@ -8,7 +8,7 @@ self.addEventListener('activate', (e) => { e.waitUntil(caches.keys().then((ks) =
 
 self.addEventListener('fetch', (e) => {
   const r = e.request; const u = new URL(r.url);
-  if (r.method !== 'GET' || u.origin !== location.origin || u.pathname.startsWith('/api/') || u.pathname.startsWith('/admin/')) return;
+  if (r.method !== 'GET' || u.origin !== location.origin || u.pathname.startsWith('/api/') || u.pathname.startsWith('/admin/') || u.pathname.startsWith('/f/')) return; // yüklenen fotoğraflar tarayıcı önbelleğinde kalır, gizli olanlar hiç saklanmaz
   // Sayfalar: önce ağ (her zaman güncel), ağ yoksa önbellek
   if (r.mode === 'navigate' || (r.headers.get('accept') || '').includes('text/html')) {
     e.respondWith(fetch(r).then((res) => { const cp = res.clone(); if (res.ok) caches.open(V).then((c) => c.put(r, cp)); return res; }).catch(() => caches.match(r).then((m) => m || caches.match('/index.html'))));

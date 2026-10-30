@@ -1285,6 +1285,51 @@
       return nativeFetch(input, init);
     };
   }
+  // Fotoğraf: tarayıcıda küçültülür (en uzun kenar 1280 px, JPEG), sınırı aşarsa kalite düşürülür. Bulutta sunucu deposuna yüklenir ve belgede yalnız adres kalır
+  // (POST /api/dosya); demo ve yerel modda sunucu yoktur, görsel eskisi gibi kayda gömülür. Eski gömülü kayıtlar olduğu gibi okunur.
+  const DOSYA_RE = /^\/f\/[0-9a-f]{16}\/[0-9a-f]{32}$/;
+  const dosya = {
+    adresMi: (u) => DOSYA_RE.test(String(u)),
+    // { boyut, yukle() }: boyut sınır denetimi için (bulutta bayt, yerelde metin uzunluğu), yukle() kayda yazılacak adresi verir
+    hazirla: (db, file, { sinir = 400e3 } = {}) => new Promise((res, rej) => {
+      if (!/^image\//.test(file.type || '')) return rej(new Error('Yalnızca görsel dosyası seçin'));
+      const fr = new FileReader(); fr.onerror = () => rej(new Error('Dosya okunamadı'));
+      fr.onload = () => {
+        const im = new Image(); im.onerror = () => rej(new Error('Görsel okunamadı'));
+        im.onload = () => {
+          const k = Math.min(1, 1280 / Math.max(im.width, im.height)); const c = document.createElement('canvas'); c.width = Math.round(im.width * k); c.height = Math.round(im.height * k);
+          const g = c.getContext('2d'); g.fillStyle = '#fff'; g.fillRect(0, 0, c.width, c.height); g.drawImage(im, 0, 0, c.width, c.height);
+          const bulut = !!db.cloud; const ust = bulut ? 900e3 : sinir;
+          const dene = async () => {
+            for (let q = 0.72; ; q -= 0.12) {
+              if (bulut) { const b = await new Promise((ok) => c.toBlob(ok, 'image/jpeg', q)); if (!b) throw new Error('Görsel küçültülemedi'); if (b.size <= ust) return { boyut: b.size, yukle: () => dosya.gonder(db, b) }; } else { const u = c.toDataURL('image/jpeg', q); if (u.length <= ust) return { boyut: u.length, yukle: async () => u }; }
+              if (q <= 0.3) throw new Error('Görsel küçültülemedi, daha sade bir fotoğraf deneyin');
+            }
+          };
+          dene().then(res, rej);
+        };
+        im.src = fr.result;
+      };
+      fr.readAsDataURL(file);
+    }),
+    async gonder(db, blob) {
+      let r; try { r = await fetch('/api/dosya?app=' + encodeURIComponent(db.name), { method: 'POST', headers: { 'Content-Type': blob.type }, body: blob }); } catch (e) { throw new Error('Sunucuya ulaşılamadı. İnternet bağlantınızı kontrol edin.'); }
+      const j = await r.json().catch(() => ({})); if (!r.ok || !j.url) throw new Error(j.error || 'Fotoğraf yüklenemedi');
+      if (j.kota && j.kullanilan > j.kota * 0.9) toast('Fotoğraf alanınızın büyük bölümü doldu. Kullanılmayan fotoğrafları silin.', 'warn');
+      return j.url;
+    },
+    // Seçilen dosyalar sırayla işlenir, alan bitene kadar kapalıdır, ilerleme yazılır. isle(file) false dönerse durur.
+    async toplu(inp, files, isle) {
+      const d = document.createElement('div'); d.className = 'small muted mt'; d.setAttribute('role', 'status'); inp.disabled = true; inp.after(d); let i = 0;
+      try { for (const f of files) { d.textContent = `Fotoğraf hazırlanıyor ${++i}/${files.length}…`; if ((await isle(f)) === false) break; } } catch (x) { toast('Fotoğraf eklenemedi: ' + (x.message || ''), 'err'); }
+      d.remove(); inp.value = ''; inp.disabled = false;
+    },
+    // Kayıttan çıkan dosyanın silinme beklemesi hemen başlasın. Belge henüz gönderilmediyse sunucu reddeder, zamanlanmış temizlik yine yakalar.
+    birak(db, eski, yeni) {
+      if (!db.cloud) return; const kalan = new Set(yeni || []);
+      (eski || []).filter((u) => DOSYA_RE.test(u) && !kalan.has(u)).forEach((u) => setTimeout(() => fetch('/api/dosya/' + u.split('/').pop(), { method: 'DELETE' }).catch(() => {}), 5000));
+    },
+  };
   async function api(method, url, body) {
     let r;
     try { r = await fetch(url, { method, headers: body ? { 'Content-Type': 'application/json' } : {}, body: body ? JSON.stringify(body) : undefined }); } catch (e) { throw Object.assign(new Error('Sunucuya ulaşılamadı. İnternet bağlantınızı kontrol edin.'), { status: 0 }); }
@@ -1294,7 +1339,7 @@
   }
 
   window.NS = {
-    api, esc, $, $$, on, uid, rand, pick, sum, groupBy, clamp, money, num, iso, today, addDays, daysBetween, date, dateLong, time, dt, ago, pad,
+    api, dosya, esc, $, $$, on, uid, rand, pick, sum, groupBy, clamp, money, num, iso, today, addDays, daysBetween, date, dateLong, time, dt, ago, pad,
     MONTHS, DAYS, NAMES, phone, sampleGender, initials, logoMark, shade, setFavicon, slug, trLower, match, icon, ICONS, DB, toast, modal, confirm, prompt, formModal, fieldsHtml, readForm, validate,
     table, chart, compact, dailySeries, PALETTE, csv, readFile, parseCsv, printHtml, beep, barcodeSvg, qrSvg, shell, pageHead, kpi, badge, searchBox, crud,
     settingsPage, smsLog, smsText, smsTone, smsBatch, portalShare, approve, pinKontrol, toggleTheme, getTheme, setTheme, themeCards, THEMES, skeleton: (n = 4) => `<div class="nv-skel">${'<div class="skel" style="height:18px;width:38%"></div><div class="grid g4">' + '<div class="skel" style="height:84px"></div>'.repeat(4) + '</div>' + '<div class="skel" style="height:44px"></div>'.repeat(n)}</div>`, currentUser: null, cloud: CLOUD, merge3, pub: PUB, tenant: TENANT, payInfo, portalCode,

@@ -7,7 +7,7 @@ const crypto = require('crypto');
 const log = require('./log');
 const analitik = require('./analitik');
 const { R, err } = require('./routes');
-require('./public'); require('./totp-api'); require('./seo'); require('./odeme'); require('./analitik-api'); require('./deneme'); require('./guven'); require('./teklif'); require('./katalog-api'); // müşteriye açık sayfaların, ödemenin, denemenin, güven bölümünün ve analitiğin uç noktaları (R listesine eklenir)
+require('./public'); require('./totp-api'); require('./seo'); require('./odeme'); require('./analitik-api'); require('./deneme'); require('./guven'); require('./teklif'); require('./katalog-api'); const dosya = require('./dosya'); // müşteriye açık sayfaların, ödemenin, denemenin, güven bölümünün ve analitiğin uç noktaları (R listesine eklenir)
 
 // Günlük ve sayaçlara gerçek adres değil kalıp yazılır: /api/public/:slug/... (adresteki belirteçler kayda girmez)
 const kalip = (re) => re.source.replace(/\(\?<(\w+)>\[\^\/\]\+\)/g, ':$1').replace(/\\/g, '').replace(/^\^|\$$/g, '');
@@ -35,6 +35,7 @@ async function handle(req, res, path) {
     if (hit.opt.limit && !sec.limit(`${hit.opt.limit[0]}:${c.ip}`, hit.opt.limit[1], hit.opt.limit[2])) throw err(429, 'Çok fazla deneme. Lütfen daha sonra tekrar deneyin.');
     if (m !== 'GET') {
       if (hit.opt.csrf !== false && !sec.sameOrigin(req)) throw err(403, 'İstek reddedildi (kaynak doğrulanamadı)');
+      if (Number(req.headers['content-length']) > (hit.opt.bodyMax || 1e6)) throw err(413, hit.opt.buyukHata || 'İstek çok büyük'); // bağlantı kesilmeden Türkçe ileti dönsün
       if (hit.opt.raw) c.raw = await readBody(req, hit.opt.bodyMax || 1e6, true); else c.body = await readBody(req, hit.opt.bodyMax || 1e6);
     }
     if (hit.opt.db !== false && !db.ready() && !path.startsWith('/api/setup/')) throw err(503, 'Sistem bakımda (veritabanı bağlı değil)');
@@ -62,6 +63,7 @@ async function init() {
   }
   if (db.ready()) { try { const p = await require('./pin').gecis(db); const b = await require('./belge').gecis(db); if (p || b) log.uygulama.bilgi('sifreleme.belge', { mesaj: `${p} belgede PIN özetlendi, ${b} kayıt şifrelendi` }); } catch (e) { log.uygulama.hata('sifreleme.belge', { mesaj: e.message }); } }
   if (db.ready()) { try { const n = await require('./secrets').migrate(db); if (n) log.uygulama.bilgi('sifreleme.gecis', { mesaj: `Entegrasyon kimlik bilgileri şifrelendi: ${n} kayıt` }); } catch (e) { log.uygulama.hata('sifreleme.gecis', { mesaj: 'Kimlik bilgisi şifreleme geçişi', hata: e }); } }
+  if (db.ready()) dosya.zamanla();
   let hasAdmin = false; if (db.ready()) hasAdmin = !!(await db.one("SELECT id FROM users WHERE role='superadmin' LIMIT 1"));
   // Kurulum anahtarı bilerek düz yazılır: DEPLOY.md yöneticiyi bu satıra yönlendirir ve bir kez kullanılır (maskelenirse kurulum yapılamaz)
   if (!hasAdmin) { const t = cfg.setupToken(true); console.log(`\n  Kurulum gerekli → /admin/  ·  Kurulum anahtarı: ${t}\n  (anahtar ayrıca ${cfg.DATA}/setup-token.txt dosyasında)\n`); }
@@ -71,4 +73,4 @@ async function tenantSlug(req) {
   const u = await auth.current(req); if (!u || !u.tenant_id) return null;
   const t = await db.one('SELECT slug FROM tenants WHERE id=?', [u.tenant_id]); return t ? t.slug : null;
 }
-module.exports = { handle, init, send, tenantSlug, db, log, analitik, seo: require('./seo'), guven: require('./guven') };
+module.exports = { handle, init, send, tenantSlug, db, log, analitik, dosya, seo: require('./seo'), guven: require('./guven') };

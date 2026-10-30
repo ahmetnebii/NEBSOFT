@@ -149,8 +149,6 @@
   }
 
   // ---------- Ürünler ----------
-  // Fotoğraf: tarayıcıda küçültülür (en uzun kenar 1280 px, JPEG), üst sınırı aşarsa kalite düşürülür; kayda gömülür
-  const shrink = (file) => new Promise((res, rej) => { if (!/^image\//.test(file.type || '')) return rej(new Error('Yalnızca görsel dosyası seçin')); const fr = new FileReader(); fr.onerror = () => rej(new Error('Dosya okunamadı')); fr.onload = () => { const im = new Image(); im.onerror = () => rej(new Error('Görsel okunamadı')); im.onload = () => { const k = Math.min(1, 1280 / Math.max(im.width, im.height)); const c = document.createElement('canvas'); c.width = Math.round(im.width * k); c.height = Math.round(im.height * k); const g = c.getContext('2d'); g.fillStyle = '#fff'; g.fillRect(0, 0, c.width, c.height); g.drawImage(im, 0, 0, c.width, c.height); let q = 0.72, u = c.toDataURL('image/jpeg', q); while (u.length > SH.PHOTO.perPhoto && q > 0.35) { q -= 0.12; u = c.toDataURL('image/jpeg', q); } if (u.length > SH.PHOTO.perPhoto) return rej(new Error('Görsel küçültülemedi, daha sade bir fotoğraf deneyin')); res(u); }; im.src = fr.result; }; fr.readAsDataURL(file); });
   // Yerel kayıt tarayıcı deposuna sığmazsa core yalnızca konsola yazar: kaydın gerçekten yazıldığı burada doğrulanır
   const stored = () => { if (db.cloud || db.pub) return true; try { return localStorage.getItem(db.key) === JSON.stringify(db.data); } catch (e) { return false; } };
   function photoBox(b, p) {
@@ -158,9 +156,7 @@
     on(b, 'click', '[data-prm]', (e, x) => { p.photos.splice(Number(x.dataset.prm), 1); draw(); });
     on(b, 'click', '[data-cv]', (e, x) => { const [u] = p.photos.splice(Number(x.dataset.cv), 1); p.photos.unshift(u); draw(); });
     $('#fl', b).onchange = async (e) => {
-      const inp = e.target; const fs = [...inp.files]; inp.disabled = true;
-      try { for (const f of fs) { const u = await shrink(f); const msg = SH.photoCheck(db.all('products'), p, u.length, { docChars: JSON.stringify(db.data).length, local: !db.cloud }); if (msg) { toast(msg, 'err'); break; } p.photos = [...(p.photos || []), u]; draw(); } } catch (x) { toast('Fotoğraf eklenemedi: ' + (x.message || ''), 'err'); }
-      inp.value = ''; inp.disabled = false;
+      await NS.dosya.toplu(e.target, [...e.target.files], async (f) => { const h = await NS.dosya.hazirla(db, f, { sinir: SH.PHOTO.perPhoto }); const msg = SH.photoCheck(db.all('products'), p, h.boyut, { docChars: JSON.stringify(db.data).length, local: !db.cloud, sunucu: db.cloud }); if (msg) { toast(msg, 'err'); return false; } p.photos = [...(p.photos || []), await h.yukle()]; draw(); });
     };
     draw();
   }
@@ -204,10 +200,10 @@
         if (p.variants.some((x) => x.barcode && !/^[0-9A-Za-z.\-_]{4,40}$/.test(x.barcode))) return toast('Barkod yalnızca harf, rakam ve . - _ içerebilir', 'err');
         Object.assign(p, { name: v.name, cat: v.cat, price: Number(v.price) || 0, sale: Number(v.sale) || null, vat: v.vat === '' ? '' : Number(v.vat), ...(isAdm() ? { cost: Number(v.cost) || 0 } : {}), desc: v.desc, active: v.active, tags: v.tagsStr.split(',').map((t) => t.trim()).filter(Boolean), slug: NS.slug(v.name) });
         delete p.tagsStr;
-        const oldPh = rec ? rec.photos : []; const saved = rec ? db.update('products', rec.id, p) : db.insert('products', { ...p, views: 0 });
+        const oldPh = rec ? rec.photos : []; const oncekiPh = [...(oldPh || [])]; const saved = rec ? db.update('products', rec.id, p) : db.insert('products', { ...p, views: 0 });
         // Tarayıcı deposu doluysa fotoğraflar geri alınır: kaydedildi denip yenilemede kaybolmasın
         if (!stored()) { const x = db.get('products', rec ? rec.id : saved.id); x.photos = oldPh || []; db.save(); if (!stored()) return toast('Tarayıcı deposu dolu, ürün kaydedilemedi. Depolamayı boşaltın veya bulut hesabı kullanın.', 'err'); toast('Tarayıcı deposu dolu: fotoğraflar kaydedilemedi, ürünün diğer bilgileri kaydedildi.', 'err'); c(); app.refresh(); return; }
-        MP.stockChanged(p.variants.map((x) => ({ vid: x.id })));
+        MP.stockChanged(p.variants.map((x) => ({ vid: x.id }))); NS.dosya.birak(db, oncekiPh, p.photos);
         c(); toast('Ürün kaydedildi', 'ok'); app.refresh();
       } }],
     });

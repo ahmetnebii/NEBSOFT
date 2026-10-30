@@ -1,4 +1,5 @@
 data/
+dosyalar/
 node_modules/
 
 # NEBSOFT Pazarlama iç aracı: API anahtarı ve aday verisi depoya girmez

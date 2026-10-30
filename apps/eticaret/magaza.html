@@ -109,7 +109,7 @@
   /* Ürün detay */
   .pdp { display: grid; grid-template-columns: 1.25fr 1fr; gap: 56px; padding-bottom: 40px; }
   .gl { display: grid; grid-template-columns: 84px 1fr; gap: 12px; align-items: start; position: sticky; top: 140px; }
-  .gl .th { display: flex; flex-direction: column; gap: 10px; } .gl .th img { width: 84px; aspect-ratio: 3/4; object-fit: cover; cursor: pointer; opacity: .55; border: 1px solid transparent; } .gl .th img.on { opacity: 1; border-color: #141414; }
+  .gl .th { display: flex; flex-direction: column; gap: 10px; } .gl .th img { width: 84px; height: auto; aspect-ratio: 3/4; object-fit: cover; cursor: pointer; opacity: .55; border: 1px solid transparent; } .gl .th img.on { opacity: 1; border-color: #141414; }
   .zm { position: relative; aspect-ratio: 3/4; overflow: hidden; background: #f4f1ec; cursor: zoom-in; } .zm img { width: 100%; height: 100%; object-fit: cover; transition: transform .2s; }
   .pi h1 { font-size: 42px; line-height: 1.05; } .pi .pr { font-size: 22px; margin-top: 12px; }
   .opt { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
@@ -176,7 +176,7 @@
   const welcome = () => !NS.pub && db.find('coupons', (c) => c.code === 'HOSGELDIN' && c.active); // müşteri sayfasında kupon listesi yok, kod vaat edilmez
   const products = () => db.all('products', (p) => p.active !== false);
   const img = (p, i = 0, w = 600) => { const a = SH.photos(p); return SH.imgUrl(a[i % a.length], w, Math.round(w * 4 / 3)); };
-  const imgTag = (p, i, w, cls = '') => `<img class="${cls}" src="${img(p, i, w)}" alt="${esc(p.name)}" loading="lazy" onerror="this.onerror=null;this.src='${SH.fallback(p)}'">`;
+  const imgTag = (p, i, w, cls = '') => `<img class="${cls}" src="${img(p, i, w)}" alt="${esc(p.name)}" width="${w}" height="${Math.round(w * 4 / 3)}" loading="lazy" onerror="this.onerror=null;this.src='${SH.fallback(p)}'">`;
   const pctOff = (p) => (p.sale ? Math.round((1 - p.sale / p.price) * 100) : 0);
   const priceHtml = (p) => (p.sale ? `<div class="pr"><span class="o">${money(p.sale)}</span><s>${money(p.price)}</s></div>` : `<div class="pr">${money(p.price)}</div>`);
   const starStr = (r) => '★★★★★'.slice(0, Math.round(r)) + '☆☆☆☆☆'.slice(0, 5 - Math.round(r));
@@ -311,7 +311,7 @@
     const draw = () => {
       const vs = p.variants.filter((v) => v.color === color); const sel = size && vs.find((v) => v.size === size); const any = vs.some((v) => v.stock);
       el.innerHTML = `<div class="w"><div class="crumb"><a href="#/">Ana sayfa</a> / <a href="#/kategori/${p.cat}">${esc(cat.name || '')}</a> / ${esc(p.name)}</div>
-        <div class="pdp"><div class="gl"><div class="th">${photos.map((ph, i) => `<img src="${SH.imgUrl(ph, 160, 213)}" data-gi="${i}" class="${i === imgI ? 'on' : ''}" alt="">`).join('')}</div><div class="zm" id="zm">${imgTag(p, imgI, 1100)}${p.sale ? `<div class="pc"><div class="tg"><span class="s">-%${pctOff(p)}</span></div></div>` : ''}</div></div>
+        <div class="pdp"><div class="gl"><div class="th">${photos.map((ph, i) => `<img src="${SH.imgUrl(ph, 160, 213)}" data-gi="${i}" class="${i === imgI ? 'on' : ''}" alt="${esc(p.name)} fotoğraf ${i + 1}" width="160" height="213" loading="lazy">`).join('')}</div><div class="zm" id="zm">${imgTag(p, imgI, 1100)}${p.sale ? `<div class="pc"><div class="tg"><span class="s">-%${pctOff(p)}</span></div></div>` : ''}</div></div>
         <div class="pi"><div class="eyebrow">${esc(cat.name || '')}</div><h1 class="serif">${esc(p.name)}</h1>${r.n ? `<a href="#yorumlar" class="stars" style="display:inline-block;margin-top:8px;font-size:14px">${starStr(r.avg)}<small>${r.avg} · ${r.n} değerlendirme</small></a>` : ''}
           ${priceHtml(p)}${p.sale ? `<div class="small" style="color:var(--sale);margin-top:4px">${money(p.price - p.sale)} tasarruf${instN() ? ` · ${money(SH.price(p) / instN())} x ${instN()} taksit` : ''}</div>` : instN() ? `<div class="small muted" style="margin-top:4px">${money(SH.price(p) / instN())} x ${instN()} taksit seçeneğiyle</div>` : ''}
           <div class="lbl"><span>Renk: <span style="font-weight:500;letter-spacing:0;text-transform:none">${esc(color)}</span></span></div><div class="opt">${p.colors.map((c) => `<button class="cl ${c === color ? 'on' : ''}" data-col="${c}" title="${c}" style="background:${SH.COLORS[c]}" ${p.variants.some((v) => v.color === c && v.stock) ? '' : 'disabled'}></button>`).join('')}</div>

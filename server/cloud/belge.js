@@ -40,6 +40,19 @@ async function oku(tid, app, row, yedek = null) {
   try { const d = JSON.parse(t); return d === null ? yedek : d; } catch (e) { return yedek; }
 }
 
+// Gizli dosyalar diskte aynı anahtardan şifreli durur. Anahtar işletme + dosya başına türetilir, dosya başka işletmeye veya başka ada taşınırsa açılmaz.
+const DOSYA_PFX = Buffer.from('nsdos1:');
+function dosyaKapat(tid, id, buf) {
+  const iv = crypto.randomBytes(12); const c = crypto.createCipheriv('aes-256-gcm', turet(cfg.anahtar(), tid, `dosya:${id}`), iv); c.setAAD(ek(tid, `dosya:${id}`));
+  const enc = Buffer.concat([c.update(buf), c.final()]); return Buffer.concat([DOSYA_PFX, iv, c.getAuthTag(), enc]);
+}
+function dosyaAc(tid, id, buf) {
+  if (!Buffer.isBuffer(buf) || !buf.subarray(0, DOSYA_PFX.length).equals(DOSYA_PFX)) throw new Error('Şifreli dosya değil');
+  const govde = buf.subarray(DOSYA_PFX.length);
+  for (const ana of [cfg.anahtar(), cfg.anahtarEski()]) { if (!ana) continue; try { return coz(govde, ana, tid, `dosya:${id}`); } catch (e) { /* sıradaki anahtar */ } }
+  throw new Error('Dosya açılamadı');
+}
+
 // Açılış geçişi: düz kayıtları ve eski anahtarla yazılanları şifreler. Yazmadan önce geri açılıp karşılaştırılır; sürüm değiştiyse satır atlanır, sonraki kayıt zaten şifreli yazılır.
 async function gecis(db) {
   const list = [...SIFRELI]; const yer = list.map(() => '?').join(','); let n = 0;
@@ -64,4 +77,4 @@ async function gecis(db) {
   return n;
 }
 
-module.exports = { kapat, ac, oku, gecis, sifreli, acik, PFX, SIFRELI };
+module.exports = { kapat, ac, oku, gecis, sifreli, acik, dosyaKapat, dosyaAc, PFX, SIFRELI };
