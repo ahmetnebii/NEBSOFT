@@ -93,3 +93,33 @@ O = Olmazsa olmaz · E = Beklenen · F = Fark yaratan. Durum: ✅ var · ⚠️ 
 - **Sunucudan otomatik hatırlatma** (panel kapalıyken): sunucuda zamanlayıcı gerekir → `docs/urun/CEKIRDEK-ISTEKLERI-randevu-uyelik.md`.
 - **Google "Rezervasyon" / Instagram butonu:** resmî bir API bağlantımız yok. İşletme, Google İşletme Profili'nde randevu bağlantısı alanına kendi online randevu linkini elle girebilir (Google yardım sayfası bu oturumda doğrulanmadı — DOĞRULANAMADI; ekranda yalnızca "linki kopyalayıp profilinize ekleyin" denir, menü yolu yazılmaz).
 - **SMS sağlayıcı hesabı** (Netgsm / İleti Merkezi): Entegrasyonlar > SMS; gerçek gönderim testi işletmenin numarasıyla yapılır.
+
+## Modül: Güzellik seans paketi (30.10.2026)
+
+Varsayılan kapalı. Ayarlar > Seans paketi modülü ile açılır. Kapalıyken paket ekranı ve eski kayıtlar değişmez.
+
+**Mevcut durum:** Paket satışı, seans düşümü, kalan seans, son kullanım ve seans geçmişi zaten vardı. Modül yalnız eksikleri ekler.
+
+Şikâyetler ve karşılayan özellik:
+
+| Şikâyet | Kaynak | Özellik |
+|---|---|---|
+| Sözleşme süresi bitti denip kalan seanslar iptal edildi | https://www.sikayetvar.com/avis-vip-guzellik/sozlesme-suresi-bitti-diye-kalan-seanslarim-iptal-edildi | Süre uzatma kaydı, "Süresi dolan" görünümü, bitmeden hatırlatma |
+| Seanslar düzensiz, geç tarihlere verildi | https://www.sikayetvar.com/lara-guzellik-merkezi/lara-guzellik-merkezi-lazer-epilasyon-sikayeti | Seans aralığı, sıradaki seans, "Seansı geçen" görünümü |
+| Paketler silindi, iade yapılmadı | https://www.sikayetvar.com/nez-demir | Paket silinmez, iptal yetkili onaylı, iade kasaya gider yazılır |
+| Kalan seans tartışması | https://www.sikayetvar.com/alanya-mag-plusta-satin-alinan-bolgesel-incelme-paketi-icin-randevu-saglanmamasi-ve-iade-reddi | Müşteriye verilen paket belgesi, seans tarihleri listeli |
+
+Not: Şikâyetler işletmelerin hizmetine aittir, belirli bir yazılıma değil.
+
+| Özellik | Sınıf | Durum |
+|---|---|---|
+| Paket sat, seans düş, kalan seans | Olmazsa olmaz | Vardı |
+| Seans notu (bölge, ayar) | Beklenen | Var |
+| Sıradaki seans, süre uzatma, hatırlatma | Beklenen | Var, SMS sağlayıcı olmadan TEST |
+| İptal ve iade, paket belgesi | Beklenen | Var, iade tutarı elle |
+| Taksitli paket ödemesi | Beklenen | Yok, sonraki dalga |
+| Müşterinin kalan seansı online görmesi | Fark yaratan | Yok, `public-rules.js` ve `book.html` işi |
+
+**DOĞRULANAMADI:** Paket iadesinin tüketici mevzuatına göre hesabı incelenmedi, program hesap yapmaz. Koşul metnini işletme hukukçusu yazar.
+
+Deneme: `?demo=1`, modül kapalı ve açık, seans düşme, belge, süre uzatma, iptal ve iade kaydı. Konsol hatası yok.

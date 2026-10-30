@@ -1209,6 +1209,25 @@ RULES.mobilya = {
   },
 };
 
+// ---------- Dernek: üye portalı (uye.html) — telefon + giriş kodu. Yalnız okuma; TC, not ve başka üyenin kaydı gitmez ----------
+RULES.dernek = {
+  settings: ['bizName', 'bizPhone', 'bizAddress', 'iban', 'bank', 'orgType'],
+  pub: { posts: { fields: ['id', 'date', 'title', 'body'] }, meetings: { where: (r, x) => r.type === 'gk' && r.status === 'plan' && r.date >= x.today, fields: ['id', 'type', 'status', 'date', 'time', 'place', 'agenda'] } },
+  login: ownerOf('members'), loginError: 'Telefon veya giriş kodu hatalı',
+  view: (x) => { const m = x.get('members', me(x, 'o')); if (!m || m.status !== 'aktif') return {}; return { members: [x.pick(m, ['id', 'no', 'name', 'status', 'group'])], dues: x.col('dues').filter((d) => d.member === m.id), receipts: x.col('receipts').filter((r) => r.member === m.id && !r.canceled).map((r) => x.pick(r, ['id', 'member', 'amount', 'at', 'kind'])) }; },
+  write: {},
+};
+
+// ---------- Eğitim: sertifika doğrulama (dogrula.html) — yalnız tahmin edilemez kodla, tek belge, kişisel iletişim bilgisi yok ----------
+const EGT_ALAN = ['id', 'no', 'code', 'name', 'course', 'hours', 'date', 'validUntil', 'status'];
+RULES.egitim = {
+  settings: ['bizName', 'bizPhone', 'bizAddress'],
+  pub: {},
+  login: (x, q) => { const k = norm(q.kod); const c = k.length >= 8 && x.col('certs').find((r) => r.code && norm(r.code) === k); return c ? { k: 'c', i: c.id } : null; }, loginError: 'Kayıt bulunamadı',
+  view: (x) => { const c = x.get('certs', me(x, 'c')); return c ? { certs: [x.pick(c, EGT_ALAN)] } : {}; },
+  write: {},
+};
+
 
 module.exports = RULES;
 module.exports._lib = { appendOnly, strip, bad, deny, val, clean, I, U, me, mergeByPhone, samePhone, digits, norm, overlap, toMin, nowIso };

@@ -77,3 +77,45 @@ Pazar araştırması 29.10.2026. Türk otopark yazılımlarının kendi sayfalar
 - **Plaka tanıma kamerası ve bariyer (Hikvision, Dahua, Nedap, röle kartı):** üretici API dokümanı ve cihazla canlı test → şu an **DOĞRULANAMADI**; bağlantı kapalıyken düğme "bağlı değil" der, simülasyon kayıt açmaz.
 - **Online ön ödeme:** sanal POS hesabı.
 - **AVM plaka kaydı paylaşımı:** mevzuat metninin resmî kaynaktan okunması (işletme AVM otoparkıysa).
+
+## Modül: Oto kuaför ve vale (30.10.2026)
+
+Varsayılan kapalı. Ayarlar > Ek modüller. Kapalıyken menü, kasa ve gün sonu tutarları değişmez; gün sonu fişinde yalnız sıfır tutarlı bir satır görünür.
+
+**Kaynak:** İşletmeler ve İşyerlerinin Araç Park Hizmetlerinin (Vale) Yürütülmesine İlişkin Yönetmelik, RG 25.12.2020-31345, https://www.turmob.org.tr/arsiv/mbs/resmigazete/31345-31345-2.pdf, okundu 30.10.2026. Yayımlanan ilk metin okundu; sonraki değişiklikler DOĞRULANAMADI.
+
+| Kural | Madde | Etiket | Programda |
+|---|---|---|---|
+| Fiş alanları: işletme, sürücü, plaka, tarih-saat, görevli adı ve telefonu, km | md. 4/a | DOĞRULANDI | Fişte zorunlu |
+| İki nüsha; elektronik uygulama olabilir | md. 4/a | DOĞRULANDI | Görevli ve sürücü nüshası basılır |
+| Araç iadesi fiş ile yapılır | md. 8/1 | DOĞRULANDI | Kod kontrolü, fişsiz iade yetkili onaylı |
+| Kıymetli eşya uyarısı | md. 6/4 | DOĞRULANDI | Fişte |
+| Vale/garaj ve üçüncü şahıs sigortası | md. 6/8 | DOĞRULANDI | Poliçe bitiş uyarısı |
+| MYK Seviye 3, uygun sürücü belgesi | md. 7 | DOĞRULANDI | Görevli kartında eksik uyarısı |
+| Hasar, ceza ve çekme bedelini tazmin | md. 8/4 | DOĞRULANDI | Hasar notu kaydı; hesap yok |
+| Anahtar saklama, kayıt saklama süresi | yok | Metinde bulunamadı | Yazılmadı |
+
+Rakip: Türk vale yazılımı sayfası bulunamadı. Otovınn müşteriye dönük hizmet pazarıdır, arka ofis yazılımı değildir (uygulama mağazası kaydı). Yabancı detailing yazılımları genel fikir verdi: https://urable.com/?p=1578
+
+Şikâyetler:
+
+| Şikâyet | Kaynak | Özellik |
+|---|---|---|
+| Vale sonrası hasar reddedildi | https://www.sikayetvar.com/opel/vale-hizmeti-sonrasi-aracta-olusan-hasarin-otel-tarafindan-karsilanmamasi | Fiş, km, hasar notu, iş kartında hasar krokisi |
+| Otel otoparkında hasar ve ilgisizlik | https://www.sikayetvar.com/la-quinta-by-wyndham-istanbul/otel-otoparkinda-olusan-arac-hasari-ve-yetersiz-musteri-hizmeti | Teslim kaydı, kim teslim aldı |
+
+Seramik kaplama garantisine ilişkin şikâyet kaydı bulunamadı.
+
+| Özellik | Sınıf | Durum |
+|---|---|---|
+| Oto kuaför iş kartı, aşamalar, hasar krokisi | Olmazsa olmaz | Var |
+| Teslim imzası, tahsilat, kasa | Olmazsa olmaz | Var |
+| Vale fişi, anahtar no, iade | Olmazsa olmaz | Var |
+| Görevli listesi, belge ve poliçe uyarısı | Beklenen | Var |
+| Garanti bitişi, bakım hatırlatma | Beklenen | Var |
+| Fotoğraflı kabul | Beklenen | Yok, `NS.dosya` izinli uygulama listesi gerekir |
+| Sürücünün telefondan aracı çağırması | Fark yaratan | Yok, `public-rules.js` işi |
+
+Özet ekranındaki "Bugünkü ciro" otopark ve yıkamayı gösterir; modül gelirleri Kasa sayfasındadır.
+
+Deneme: `?demo=1`, modül kapalı menü, açık menü, fiş, mükerrer plaka, iade, hasar notu, iş kartı aşamaları, teslim, garanti, kasa. Konsol hatası yok. Yıkamacı rolü bu kayıtları görmez.

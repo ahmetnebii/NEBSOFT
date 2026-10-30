@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sertifika Doğrulama</title>
+<link rel="stylesheet" href="../../core/core.css">
+<link rel="stylesheet" href="../../core/track.css">
+<style>
+  :root { --app-accent: #4f46e5; --app-accent-soft: #e0e7ff; --app-accent-soft-dark: #1e1b4b; }
+  .sn { display: grid; grid-template-columns: 110px 1fr; gap: 6px 12px; font-size: 14px; }
+  .sn span { color: var(--text-3); }
+  .tk-find input { text-transform: uppercase; }
+</style>
+</head>
+<body>
+<header class="tk-bar"><div class="in" id="bar"></div></header>
+<main class="tk-wrap" id="root" style="max-width:640px"></main>
+<script src="../../core/core.js"></script>
+<script>
+(function () {
+  const { esc, $, icon, toast, badge, today } = NS;
+  const db = new NS.DB('egitim');
+  const S = () => db.settings({});
+  const norm = (x) => String(x || '').trim().toUpperCase().replace(/\s+/g, '');
+  $('#bar').innerHTML = `<div class="tk-mark">${icon('award')}</div><div class="grow"><b>${esc(S().bizName || 'Eğitim Merkezi')}</b><span>Sertifika doğrulama</span></div><button class="btn ghost icon" id="th" data-theme-ico aria-label="Tema">${icon(NS.getTheme() === 'dark' ? 'sun' : 'moon')}</button>`;
+  $('#th').onclick = NS.toggleTheme;
+  const form = (v) => `<div class="tk-find"><input class="input" id="k" placeholder="Doğrulama kodu" aria-label="Doğrulama kodu" value="${esc(v || '')}" autocomplete="off"><button class="btn primary lg" id="go">Doğrula</button></div>`;
+  function show(code) {
+    const k = norm(code);
+    if (!k) { const ex = !NS.pub && db.all('certs')[0]; $('#root').innerHTML = `<div class="tk-view"><div class="tk-intro"><h1>Sertifikayı doğrulayın</h1><p>Belgenin üzerindeki kodu yazın veya karekodu okutun. Bu sayfa belgenin kurum kayıtlarında olup olmadığını gösterir.</p></div>${form('')}${ex ? `<p class="small muted">Demo için <a href="#" id="hint">örnek kod kullanın</a>.</p>` : ''}</div>`; bind(); if ($('#hint')) $('#hint').onclick = (e) => { e.preventDefault(); show(ex.code); }; return; }
+    if (db.lookup({ kod: k }) === null) db.load();
+    const c = db.find('certs', (x) => norm(x.code) === k);
+    if (!c) { $('#root').innerHTML = `<div class="tk-view">${form(k)}<div class="card pad mt"><b>Kayıt bulunamadı.</b><div class="small muted mt">Kodu kontrol edin. Kuruma ${esc(S().bizPhone || '')} numarasından ulaşabilirsiniz.</div></div></div>`; return bind(); }
+    const bad = c.status === 'iptal'; const old = c.validUntil && c.validUntil < today();
+    $('#root').innerHTML = `<div class="tk-view">${form(k)}<section class="tk-panel mt"><h3>${icon(bad ? 'x' : 'check')} ${bad ? 'Bu belge iptal edilmiştir' : old ? 'Belgenin süresi dolmuştur' : 'Belge kurum kaydıyla eşleşti'}</h3><div class="b"><div class="sn"><span>Ad soyad</span><b>${esc(c.name)}</b><span>Eğitim</span><b>${esc(c.course)}</b><span>Süre</span><b>${esc(c.hours)} saat</b><span>Tarih</span><b>${NS.date(c.date)}</b><span>Belge no</span><b class="mono">${esc(c.no)}</b>${c.validUntil ? `<span>Geçerlilik</span><b>${NS.date(c.validUntil)}</b>` : ''}<span>Durum</span><span>${bad ? badge('İptal', 'err') : old ? badge('Süresi doldu', 'warn') : badge('Geçerli kayıt', 'ok')}</span></div><p class="small muted" style="margin:12px 0 0">Bu sonuç yalnız ${esc(S().bizName || 'kurumun')} kaydını gösterir. Belge kurumun kendi eğitim belgesidir; bakanlık, üniversite veya e-Devlet onayı anlamına gelmez.</p></div></section></div>`; bind();
+  }
+  function bind() { const go = () => { if (!norm($('#k').value)) return toast('Kodu yazın', 'err'); const u = new URL(location.href); u.searchParams.set('kod', norm($('#k').value)); history.replaceState(null, '', u); show($('#k').value); }; $('#go').onclick = go; $('#k').onkeydown = (e) => { if (e.key === 'Enter') go(); }; }
+  show(new URLSearchParams(location.search).get('kod') || '');
+})();
+</script>
+</body>
+</html>
