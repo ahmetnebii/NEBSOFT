@@ -78,6 +78,14 @@ window.CATALOG = {
       modules: ['Servis Kayıtları', 'Kanban Pano', 'Müşteriler', 'Parça Stoku', 'Teknisyenler', 'Durum Sorgulama', 'Raporlar'],
     },
     {
+      id: 'kurutemizleme', ready: true, extraDemos: [{ label: 'Müşteri takip sayfasını aç', url: 'apps/kurutemizleme/takip.html' }], cat: 'randevu', name: 'Kuru Temizleme & Halı Yıkama', tagline: 'Fiş, etiket, adresten alma ve "hazır" SMS\'i', icon: 'drop', accent: '#0284c7',
+      ornekFiyat: true, prices: [499, 899, 1690], sectors: ['Kuru temizleme', 'Halı yıkama', 'Çamaşırhane', 'Perde yıkama', 'Koltuk yıkama'], // fiyat ÖRNEK, kullanıcı onayı bekliyor
+      desc: 'Fiş, m² hesabı, parça etiketi, teslim alma durum kaydı, adresten alma ve dağıtım listesi, "hazır" SMS\'i, müşteri takip sayfası ve tahsilat.',
+      features: ['Halıda en ve boydan otomatik m² ve tutar', 'Parça etiketi, raf numarası ve teslimde parça sayımı', 'Teslim alırken leke ve hasar kaydı, fotoğraf, müşteri imzası', 'Adresten alma ve dağıtım listesi, şoför atama', 'Müşteri takip sayfası ve adresten alma talebi', 'Hazır SMS\'i (SMS sağlayıcısı bağlanınca gider, öncesinde TEST görünür)', 'Kapora, kalan tutar ve teslim alınmayan eşya listesi'],
+      modules: ['İş Panosu', 'Fişler', 'Teslim Takvimi', 'Dağıtım', 'Gelen Talepler', 'Müşteriler', 'Fiyat Listesi', 'Personel', 'SMS Bildirimleri'],
+      faq: [['Halı fiyatı nasıl hesaplanır?', 'En ve boyu yazarsınız, program m² ve tutarı fiyat listenizden hesaplar. Tutar sonradan değişirse kaydın geçmişine yazılır.'], ['SMS kendiliğinden gider mi?', 'Entegrasyonlar sayfasından SMS sağlayıcınızı bağladıktan sonra iş hazır olunca gider. Bağlı değilse kayıt TEST görünür, gönderilmiş sayılmaz.']],
+    },
+    {
       id: 'spor', ready: true, extraDemos: [{ label: 'Üye portalını aç', url: 'apps/spor/uye.html' }], cat: 'randevu', name: 'Spor Salonu', tagline: 'Üyelik, giriş kontrolü ve ders programı', icon: 'dumbbell', accent: '#16a34a',
       prices: [599, 1090, 1990], sectors: ['Fitness', 'Pilates stüdyosu', 'Yoga', 'Dövüş sporları', 'Yüzme havuzu'],
       desc: 'Üyelik paketleri, dondurma, taksitli ödeme, QR ile giriş kontrolü, grup dersleri ve rezervasyon, ölçüm takibi ve süresi biten üye uyarıları.',

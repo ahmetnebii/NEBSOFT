@@ -189,4 +189,7 @@ module.exports = {
       ['İzlenebilirlik', ['**İzlenebilirlik** sayfasını açın.', 'Lot numarasını arayın.', 'Gerekirse **Geri çağırma listesi** alın.']]],
     ipucu: 'Stok & Lot sayfasına açılış stoğunu girmeden üretim hareketleri doğru sonuç vermez.',
     sss: [['Kalite kontrol nerede?', '**Kalite Kontrol** sayfasında.'], ['Makine duruşu nasıl girilir?', '**Bakım & OEE** sayfasında **Arıza / duruş** ile.']] },
+  kurutemizleme: { kanca: 'Fişler defterde, parçalar rafta kayboluyor mu? Bu videoda ilk fişi açıp etiketini basıyor, işi teslime kadar götürüyoruz.',
+    gorevler: [['Fiş açma', ['Sol menüden **İş Panosu** sayfasını açın.', 'Yeni fiş düğmesiyle telefon, ad ve kalemleri girin.', 'Halıda en ve boyu yazın, tutar kendisi hesaplanır.']], ['Parça ve raf', ['Fişi açıp **Parça etiketi** düğmesiyle etiketleri yazdırın.', 'Raf alanına yerini yazın.', 'Teslimde parçaları tek tek işaretleyin.']], ['Fiyat ve ekip', ['**Fiyat Listesi** sayfasından ürün ve m² fiyatlarınızı girin.', '**Personel** sayfasından şoförü ekleyin.', 'Adresli işler **Dağıtım** sayfasında görünür.']]],
+    ipucu: 'SMS sağlayıcısı bağlı değilse hazır mesajı TEST görünür, müşteriye gitmez.', sss: [['Şoför nasıl eklenir?', '**Personel** sayfasında kişiyi ekleyip kurye işaretini açın.'], ['Fişler nerede?', 'Tüm kayıtlar **Fişler** sayfasındadır.']] },
 };

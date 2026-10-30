@@ -1,0 +1,64 @@
+{
+  "sablon": "kurutemizleme/fiyat-listesi",
+  "surum": 1,
+  "program": "kurutemizleme",
+  "tur": "urun",
+  "ad": "Kuru temizleme ürün listesi",
+  "aciklama": "Sık kullanılan ürün ve hizmet adları. Fiyatları siz girin.",
+  "kaynak": "sablon",
+  "hedef": "services",
+  "fiyatAlan": "price",
+  "varsayilan": {
+    "price": 0
+  },
+  "kayitlar": [
+    {
+      "anahtar": "gomlek",
+      "name": "Gömlek",
+      "cat": "Kuru temizleme",
+      "unit": "adet"
+    },
+    {
+      "anahtar": "takim",
+      "name": "Takım elbise",
+      "cat": "Kuru temizleme",
+      "unit": "takım"
+    },
+    {
+      "anahtar": "mont",
+      "name": "Mont",
+      "cat": "Kuru temizleme",
+      "unit": "adet"
+    },
+    {
+      "anahtar": "perde",
+      "name": "Perde",
+      "cat": "Ev tekstili",
+      "unit": "m²"
+    },
+    {
+      "anahtar": "yorgan",
+      "name": "Yorgan",
+      "cat": "Ev tekstili",
+      "unit": "adet"
+    },
+    {
+      "anahtar": "makine-hali",
+      "name": "Makine halısı",
+      "cat": "Halı",
+      "unit": "m²"
+    },
+    {
+      "anahtar": "yun-hali",
+      "name": "Yün halı",
+      "cat": "Halı",
+      "unit": "m²"
+    },
+    {
+      "anahtar": "el-dokuma",
+      "name": "El dokuma halı",
+      "cat": "Halı",
+      "unit": "m²"
+    }
+  ]
+}
