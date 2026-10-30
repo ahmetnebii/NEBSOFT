@@ -94,7 +94,7 @@ function sayfa(a, hepsi = []) {
 <link rel="canonical" href="${url}">
 <meta name="theme-color" content="#1d7bf5">
 <meta property="og:type" content="website"><meta property="og:locale" content="tr_TR"><meta property="og:site_name" content="${CFG.brand}">
-<meta property="og:title" content="${esc(a.baslik)}"><meta property="og:description" content="${esc(a.ozet)}"><meta property="og:url" content="${url}"><meta property="og:image" content="${D}/assets/og/og.png"><meta name="twitter:card" content="summary_large_image">
+<meta property="og:title" content="${esc(a.baslik)}"><meta property="og:description" content="${esc(a.ozet)}"><meta property="og:url" content="${url}"><meta property="og:image" content="${D}/assets/og/og.png"><meta name="twitter:card" content="summary_large_image"><meta name="twitter:title" content="${esc(a.baslik)}"><meta name="twitter:description" content="${esc(a.ozet)}"><meta name="twitter:image" content="${D}/assets/og/og.png">
 <link rel="icon" href="/assets/icons/icon-32.png" sizes="32x32" type="image/png"><link rel="icon" href="/assets/favicon.svg" type="image/svg+xml"><link rel="apple-touch-icon" href="/assets/icons/apple-touch-icon.png">
 <link rel="stylesheet" href="/site/assets/site.css"><link rel="stylesheet" href="/site/assets/araclar.css">
 <style>:root{--c:${a.renk || '#1d7bf5'}}</style>
@@ -156,7 +156,7 @@ function dizin(hepsi) {
 <title>${esc(title)}</title>
 <meta name="description" content="${esc(desc)}">
 <link rel="canonical" href="${url}">
-<meta property="og:type" content="website"><meta property="og:locale" content="tr_TR"><meta property="og:site_name" content="${CFG.brand}"><meta property="og:title" content="${esc(title)}"><meta property="og:description" content="${esc(desc)}"><meta property="og:url" content="${url}"><meta property="og:image" content="${D}/assets/og/og.png"><meta name="twitter:card" content="summary_large_image">
+<meta property="og:type" content="website"><meta property="og:locale" content="tr_TR"><meta property="og:site_name" content="${CFG.brand}"><meta property="og:title" content="${esc(title)}"><meta property="og:description" content="${esc(desc)}"><meta property="og:url" content="${url}"><meta property="og:image" content="${D}/assets/og/og.png"><meta name="twitter:card" content="summary_large_image"><meta name="twitter:title" content="${esc(title)}"><meta name="twitter:description" content="${esc(desc)}"><meta name="twitter:image" content="${D}/assets/og/og.png">
 <link rel="icon" href="/assets/icons/icon-32.png" sizes="32x32" type="image/png"><link rel="icon" href="/assets/favicon.svg" type="image/svg+xml"><link rel="apple-touch-icon" href="/assets/icons/apple-touch-icon.png">
 <link rel="stylesheet" href="/site/assets/site.css"><link rel="stylesheet" href="/site/assets/araclar.css">
 <style>:root{--c:#1d7bf5}</style>
