@@ -80,7 +80,7 @@ Satıcı tanıtımlarıdır; iddialar bağımsız doğrulanmadı.
 `node apps/kuyumcu/hesap.test.js` (19 başlık): ayar → milyem → has, 10 gr 22 ayar + 100 ₺/gr = 37.640 ₺ (4.000 ₺ kur), milyem işçilik, taş, tam TL yuvarlama ve kalem toplamı, sikke makası, hurda kesintisi, kur durumu, servis ayrıştırma, TCMB, kâr, kimlik toplamı, has pozisyonu. `node server/test/kuyumcu-kural.test.js`: vitrin beyaz listesi.
 
 ## 6. Kalite kapısı
-Satış, iptal, alış, cari, sipariş, kasa, toptancı, kur ve tezgâhtar onayları tarayıcıda; konsol hatası yok. 375 px'te 10 ekranda yatay taşma yok, vitrin ekranı görüldü. Boş veri ve kur yok durumu denendi. Koyu tema: yalnızca vitrin (kendi koyu tasarımı) ve renk değişkeni kullanımı; panel koyu temada ayrıca gezilmedi. Kâğıda baskı, gerçek SMS ve bulut vitrin (`/t/...`) denenmedi.
+Satış, iptal, alış, cari, sipariş, kasa, toptancı, kur ve tezgâhtar onayları tarayıcıda; konsol hatası yok. 375 px'te 10 ekranda yatay taşma yok, vitrin ekranı görüldü. Boş veri ve kur yok durumu denendi. Koyu tema: panelde Kasa ekranı ve vitrin görüldü; diğer ekranlar aynı renk değişkenlerini kullanır, tek tek gezilmedi. Kâğıda baskı, gerçek SMS ve bulut vitrin (`/t/...`) denenmedi.
 
 ## 7. Yapılmadı
 e-Fatura kesimi, kategori/şube, fotoğraflı katalog, garanti sertifikası, `NS.labels` etiket tasarımcısı (etiket basımı eski yazdırma ile), gümüş ve döviz alım satımı.
