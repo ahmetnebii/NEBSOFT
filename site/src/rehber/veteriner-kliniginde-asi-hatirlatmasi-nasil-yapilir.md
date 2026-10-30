@@ -69,7 +69,7 @@ Mesajda korkutucu ifadeler kullanmayın. "Aşı yapılmazsa şu olur" gibi tıbb
 
 Hatırlatma, randevu ile biterse değer kazanır. Mesajın ardından gelen dönüşleri hızlı karşılayın. Mümkünse tek bir kişi takip etsin. Randevu verilmiş hayvanı listeden çıkarın. Aynı sahibin birden çok hayvanı varsa aşıları aynı güne toplamayı hekimin uygun görmesi halinde önerin. Sahip için tek ziyaret çok daha kolaydır.
 
-Dijital aşı karnesi de bu zincirin parçası olabilir. Sahibin karneyi telefonundan görebilmesi, "evde bulamadım" sorununu azaltır. Karne kodu hayvan kartından WhatsApp ile gönderilebilir. Yalnız bulut modunda kod denetiminin sunucu tarafı henüz tamamlanmadığı için bu özelliği açmadan önce bizimle görüşün.
+Dijital aşı karnesi de bu zincirin parçası olabilir. Sahibin karneyi telefonundan görebilmesi, "evde bulamadım" sorununu azaltır. Karne kodu hayvan kartından WhatsApp ile gönderilebilir. Kodu yalnızca karnenin sahibine verin, çünkü karne telefon ve kodla açılır.
 
 ## Geciken hastalar
 

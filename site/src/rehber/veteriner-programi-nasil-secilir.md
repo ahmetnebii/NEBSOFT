@@ -8,7 +8,7 @@ faq:
 S: VETBİS ve PETVET bağlantısı var mı?
 C: NEBSOFT Veteriner'de bu bağlantılar yoktur, çünkü Bakanlık yetkisi ve resmî doküman gerekiyor. Düğmeler TEST sonucu gösterir ve kayda referans yazmaz. Resmî bildirimlerinizi yetkili sistemlerden yapmalısınız.
 S: Hayvan sahibi aşı karnesini görebilir mi?
-C: Dijital karne, klinikten verilen telefon ve kod ile açılır. Bulut kullanımında bu kod denetiminin sunucu tarafı henüz tamamlanmadı, bu nedenle karne yayına almadan önce durumu bizimle netleştirin.
+C: Evet. Dijital karne, klinikten verilen telefon ve kod ile açılır. Kod sunucuda da denetlenir, yalnızca telefon numarası yetmez.
 S: Ölen hayvana aşı hatırlatması gitmesini nasıl önlerim?
 C: Hasta kartında durumu Vefat etti olarak işaretleyin. Hayvan aşı listesinden düşer, kartı ve geçmişi korunur. Bu kayıt sahibine gönderilecek üzücü mesajları önler.
 S: Pet otel ücreti nasıl takip edilir?
@@ -61,7 +61,7 @@ Erken çıkışta önerilen tutar planlanan bitişe göre gelebilir. Ekip bunu b
 
 ## Sahip portalı ve gizlilik
 
-Dijital karne sahipleri için çekici bir hizmettir, ama güvenlik sorusu sormalısınız. Yalnızca telefon numarasıyla açılan bir sayfa, numarayı bilen birinin sahibin adını, hayvanların tanı ve tedavisini görmesine yol açar. Telefon ile birlikte klinikten verilen kod istenmelidir. NEBSOFT'ta program tarafında kod eklendi. Ancak bulut modunda sunucu kuralının da bu kodu zorunlu tutması gerekiyor ve bu iş henüz tamamlanmadı. Bu nedenle bulutta karne erişimini açmadan önce bizimle netleştirin. Sınırı açıkça yazıyoruz, çünkü kişisel verilerin korunması sizin de sorumluluğunuzdur.
+Dijital karne sahipleri için çekici bir hizmettir, ama güvenlik sorusu sormalısınız. Yalnızca telefon numarasıyla açılan bir sayfa, numarayı bilen birinin sahibin adını, hayvanların tanı ve tedavisini görmesine yol açar. Telefon ile birlikte klinikten verilen kod istenmelidir. NEBSOFT'ta bu kod hem programda hem bulut sunucusunda zorunludur. Kodu yalnızca hayvan sahibine verin, çünkü kişisel verilerin korunması sizin de sorumluluğunuzdur.
 
 ## Resmî sistemler
 

@@ -14,7 +14,7 @@ C: Ekspertiz 13 parça üzerinden girilir. Yeni araçta bilgi girilmemişse vitr
 S: Program kârı KDV dahil hesaplar mı?
 C: Şu an kâr KDV'siz gösterilir. İkinci el araç KDV'si için özel matrah uygulaması ve kâr hesabı konusunda mali müşavirinizin görüşünü alın.
 S: Araç fotoğraflarını yükleyebilir miyim?
-C: Fotoğraf yükleme sonraki aşamadadır, bugün panel ve vitrinde bulunmuyor. Bu sizin için kritikse kararınızı buna göre verin veya ilan portalınızdaki görselleri kullanın.
+C: Evet. Her araca en fazla 6 fotoğraf ekleyebilirsiniz. Fotoğraflar tarayıcıda küçültülür, bu yüzden yüklemeden önce özgün dosyaları saklayın.
 ---
 
 İkinci el araç işinde galerici için en tehlikeli sayı, satış fiyatı ile alış fiyatı arasındaki farktır. Çünkü kimse aracı alıp hiç masraf yapmadan satmaz. Ekspertiz, boya, bakım, lastik, noter, komisyon, ilan ve sermayenin rafta bekleme maliyeti eklenir. Bazı araçlardan "kâr ettik" denir, ama masraflar defterde dağınık olduğundan gerçek kâr ortaya çıkmaz. Oto galeri programı aramanızın ana sebebi vitrin değil, araç başına doğru para olmalıdır. Seçimi bu eksende yapalım.
@@ -68,7 +68,7 @@ Galeriye telefon eden müşteri o an aradığı aracı bulamazsa kaybolur. Marka
 
 İlan portalı bağlantısı en çok abartılan başlıktır. Portallar kurumsal entegrasyon sunuyor olabilir, ama doküman ve hesap gerekir. Satıcıya sorun: Hangi portal, hangi anlaşma, yayın kontrolü nasıl yapılır? Sahte ilan numarası veya uydurma görüntülenme sayıları gösteren bir program, sizi yanlış yönlendirir. NEBSOFT'ta ilan metni hazırlanır, kopyalanır, ilan numarası yalnız kullanıcı girerse yazılır. Basit ama gerçek.
 
-Galeri vitrini kendi web bağlantınız olarak paylaşılabilir. Fotoğraf yükleme henüz olmadığı için vitrin bugün sınırlı kalabilir. Bu önemli bir eksiktir, karar sürecinize dahil edin.
+Galeri vitrini kendi web bağlantınız olarak paylaşılabilir. Araç başına en fazla 6 fotoğraf eklenebildiği için en bilgilendirici açıları seçin. Bu önemli bir eksiktir, karar sürecinize dahil edin.
 
 ## Rapor
 
