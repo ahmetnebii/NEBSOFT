@@ -25,7 +25,8 @@
       $('#sv', el).onclick = () => { const box = $('#rf', el); if (!NS.validate(box)) return; const v = NS.readForm(box); if (Number(v.hasSell) < Number(v.hasBuy)) return toast('Satış kuru alıştan düşük olamaz', 'err'); db.saveSettings({ ...S(), ...v, rateAt: new Date().toISOString() }); db.insert('rateLog', { at: new Date().toISOString(), buy: Number(v.hasBuy), sell: Number(v.hasSell) }); toast('Kur güncellendi — tüm fiyatlar ve vitrin ekranı yenilendi', 'ok'); draw(); };
       $('#fetch', el).onclick = async () => {
         const url = S().rateUrl; if (!url) return toast('Ayarlar > Kur servisi adresi tanımlı değil (ör. bağlı olduğunuz toptancının JSON kur servisi)', 'err');
-        try { const j = await (await fetch(url)).json(); const hb = Number(j.hasBuy || j.alis || (j.HAS && j.HAS.alis)); const hs = Number(j.hasSell || j.satis || (j.HAS && j.HAS.satis)); if (!(hb > 0 && hs > 0)) throw new Error('Kur alanları bulunamadı'); db.saveSettings({ ...S(), hasBuy: hb, hasSell: hs, rateAt: new Date().toISOString() }); toast('Kur servisten alındı', 'ok'); draw(); } catch (e) { toast('Kur alınamadı: ' + e.message, 'err'); }
+        try { // Dış istek /api/istek köprüsünden (CLAUDE.md §4); köprü yoksa çekirdek doğrudan dener
+          const res = NS.integ && NS.integ.http ? await NS.integ.http({ url, method: 'GET', headers: { Accept: 'application/json' } }) : null; if (!res || !res.ok) throw new Error(res ? `HTTP ${res.status || ''}` : 'bağlantı yok'); const j = JSON.parse(res.body); const hb = Number(j.hasBuy || j.alis || (j.HAS && j.HAS.alis)); const hs = Number(j.hasSell || j.satis || (j.HAS && j.HAS.satis)); if (!(hb > 0 && hs > 0)) throw new Error('Kur alanları bulunamadı'); db.saveSettings({ ...S(), hasBuy: hb, hasSell: hs, rateAt: new Date().toISOString() }); toast('Kur servisten alındı', 'ok'); draw(); } catch (e) { toast('Kur alınamadı: ' + e.message, 'err'); }
       };
     };
     draw();
