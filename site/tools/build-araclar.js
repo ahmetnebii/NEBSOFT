@@ -22,7 +22,7 @@ const I = {
 // Ana siteyle aynı üst menü ve alt bilgi
 const USTBAR = () => `<header class="hd mk"><div class="w">
   <a class="logo" href="/" aria-label="${CFG.brand} ana sayfa"><img src="/assets/icons/icon-64.png" alt="" width="36" height="36"><span class="wm"><b>NEB</b><i>SOFT</i></span><span class="sub">Ücretsiz Araçlar</span></a>
-  <nav class="nav" aria-label="Ana menü"><a href="/#/urunler">Programlar</a><a href="/araclar">Araçlar</a><a href="/#/fiyatlar">Fiyatlar</a><a href="/#/sektorler">Sektörler</a><a href="/#/iletisim">İletişim</a></nav>
+  <nav class="nav" aria-label="Ana menü"><a href="/programlar">Programlar</a><a href="/araclar">Araçlar</a><a href="/fiyatlar/">Fiyatlar</a><a href="/#/sektorler">Sektörler</a><a href="/#/iletisim">İletişim</a></nav>
   <a class="btn g" href="/#/giris">Giriş yap</a><a class="btn p" href="/#/kayit">Ücretsiz başla ${I.arrow}</a>
 </div></header>`;
 const ALTBAR = () => `<footer class="ft"><div class="w">
@@ -30,7 +30,7 @@ const ALTBAR = () => `<footer class="ft"><div class="w">
     <div><a class="logo" href="/"><img src="/assets/icons/icon-64.png" alt="" width="34" height="34"><span class="wm"><b>NEB</b><i>SOFT</i></span></a><p>Türkiye'deki işletmeler için bulut tabanlı yazılımlar ve ücretsiz iş araçları.</p><p><a href="tel:+90${tel.replace(/^0/, '')}">${esc(CFG.phone)}</a><a href="mailto:${CFG.email}">${esc(CFG.email)}</a></p></div>
     ${[0, 1, 2].map((k) => `<div><h4>${['<a href="/programlar" style="color:inherit">Programlar</a>', '&nbsp;', '&nbsp;'][k]}</h4>${PRODUCTS.filter((_, i) => i % 9 === k).map((x) => `<a href="/${x.slug}">${esc(x.kw[0].toLocaleUpperCase('tr') + x.kw.slice(1))}</a>`).join('')}</div>`).join('')}
   </div>
-  <div class="copy">© ${new Date().getFullYear()} ${CFG.brand}. Tüm hakları saklıdır. · <a href="/araclar" style="display:inline">Ücretsiz araçlar</a> · <a href="/#/yasal/kvkk" style="display:inline">KVKK ve yasal metinler</a></div>
+  <div class="copy">© ${new Date().getFullYear()} ${CFG.brand}. Tüm hakları saklıdır. · <a href="/araclar" style="display:inline">Ücretsiz araçlar</a> · <a href="/kvkk/" style="display:inline">KVKK ve yasal metinler</a></div>
 </div></footer>`;
 
 // ---------- Özgün metin ölçümü ----------
