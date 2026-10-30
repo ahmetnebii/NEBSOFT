@@ -375,6 +375,8 @@
     // Kimlik gerektirmeyen ek sorgu (ör. indirim kodu); sonraki tüm yüklemelerde de gönderilir
     pubQuery(x) { if (!this.pub) return; this._pubX = x; this._pubLoad(); }
     pubLogout() { if (!this.pub) return; pubToken(null); this._pubLoad(); }
+    // Program özel müşteri ucu (ör. ödeme başlatma): oturum belirteci sunucuda doğrulanır
+    pubCall(yol, govde) { if (!this.pub) return null; const r = syncJ('POST', `${PUB.api}/${yol}`, { ...(govde || {}), token: pubToken() }); return { status: r.status, ...r.j }; }
     // Değişiklikleri kayıt düzeyinde işlemlere çevir: ekle / alan güncelle / sil
     _pubDiff() {
       const base = JSON.parse(this._base || '{}'); const cur = this.data; const ops = [];

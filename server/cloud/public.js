@@ -96,6 +96,7 @@ route('POST', '/api/public/:slug/:app/view', { auth: 'none', limit: ['pubv', 240
     ident = { t: t.id, a: app, k: id.k || 'id', i: String(id.i) }; token = signToken(ident);
   }
   const view = buildView(rule, doc, helpers(doc, ident, q));
+  if (rule.gorunumEki) Object.assign(view._settings, await rule.gorunumEki(t));
   // Ek sorgu (ör. indirim kodu): kimlik değiştirmez, her yüklemede istemci tekrar gönderir
   if (c.body.x && typeof c.body.x === 'object' && rule.query) { const ex = rule.query(helpers(doc, ident, c.body.x), c.body.x); if (ex) Object.assign(view, ex); }
   return { ok: true, version, data: view, token, ident: ident ? { k: ident.k, i: ident.i } : null, tenant: { name: t.name, slug: t.slug, phone: t.phone, ref: t.ref_code } };
@@ -112,6 +113,7 @@ route('POST', '/api/public/:slug/:app/ops', { auth: 'none', limit: ['pubo', 40, 
   let kota = true; for (let i = 0; i < ops.length; i++) kota = sec.limit(`pubkota:${t.id}:${app}`, SAATLIK_ISLEM, 3600e3) && kota;
   if (!kota) throw err(429, 'Bu sayfaya çok fazla işlem geldi. Lütfen biraz sonra tekrar deneyin.');
   const ident = readToken(c.body.token, t.id, app);
+  if (rule.islemOncesi) await rule.islemOncesi(t, ops);
   const res = await db.tx(async (tx) => {
     const row = (await tx.q('SELECT data, version FROM app_data WHERE tenant_id=? AND app=? FOR UPDATE', [t.id, app]))[0];
     const doc = await belge.oku(t.id, app, row); if (!doc) throw err(404, 'İşletme bu hizmeti henüz yayına almadı');
@@ -154,10 +156,12 @@ route('POST', '/api/public/:slug/:app/ops', { auth: 'none', limit: ['pubo', 40, 
     // İşletmenin işlem kaydına not düş
     if (Array.isArray(doc._log) && after.length) { doc._log.unshift({ id: 'p' + Date.now().toString(36), at: new Date().toISOString(), action: 'Müşteri sayfası', detail: after.map(([n]) => n).filter((v, i, a) => a.indexOf(v) === i).join(', '), user: 'Online' }); if (doc._log.length > 300) doc._log.length = 300; }
     await tx.q('UPDATE app_data SET data=?, version=version+1, updated=? WHERE tenant_id=? AND app=?', [await belge.kapat(t.id, app, JSON.stringify(doc)), new Date(), t.id, app]);
-    return { doc, version: row.version + 1, ident: x.ident };
+    return { doc, version: row.version + 1, ident: x.ident, after };
   });
+  if (rule.islemSonrasi) await rule.islemSonrasi(t, res.after);
   const fresh = res.ident && res.ident !== ident ? res.ident : null;
   const view = buildView(rule, res.doc, helpers(res.doc, res.ident, null));
+  if (rule.gorunumEki) Object.assign(view._settings, await rule.gorunumEki(t));
   if (c.body.x && typeof c.body.x === 'object' && rule.query) { const ex = rule.query(helpers(res.doc, res.ident, c.body.x), c.body.x); if (ex) Object.assign(view, ex); }
   return { ok: true, version: res.version, data: view, token: fresh ? signToken(fresh) : undefined, ident: res.ident ? { k: res.ident.k, i: res.ident.i } : null };
 });
