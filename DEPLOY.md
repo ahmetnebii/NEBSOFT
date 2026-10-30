@@ -212,7 +212,7 @@ Sistemde yerleşik olan korumalar:
 - **Kartla ödeme yoktur.** Satış havale/EFT ile yapılır. İşletmelerin müşteri sayfalarında kart formları bulutta kapalıdır. Ödeme işletmeye elden, kapıda veya havale ile yapılır; online bilet satışları **"ödeme bekliyor"** rezervasyonu olarak oluşur.
 - **SMS / e-posta gönderimi**, uygulamalarda Entegrasyon Merkezi'nden bir SMS sağlayıcısı (Netgsm, İleti Merkezi vb.) bağlanana kadar yalnızca kayda geçer, gerçekten gönderilmez.
 - e-Fatura/e-Arşiv, MEDULA/İTS, KBS ve pazaryeri entegrasyonları için ilgili entegratör sözleşmesi ve API bilgileri gerekir.
-- Yerel donanım (fiş yazıcısı, POS cihazı, terazi) bulut sunucusundan değil, işletmedeki bilgisayarda çalışan yerel köprüden (`node server.js`, veritabanısız mod) kullanılır.
+- Yerel donanım (fiş yazıcısı, POS cihazı, terazi) bulut sunucusundan değil, işletmedeki bilgisayarda çalışan yerel köprüden (`node server.js`, veritabanısız mod) kullanılır. Veritabanı yapılandırılmış sunucuda ve `TRUST_PROXY=1` iken köprü uçları kapalıdır (403); yerel köprü de yalnızca aynı bilgisayardan ve aynı kaynaktan gelen isteği kabul eder.
 
 ## 13. Testler
 

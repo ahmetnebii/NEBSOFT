@@ -63,6 +63,7 @@
   const S = () => db.settings({ patientPct: 20, retiredPct: 10, rxFee: 5, sktWarnDays: 90 });
   const drug = (id) => db.get('drugs', id) || { name: '-', price: 0 };
   const pat = (id) => db.get('patients', id) || { name: '-' };
+  const KV = { col: 'patients', link: 'patient' };
   const lotsOf = (id) => db.all('lots', (l) => l.drug === id && l.qty > 0).sort((a, b) => a.skt.localeCompare(b.skt));
   const stock = (id) => sum(db.all('lots', (l) => l.drug === id && l.skt >= today()), (l) => l.qty);
   const nearSkt = (id) => { const l = lotsOf(id).filter((x) => x.skt >= today())[0]; return l ? l.skt : null; };
@@ -179,13 +180,15 @@
   function patientsPage(el, p, app) {
     const due = (pt) => (pt.chronic || []).length && pt.lastBuy && daysBetween(pt.lastBuy, new Date()) >= 25;
     NS.crud(el, app, {
+      // Hasta verisi: toplu dışa aktarma ve silme eczacıda; satışı olan hasta silinmez (kayıt sahipsiz kalmasın), anonimleştirilir
+      exportRoles: ['admin'], canDelete: (x) => (!app.can('admin') ? 'Hasta kaydını yalnızca eczacı silebilir' : db.find('sales', (s) => s.patient === x.id) ? 'Satış kaydı olan hasta silinemez; gerekirse anonimleştirin' : true),
       col: 'patients', title: 'Hastalar', sub: 'Kronik ilaç kullananlara bitiş hatırlatması', single: 'Hasta', addLabel: 'Yeni hasta', emptyIcon: 'users', fields: () => [...PF, { type: 'section', label: 'Kronik ilaçlar' }, ...db.all('drugs', (d) => d.rx === 'normal').map((d) => ({ name: 'ch_' + d.id, label: d.name, type: 'checkbox' }))],
       toForm: (r) => ({ ...r, ...Object.fromEntries((r.chronic || []).map((id) => ['ch_' + id, true])) }), beforeSave: (v) => { v.chronic = Object.keys(v).filter((k) => k.startsWith('ch_') && v[k]).map((k) => k.slice(3)); Object.keys(v).filter((k) => k.startsWith('ch_')).forEach((k) => delete v[k]); },
       sort: (a, b) => a.name.localeCompare(b.name, 'tr'), searchFields: (x) => [x.name, x.tc, x.phone],
       filters: [{ value: 'all', label: 'Tümü' }, { value: 'due', label: 'İlacı bitmek üzere', test: due }],
       columns: [{ key: 'name', label: 'Hasta', render: (x) => `<b>${esc(x.name)}</b> ${x.retired ? badge('Emekli', 'info') : ''} ${x.allergy ? badge(x.allergy, 'err') : ''}<div class="small faint">${esc(x.phone || '')}</div>` }, { label: 'Kronik ilaç', render: (x) => (x.chronic || []).map((id) => esc(drug(id).name.split(' ')[0])).join(', ') || '-' }, { label: 'Son alım', render: (x) => (x.lastBuy ? `${NS.date(x.lastBuy)}${due(x) ? ' ' + badge('Hatırlat', 'warn') : ''}` : '-') }],
-      extraActions: [{ icon: 'message', act: 'wa', title: 'WhatsApp hatırlatma', show: due }],
-      onAction: (a, x) => window.open(`https://wa.me/90${String(x.phone).replace(/\D/g, '').replace(/^0/, '')}?text=${encodeURIComponent(`Merhaba ${x.name}, ${(x.chronic || []).map((id) => drug(id).name).join(', ')} ilacınızın bitmek üzere olduğunu hatırlatırız. Reçetenizi bekliyoruz. ${S().bizName}`)}`, '_blank', 'noopener'),
+      extraActions: [{ icon: 'message', act: 'wa', title: 'WhatsApp hatırlatma', show: due }, ...(NS.kvkk && app.can('admin') ? [{ icon: 'download', act: 'kvexp', title: 'Verisini dışa aktar' }, { icon: 'shield', act: 'kvanon', title: 'Anonimleştir' }] : [])],
+      onAction: async (a, x, redraw) => a === 'kvexp' ? NS.kvkk.exportPerson(app, KV, x) : a === 'kvanon' ? (await NS.kvkk.anonymize(app, KV, x)) && redraw() : window.open(`https://wa.me/90${String(x.phone).replace(/\D/g, '').replace(/^0/, '')}?text=${encodeURIComponent(`Merhaba ${x.name}, ${(x.chronic || []).map((id) => drug(id).name).join(', ')} ilacınızın bitmek üzere olduğunu hatırlatırız. Reçetenizi bekliyoruz. ${S().bizName}`)}`, '_blank', 'noopener'),
     });
   }
   // Hastanın recete.html'den gönderdiği e-reçeteler

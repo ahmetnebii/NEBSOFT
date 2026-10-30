@@ -484,10 +484,12 @@ route('GET', '/api/referral', { auth: 'user' }, async (c) => {
 });
 
 // Uygulama verisi (işletme bazlı; lisans kontrollü; iyimser sürüm kontrolüyle çakışma önleme)
+const HEALTH = ['klinik', 'eczane', 'veteriner']; const readLog = new Map();
 route('GET', '/api/data/:app', { auth: 'user' }, async (c) => {
   const app = c.params.app; if (!sec.V.app(app)) throw err(400, 'Geçersiz uygulama');
   if (!(await canUseApp(c.user, app))) throw err(402, 'Bu uygulama için geçerli lisans veya deneme yok', { code: 'license', app });
   const r = await db.one('SELECT data, version FROM app_data WHERE tenant_id=? AND app=?', [c.user.tenant_id, app]);
+  if (HEALTH.includes(app)) { const k = `${c.user.id}:${app}`; if (Date.now() - (readLog.get(k) || 0) > 3600e3) { if (readLog.size > 50000) readLog.clear(); readLog.set(k, Date.now()); await audit(c, 'Sağlık verisi okundu', app); } }
   const t = await tenantOf(c.user);
   return { ok: true, data: r ? secrets.mask(app, J(r.data, null)) : null, version: r ? r.version : 0, tenant: { name: t.name, phone: t.phone, address: t.address, slug: t.slug }, owner: { name: c.user.name } };
 });

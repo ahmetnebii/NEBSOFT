@@ -88,7 +88,21 @@ function program(id, cat) {
   // Formun sanal alanları: kayıtta başka biçimde tutulur (anaokulu p1n/p1p → parents[0]; site opts → options)
   const VIRTUAL = ['students.p1n', 'students.p1p', 'polls.opts'];
   Object.entries(miss).filter(([k]) => !VIRTUAL.includes(k)).forEach(([k, n]) => bad(`${id}.${k}: zorunlu alan ${n} tohum kaydında boş`));
+  if (KV[id]) kvkk(id, ctx, data);
   return { id, routes: Object.keys(R).length, cols: cols.length, rows, cruds: cap.cruds.length, req, shellErr: cap.shellErr };
+}
+
+// ---------- Kişisel veri araçları (sağlık programları) ----------
+const KV = { klinik: { col: 'patients', link: 'patient' }, eczane: { col: 'patients', link: 'patient' }, veteriner: { col: 'owners', link: 'owner', sub: [{ col: 'pets', link: 'owner', as: 'pet' }] } };
+function kvkk(id, ctx, data) {
+  const K = ctx.NS.kvkk; if (!K) return bad(`${id}: core/kvkk.js yüklenmedi`);
+  const plan = KV[id]; const p = data[plan.col].find((r) => data.visits ? data.visits.some((v) => v[plan.link] === r.id) || (plan.sub && data.pets.some((x) => x.owner === r.id)) : true) || data[plan.col][0];
+  p.note = 'ozel-not-duman'; if (data._log) data._log.unshift({ id: 'l', action: 'x', detail: p.name });
+  const c = JSON.parse(JSON.stringify(K.collect(data, plan, p.id))); assert.strictEqual(c.kisi.id, p.id); if (id === 'klinik') assert.ok(Object.keys(c).length > 1, 'bağlı kayıtlar dışa aktarılmalı');
+  const r = K.anonymizeData(data, plan, p.id); const s = JSON.stringify(r.data); const before = JSON.stringify(data);
+  for (const v of [p.name, p.phone, p.tc, 'ozel-not-duman']) if (v && String(v).length >= 5) { assert.ok(before.includes(JSON.stringify(String(v)).slice(1, -1))); if (s.includes(JSON.stringify(String(v)).slice(1, -1))) bad(`${id}: anonimleştirme sonrası veri kaldı: ${v}`); }
+  const a = r.data[plan.col].find((x) => x.id === p.id); assert.ok(a.anonAt && a.passive && /^Anonim-/.test(a.name));
+  assert.strictEqual(r.data[plan.col].length, data[plan.col].length, 'kayıt sayısı değişmemeli'); ['payments', 'sales'].forEach((col) => { if (data[col]) assert.strictEqual(JSON.stringify(r.data[col].map((x) => x.total ?? x.amount)), JSON.stringify(data[col].map((x) => x.total ?? x.amount)), 'tutarlar değişmemeli'); });
 }
 
 // ---------- 5. Canlı metin denetimi ----------
