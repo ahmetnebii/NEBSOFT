@@ -254,6 +254,14 @@ window.CATALOG = {
       faq: [['Bu program resmî defter yerine geçer mi?', 'Hayır. Dernekler Yönetmeliği’ne göre elektronik defter ve alındı belgesi Bakanlıkça oluşturulan veya izin verilen yazılımla tutulur. Bu program yardımcı kayıttır; tasdikli defterlerinizi ve basılı alındı belgelerinizi kullanmaya devam edersiniz.'], ['DERBİS’e bildirim yapar mı?', 'Hayır. Beyanname ve bildirimleri siz yaparsınız, program yalnız tarihi hatırlatır.']],
     },
     {
+      id: 'egitim', ready: true, extraDemos: [{ label: 'Sertifika doğrulama sayfasını aç', url: 'apps/egitim/dogrula.html' }], cat: 'egitim', name: 'Eğitim & Sertifika Merkezi', tagline: 'Grup, yoklama, ödeme ve sertifika takibi', icon: 'award', accent: '#4f46e5',
+      prices: [549, 990, 1890], sectors: ['Mesleki eğitim merkezi', 'Sertifika programı', 'Kurumsal eğitim', 'Atölye', 'Bilişim kursu'],
+      desc: 'Eğitim kataloğu, tarihli gruplar, oturum yoklaması, not girişi, taksit ve sertifika. Şartları sağlayan kursiyere toplu belge üretin, karekodla doğrulansın. Belge kurumun kendi belgesidir, resmî geçerlilik sağlamaz.',
+      features: ['Eğitim kataloğu: saat, ücret, belge geçerlilik süresi', 'Tarihli grup ve otomatik oturum takvimi', 'Oturum yoklaması ve saat bazlı devam oranı', 'Devam, not ve ödeme şartına göre sertifika hazırlık listesi', 'Toplu sertifika üretimi, teslim takibi ve hazır bildirimi', 'Karekod ve kodla doğrulama sayfası, iptal edilen belge iptal görünür', 'Taksit, tahsilat ve geciken ödeme hatırlatması', 'Eğitmen saat hakedişi', 'Ön kayıt ve aday takibi', 'Eğitmen yalnız kendi grubunu görür'],
+      modules: ['Gruplar', 'Kursiyerler', 'Sertifikalar', 'Taksit & Tahsilat', 'Eğitim Kataloğu', 'Eğitmenler', 'Ön Kayıt'],
+      faq: [['Sertifika e-Devlet’te görünür mü?', 'Hayır. Program e-Devlet veya MEB sistemine bağlı değildir. Belge kurumun kendi belgesidir, resmî geçerlilik sağlamaz. Doğrulama sayfası yalnız kurum kaydını gösterir.'], ['Dershane veya etüt için uygun mu?', 'Sınıf ve deneme sınavı odaklı kurumlar için Kurs & Etüt programı daha uygundur. Bu program kısa dönemli, sertifikalı eğitimler içindir.']],
+    },
+    {
       id: 'eczane', ready: false, extraDemos: [{ label: 'Reçetemi hazırla sayfasını aç', url: 'apps/eczane/recete.html' }], cat: 'saglik', name: 'Eczane', tagline: 'Reçeteli satış, SKT takibi ve muadil ilaç', icon: 'pill', accent: '#0d9488',
       prices: [1090, 1890, 3290], sectors: ['Eczane', 'Hastane eczanesi', 'Dermokozmetik mağazası'],
       desc: 'Karekodlu hızlı satış, reçete türüne göre hasta katkı payı, SKT (son kullanma tarihi) ve parti bazlı stok, etken maddeye göre muadil arama ve depo sipariş listesi.',

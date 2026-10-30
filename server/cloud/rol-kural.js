@@ -232,6 +232,12 @@ const RULES = {
   oto: { yikama: { ad: 'Yıkamacı', kapat: ['subPays'], ekle: ['sms'], gizle: { subs: ['name', 'phone', 'price'] }, saltOkunur: ['subs', 'packages', 'workers'], izinli: { subs: ['washesLeft'] } } },
   // apps/dernek: fin() sekreterde kapalı: aidat, tahsilat, gelir-gider görünmez. Sayman toplantı ve evrakı okur. Üye kaydı silinmez (üye kayıt defterinde çıkış tarihi tutulur).
   dernek: { sayman: { ad: 'Sayman', saltOkunur: ['meetings', 'letters', 'posts'], silemez: ['members'] }, sekreter: { ad: 'Sekreter', kapat: ['dues', 'receipts', 'entries'], silemez: ['members'] } },
+  // apps/egitim: fin() eğitmende kapalı: ücret, taksit, ön kayıt görünmez. Eğitmen yalnız kendi grubunu görür, yoklama ve not yazar. Sertifika üretimi ve iptali yöneticide/kayıtta.
+  egitim: {
+    egitmen: { ad: 'Eğitmen', kisi: { kol: 'teachers', alan: 'teacher', baslik: 'Eğitmen', yok: 'Eğitmen seçin (seçilmezse grup görünmez)' }, kapat: ['payments', 'leads'], ekle: ['sms'], gizle: { enrolls: ['fee', 'installments'], teachers: ['rate'], trainees: ['email', 'note'] }, saltOkunur: ['teachers', 'courses', 'groups', 'trainees', 'certs'], silemez: ['enrolls', 'sessions'],
+      satir: { groups: (g, b) => eslesir(g, 'teacher', b), sessions: (s, b) => eslesir(s, 'teacher', b), enrolls: (e, b) => b.ids('groups').has(e.group) } },
+    kayit: { ad: 'Kayıt / Muhasebe', gizle: { teachers: ['rate'] }, saltOkunur: ['teachers', 'courses'] },
+  },
   // apps/fiyatrobotu: izleyici tüm ekranları görür, hiçbir şeyi değiştiremez (canEdit). Gizlenecek alan yoktur, yazma kapalıdır. Fiyat uzmanında yalnız menü farkı vardır, kural eklenmedi.
   fiyatrobotu: { izleyici: { ad: 'İzleyici', saltOkunur: ['products', 'listings', 'history', 'runs', 'channels', 'cargoOverride', 'comOverride', 'feeOverride', 'ratesOwn'] } },
   // apps/servis: ROLES var, ekranlarda rol denetimi yok. Teknisyen ve kabul Özet, Teknisyenler, Ayarlar menüsünü görmez; parça alış fiyatı Parça Stoku ekranında herkese açık. Yalnız menü farkı: kural eklenmedi.

@@ -996,5 +996,15 @@ RULES.dernek = {
   write: {},
 };
 
+// ---------- Eğitim: sertifika doğrulama (dogrula.html) — yalnız tahmin edilemez kodla, tek belge, kişisel iletişim bilgisi yok ----------
+const EGT_ALAN = ['id', 'no', 'code', 'name', 'course', 'hours', 'date', 'validUntil', 'status'];
+RULES.egitim = {
+  settings: ['bizName', 'bizPhone', 'bizAddress'],
+  pub: {},
+  login: (x, q) => { const k = norm(q.kod); const c = k.length >= 8 && x.col('certs').find((r) => r.code && norm(r.code) === k); return c ? { k: 'c', i: c.id } : null; }, loginError: 'Kayıt bulunamadı',
+  view: (x) => { const c = x.get('certs', me(x, 'c')); return c ? { certs: [x.pick(c, EGT_ALAN)] } : {}; },
+  write: {},
+};
+
 module.exports = RULES;
 module.exports._lib = { appendOnly, strip, bad, deny, val, clean, I, U, me, mergeByPhone, samePhone, digits, norm, overlap, toMin, nowIso };

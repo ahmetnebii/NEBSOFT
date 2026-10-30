@@ -29,7 +29,9 @@
   const isDernek = () => ORG() === 'dernek';
   const hasDues = () => ORG() !== 'muhtarlik';
   const LB = () => (ORG() === 'muhtarlik' ? { one: 'Kişi', many: 'Kişiler' } : ORG() === 'vakif' ? { one: 'Kayıtlı kişi', many: 'Kayıtlı kişiler' } : { one: 'Üye', many: 'Üyeler' });
-  const mem = (id) => db.get('members', id) || { name: '-', no: '' };
+  // db.get satır satır arar: binlerce kayıtta sıralama ve liste içi aramalar aynı çizimde tek dizinden yapılır
+  let IX = {}; const by = (c, id) => { if (!IX[c]) { IX[c] = new Map(db.all(c).map((r) => [r.id, r])); setTimeout(() => { IX = {}; }, 0); } return IX[c].get(id) || db.get(c, id); };
+  const mem = (id) => by('members', id) || { name: '-', no: '' };
   const fin = () => !NS.currentUser || NS.currentUser.role !== 'sekreter';
   const perName = (p) => (String(p).length === 7 ? `${NS.MONTHS[Number(p.slice(5)) - 1]} ${p.slice(0, 4)}` : p);
   const curPeriod = () => (S().duePeriod === 'ay' ? today().slice(0, 7) : today().slice(0, 4));
