@@ -110,7 +110,7 @@ hepsi.forEach((a) => {
   const v = varsayilan(a); (a.alanlar || []).filter((f) => f.gerekli && v[f.ad] === undefined).forEach((f) => { v[f.ad] = f.tip === 'tarih' ? '2026-10-30' : 10; });
   const h = a.hesap(v, H2); assert.strictEqual(typeof h, 'string', a.slug); assert.ok(h.length > 20 && !/undefined|NaN/.test(h), `${a.slug}: ${h.slice(0, 200)}`);
   const s = B.sayfa(a, hepsi); assert.ok(s.startsWith('<!doctype html>')); assert.ok(s.includes(`<link rel="canonical" href="https://www.domain.com/araclar/${a.slug}/">`)); assert.ok(s.includes('content="index,follow"'));
-  const ldler = [...s.matchAll(/<script type="application\/ld\+json">(.*?)<\/script>/g)].map((m) => JSON.parse(m[1])['@type']); assert.deepStrictEqual(ldler, ['WebApplication', 'BreadcrumbList', 'FAQPage']);
+  const ldler = [...s.matchAll(/<script type="application\/ld\+json">(.*?)<\/script>/g)].map((m) => JSON.parse(m[1])['@type']); assert.deepStrictEqual(ldler, ['WebApplication', 'Organization', 'WebSite', 'BreadcrumbList', 'FAQPage']);
   assert.ok(s.includes(`href="/${a.program.slug}"`), a.slug); assert.ok(s.includes('Son güncelleme')); new vm.Script(s.match(/<script>AR\.baslat\(([\s\S]*)\);<\/script>/)[0].replace(/<\/?script>/g, ''));
   if (a.mevzuat) { assert.ok(a.kaynaklar.length, a.slug); a.kaynaklar.forEach((k) => { assert.ok(/gov\.tr/.test(k.url), `${a.slug}: resmî kaynak değil ${k.url}`); assert.ok(s.includes(k.url.replace(/&/g, '&amp;')), a.slug); }); }
 });
