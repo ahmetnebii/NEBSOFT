@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Taşınma takibi</title>
+<link rel="stylesheet" href="../../core/core.css">
+<link rel="stylesheet" href="../../core/track.css">
+<style>:root { --app-accent: #c2410c; --app-accent-soft: color-mix(in srgb, #c2410c 11%, #fff); --app-accent-soft-dark: color-mix(in srgb, #c2410c 22%, #171a27); }</style>
+</head>
+<body>
+<header class="tk-bar"><div class="in" id="bar"></div></header>
+<main class="tk-wrap" id="root"></main>
+<script src="../../core/core.js"></script>
+<script src="../saha-ortak/hesap.js"></script>
+<script src="../saha-ortak/ornek.js"></script>
+<script src="data.js"></script>
+<script src="../saha-ortak/portal.js"></script>
+<script>window.SAHA_PORTAL({ id: 'nakliyat', seed: window.NAKLIYAT.seed, title: 'Taşınma takibi', icon: 'truck', issueLabel: 'Hasar veya sorun bildir', flow: ['teklif', 'onay', 'planli', 'yolda', 'basladi', 'tamam'], statuses: window.NAKLIYAT.STATUS, extra: window.NAKLIYAT.portal });</script>
+</body>
+</html>
