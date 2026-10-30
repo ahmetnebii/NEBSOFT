@@ -78,6 +78,46 @@ window.CATALOG = {
       modules: ['Servis Kayıtları', 'Kanban Pano', 'Müşteriler', 'Parça Stoku', 'Teknisyenler', 'Durum Sorgulama', 'Raporlar'],
     },
     {
+      id: 'terzi', ready: true, extraDemos: [{ label: 'Müşteri takip sayfasını aç', url: 'apps/terzi/takip.html' }], cat: 'randevu', name: 'Terzi & Tadilat', tagline: 'Ölçü, prova, teslim tarihi ve "hazır" SMS\'i', icon: 'scissors', accent: '#b45309',
+      ornekFiyat: true, prices: [499, 899, 1690], sectors: ['Terzi', 'Tadilat', 'Gelinlik atölyesi', 'Özel dikim', 'Erkek terzisi'], // fiyat ÖRNEK, kullanıcı onayı bekliyor
+      desc: 'Ölçü kaydı ve geçmişi, tadilat fişi, önceki ve istenen ölçü, prova takibi, teslim tarihi, etkinlik uyarısı ve "hazır" SMS\'i.',
+      features: ['Kadın, erkek, gelinlik ölçü şablonu; kendi alanlarınız', 'Ölçü geçmişi ve iki ölçü arasındaki fark', 'Tadilatta önceki ve istenen ölçü, müşteri imzası', 'Prova tarihi, düzeltme notu ve hatırlatma SMS\'i', 'Düğün ve nişan tarihi uyarısı', 'Askı fişi, kapora ve kalan tutar', 'Hazır SMS\'i (SMS sağlayıcısı bağlanınca gider, öncesinde TEST görünür)'],
+      modules: ['İş Panosu', 'İşler', 'Teslim Takvimi', 'Ölçüler', 'Provalar', 'Ölçü Şablonları', 'Müşteriler', 'İşlem Fiyatları', 'Ustalar'],
+      faq: [['Eski ölçüler silinir mi?', 'Hayır. Her ölçü tarihiyle saklanır, yeni ölçüde önceki değer görünür ve fark hesaplanır. Usta hesabı ölçü silemez.'], ['Kendi ölçü alanlarımı ekleyebilir miyim?', 'Evet. Ölçü Şablonları sayfasında alanları virgülle yazarsınız.']],
+    },
+    {
+      id: 'cicekci', ready: true, extraDemos: [{ label: 'Müşteri takip sayfasını aç', url: 'apps/cicekci/takip.html' }], cat: 'satis', name: 'Çiçekçi', tagline: 'Sipariş, saat aralığı, kurye ve teslim kanıtı', icon: 'flower', accent: '#16a34a',
+      ornekFiyat: true, prices: [499, 899, 1690], sectors: ['Çiçekçi', 'Çelenkçi', 'Organizasyon', 'Peyzaj satış'], // fiyat ÖRNEK, kullanıcı onayı bekliyor
+      desc: 'Gönderen ve alıcı ayrı sipariş, saat aralığı, kart notu, kurye atama, teslim alan kaydı, başarısız teslim, özel gün listesi ve çiçek tazeliği.',
+      features: ['Gönderen ve alıcı ayrı, gizli gönderen, kart notu, şerit yazısı', 'Saat aralığı ve aralık başına iş sınırı', 'Kurye atama, kurye fişi, dağıtım ekranı', 'Teslim alan kişi ve fotoğrafla teslim kanıtı', 'Teslim edilemedi nedeni ve yeniden deneme', 'Bölgeye göre teslimat ücreti', 'Özel gün listesi (işletme içi hatırlatma)', 'Çiçek partisi, kalan ömür ve fire'],
+      modules: ['Sipariş Panosu', 'Siparişler', 'Teslim Takvimi', 'Dağıtım', 'Özel Günler', 'Çiçek Stoğu', 'Teslimat Bölgeleri', 'Müşteriler', 'Ürünler ve Fiyatlar'],
+      faq: [['"Teslim edildi" nasıl kaydedilir?', 'Kurye teslim alan kişinin adını yazmadan teslim tamamlanmaz; isterse fotoğraf ekler. Teslim edilemediyse nedeni kaydedilir.'], ['Özel gün SMS\'i gidiyor mu?', 'Hayır. Özel Günler işletmeye iç hatırlatmadır, müşteriyi siz ararsınız. Ticari ileti kuralları nedeniyle program bu SMS\'i göndermez.']],
+    },
+    {
+      id: 'pastane', ready: true, extraDemos: [{ label: 'Müşteri takip sayfasını aç', url: 'apps/pastane/takip.html' }], cat: 'yeme', name: 'Fırın & Pastane', tagline: 'Özel sipariş, kapora, üretim planı ve reçete maliyeti', icon: 'chef', accent: '#db2777',
+      ornekFiyat: true, prices: [499, 899, 1690], sectors: ['Pastane', 'Fırın', 'Butik pasta', 'Tatlıcı', 'Kurabiye atölyesi'], // fiyat ÖRNEK, kullanıcı onayı bekliyor
+      desc: 'Özel pasta siparişi, kapora, teslim saati, sipariş kartı, reçete maliyeti, günlük üretim planı, malzeme stoğu ve zayi takibi.',
+      features: ['Özel sipariş kartı: kişi, tat, yazı, alerji, örnek görsel', 'Kapora, kalan ve iptalde iade kaydı', 'Teslim saati ve saat başına iş sınırı', 'Reçeteden birim maliyet ve kâr', 'Teslim gününe göre üretim planı ve malzeme ihtiyacı', 'Üretimle stok düşümü, zayi ve neden raporu', 'Müşteri takip sayfası ve özel sipariş talebi'],
+      modules: ['Sipariş Panosu', 'Siparişler', 'Teslim Takvimi', 'Dağıtım', 'Gelen Talepler', 'Üretim Planı', 'Reçeteler', 'Malzemeler', 'Zayi', 'Müşteriler', 'Ürünler ve Fiyatlar'],
+      faq: [['Kapora iptalde ne olur?', 'İptal ederken iade tutarını yazarsınız, kayda iade olarak geçer. Koşul metnini kendiniz belirlersiniz, fişe yazılır.'], ['Adisyon ile bağlantılı mı?', 'Ayrı programlardır. Tezgâh satışı Adisyon\'da, özel sipariş burada izlenir; aralarında otomatik veri geçişi şu an yok.']],
+    },
+    {
+      id: 'matbaa', ready: true, extraDemos: [{ label: 'Müşteri takip sayfasını aç', url: 'apps/matbaa/takip.html' }], cat: 'uretim', name: 'Matbaa & Reklam Atölyesi', tagline: 'Teklif, tasarım onayı ve üretim takibi', icon: 'print', accent: '#7c3aed',
+      ornekFiyat: true, prices: [499, 899, 1690], sectors: ['Matbaa', 'Reklam atölyesi', 'Tabela', 'Branda baskı', 'Dijital baskı', 'Promosyon'], // fiyat ÖRNEK, kullanıcı onayı bekliyor
+      desc: 'Teklif, m² ve adet fiyatı, ebat ve son işlem bilgisi, tasarım sürümleri ve müşteri onayı, üretim panosu, kontrol listesi ve hata kaydı.',
+      features: ['Branda ve tabelada m² fiyat, kâğıtta adet fiyatı', 'Ebat, malzeme, yön ve son işlem kaleme yazılır', 'Tasarım sürümleri ve müşterinin bağlantıyla onayı', 'Onaysız tasarım üretime geçmez', 'Siparişten çıkan üretim kontrol listesi', 'Hata ve yeniden üretim nedeni raporu', 'Teklif belgesi, tahsilat ve adrese teslim'],
+      modules: ['Üretim Panosu', 'İşler', 'Teslim Takvimi', 'Dağıtım', 'Müşteriler', 'Ürün ve Fiyatlar', 'Ekip', 'SMS Bildirimleri'],
+      faq: [['Müşteri tasarımı nasıl onaylar?', 'Sürümü onaya sunarsınız, müşteri takip sayfasından onaylar veya düzeltme ister. Yüz yüze onayı da kimin onayladığını yazarak kaydedebilirsiniz.'], ['Onaysız baskı engellenir mi?', 'Evet. Hazır dosya işaretlenmemişse onaylı sürüm olmadan iş baskıya geçmez.']],
+    },
+    {
+      id: 'kurutemizleme', ready: true, extraDemos: [{ label: 'Müşteri takip sayfasını aç', url: 'apps/kurutemizleme/takip.html' }], cat: 'randevu', name: 'Kuru Temizleme & Halı Yıkama', tagline: 'Fiş, etiket, adresten alma ve "hazır" SMS\'i', icon: 'drop', accent: '#0284c7',
+      ornekFiyat: true, prices: [499, 899, 1690], sectors: ['Kuru temizleme', 'Halı yıkama', 'Çamaşırhane', 'Perde yıkama', 'Koltuk yıkama'], // fiyat ÖRNEK, kullanıcı onayı bekliyor
+      desc: 'Fiş, m² hesabı, parça etiketi, teslim alma durum kaydı, adresten alma ve dağıtım listesi, "hazır" SMS\'i, müşteri takip sayfası ve tahsilat.',
+      features: ['Halıda en ve boydan otomatik m² ve tutar', 'Parça etiketi, raf numarası ve teslimde parça sayımı', 'Teslim alırken leke ve hasar kaydı, fotoğraf, müşteri imzası', 'Adresten alma ve dağıtım listesi, şoför atama', 'Müşteri takip sayfası ve adresten alma talebi', 'Hazır SMS\'i (SMS sağlayıcısı bağlanınca gider, öncesinde TEST görünür)', 'Kapora, kalan tutar ve teslim alınmayan eşya listesi'],
+      modules: ['İş Panosu', 'Fişler', 'Teslim Takvimi', 'Dağıtım', 'Gelen Talepler', 'Müşteriler', 'Fiyat Listesi', 'Personel', 'SMS Bildirimleri'],
+      faq: [['Halı fiyatı nasıl hesaplanır?', 'En ve boyu yazarsınız, program m² ve tutarı fiyat listenizden hesaplar. Tutar sonradan değişirse kaydın geçmişine yazılır.'], ['SMS kendiliğinden gider mi?', 'Entegrasyonlar sayfasından SMS sağlayıcınızı bağladıktan sonra iş hazır olunca gider. Bağlı değilse kayıt TEST görünür, gönderilmiş sayılmaz.']],
+    },
+    {
       id: 'spor', ready: true, extraDemos: [{ label: 'Üye portalını aç', url: 'apps/spor/uye.html' }], cat: 'randevu', name: 'Spor Salonu', tagline: 'Üyelik, giriş kontrolü ve ders programı', icon: 'dumbbell', accent: '#16a34a',
       prices: [599, 1090, 1990], sectors: ['Fitness', 'Pilates stüdyosu', 'Yoga', 'Dövüş sporları', 'Yüzme havuzu'],
       desc: 'Üyelik paketleri, dondurma, taksitli ödeme, QR ile giriş kontrolü, grup dersleri ve rezervasyon, ölçüm takibi ve süresi biten üye uyarıları.',

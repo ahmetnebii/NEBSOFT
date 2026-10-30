@@ -1,0 +1,46 @@
+{
+  "sablon": "cicekci/urun-listesi",
+  "surum": 1,
+  "program": "cicekci",
+  "tur": "urun",
+  "ad": "Çiçekçi ürün listesi",
+  "aciklama": "Sık satılan ürünler. Fiyatları siz girin.",
+  "kaynak": "sablon",
+  "hedef": "services",
+  "fiyatAlan": "price",
+  "varsayilan": {
+    "price": 0
+  },
+  "kayitlar": [
+    {
+      "anahtar": "buket",
+      "name": "Buket",
+      "cat": "Buket",
+      "unit": "adet"
+    },
+    {
+      "anahtar": "aranjman",
+      "name": "Aranjman",
+      "cat": "Aranjman",
+      "unit": "adet"
+    },
+    {
+      "anahtar": "saksi",
+      "name": "Saksı çiçeği",
+      "cat": "Saksı",
+      "unit": "adet"
+    },
+    {
+      "anahtar": "acilis-celengi",
+      "name": "Açılış çelengi",
+      "cat": "Çelenk",
+      "unit": "adet"
+    },
+    {
+      "anahtar": "cenaze-celengi",
+      "name": "Cenaze çelengi",
+      "cat": "Çelenk",
+      "unit": "adet"
+    }
+  ]
+}

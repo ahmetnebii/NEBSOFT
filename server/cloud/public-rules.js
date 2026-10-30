@@ -987,5 +987,41 @@ RULES.adisyon = {
   },
 };
 
+// ---------- Sipariş ve Teslim ailesi: takip kodu, puan, tasarım onayı, müşteri talebi (apps/siparisortak/takip.js) ----------
+// Müşteri, adres, kart notu, alıcı, iç not ve fotoğraf gitmez: takip kodu fişte yazılıdır, kodu gören herkes bu görünümü görür. Geçmişte yalnız aşama ve saat gider.
+const siparisKural = ({ onay, talep } = {}) => ({
+  settings: ['bizName', 'bizPhone', 'bizAddress'], pub: {},
+  login: (x, q) => { const k = norm(q.kod); const o = k && x.col('orders').find((r) => r.code && norm(r.code) === k); return o ? { k: 'o', i: o.id } : null; },
+  loginError: 'Bu koda ait kayıt bulunamadı',
+  view: (x) => {
+    const o = x.get('orders', me(x, 'o')); if (!o) return { orders: [] };
+    const son = onay ? (o.proofs || []).map((p) => ({ rev: p.rev, note: p.note, url: p.url, status: p.status, at: p.at })) : undefined;
+    return { orders: [{ ...x.pick(o, ['id', 'no', 'code', 'status', 'at', 'due', 'dueTime', 'disc', 'fee', 'delivered', 'review']), lines: (o.lines || []).map((l) => x.pick(l, ['name', 'qty', 'unit', 'price'])), payments: (o.payments || []).map((p) => x.pick(p, ['amount', 'kind'])), log: (o.log || []).map((l) => x.pick(l, ['at', 'status'])), ...(son ? { proofs: son } : {}) }] };
+  },
+  write: {
+    orders: {
+      upd: (cur, set, x) => {
+        if (cur.id !== me(x, 'o')) deny();
+        const keys = Object.keys(set).filter((k) => k !== 'updated');
+        if (cur.status === 'teslim' && !cur.review && keys.length === 1 && keys[0] === 'review') return { review: { ...clean({ stars: 'int:1:5', text: 'str:500?' }, set.review || {}), at: nowIso() }, updated: nowIso() };
+        // Tasarım onayı: yalnız bekleyen son sürüm yanıtlanır, durum ve geçmişi sunucu yazar
+        if (onay && cur.status === 'onay' && keys.length === 1 && keys[0] === 'approval') {
+          const a = clean({ rev: 'int:1:999', status: 'enum:onay|revize', note: 'str:600?' }, set.approval || {}); const P = Array.isArray(cur.proofs) ? cur.proofs : []; const p = P[P.length - 1];
+          if (!p || p.status !== 'bekliyor' || p.rev !== a.rev) deny(); if (a.status === 'revize' && !a.note) bad('Düzeltme notu yazın');
+          const at = nowIso(); const status = a.status === 'onay' ? onay.sonra : onay.geri;
+          return { proofs: [...P.slice(0, -1), { ...p, status: a.status === 'onay' ? 'onaylandi' : 'revize', answer: a.note || '', answerAt: at, by: 'Müşteri (online)' }], status, log: [...(cur.log || []), { at, status, note: `Müşteri sürüm ${a.rev}: ${a.status === 'onay' ? 'onayladı' : 'düzeltme istedi'}${a.note ? ' · ' + a.note : ''}`, user: 'Müşteri (online)' }], updated: at };
+        }
+        return deny();
+      },
+    },
+    ...(talep ? { requests: { ins: I({ name: 'str:80', phone: 'phone', address: 'str:300?', date: 'date?', time: 'str:20?', note: 'str:800' }, () => ({ status: 'yeni', source: 'web', at: nowIso() }), leadLimit('requests')) } } : {}),
+  },
+});
+RULES.kurutemizleme = siparisKural({ talep: true });
+RULES.matbaa = siparisKural({ onay: { sonra: 'baski', geri: 'tasarim' } });
+RULES.pastane = siparisKural({ talep: true });
+RULES.cicekci = siparisKural();
+RULES.terzi = siparisKural();
+
 module.exports = RULES;
 module.exports._lib = { appendOnly, strip, bad, deny, val, clean, I, U, me, mergeByPhone, samePhone, digits, norm, overlap, toMin, nowIso };
