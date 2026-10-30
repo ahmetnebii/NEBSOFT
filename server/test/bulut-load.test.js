@@ -108,8 +108,24 @@ async function saha() {
   { const db = belge(false, veri()); await bildir(db); assert.ok(db.yukleme > 0); assert.strictEqual(db.get('jobs', 'j1').issue.note, 'Musluk akıyor'); ok('Saha portalı: demo ve yerelde yine okur'); }
 }
 
+// Gerçek core.js: bulut belgesi eşzamanlı XHR ile okunur, gönderim sürerken ve kuyruktayken load belleği değiştirmez
+function cekirdek() {
+  const sunucu = { version: 1, data: { _meta: {}, _settings: {}, kayit: [] } }; let okuma = 0; let gonderim = null;
+  class XMLHttpRequest { open(m, u) { this.u = u; } setRequestHeader() {} send() { this.status = 200; if (this.u === '/api/auth/me') this.responseText = JSON.stringify({ mode: 'cloud', user: { id: 1 }, tenant: { id: 1, slug: 'kanit' }, licenses: [], apps: ['pos'] }); else { okuma++; this.responseText = JSON.stringify({ ok: true, version: sunucu.version, data: sunucu.data }); } } }
+  const pencere = { addEventListener: noop, matchMedia: () => ({ matches: false, addEventListener: noop }) }; pencere.window = pencere;
+  const depo = new Map(); const belge = hep();
+  const ctx = vm.createContext(new Proxy({ window: pencere, console, setTimeout: () => 0, clearTimeout: noop, setInterval: () => 0, clearInterval: noop, XMLHttpRequest, JSON, Date, Math, Object, Array, String, Number, Boolean, Map, Set, RegExp, Error, Promise, Symbol, Intl, URLSearchParams, encodeURIComponent, decodeURIComponent, location: { protocol: 'http:', pathname: '/t/kanit/apps/pos/index.html', search: '', hash: '', href: '' }, document: belge, navigator: {}, sessionStorage: { getItem: () => null, setItem: noop, removeItem: noop }, localStorage: { getItem: (k) => depo.get(k) ?? null, setItem: (k, v) => depo.set(k, v), removeItem: (k) => depo.delete(k) }, addEventListener: noop, fetch: async (u, o) => { gonderim = o; return new Promise(noop); } }, { has: () => true, get: (t, k) => (k in t ? t[k] : k === Symbol.unscopables ? undefined : hep()) }));
+  vm.runInContext(fs.readFileSync(path.join(__dirname, '..', '..', 'core', 'core.js'), 'utf8'), ctx, { filename: 'core/core.js' });
+  const db = new pencere.NS.DB('pos'); return { db, sunucu, okuma: () => okuma, gonderim: () => gonderim };
+}
+function cekirdekTest() {
+  { const { db, okuma } = cekirdek(); const once = okuma(); db.col('kayit').push({ id: 'a' }); db.save(); db.load(); assert.strictEqual(db.data.kayit.length, 1); assert.strictEqual(okuma(), once); assert.strictEqual(db._dirty, true); ok('Çekirdek: kuyruktaki kayıt load ile silinmez, sunucuya istek gitmez'); }
+  { const { db, okuma } = cekirdek(); const once = okuma(); db.col('kayit').push({ id: 'a' }); db.save(); db._push(); assert.strictEqual(db._flight, true); assert.strictEqual(db._dirty, false); db.load(); assert.strictEqual(db.data.kayit.length, 1); assert.strictEqual(okuma(), once); ok('Çekirdek: gönderim sürerken load belleği eskitmez'); }
+  { const { db, sunucu } = cekirdek(); sunucu.version = 2; sunucu.data = { ...sunucu.data, kayit: [{ id: 'baska' }] }; db.load(); assert.strictEqual(db.data.kayit[0].id, 'baska'); assert.strictEqual(db._v, 2); ok('Çekirdek: bekleyen kayıt yokken load başka oturumun verisini getirir'); }
+}
+
 (async () => {
-  await emlak(); await pazaryeri(); await crm(); await klinik(); await muhasebe(); await randevu(); await veteriner(); await site(); await bilet(); await takip(); await saha();
+  cekirdekTest(); await emlak(); await pazaryeri(); await crm(); await klinik(); await muhasebe(); await randevu(); await veteriner(); await site(); await bilet(); await takip(); await saha();
   console.log(`
 ${n} test geçti`);
 })().catch((e) => { console.error(e); process.exit(1); });

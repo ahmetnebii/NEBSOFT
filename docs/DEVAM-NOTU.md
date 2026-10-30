@@ -23,10 +23,6 @@ Dosya deposu, kalan rol kuralları, işleme bağlı onay belirteci ve Electron 4
 
 Görsel ve PDF araçları ile yedi oturumun dalı `devir/hepsi`e birleşti, çekirdek yamaları uygulandı. Kalan çekirdek istekleri `docs/urun/CEKIRDEK-ISTEKLERI-*.md` içinde: `core/bizsite.js` sektör türleri (schema.org doğrulanmadan bağlanmaz), `NS.dosya` PDF desteği, müşteri belirteçli dosya sınıfı, `NS.crud` sayfalama. Yeni 11 programın şablonu yok (`server/cloud/sablon.js`). Spec, fiyat ve sözleşme metinleri onay bekliyor. `danisan` avukat onayına kadar satışa kapalı.
 
-## Çekirdek onayı bekleyen
-
-e-Belge bulutta numara tekrarlıyor, belge ve entegrasyon ayarı kaybolabiliyor. Tek satırlık `_cloudLoad` yaması sınandı, uygulanmadı: `docs/BULUT-LOAD-DENETIMI.md`.
-
 ## Sıradaki iş
 
 1. Yukarıdaki dalları birleştir, tam `npm test` çalıştır.

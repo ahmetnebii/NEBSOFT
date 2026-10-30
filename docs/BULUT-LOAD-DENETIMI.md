@@ -4,22 +4,24 @@ Tarih: 31.10.2026. Dal: `claude/bulut-load-denetim`, taban `fe72121`.
 
 ## CANLIYA ÇIKMAYI ENGELLEYENLER
 
-**e-Belge bulutta numara tekrar ediyor ve belge kaybolabiliyor.** Sebep `core/integrations.js` içinde, program dosyasından düzeltilemez, `CLAUDE.md` §4 gereği çekirdeğe dokunulmadı. Kullanıcı onayı bekliyor (aşağıda "Çekirdek önerisi").
+Bu denetimden kalan engel yok, çekirdek yaması kullanıcı onayıyla uygulandı. Canlıda e-Belge kesmiş bulut hesabı varsa geçmiş kayıtlar ayrıca incelenmeli: tekrar eden numaralar ve eksik belgeler yama ile düzelmez.
+
+## e-Belge hatası (giderildi)
 
 Gerçek sunucu ve MariaDB ile, simülasyon sağlayıcısında, art arda üç `NS.ebelge.create`:
 
-| | Üretilen numaralar | Sunucuda kalan belge |
+| | Üretilen numaralar | Bu üç belgeden sunucuda kalan |
 |---|---|---|
-| Çekirdek yaması yok | `EAR2026000000001` üç kez | 1 |
-| Çekirdek yaması var | `...001`, `...002`, `...003` | 3 |
+| Yama öncesi | `EAR2026000000001` üç kez | 1 |
+| Yama sonrası | `...001`, `...002`, `...003` | 3 |
 
-Sebep: `nextNo` sırayı artırıp kaydeder, 350 ms dolmadan `create` içindeki `store.load()` bu artışı siler (`core/integrations.js:919`, `:939`), `send` sonrası `log` içindeki `store.load()` da belgeyi siler (`:13`). Gerçek entegratörle denenmedi (test hesabı yok). Sıra artışının silindiği kod yolu sağlayıcıdan bağımsızdır, belgenin silinmesi ise `log` çağrısına kadar geçen süreye bağlıdır.
+Sebep: `nextNo` sırayı artırıp kaydeder, 350 ms dolmadan `create` içindeki `store.load()` bu artışı siler (`core/integrations.js:919`, `:939`), `send` sonrası `log` içindeki `store.load()` da belgeyi siler (`:13`). Gerçek entegratörle denenmedi (test hesabı yok).
 
-Aynı sebeple entegrasyon ayarı da kayboluyor: `setCfg` ardından 350 ms içinde `log` çalışırsa ayar sunucuya gitmiyor. Ayar penceresindeki "Test et" bu yoldan geçiyor (`core/integrations.js:779`). Kanıt programatik çağrıyla alındı, pencere elle tıklanmadı.
+Aynı sebeple `setCfg` ardından 350 ms içinde `log` çalışırsa entegrasyon ayarı sunucuya gitmiyordu. Ayar penceresindeki "Test et" bu yoldan geçiyor (`core/integrations.js:779`). Kanıt programatik çağrıyla alındı, pencere elle tıklanmadı.
 
 ## Yöntem
 
-Başsız Chrome, gerçek `server.js`, MariaDB. Hesap API ile açıldı, belge tohumlandı, işlem gerçek düğmeye basılarak yapıldı, 1,5 sn sonra sonuç ayrı oturumla `GET /api/data/:app` üzerinden okundu. Aynı senaryolar üç kopyada koştu: düzeltmesiz taban, program düzeltmeleri, düzeltmesiz programlar + çekirdek yaması. Betik oturuma özeldir, depoda yok. Üç koşuda da konsol istisnası sıfır.
+Başsız Chrome, gerçek `server.js`, MariaDB. Hesap API ile açıldı, belge tohumlandı, işlem gerçek düğmeye basılarak yapıldı, 1,5 sn sonra sonuç ayrı oturumla `GET /api/data/:app` üzerinden okundu. Aynı senaryolar üç kopyada koştu: düzeltmesiz taban, program düzeltmeleri, düzeltmesiz programlar + çekirdek yaması; sonra son hâl. Betik oturuma özeldir, depoda yok. Üç koşuda da konsol istisnası sıfır.
 
 ## Sonuç
 
@@ -58,25 +60,19 @@ Bu dört yerde `if (!db._dirty && !db._flight) db.load();` kullanıldı: bekleye
 - `core/integ-wizard.js`: `entegrasyon-kurulum` bulut belgesi değil (`catalog.js` `SHARED` listesinde yok), `localStorage`da.
 - `apps/pos/hizli.js`, `apps/emlak/portal.js`: önceden düzeltilmiş.
 
-## Çekirdek önerisi
+## Çekirdek düzeltmesi
 
-`core/core.js` `_cloudLoad` başına tek satır, `_watch`taki koşulun aynısı:
+`core/core.js` `_cloudLoad` başına tek satır eklendi, `_watch`taki koşulun aynısı: bekleyen kayıt varsa (`_dirty`) veya gönderim sürüyorsa (`_flight`) `load` hiçbir şey yapmaz. Sunucudaki değişikliği gönderimin çakışma birleştirmesi getirir.
 
-```js
-if (this.data && (this._dirty || this._flight)) return; // bekleyen kayıt var: sunucudaki hâl üstüne yazmaz, çakışmayı gönderim birleştirir
-```
+Sınama iki kez yapıldı: düzeltmesiz programlar + yama, sonra depodaki son hâl. İkisinde de tüm senaryolar korundu, başka oturumun verisi geldi (14-15 sn), konsol hatası çıkmadı. Tarayıcı senaryoları 11 programı açtı, çekirdek değiştiği için istenen "başka programlar da açılıyor" sınaması budur.
 
-Düzeltmesiz programlarla ayrı kopyada sınandı: yukarıdaki tüm senaryolar korundu, e-Belge numaraları benzersiz, ayar kaldı, başka oturumun verisi geldi (15 sn), konsol hatası yok. Depoya uygulanmadı.
-
-- `_flight` koşulu: gönderim sürerken gelen `load` eski hâli okur, `_base` ve `_v` ile bellek ayrışır. Program tarafında bu da korunuyor.
-- `if (!db.cloud)` düzeltmeleri çekirdek yamasından sonra da kalmalı, her çizimde eşzamanlı istek atmıyorlar. `_dirty` koşulları zararsızca gereksizleşir.
-- Yan etki: bekleyen kayıt varken `load` sessizce atlanır, ekran 350 ms eski kalabilir. `_watch` zaten aynı davranıyor.
-- Canlıda e-Belge kesen hesap varsa tekrar eden numaralar ve eksik belgeler ayrıca incelenmeli; bu denetim yalnız yerel test verisine baktı.
+- `if (!db.cloud)` düzeltmeleri kaldı, her çizimde eşzamanlı istek atmıyorlar. Programlardaki `_dirty` koşulları artık gereksiz ama zararsız.
+- Yan etki: bekleyen kayıt varken `load` sessizce atlanır, ekran kısa süre eski kalabilir. `_watch` zaten aynı davranıyor.
 
 ## Testler
 
-`server/test/bulut-load.test.js`: 33 test, gerçek dosyalar vm içinde, `load` gerçek davranışı taklit eder. Her düzeltme tek tek geri alındığında test kırıldı (11 dosyanın 11'i).
+`server/test/bulut-load.test.js`: 36 test. Program testleri gerçek dosyaları vm içinde çalıştırır, `load` gerçek davranışı taklit eder; çekirdek testleri gerçek `core/core.js` ile koşar. Her düzeltme tek tek geri alındığında test kırıldı (12 dosyanın 12'si).
 
-Denenmedi: telefon genişliği, koyu tema, boş liste. Arayüz metni ve düzeni değişmedi. Çekirdek değişmediği için başka programların açılış sınaması gerekmedi.
+Denenmedi: telefon genişliği, koyu tema, boş liste. Arayüz metni ve düzeni değişmedi.
 
-`npm test` zinciri tek tek koşuldu: 69 dosyadan 68'i geçti. `server/test/bilet-kural.test.js` kaldı ("Online satış kapandı"); düzeltmesiz tabanda da aynı hatayı veriyor, bu değişiklikle ilgisi yok, zincir `&&` ile bağlı olduğu için `npm test` orada durur.
+`npm test` zinciri çekirdek yamasıyla tek tek koşuldu: 69 dosyadan 68'i geçti, XSD dahil. `server/test/bilet-kural.test.js` kaldı ("Online satış kapandı"); düzeltmesiz tabanda da aynı hatayı veriyor, bu değişiklikle ilgisi yok, zincir `&&` ile bağlı olduğu için `npm test` orada durur.

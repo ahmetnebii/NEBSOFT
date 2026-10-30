@@ -329,6 +329,7 @@
       } else { this.data = raw; this._snap = JSON.stringify(raw); }
     }
     _cloudLoad() {
+      if (this.data && (this._dirty || this._flight)) return; // bekleyen kayıt var: sunucudaki hâl üstüne yazmaz, çakışmayı gönderim birleştirir
       const r = syncJ('GET', '/api/data/' + this.name);
       if (r.status === 401) stopPage('Oturumunuz kapandı, tekrar giriş yapın', '/#/giris');
       if (r.status === 402) stopPage(r.j.error || 'Lisans gerekli', `/#/urun/${this.name}`);
