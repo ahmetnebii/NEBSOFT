@@ -40,9 +40,12 @@ window.SITE = {
   },
   // Daire borcu ve gecikme faizi
   debt(db, flatId) { return db.all('dues', (d) => d.flat === flatId).reduce((t, d) => t + (d.amount - (d.paid || 0)), 0); },
+  // Gecikme tazminatı — 634 sayılı Kat Mülkiyeti Kanunu md. 20 (mevzuat.gov.tr/mevzuatmetin/1.5.634.htm, okundu 30.10.2026 — DOĞRULANDI):
+  // "ödemede geciken günler için aylık yüzde beş". Gün bazında hesaplanır (1 ay = 30 gün kabul edildi); önceden tam ay sayılıyordu
+  // (ilk ay hiç tazminat çıkmıyordu). Bileşik değildir; tahsil edilen tazminat (type 'faiz') tekrar tazminata girmez.
   lateFee(db, flatId) {
     const s = db.settings({ lateFee: 5, dueDay: 10 }); const now = new Date();
-    return Math.round(db.all('dues', (d) => d.flat === flatId && d.amount > (d.paid || 0)).reduce((t, d) => { const due = new Date(d.period + '-' + NS.pad(s.dueDay) + 'T12:00'); const months = Math.max(0, (now.getFullYear() - due.getFullYear()) * 12 + now.getMonth() - due.getMonth() + (now.getDate() > due.getDate() ? 0 : -1)); return t + (d.amount - (d.paid || 0)) * (s.lateFee / 100) * months; }, 0));
+    return Math.round(db.all('dues', (d) => d.flat === flatId && d.amount > (d.paid || 0)).reduce((t, d) => { const due = new Date(d.period + '-' + NS.pad(s.dueDay) + 'T12:00'); const days = Math.max(0, Math.floor((now - due) / 864e5)); return t + (d.type === 'faiz' ? 0 : (d.amount - (d.paid || 0)) * (Number(s.lateFee) / 100) * days / 30); }, 0));
   },
 };
 

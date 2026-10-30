@@ -21,7 +21,11 @@ ebsoft güncel`). Node 24, .NET 8 var → `npm test`: 8 test dosyası geçti (XS
 - `.claude/launch.json` servis-arac kaydı hâlâ 5061'i başlatıyordu → 5067 yapıldı. `sw.js` V → `nebsoft-v3-22`.
 - **Ön Muhasebe 3. dalga tamamlandı** (özelleştirilebilir özet, akıllı uyarılar, proje/şube, 5000 faturada hız) — `docs/urun/ON-MUHASEBE.md`.
 - **Çekirdek istekleri — yüksek öncelikliler tamamlandı** (sahte başarı, doğrulanamayan bağlayıcılar, tutar, portal kodları); konaklama vergisi DOĞRULANAMADI. `sw.js` V → `nebsoft-v3-24`.
-- Sıradaki: §4.2 orta/düşük öncelikli çekirdek istekleri, sonra başlanmamış programlar.
+- **Çekirdek orta/düşük istekleri tamamlandı** (etiket, crud kancaları, mobil kart, Bilet/Otel/Randevu/Otopark/Adisyon bulut kuralları + testleri). Ertelenen: sunucu zamanlayıcısı, dosya deposu, Klinik online randevu.
+- **Programlar (devir oturumu):** Market POS 1–3 (`POS.md`), Adisyon 1–3 (`ADISYON.md`), İK 1. dalga (`IK.md`), Eczane 1. dalga (`ECZANE.md`), Site: gecikme tazminatı KMK md. 20'ye göre gün bazında (DOĞRULANDI), Randevu: simülasyon belge no'su TEST.
+- Çekirdek `UNVERIFIED` (yalnızca simülasyon): okc, sgk, bankamaas, ebordro, pdks, medula, its, uts, aracbildirim, hgs, ilan, parca, tramer, kbs, kanal, enabiz, erecete, kps, vetbis, petkayit, meb, googleisletme.
+- `NS.approve` (yetkili PIN onayı) çekirdekte; POS ve Adisyon kullanıyor.
+- **Sıradaki:** Spor, Kurs, Anaokulu, Mali Müşavir, Kuyumcu, Toptan, Fiyat Robotu, CRM, Kiralama, Emlak için pazar araştırması + spec + dalgalar (portal kodu ve SMS düzeltmeleri bunların bazılarında zaten yapıldı); İK ve Eczane 2–3. dalga; kalan 2–3. dalgalar; §4.3 entegratörler.
 
 ---
 
