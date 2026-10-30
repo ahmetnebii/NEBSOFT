@@ -4,7 +4,7 @@ Yeni oturum bu dosyayla başlar. Sonra `CLAUDE.md` ve `docs/DEVIR.md`. Ana dal: 
 
 ## Yeni oturuma yazılacak cümle
 
-> `docs/DEVAM-NOTU.md` dosyasını oku, "Sıradaki iş" bölümünden devam et.
+> `docs/PROJE-OZETI.md` ve `docs/DEVAM-NOTU.md` dosyalarını oku, projeyi baştan tarama, "Sıradaki iş" bölümünden devam et.
 
 ## Kullanıcı kararları (uygulanacak, yeniden sorma)
 
