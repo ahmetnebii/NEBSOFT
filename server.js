@@ -118,7 +118,7 @@ async function api(req, res, p) {
 
 const SITES = new Set(fs.existsSync(path.join(ROOT, 'site')) ? fs.readdirSync(path.join(ROOT, 'site')).filter((d) => fs.existsSync(path.join(ROOT, 'site', d, 'index.html'))) : []);
 // Dışarıya asla sunulmayacak yollar (sunucu kodu, veriler, gizli dosyalar, araçlar)
-const DENY = /^\/(data|server|node_modules|site\/tools|site\/src|awesome-claude-design|docs|desktop|\.[^/]*)(\/|$)|^\/(package(-lock)?\.json|skills-lock\.json|baslat\.bat|DESIGN\.md|README\.md|DEPLOY\.md)$|\/\.[^/]+$/i;
+const DENY = /^\/(data|server|node_modules|site\/tools|site\/src|awesome-claude-design|docs|desktop|android|scripts|yayin|ic-araclar|\.[^/]*)(\/|$)|^\/(package(-lock)?\.json|skills-lock\.json|baslat\.bat|CLAUDE\.md|DESIGN\.md|README\.md|DEPLOY\.md)$|\/\.[^/]+$/i;
 const LONG = /\.(jpg|jpeg|png|webp|svg|ico|woff2?)$/i;
 
 function handle(req, res) {

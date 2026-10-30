@@ -12,3 +12,9 @@ server/test/xsd/validator/obj/
 indir/
 android/build/
 desktop/dist/
+
+# Hosting paketi (scripts/hosting-paketi.js üretir)
+yayin/
+
+# Alt ajan çalışma kopyaları
+.claude/worktrees/
