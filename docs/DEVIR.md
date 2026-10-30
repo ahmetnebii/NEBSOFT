@@ -35,7 +35,9 @@ ebsoft güncel`). Node 24, .NET 8 var → `npm test`: 8 test dosyası geçti (XS
 - **CRM 1–3 tamamlandı** (`CRM.md`): teklif kuralları, güvenli anahtar, temsilci yetkisi, döviz, katalog, fatura, takip önerileri, yenileme; `crm-kural.test.js` 8 test.
 - **Site Yönetimi 1–3 tamamlandı** (`SITE.md`): avans, tahsilat iptali, rastgele sakin kodu, KMK md. 20 paylaşımı, işletme projesi, sayaç, kurul; `site-kural.test.js` 11 test. Mevcut sakinlere yeni kod dağıtılmalı.
 - **Kurs 1–3 tamamlandı** (`KURS.md`): md. 56 iade, gerçek SMS sonucu, hakediş, ön kayıt, ödev, etüt.
-- **Sıradaki:** Anaokulu, Müşavir, İK, Eczane, Kuyumcu, Fiyat Robotu, Kiralama, Emlak; ardından (bilinen güven hatası taraması temiz; spec yok) ve 1. dalgası yapılanlar için pazar araştırması + spec + dalgalar (portal kodu ve SMS düzeltmeleri bunların bazılarında zaten yapıldı); İK ve Eczane 2–3. dalga; kalan 2–3. dalgalar; §4.3 entegratörler.
+- **Anaokulu 1–3 tamamlandı** (`ANAOKULU.md`): sahte fotoğraf kaldırıldı, kardeş indirimi, md. 56 ayrılış, sınıf/rota, olay, ilaç, etkinlik izni.
+- **Mali Müşavir 1–3 tamamlandı** (`MUSAVIR.md`): uydurma makbuz no kaldırıldı, e-SMM tahsilatta, resmî tatil kayması, süre uzatma, süreli belgeler; `musavir-kural.test.js` 8 test.
+- **Sıradaki:** İK, Eczane, Kuyumcu, Fiyat Robotu, Kiralama, Emlak; ardından (bilinen güven hatası taraması temiz; spec yok) ve 1. dalgası yapılanlar için pazar araştırması + spec + dalgalar (portal kodu ve SMS düzeltmeleri bunların bazılarında zaten yapıldı); İK ve Eczane 2–3. dalga; kalan 2–3. dalgalar; §4.3 entegratörler.
 
 ---
 

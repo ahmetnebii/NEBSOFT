@@ -15,8 +15,10 @@ window.MSV = {
   ST: { bekliyor: ['Bekliyor', ''], evrak: ['Evrak bekleniyor', 'warn'], hazirlaniyor: ['Hazırlanıyor', 'info'], verildi: ['Verildi', 'ok'], odendi: ['Verildi + ödendi', 'ok'] },
   TYPES: { sahis: 'Şahıs (işletme)', serbest: 'Serbest meslek', ltd: 'Limited şirket', as: 'Anonim şirket' },
   DOCS: ['Satış faturaları', 'Alış faturaları', 'Banka ekstresi', 'POS / Z raporları', 'Personel puantaj', 'Kasa / gider fişleri'],
-  // Son gün hafta sonuna denk gelirse ilk iş gününe kayar (VUK md. 18/4; Ön Muhasebe beyan takvimiyle aynı). Bayram kaymaları hesaplanmaz.
-  shift(ds) { const d = new Date(ds + 'T12:00:00'); while (d.getDay() === 0 || d.getDay() === 6) d.setDate(d.getDate() + 1); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; },
+  // Son gün tatile denk gelirse ilk iş gününe kayar (VUK md. 18/4). Sabit resmî tatiller hesaplanır; dinî bayramlar her yıl değiştiği için Ayarlar'dan girilir (hol).
+  FIXED: ['01-01', '04-23', '05-01', '05-19', '07-15', '08-30', '10-29'], hol: new Set(),
+  isOff(d) { const y = d.getFullYear(), m = String(d.getMonth() + 1).padStart(2, '0'), g = String(d.getDate()).padStart(2, '0'); return d.getDay() === 0 || d.getDay() === 6 || MSV.FIXED.includes(`${m}-${g}`) || MSV.hol.has(`${y}-${m}-${g}`); },
+  shift(ds) { const d = new Date(ds + 'T12:00:00'); while (MSV.isOff(d)) d.setDate(d.getDate() + 1); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; },
   // Dönem: "2026-09" → son gün (ayın 28'i gibi ya da ayın son günü), beyan bir sonraki ay verilir.
   // e-Defter beratı: dönemden 4 ay sonraki ayın 10'u (gelir vergisi mükellefi) / 14'ü (diğer) — GİB vergi takvimi (Ön Muhasebe ile aynı kural)
   due(type, period, c) {
@@ -63,8 +65,9 @@ window.MSV = {
     [-2, -1].forEach((k) => { const d = new Date(now.getFullYear(), now.getMonth() + k, 1); const ym = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`; db.data.clients.forEach((c, i) => { db.data.docs[`${c.id}|${ym}`] = MSV.DOCS.map((x, j) => (k < -1 ? 'geldi' : (i + j) % 4 === 0 ? 'yok' : (i + j) % 5 === 1 ? 'eksik' : 'geldi')).reduce((o, s, j) => ({ ...o, [MSV.DOCS[j]]: s }), {}); }); });
     // Aylık ücret tahakkukları ve tahsilatlar
     db.data.fees = []; db.data.payments = [];
-    for (let k = -5; k <= 0; k++) { const d = new Date(now.getFullYear(), now.getMonth() + k, 1); const ym = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`; db.data.clients.forEach((c, i) => { db.data.fees.push({ id: NS.uid(), client: c.id, period: ym, amount: c.fee, smm: k < 0 ? 'SM' + ym.replace('-', '') + String(i).padStart(3, '0') : null }); if (k < -1 || (k === -1 && i % 4 !== 1)) db.data.payments.push({ id: NS.uid(), client: c.id, amount: c.fee, at: NS.iso(addDays(d, rand(32, 45))), method: pick(['Havale', 'Havale', 'Nakit', 'Kredi kartı']) }); }); }
+    for (let k = -5; k <= 0; k++) { const d = new Date(now.getFullYear(), now.getMonth() + k, 1); const ym = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`; db.data.clients.forEach((c, i) => { db.data.fees.push({ id: NS.uid(), client: c.id, period: ym, amount: c.fee }); if (k < -1 || (k === -1 && i % 4 !== 1)) db.data.payments.push({ id: NS.uid(), client: c.id, amount: c.fee, at: NS.iso(addDays(d, rand(32, 45))), method: pick(['Havale', 'Havale', 'Nakit', 'Kredi kartı']) }); }); }
     db.data.messages = [{ id: NS.uid(), client: 'm1', at: addDays(now, -1).toISOString(), from: 'mukellef', text: 'Ekim alış faturalarını portala yükledim, banka ekstresi yarın gelir.' }, { id: NS.uid(), client: 'm4', at: addDays(now, -2).toISOString(), from: 'mukellef', text: 'Yeni personel başlıyor, işe giriş bildirgesi için evraklar ektedir.' }];
+    db.data.expiries = [{ id: NS.uid(), client: 'm1', kind: 'Mali mühür', date: NS.iso(addDays(now, 20)) }, { id: NS.uid(), client: 'm3', kind: 'İmza sirküleri', date: NS.iso(addDays(now, 75)) }];
     db.data.tasks = [{ id: NS.uid(), client: 'm3', title: 'Transfer fiyatlandırması formu hazırla', due: NS.iso(addDays(now, 12)), done: false }, { id: NS.uid(), client: 'm8', title: 'SGK teşvik kontrolü (6111)', due: NS.iso(addDays(now, 3)), done: false }, { id: NS.uid(), client: 'm1', title: 'Hakediş faturası tevkifat kontrolü', due: NS.iso(addDays(now, 1)), done: false }];
   },
 };
