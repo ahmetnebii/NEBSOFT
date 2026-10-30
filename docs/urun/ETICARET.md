@@ -7,10 +7,50 @@
 - **Trendyol iade çekme, durum çekme:** resmî dokümana göre yazıldı (aşağıda §6), satıcı test hesabıyla denenmedi. Dokümanda tarih aralığı sınırı yazmıyor, 14 gün istenir.
 - **Trendyol "tedarik edilemedi":** `reasonId` 500–506 değerlerinin anlamı resmî sayfada yok — DOĞRULANAMADI. Panelden çağrı yapılmaz; iptalde kullanıcıya pazaryeri panelini kullanması söylenir. Bağdaki kod silinmedi.
 - **Hepsiburada:** doküman doğrulanamadı, canlı seçilemez. **Amazon, Pazarama, Çiçeksepeti:** adaptör yok, yalnızca TEST.
+- **Pazaryeri API anahtarları şifresiz:** `mpChannels` içindeki `apiKey` ve `apiSecret`, `server/cloud/secrets.js` `GROUPS` listesinde yok. Tarayıcı denemesinde `app_data` içinde düz metin görüldü; `depo` rolünün okuduğu belgede de duruyor (rol kuralı kod incelendi). Gerçek anahtar girilmeden önce düzeltilmeli.
 - **Kargo firması gönderi API'leri:** DOĞRULANAMADI; takip no elle girilir.
 - **Vitrindeki taksit oranları** (`instTable`): sabit örnek değerler, gerçek banka oranı değil. Kart ödemesi açılmadan önce sağlayıcıdan alınmalı.
 - **Kargo ve kapıda ödeme bedeli KDV oranı %20** (hafızadan, doğrulanmadı): mali müşavire sorulmalı.
 - **e-Arşiv ve iade faturası:** gerçek sağlayıcıyla denenmedi. Gerçek satış faturası olmayan siparişte iade faturası düğmesi çıkmaz; bu yüzden düğme tarayıcıda görülmedi.
+
+## Pazaryeri tohumu bulut belgesine yazmıyor (30.10.2026)
+
+**Sorun:** Panel ilk açılışta `apps/eticaret/pazaryeri.js` içindeki `ensure()` çalışıyordu. `mpChannels` yoksa bulut belgesine bağlı görünen Trendyol, Hepsiburada ve n11, uydurma listeleme ve müşteri sorusu yazıyor, siparişlerin %40'ının kanalını pazaryerine çevirip uydurma `channelNo` veriyordu. Web sitesinden gelen gerçek sipariş de bu şekilde Trendyol siparişine dönüştü. `CLAUDE.md` §1'e aykırı.
+
+**Yapılan:**
+- `ensure()` bulutta (`db.cloud`) hiçbir şey yazmaz, `db.save()` çağırmaz, siparişlerin `channel`, `channelNo`, `source` alanlarına dokunmaz. Eski kanal adını anahtara çeviren satır da bulutta çalışmaz. Demo ve yerel kip aynen kaldı.
+- `mpChannels`, `mpCatMap`, `listings`, `mpQuestions` bulutta kullanıcı kanal bağlayana kadar yoktur. Okuyucular eksik alanla çalışır (`chs`, `catMap`, `db.col`), yazma yalnızca kullanıcı işleminde olur (`setCh`, `setCat`).
+- Bağlı kanal yokken Pazaryeri Merkezi, Ürün Listeleme ve Kategori Eşleştirme "Bağlı pazaryeri yok" boş durumunu gösterir. Eskiden "tüm kanallar simülasyonda" yazısı çıkıyordu.
+- Simülasyonda kanal kaydederken günlük "test başarılı" yazıyordu, oysa test yapılmıyordu. Artık "Kaydedildi (TEST, simülasyon)" yazar.
+
+**Kanıt:** Test `server/test/eticaret-tohum.test.js` (13 senaryo, eski kodda ilk senaryoda kırılır). Tarayıcı: gerçek sunucu, MariaDB ve başsız Chrome ile 21 denetim geçti. Yeni bulut hesabı, panelin ilk açılışı, sonradan gelen web siparişi, yeniden açılış (belge sürümü artmadı), arayüzden n11 bağlama, `?demo=1`, 375 px; konsol hatası yok.
+
+### Daha önce etkilenmiş kayıtlar (otomatik düzeltilmedi)
+
+Bu kurallar kod incelemesine dayanır, gerçek müşteri belgesinde denenmedi. Düzeltme kararı işletme bazında verilmeli.
+
+| Kayıt | Ayırt etme |
+|---|---|
+| Sipariş | `MP.CH[o.channel] && o.channelNo && !/^PY/.test(o.no)`. `channelNo`'yu yalnızca `importOrder` (hep `PY` numaralı) ve tohum yazar. Ek işaretler: `source` alanı var (asıl kanal burada, gerçek pazaryeri siparişinde bu alan yok), `channelShip` 45–75 arası (gerçek siparişte 0), `packageId` alanı yok, `note` içinde "sipariş no" yok, `history` içinde "siparişi alındı" yok |
+| Gerçek müşteri siparişi | Yukarıdaki koşul + `source === 'Web sitesi'` (örnek siparişlerin `source` değeri Instagram, Google, Doğrudan, TikTok olur) |
+| Bağlı kanal | `sellerId` değeri `482913`, `LINA-HB-2207` veya `linabutik` ve `apiKey` yok |
+| Listeleme | `extId` `TY`+9 hane, `HB`+8 hane veya `N`+7 hane ve `batch` alanı yok |
+| Müşteri sorusu | `extId` yok (gerçek soru `soru-cek` ile `extId` taşır) |
+| Kategori eşleştirme | `mpCatMap` tohumda `GUESS` değerleriyle doldu, tek başına ayırt edilemez; yukarıdaki sahte `sellerId` varsa tohumdandır |
+
+Geri alma, bir siparişte: `channel = source`, `source`, `channelNo`, `channelShip` silinir. `deliveredAt` tohumda üretilmiş olabilir, `history` içindeki teslim kaydıyla karşılaştırılmalı. "Örnek verileri temizle" (`db.reset`) yalnızca dizileri siler; sahte `mpChannels` ve `mpCatMap` kalır, bu yüzden temizlik yapmış işletmede kanallar hâlâ bağlı görünebilir.
+
+### Aynı desen başka programlarda (düzeltilmedi)
+
+| Program | Durum | Önem |
+|---|---|---|
+| `apps/pos/hizli.js` `ensure` | Bulut denetimi yok: Getir ve Yemeksepeti bağlı, 3 uydurma hızlı sipariş yazılır. Sipariş tamamlanırsa gerçek satış ve stok düşümü oluşur | Yüksek |
+| `apps/adisyon/platform.js` `ensure` | Bulut denetimi yok: 3 platform bağlı, uydurma platform yorumları ve yapılmamış "menu-senkron" günlüğü yazılır | Yüksek |
+| `apps/emlak/portal.js` `ensure` | İlan ve numara yalnızca örnek ilanlara yazılır, ama gerçek işletmede de üç portal `connected: true` olur | Orta |
+| `apps/pazaryeri/data.js` `seed` | Yalnızca boş belgenin örnek verisinde, `mode: 'demo'` ile. Var olan kayda dokunmaz; `mpChannels` gibi `channels` da "Örnek verileri temizle" sonrası bağlı kalır | Orta |
+| `apps/site/data.js` `ensure` | Bulutta örnek anket ve gerçek dairelere örnek oy yazılır | Düşük |
+| `apps/butik` | Desen yok: bağlantı `NS.integ` ayarından okunur | - |
+| `apps/eticaret/data.js` `ensureReviews` | Yalnızca `magaza.html`; bulutta müşteri görünümü `reviews` dizisini getirdiği için erken döner (kod incelendi) | - |
 
 ## 2-3. dalga — yapılanlar (30.10.2026)
 Kanıt: **Tarayıcı** = başsız Chrome'da sayfa gerçekten çalıştırıldı (`?demo=1`); **Test** = otomatik test; **Kod incelendi** = çalıştırılmadı.
