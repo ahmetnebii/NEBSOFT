@@ -1,5 +1,7 @@
 # NEBSOFT güvenlik denetimi raporu
 
+> **Dördüncü tur (30.10.2026, `guvenlik/ucuncu-tur`):** Platform yöneticisine uygulama tabanlı iki adımlı giriş (A6), `connect-src` daraltma (A4), eczane kalfa hesabında iade ve fiyat için sunucuda yetkili onayı belirteci (A1 kalanı), bilet koltuk kilidi sahibine bağlandı (A10), masaüstü `electron-updater` 6.8.11 ve `electron-builder` 26.18.0. Ayrıntı: Bölüm 6.
+
 > **Üçüncü tur (30.10.2026, `guvenlik/sifreleme`):** Klinik, eczane, veteriner, İK, anaokulu ve entegrasyon belgeleri veritabanında AES-256-GCM ile şifrelidir (`server/cloud/belge.js`, işletme + program başına anahtar, şifreli metin başka satıra taşınırsa açılmaz). Personel PIN'i tüm programlarda sunucu anahtarıyla özetlenir (`server/cloud/pin.js`), özet tarayıcıya gitmez, doğrulama sunucudadır. Sunucusuz kurulumda PIN ilk başarılı girişte PBKDF2 özetine geçer. Eski kayıtlar açılışta taşınır. Korumanın sınırı: veritabanı dökümü, yedek ve veritabanı erişimi için geçerlidir. Sunucuya erişen yazılım veriyi açar, tarayıcıya inen veri ve çevrimdışı bekleyen değişiklikler şifresizdir, yedek anahtarla aynı yerdeyse koruma yoktur. Eski yedekler düz metindir.
 
 Tarih: 30.10.2026 · Dal: `guvenlik/denetim` (temel: `devir/hepsi` 4ec51e1) · Kapsam: yerel kurulum (`PORT=5078`), dış sisteme denetim isteği atılmadı.
@@ -102,6 +104,8 @@ Reçete formuna başkasının telefonunu yazan kişiye o telefon için kimlik ve
 
 Araç: `npm audit` (npm kayıt defteri), 30.10.2026.
 
+**30.10.2026 güncellemesi:** `electron-updater` 6.8.11 ve `electron-builder` 26.18.0 yüklendi. Masaüstü `npm audit`: 15 açıktan **2 yüksek** kaldı (`electron` 33.2.1 ve onun bağımlılığı `extract-zip`), kritik yok. Üretim bağımlılığı `electron-updater` temiz. Electron 45.1.0 büyük sürüm atlamasıdır, yapılmadı. Aşağıdaki tablo ilk denetimin kaydıdır.
+
 | Paket | Sürüm | Durum | Gereken |
 |---|---|---|---|
 | mysql2 (doğrudan) | 3.11.5 | **Yüksek**: GHSA-3f6p-5ww8-9rcr, orta: GHSA-rgwj-5xj2-c3m3 | 3.24.6 (`package.json` + kilit dosyası) |
@@ -173,20 +177,69 @@ Kalan teknik sınırlar:
 8. Yedeklerden silme için kabul edilebilir süre nedir?
 9. İhlal bildirimi için hangi süreç ve kayıtlar gerekir?
 
+## 6. Dördüncü tur
+
+### A6: iki adımlı giriş
+
+`server/cloud/totp.js`, `totp-api.js`, yeni tablo `user_totp`, panelde **Yöneticiler → İki adımlı giriş**.
+
+- RFC 6238, SHA1, 30 saniye, 6 hane, pencere ±1. RFC 4226 Ek D ve RFC 6238 Ek B vektörleri testte (kaynak: rfc-editor.org/rfc/rfc6238, rfc-editor.org/rfc/rfc4226; vektörler hafızadan yazıldı, kod aynı değerleri üretti).
+- Gizli anahtar `cfg.encrypt` ile şifreli ve kullanıcı kimliğine bağlı, başka satırda açılmaz. `NEBSOFT_SECRET_ESKI` ile anahtar değişiminde okunur.
+- 8 kurtarma kodu sunucu anahtarıyla HMAC özeti olarak durur, bir kez gösterilir, tek kullanımlıktır.
+- Aynı kod ikinci kez geçmez: `last_step` satır kilidi altında güncellenir, aynı anda gelen iki istekten biri düşer (testte denendi).
+- 5 hatada 15 dakika kilit. Kilitteyken doğru kod ve kurtarma kodu da reddedilir.
+- TOTP etkinse e-posta gönderilmez. Kapalıysa e-posta kodu aynen sürer.
+- Etkinleştirme, yenileme ve kapatma hesap şifresi ister; yenileme ve kapatma ayrıca kod ister. Oturum tek başına korumayı kaldıramaz.
+- Etkinleşince diğer oturumlar, bekleyen e-posta giriş kodları ve giriş bağlantıları düşer.
+- **Görevde istenmeyen, kapatılan iki yol:** `/api/auth/reset` iki adımlı hesapta artık oturum açmaz (e-postayı ele geçiren ikinci adımı atlıyordu). Pazar yeri girişinden gelen yönetici `/admin/`e yönlendirilir, şifreyi orada yeniden yazar.
+- Kilitlenen yönetici: `node scripts/totp-sifirla.js --eposta <adres> --evet` (sunucuda). Hosting paketine eklendi. Oturumları kapatır, denetime yazar, şifreye dokunmaz.
+
+Sınırlar: QR görseli yok. Panelde dış kütüphane çalıştırmak gizli anahtarı üçüncü taraf kodla aynı sayfaya koyardı; `otpauth://` metni ve elle girilecek anahtar gösterilir. Gerçek telefon uygulamasıyla **denenmedi**: kodlar RFC algoritmasıyla test içinde ve tarayıcıda Web Crypto ile üretildi. Yönetici hesabı platformda iki adımlıyı zorunlu kılmaz, kişi kendisi açar. Platform yöneticisinin başka yöneticinin korumasını kaldırdığı panel ucu yok, yalnızca betik var. `/api/auth/link` (cihaz bağlantısı) ikinci adım istemez: bağlantıyı yalnızca açık oturum üretebilir.
+
+### A4: CSP
+
+`connect-src 'self' https:` → `connect-src 'self' https://api.emailjs.com`. Tarama sonucu tüm `fetch`, `XMLHttpRequest`, `EventSource`, `WebSocket`, `sendBeacon` çağrıları: yalnızca aynı köken, tek dış adres EmailJS (`core/integrations.js`, e-posta modu "emailjs"; REST ucu DOĞRULANDI, `emailjs.com/docs/rest-api/send/`, `docs/MUHASEBE-DOGRULAMA-RAPORU.md`). Service worker yalnızca aynı kökeni yakalar. `base-uri`, `form-action`, `object-src`, `frame-ancestors` iki ilkede de zaten vardı, değişmedi. `SITE_CSP` zaten `connect-src 'self'`, değişmedi.
+
+Davranış değişikliği: `httpCall` içindeki "köprü yoksa doğrudan tarayıcıdan" yedeği http(s) sayfada artık CSP'ye takılır. Bu yedek yalnızca aynı kökene ağ hatası olduğunda çalışıyordu, kullanıcı bağlantı hatası görür. `file://` açılışta CSP yoktur, değişmedi.
+
+Kalan: `img-src https:` görsel adresiyle veri çıkışına açıktır, `script-src 'unsafe-inline'` duruyor. XSS varsa `connect-src` tek başına durdurmaz.
+
+Tarayıcıda (yerel sunucu, MariaDB): pazar yeri, POS, klinik, ön muhasebe, emlak ilan, e-ticaret mağaza, yönetim demosu, yönetim paneli (bulut), işletme sitesi `/t/<işletme>/`, bilet sayfası, eczane. Bilinçli yapılan bir `example.com` isteği dışında CSP ihlali yok; yani denetim ihlali yakalayabiliyor. XSLT polyfill (WASM) ve `general.xslt` bu ilkede çalıştı. Denenmeyen: gerçek EmailJS gönderimi, leaflet haritalı ilan ayrıntısı, kamera ile barkod, koyu temada tüm ekranlar.
+
+### Yetkili onayı (A1 kalanı)
+
+`NS.approve` 14 programda, 46 kod satırında kullanılıyor. Sunucu kuralı (`rol-kural.RULES`) 4 programda var; ikisinin kesişimi eczane ve ik. Bu yüzden yalnızca **eczane kalfa** için uygulandı:
+
+- `POST /api/data/:app/pin` yetkili PIN doğrulanınca imzalı belirteç döner: hesaba ve programa bağlı, 5 dakika, korunan bir değişiklikte bir kez. PIN sahibinin rolüne sunucu karar verir, istemcinin gönderdiği `roles` belirteç vermez.
+- Yeni kural alanı `onayli`: `sales.canceled` ve `drugs.price`. Belirteçsiz değişiklik sunucudaki değere döner, geri kalan belge kaydedilir, yanıtta `onayRed` gelir, denetime yazılır; arayüz hata gösterir ve sunucudaki değeri ekrana getirir. Satış kaydı silinemez (`silemez`).
+- Program kodu değişmedi. `core/core.js` yalnızca belirteci saklar ve PUT'a ekler.
+
+Sınırlar: Belirteç işleme özel değildir (`NS.approve` işlem kimliği almaz): 5 dakika içinde bir kayıtta herhangi bir korunan alanı açar. Tek kullanım bilgisi tek süreç belleğindedir. Çevrimdışı onaylanan iade geri alınır, kullanıcı hatayı görür. `lots` (stok) ve depo iade/imha sunucuda korunmuyor: kalfa satışta stok düşürdüğü için alan kuralı yetmez. Kontrole tabi satış onayı ve ik şefinin hak aşımı onayı hesaplanan koşuldur, sunucuda zorlanmıyor.
+
+**Kalan 12 program (adisyon, anaokulu, bilet, emlak, eticaret, fiyatrobotu, kiralama, kurs, kuyumcu, pos, site, spor):** burada sunucu rolü olmadığı için onay arayüzdedir. Maliyet: her program için `RULES`e rol kaydı (ayrı iş) + `onayli` alan listesi, program başına küçük. Koşul hesaplı olanlar (kiralama liste fiyatı altı, kuyumcu kur sapması, POS indirim oranı) alan kuralına sığmaz, `sonra` adımında sunucu hesabı gerekir. Tüm programlar için işlem kimliği istenirse bu satırların hepsi değişir.
+
+### A10: bilet koltuk kilidi
+
+`holds` silme yalnızca sahibine veya süresi dolmuş kilide açık. Sahip kimliği önceden herkese açık görünümde gidiyordu, yani yetki sayılamazdı; artık yalnızca kendi kilidinde döner (`x.sahip`). `bilet.html` başkasının kilidine dokunmaz, kimlik `pubQuery` ile gönderilir. Tarayıcıda koltuk seçme, bırakma, iki koltukla rezervasyon uçtan uca çalıştı. Eski sürümde açık kalan sekme başkasının süresi dolmuş sayılan kilidini silmeye çalışırsa 403 alabilir; `sw.js` sürümü artırıldı.
+
+### Masaüstü
+
+Bağımlılıklar yükseltildi, `electron-builder --win --x64` geçici klasöre derlendi, `NEBSOFT-Kurulum.exe` üretildi, depoya konmadı, sonra silindi. Kurulum dosyası **çalıştırılmadı**, otomatik güncelleme denenmedi. Electron 33.2.1 durur; 45.1.0 ayrı test ister: `main.js` pencere, IPC, otomatik güncelleme, yazıcı köprüsü, `preload.js`. Uygulama sunucudan uzak sayfa yüklediği için audit'te kalan Electron danışmaları önemsenmeli.
+
 ## A. Açık kalanlar
 
 | # | Önem | Konu | Yer | Öneri |
 |---|---|---|---|---|
-| A1 | Yüksek → **4 programda giderildi** | Rolü atanan hesapta veri sunucuda süzülür, PIN inmez, yazma geri konur (`rol-kural.js`, `routes.js`). Kalan: PIN hâlâ düz metin `users[].pin`; rolsüz ekip hesabı ve sahip PIN'i görür; 27 programda rol yalnızca arayüzde; onay kararı (`NS.approve`) sunucuda zorlanmaz | `server/cloud/rol-kural.js`, `routes.js`, `core/core.js` | PIN özeti; yeni programlara kural |
+| A1 | Yüksek → **4 programda giderildi** | Rolü atanan hesapta veri sunucuda süzülür, PIN inmez, yazma geri konur (`rol-kural.js`, `routes.js`). Kalan: 27 programda rol yalnızca arayüzde; `NS.approve` yalnızca eczane kalfada, iade ve fiyatta sunucuda zorlanır (Bölüm 6) | `server/cloud/rol-kural.js`, `routes.js`, `core/core.js` | PIN özeti; yeni programlara kural |
 | A2 | Yüksek | Randevuda telefonla giriş | `public-rules.js:106` | SMS kodu veya portal kodu |
 | ~~A3~~ | Orta | **Kapandı 30.10.2026:** yer tutucu yalnız `core/integrations.js`, `integ-wizard.js`, `ubltr.js` içinde geçen sağlayıcı adresine veya o entegrasyonun kayıtlı adresine çözülür. Sınır: rolü atanmamış ekip üyesi entegrasyon adresini değiştirebilir | `secrets.js` | Rol atanan hesap `cfg` değiştiremez |
-| A4 | Orta | CSP `unsafe-inline`; `connect-src https:` veri çıkışına izin verir | `security.js:16` | Gömülü betikleri taşımak büyük iş, aşamalı |
+| A4 | Orta | **Kısmen kapandı 30.10.2026:** `connect-src` yalnız aynı köken + EmailJS. Kalan: `unsafe-inline`, `img-src https:` | `security.js` | Gömülü betikleri taşımak büyük iş, aşamalı |
 | ~~A5~~ | Orta | **Kapandı 30.10.2026:** işletme ve program başına saatte 3000 yazma işlemi. Sınır tek süreç belleğinde | `public.js` | — |
-| A6 | Orta | **Kısmen kapandı 30.10.2026:** e-posta altyapısı kuruluysa platform yöneticisi kodla girer. E-posta kurulmadan iki adım yok; uygulama tabanlı doğrulama (TOTP) yok | `routes.js` | E-posta ayarını canlıdan önce yapın |
+| ~~A6~~ | Orta | **Kapandı 30.10.2026:** uygulama tabanlı iki adımlı giriş, e-posta altyapısına bağlı değil. Yönetici kendisi açar, zorunlu değildir. Gerçek telefon uygulamasıyla denenmedi | `totp.js` | Canlıda tüm yöneticiler açsın |
 | ~~A7~~ | Orta | **Kapandı 30.10.2026:** yeni veya değişen alan adı `_nebsoft.<alan>` TXT kaydıyla doğrulanmadan yayınlanmaz, doğrulanmamış kayıt adı tutamaz. Eski kayıtlar doğrulanmış sayılır. Gerçek DNS ile denenmedi | `routes.js`, `seo.js` | Canlıda bir alan adıyla deneyin |
 | A8 | Düşük | Hesap kilidi hedefli engellemeye açık; müşteri parolası en az 8 karakter; hız sınırları tek süreç belleğinde | `auth.js:54`, `security.js` | nginx `limit_req`, süreli kilit gözden geçirme |
 | A9 | Yüksek | `sunucu.json` HTTP adresi; Android `usesCleartextTraffic=true` | `sunucu.json`, `AndroidManifest.xml:20` | HTTPS'e geçince kapatın |
-| A10 | Düşük | Bilet koltuk kilidini herkes silebilir; kilit satışı engellemediği için etkisi sınırlı | `public-rules.js:841` | Sahibine bağlayın |
+| ~~A10~~ | Düşük | **Kapandı 30.10.2026:** kilidi yalnızca sahibi kaldırır, sahip kimliği herkese açık değil. Kilit satışı engellemez (değişmedi) | `public-rules.js` | — |
 | A11 | Düşük | Audit tablosu için saklama süresi ve temizlik yok | `routes.js:28` | Süreyi avukat görüşüyle belirleyin |
 
 Kapsam dışı kaldı: masaüstü ve Android tam denetimi yapılmadı (yalnızca pencere ayarları ve manifest okundu), gerçek nginx kurulumu, yük testi, sağlayıcılarla canlı entegrasyon. `sec.safeFetch` yerel sahte sunucuyla denendi; **gerçek SMS, e-Fatura ve WhatsApp sağlayıcılarıyla denenmedi**, canlıdan önce birer test gönderimi yapılmalı.
@@ -211,7 +264,8 @@ node server/test/guvenlik.test.js && node server/test/program-duman.test.js &&
 
 1. Sağlık ve İK kullanan işletmelerde mevcut ekip üyelerine rol atayın; atanmayan üye tam yetkili kalır.
 2. Gerçek Chrome'da `sw.js` kaydını bir kez doğrulayın: tarayıcı panelinde en küçük service worker bile "unknown error" veriyor, bu yüzden hata panele özgü görünüyor.
-3. E-posta altyapısını kurun (platform yöneticisi iki adımlı giriş buna bağlı).
+3. Tüm yöneticiler panelden iki adımlı girişi açsın, gerçek telefon uygulamasıyla bir kez denesin, kurtarma kodlarını saklasın. E-posta altyapısı müşteri işlemleri için yine gerekir.
 4. `sunucu.json` HTTP adresini kaldırıp paketleri yeniden derleme.
 5. Canlıda `data/` kod klasöründe kaldıysa: **bu açık yayında bulunduysa `NEBSOFT_SECRET`, veritabanı parolası ve entegrasyon anahtarlarını değiştirin**, sunucu günlüklerinde `..` ve `%2e` içeren istekleri arayın.
 6. Avukat soruları (Bölüm 5).
+7. Electron 45.1.0 yükseltmesi için ayrı test dalı kararı (Bölüm 6, Masaüstü).

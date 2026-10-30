@@ -434,12 +434,14 @@
       if (this._flight) { this._again = true; return; }
       clearTimeout(this._rt); this._rt = null;
       if (!this._dirty) return;
-      this._flight = true; this._dirty = false; const sent = JSON.stringify(this.data);
+      this._flight = true; this._dirty = false; const sent = JSON.stringify(this.data); const onay = this._onay;
       syncState('Kaydediliyor…', 'run');
       try {
-        const res = await fetch('/api/data/' + this.name, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: `{"base":${this._v}${this.serverRole ? `,"rol":${JSON.stringify(this.serverRole)}` : ''},"data":${sent}}` });
+        const res = await fetch('/api/data/' + this.name, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: `{"base":${this._v}${this.serverRole ? `,"rol":${JSON.stringify(this.serverRole)}` : ''}${onay ? `,"onay":${JSON.stringify(onay)}` : ''},"data":${sent}}` });
         const j = await res.json().catch(() => ({}));
-        if (res.ok) { this._v = j.version; this._base = sent; this._fails = 0; if (/"users":\[.*?"pin":/s.test(sent)) this._pinTemizle(sent); try { localStorage.removeItem(pendKey(this.name)); } catch (e) { /* yok */ } syncState('Kaydedildi', 'ok'); }
+        if (res.ok) { this._v = j.version; this._base = sent; this._fails = 0; if (/"users":\[.*?"pin":/s.test(sent)) this._pinTemizle(sent); try { localStorage.removeItem(pendKey(this.name)); } catch (e) { /* yok */ } syncState('Kaydedildi', 'ok');
+          if (j.onayKullanildi && this._onay === onay) this._onay = null;
+          if (j.onayRed) { this._v = j.version - 1; this._dirty = true; syncState('Yetkili onayı olmayan değişiklik geri alındı', 'err'); toast('Yetkili onayı doğrulanamadı, bu değişiklik kaydedilmedi. İşlemi yeniden yapın.', 'err'); } } // eski sürümle gönderim çakışır, sunucudaki değer ekrana döner
         else if (res.status === 409 && j.code === 'rol') { this._backup(); this._dirty = false; this._flight = false; syncState(j.error || 'Hesap yetkiniz değişti', 'err'); location.reload(); return; } // rol değişti: bekleyen veri yeni görünümle birleşir
         else if (res.status === 409 && j.code === 'conflict') {
           // Başka cihaz kaydetmiş: birleştir ve yeniden gönder
@@ -611,7 +613,7 @@
     const aday = db.all('users', (u) => u.active !== false && (o.uid ? u.id === o.uid : u.role === 'admin' || (o.roles || []).includes(u.role)));
     if (db.cloud) {
       try {
-        const u = (await api('POST', `/api/data/${db.name}/pin`, { pin, uid: o.uid, roles: o.roles })).user;
+        const r = await api('POST', `/api/data/${db.name}/pin`, { pin, uid: o.uid, roles: o.roles }); const u = r.user; if (r.onay) db._onay = r.onay; // yetkili onayı belirteci: sonraki kayıtla sunucuya gider
         if (u && o.uid) { const h = await pinYap(pin); try { if (h) localStorage.setItem(pinCihaz(db, u.id), h); } catch (e) { /* yok */ } }
         return u || null;
       } catch (x) { if (x.status === 403) return null; if (x.status) throw x; }

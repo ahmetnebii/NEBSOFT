@@ -61,4 +61,18 @@ async function gecis(db) {
   return n;
 }
 
-module.exports = { ozet, dogrula, yazimda, gorunum, gecis };
+// Yetkili onayı belirteci: PIN sunucuda doğrulandığında verilir, hesaba ve programa bağlıdır, 5 dakika geçerlidir, korunan bir değişiklikte bir kez kullanılır.
+// Hangi işlem için alındığı yazmaz: NS.approve'a işlem kimliği geçmek tüm programları değiştirirdi. Süre ve tek kullanım bu boşluğu daraltır.
+const ONAY_SURE = 5 * 60e3; const kullanilan = new Map();
+const onayMac = (g) => cfg.mac(`yetkili-onay:${g}`);
+function onayUret(tid, app, hesap, onaylayan) { const g = Buffer.from(JSON.stringify({ t: tid, a: app, h: hesap, o: onaylayan, n: crypto.randomBytes(9).toString('base64url'), e: Date.now() + ONAY_SURE })).toString('base64url'); return `${g}.${onayMac(g)}`; }
+function onayOku(belirtec, tid, app, hesap) {
+  if (typeof belirtec !== 'string' || belirtec.length > 400 || !belirtec.includes('.')) return null;
+  const [g, imza] = belirtec.split('.'); if (!esit(onayMac(g), imza)) return null;
+  let o; try { o = JSON.parse(Buffer.from(g, 'base64url').toString('utf8')); } catch (e) { return null; }
+  return o && o.t === tid && o.a === app && o.h === hesap && o.e > Date.now() && !kullanilan.has(o.n) ? o : null;
+}
+// Tek süreç belleğindedir (hız sınırları gibi). Yeniden başlatmada en çok 5 dakikalık belirteç tekrar geçerli olabilir.
+function onayHarca(o) { const an = Date.now(); if (kullanilan.size > 5000) for (const [n, e] of kullanilan) if (e < an) kullanilan.delete(n); kullanilan.set(o.n, o.e); }
+
+module.exports = { ozet, dogrula, yazimda, gorunum, gecis, onayUret, onayOku, onayHarca };

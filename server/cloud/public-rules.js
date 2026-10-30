@@ -877,14 +877,16 @@ const evTier = (e, day) => { const t = [[e.tier1Until, e.tier1Pct], [e.tier2Unti
 const evUnit = (e, cat, ttype, day) => { const ty = evTypes(e).find((t) => t.id === ttype); if (ttype && !ty) bad('Geçersiz bilet türü'); return Math.round(Number(e.prices[cat]) * (1 - evTier(e, day) / 100) * (1 - ((ty || {}).pct || 0) / 100)); };
 // Koltuğun kategorisi salondan gelir: istemcinin söylediği kategoriye güvenilmez (VIP koltuk ucuz kategoriden alınamaz); kapalı ve kontenjanlı koltuk satılmaz
 const evSeatCat = (v, e, seat) => { const m = /^([A-Za-z]+)(\d+)$/.exec(String(seat || '')); const row = m && (v.rows || []).find((r) => r.r === m[1]); const n = m ? Number(m[2]) : 0; if (!row || n < 1 || n > Number(v.seatsPerRow) || (v.closed || []).includes(seat) || (e.blocks || {})[seat]) bad('Bu koltuk satışta değil'); return row.cat; };
+const holdOwner = (q) => (q && typeof q.sahip === 'string' && q.sahip.length >= 8 && q.sahip.length <= 40 ? q.sahip : null);
 RULES.bilet = {
   pub: {
     events: { where: (e) => e.status !== 'taslak', omit: ['cost', 'internal', 'share', 'orgName'] },
     venues: true,
     tickets: { where: (t) => t.status !== 'refunded', fields: ['id', 'event', 'seat', 'cat', 'status'] }, // doluluk (alıcı bilgisi olmadan)
-    holds: { where: (h) => h.until > Date.now() },
+    // Kilidin sahibi herkese açık değildir: sahip kimliği, kilidi kaldırma yetkisidir. Ziyaretçi yalnızca kendi kilidini sahip alanıyla görür (query).
+    holds: { where: (h) => h.until > Date.now(), fields: ['id', 'event', 'seat', 'until'] },
   },
-  query: (x, q) => { const k = evCode(x, q.code); return k ? { codes: [x.pick(k, ['id', 'code', 'pct', 'note', 'active'])] } : null; },
+  query: (x, q) => { const k = evCode(x, q.code); const sahip = holdOwner(q); return { ...(k ? { codes: [x.pick(k, ['id', 'code', 'pct', 'note', 'active'])] } : {}), ...(sahip ? { holds: x.col('holds').filter((h) => h.until > Date.now()).map((h) => ({ ...x.pick(h, ['id', 'event', 'seat', 'until']), ...(h.owner === sahip ? { owner: h.owner } : {}) })) } : {}) }; },
   login: (x, q) => { const no = norm(q.order); const l4 = String(q.last4 || '').replace(/\D/g, ''); const t = no && l4.length === 4 && x.col('tickets').find((t) => t.order === no && digits((t.buyer || {}).phone).endsWith(l4)); return t ? { k: 'o', i: no } : null; },
   loginError: 'Sipariş numarası ve telefon eşleşmedi',
   view: (x) => {
@@ -901,7 +903,7 @@ RULES.bilet = {
         if (x.col('tickets').some((t) => t.event === r.event && t.seat === r.seat && t.status !== 'refunded')) throw Object.assign(new Error('Bu koltuk az önce satıldı'), { status: 409 });
         if (x.col('holds').filter((h) => h.owner === r.owner && h.until > Date.now()).length > 8) bad('En fazla 8 bilet');
       }),
-      del: () => true, // geçici koltuk kilidi; süre dolunca zaten düşer
+      del: (h, x) => h.until <= Date.now() || (!!holdOwner(x.q) && h.owner === holdOwner(x.q)), // süresi dolan kilit temizlenebilir; süren kilidi yalnızca sahibi kaldırır
     },
     tickets: {
       ins: I({ event: 'id', seat: 'str:12?', cat: 'str:20', ttype: 'str:30?', buyer: 'json:400' }, () => ({ channel: 'online', pay: 'gise', status: 'reserved', at: nowIso() }), (r, x) => {

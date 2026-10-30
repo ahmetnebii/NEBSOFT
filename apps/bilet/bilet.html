@@ -42,7 +42,8 @@
   const db = new NS.DB('bilet', B.seed);
   const s = () => db.settings({ serviceFee: 15 });
   // Her ziyaretçinin kendi kilit kimliği: seçtiği koltuklar başkasına "seçiliyor" görünür
-  let me; try { me = sessionStorage.getItem('nebsoft:bilet:me') || NS.uid(); sessionStorage.setItem('nebsoft:bilet:me', me); } catch (e) { me = NS.uid(); }
+  let me; try { me = sessionStorage.getItem('nebsoft:bilet:me') || NS.uid() + NS.uid(); sessionStorage.setItem('nebsoft:bilet:me', me); } catch (e) { me = NS.uid() + NS.uid(); }
+  const kod = { v: '' }; const sahibim = () => db.pubQuery({ sahip: me, ...(kod.v ? { code: kod.v } : {}) }); sahibim(); // sunucu kilidimi yalnızca bu kimlikle tanır ve kaldırır
   const ven = (id) => db.get('venues', id);
   let timer = null;
 
@@ -50,7 +51,7 @@
     $('#app').innerHTML = `<header class="top"><div class="in"><a href="#/" class="row nw" style="color:inherit;text-decoration:none"><div class="ns-logo">${icon('ticket')}</div><b style="font-size:18px">${esc(s().bizName)}</b></a><span class="grow"></span><a class="btn ghost" href="#/biletlerim">${icon('ticket')} Biletlerim</a><button class="btn ghost icon" id="th" data-theme-ico>${icon(NS.getTheme() === 'dark' ? 'sun' : 'moon')}</button></div></header><main class="wrap" id="pg"></main><p class="center small faint" style="padding-bottom:30px">NEBSOFT Bilet altyapısı ile</p>`;
     $('#th').onclick = NS.toggleTheme;
   }
-  const releaseMine = () => { db.load(); db.data.holds = db.all('holds', (h) => h.owner !== me && h.until > Date.now()); db.save(); };
+  const releaseMine = () => { db.load(); db.data.holds = db.all('holds', (h) => h.owner !== me); db.save(); };
 
   const bg = (e, w, h) => `background-color:${e.color};background-image:url('${B.poster(e, w, h)}')`;
   const leftOf = (e) => { const v = ven(e.venue); return Object.keys(v.cats).reduce((t, k) => t + B.catLeft(db, e, v, k), 0); };
@@ -84,7 +85,7 @@
     const v = ven(e.venue);
     document.title = `${e.name} · ${s().bizName}`;
     let sel = [], ga = {}; const ty = {};
-    const hold = () => { db.load(); db.data.holds = db.all('holds', (h) => h.owner !== me && h.until > Date.now()); const until = Date.now() + B.HOLD_MIN * 60000; sel.forEach((seat) => db.data.holds.push({ id: NS.uid(), event: e.id, seat, owner: me, until })); db.save(); };
+    const hold = () => { db.load(); db.data.holds = db.all('holds', (h) => h.owner !== me); const until = Date.now() + B.HOLD_MIN * 60000; sel.forEach((seat) => db.data.holds.push({ id: NS.uid(), event: e.id, seat, owner: me, until })); db.save(); };
     const draw = () => {
       db.load();
       const sold = B.sold(db, e.id), held = B.held(db, e.id, me);
@@ -121,7 +122,7 @@
       const items = el._items; const sold = B.sold(db, e.id);
       if (items.some((i) => i.seat && sold.has(i.seat))) { toast('Koltuklardan biri satıldı, lütfen yeniden seçin', 'err'); sel = []; return draw(); }
       const so = B.salesOpen(e, 'online'); if (!so.ok) return toast(so.why, 'err');
-      const bf = NS.readForm(f); if (bf.code) db.pubQuery({ code: bf.code.toUpperCase() });
+      const bf = NS.readForm(f); if (bf.code) { kod.v = bf.code.toUpperCase(); sahibim(); }
       const cc = B.codeCheck(db, bf.code, e, items.length, 'online'); if (cc.err) return toast(cc.err, 'err'); const k = cc.k;
       if (k) k.uses = (k.uses || 0) + items.length;
       const order = db.nextNo('orders', 'B');

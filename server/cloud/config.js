@@ -24,8 +24,8 @@ function encrypt(obj) {
   const enc = Buffer.concat([c.update(JSON.stringify(obj), 'utf8'), c.final()]);
   return Buffer.concat([iv, c.getAuthTag(), enc]).toString('base64');
 }
-function decrypt(b64) {
-  const buf = Buffer.from(b64, 'base64'); const d = crypto.createDecipheriv('aes-256-gcm', key(), buf.subarray(0, 12));
+function decrypt(b64, anahtar = key()) {
+  const buf = Buffer.from(b64, 'base64'); const d = crypto.createDecipheriv('aes-256-gcm', anahtar, buf.subarray(0, 12));
   d.setAuthTag(buf.subarray(12, 28));
   return JSON.parse(Buffer.concat([d.update(buf.subarray(28)), d.final()]).toString('utf8'));
 }

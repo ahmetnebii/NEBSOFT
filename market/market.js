@@ -626,7 +626,7 @@
         A.busy(b, true);
         if (CL) {
           let r; try { r = await NS.api('POST', '/api/auth/forgot', v); } catch (x) { A.busy(b, false); return A.err(el, x.message); }
-          if (r.mailed) { A.busy(b, false); let ticket = r.ticket; return codeStep(el, { title: 'Yeni şifrenizi belirleyin', to: r.to, sub: 'E-postanıza gelen 6 haneli kodu ve yeni şifrenizi girin.', btn: 'Şifremi yenile ve giriş yap', extra: A.field('pass', 'Yeni şifre', { type: 'password', ac: 'new-password', hint: 'En az 8 karakter; harf ve rakam içersin' }), onSubmit: async (code, f) => { await NS.api('POST', '/api/auth/reset', { ticket, code, pass: f.pass }); await refreshMe(); drawNav(); toast('Şifreniz yenilendi', 'ok'); setTimeout(afterLogin, 500); }, onResend: async () => { ticket = (await NS.api('POST', '/api/auth/forgot', v)).ticket; } }); }
+          if (r.mailed) { A.busy(b, false); let ticket = r.ticket; return codeStep(el, { title: 'Yeni şifrenizi belirleyin', to: r.to, sub: 'E-postanıza gelen 6 haneli kodu ve yeni şifrenizi girin.', btn: 'Şifremi yenile ve giriş yap', extra: A.field('pass', 'Yeni şifre', { type: 'password', ac: 'new-password', hint: 'En az 8 karakter; harf ve rakam içersin' }), onSubmit: async (code, f) => { const rs = await NS.api('POST', '/api/auth/reset', { ticket, code, pass: f.pass }); if (rs.girisGerekli) { toast('Şifreniz yenilendi. Uygulama kodunuzla giriş yapın.', 'ok'); location.href = '/admin/'; return; } await refreshMe(); drawNav(); toast('Şifreniz yenilendi', 'ok'); setTimeout(afterLogin, 500); }, onResend: async () => { ticket = (await NS.api('POST', '/api/auth/forgot', v)).ticket; } }); }
         }
         await A.done(b);
         $('.ax-card', el).innerHTML = `${A.halo(`<span style="position:relative;color:#34d399">${icon('check', 'ico-lg')}</span>`)}<h2>Talebiniz alındı</h2><p class="ax-sub">Bu e-posta ile kayıtlı bir hesap varsa destek ekibimiz mesai saatlerinde sizi arayacak. Beklemek istemezseniz <b style="color:#fff">${esc(tel)}</b> numarasından bize ulaşabilirsiniz.</p><a class="ax-a" href="#/giris">${icon('back')} Girişe dön</a>`;
@@ -647,6 +647,7 @@
       try {
         if (CL) {
           const r = await NS.api('POST', '/api/auth/login', v);
+          if (r.needTotp) { location.href = '/admin/'; return; } // uygulama kodu yönetim panelinde girilir
           if (r.needCode) { A.busy(b, false); let ticket = r.ticket; return codeStep(el, { title: 'Giriş kodunu girin', to: r.to, btn: 'Giriş yap', onSubmit: async (code) => { await NS.api('POST', '/api/auth/login', { ...v, ticket, code }); await refreshMe(); drawNav(); setTimeout(() => { if (pid) startTrial(pid); else afterLogin(); }, 500); }, onResend: async () => { ticket = (await NS.api('POST', '/api/auth/login', v)).ticket; } }); }
           await refreshMe();
         }
