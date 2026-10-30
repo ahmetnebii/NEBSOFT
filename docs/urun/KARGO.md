@@ -1,6 +1,49 @@
 # Kargo & Kurye — Ürün Spesifikasyonu
 
-> **Durum (29.10.2026):** Kullanıcı dalgaları önceden onayladı. **1. dalga tamamlandı.** 2. ve 3. dalga sırada.
+> **Durum (30.10.2026):** Kullanıcı dalgaları önceden onayladı. 1., 2. ve 3. dalga yapıldı; ilk bölümdeki engeller kaldırılmadan canlıya çıkılamaz.
+
+## CANLIYA ÇIKMAYI ENGELLEYENLER
+- **Kargo firması gönderi API'leri** (Yurtiçi, Aras, MNG/DHL, Sürat, PTT, HepsiJET): resmî doküman yok — DOĞRULANAMADI. Firmanın panelinde oluşturulur, takip numarası elle girilir. Simülasyon referansı kabul edilmez.
+- **GPS / araç takip:** sağlayıcı ve resmî doküman yok; konum gösterilmez.
+- **e-Fatura / e-Arşiv:** gerçek sağlayıcıyla denenmedi. Kurumsal aylık fatura tarayıcıda TEST sonucu verdi (`auto` seçimi simülasyonda e-Arşiv döndü); mükellef sorgusu gerçek hesapla denenmeli.
+- **Gönderi ücreti KDV oranı %20** (hafızadan, doğrulanmadı): mali müşavir onayı gerekir.
+- **Kurye primi:** yalnızca teslim × birim tutar. Bordro, vergi, SGK hesabı yoktur.
+- **Teslim fotoğrafı:** tarayıcı deposunda; yoğun kullanımda dosya deposu gerekir (Ç7).
+
+## 2-3. dalga — yapılanlar (30.10.2026)
+Kanıt: **Tarayıcı** = başsız Chrome'da sayfa gerçekten çalıştırıldı (`?demo=1`); **Test** = otomatik test; **Kod incelendi** = çalıştırılmadı.
+
+### Kırık temel
+| # | Sorun | Sonuç | Kanıt |
+|---|---|---|---|
+| K8 | **Kişisel veri sızıntısı:** takip numarasını bilen herkes hareket notlarında teslim alanın adını, teslim konumunu ve personel adını görüyordu | Bulut görünümü notları süzer, personel adı gitmez; kanıt yalnızca var/yok. Süzülmüş geçmişle yeniden teslimat isteği çalışmaya devam eder | `kargo-kural.test.js` (6) |
+| K9 | Bulutta takip sayfası "teslim kanıtı" satırını hiç gösteremiyordu (konum alanı gönderilmiyor) | `proof` alanı | `kargo-kural.test.js`; sayfa: Kod incelendi |
+| K10 | Anlaşmalı firma teslim edince kapıda tahsilat hiçbir yere yazılmıyordu; aktarılan gönderi zimmet havuzunda kalıyordu | Tutar firmadan alınacak olarak mutabakata düşer ("Anlaşmalı kargo"), havuza girmez; elle "Firma teslim etti" | Kod incelendi |
+| K11 | Boş ölçü desiyi `NaN` yapıyordu; eksik telefon, eksi tutar kabul ediliyordu; cari seçilince ödeyen değişmiyordu | Denetimler; cari seçilince ödeyen "cari" | Kod incelendi |
+| K12 | Takip numarası saniyede çakışabiliyordu | Sayaç + benzersizlik denetimi | Tarayıcı: aynı anda açılan numaralar farklı |
+| K13 | KT ödemesi kim, ne kadar, nasıl kaydı tutmuyordu | Yöntem, dekont no, tutar kaydı ve döküm | Tarayıcı: 20.100 ₺ |
+| K14 | Kuryede "üzerimdeki KT" alıcı ödemeli ücreti saymıyordu; kasa hesabında havale nakit sayılıyordu | Kuryedeki toplam para; havale nakitten ayrıldı | Tarayıcı (beklenen 500 ₺), Kod incelendi (havale) |
+| K15 | Hareketli cari ve kurye silinebiliyordu | Silme kısıtı | Tarayıcı: cari silinmedi. Kurye: Kod incelendi |
+| K16 | Aylık fatura yalnızca içinde bulunulan ay kesilebiliyordu, peşin gönderi "bu ay tutar"a giriyordu | Dönem seçimi (bu ay, geçen ay); tutarlar yalnızca cari ödemeli | Tarayıcı: 64 gönderi 14.320,17 ₺ TEST |
+| K17 | Kabul personeli fatura kesebiliyordu | Fatura yalnızca yöneticide | Tarayıcı (rol sayfada taklit edilerek); PIN girişiyle denenmedi |
+| K18 | Müşteri × gönderi taraması | Tek geçiş | Tarayıcı: 6.000 gönderi, 300 cari: gönderiler 103 ms, cariler 102 ms, mutabakat 31 ms, raporlar 27 ms |
+
+### 2. dalga — beklenenler
+| # | Özellik | Sonuç | Kanıt |
+|---|---|---|---|
+| B1 | Kurumsal fatura ve ekstre | Dönemli fatura, açık fatura tutarı, ödendi kaydı (TEST fatura ödenemez), `NS.docs` döküm | Tarayıcı |
+| B2 | Excel'den toplu gönderi | Başlık eşleştirme, ücret ve bölge seçimi, tekrar referans atlanır, özet, toplu etiket | Tarayıcı (`NS.readSheet` taklit edilerek): 2 açıldı, 1 tekrar, 1 hatalı; gerçek dosyayla denenmedi |
+| B3 | E-ticaret'ten gönderi alma | Doğrudan bağ yerine dosya: E-ticaret "Kargo listesi" → bu ekrandan aktarım. Bulutta da çalışır, takip no E-ticaret'e geri yazılmaz | E-ticaret tarafı Kod incelendi; aynı sütunlar Tarayıcı |
+| B4 | Yeniden teslimat | Alıcının istediği gün gelince gönderi zimmet havuzuna düşer, "Yeniden teslimat" rozeti; isteğe bağlı dağıtım SMS'i (`NS.smsBatch`) | Kod incelendi |
+
+### 3. dalga — fark yaratanlar
+| # | Özellik | Sonuç | Kanıt |
+|---|---|---|---|
+| F1 | Rota önerisi | Aynı gün/ekspres, istenen gün, kurye bölge sırası, adres; elle yukarı alma. **Harita mesafesi yok:** gönderide koordinat yok | Tarayıcı: sıra değişti, dağıtım listesi aynı sırayla |
+| F2 | Kurye primi | Kurye veya genel birim tutar, aylık tablo, `NS.docs` döküm | Tarayıcı |
+| F3 | Şube raporu | Ayarda şube listesi, kabulde seçim, gönderi/ciro/teslim başarısı/KT; eski kayıt göndericinin ilçesi | Tarayıcı (şube tanımsız hali); şubeli kabul: Kod incelendi |
+
+Kalite kapısı: 10 ekran konsol hatasız; 375 px koyu temada 9 ekran taşmasız; boş liste görüldü. Uçtan uca: Excel → zimmet → kurye → imzalı teslim → kasa → göndericiye ödeme. Kamera, konum izni ve kâğıt çıktısı denenmedi.
 
 Tarih: 29.10.2026 · Dal: `claude/urun-eticaret-uretim-38c2a2` · Yöntem: `CLAUDE.md` §2 · Program: `apps/kargo` (operasyon paneli `index.html`, alıcı takip sayfası `takip.html`)
 Hedef kullanıcı: şehir içi kurye / bölgesel kargo işletmesi (gönderi kabul eden, kendi kuryesiyle dağıtan, şehir dışını anlaşmalı firmaya aktaran).

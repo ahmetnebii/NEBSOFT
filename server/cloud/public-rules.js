@@ -171,6 +171,7 @@ RULES.servis = {
 
 // ---------- Kargo: gönderi takip (takip.html?no=) ----------
 const maskName = (n) => { const [name, rel] = String(n || '').split(' ('); return name.split(' ').filter(Boolean).map((w) => w[0] + '*'.repeat(Math.max(1, w.length - 1))).join(' ') + (rel ? ' (' + rel : ''); };
+const publicNote = (h) => (h.status === 'teslim' ? 'Teslim edildi' : h.status === 'edilemedi' ? String(h.note || '').split(' — ')[0].split(' · konum')[0] : h.status === 'dagitimda' ? 'Kurye dağıtıma çıkardı' : String(h.note || ''));
 RULES.kargo = {
   pub: {},
   // Takip numarası gönderiyi gösterir; değişiklik için alıcı telefonunun son 4 hanesi gerekir
@@ -183,8 +184,10 @@ RULES.kargo = {
   view: (x) => {
     const sh = x.ident && x.get('ships', x.ident.i); if (!sh) return { ships: [], couriers: [] };
     const r = sh.receiver || {}, sd = sh.sender || {}; const cr = sh.courier && x.get('couriers', sh.courier);
+    // Hareket notlarında teslim alanın adı, teslim konumu ve personel adı var: takip numarasını bilen herkese gitmez
+    const history = (sh.history || []).map((h) => ({ at: h.at, status: h.status, note: publicNote(h) }));
     return {
-      ships: [{ ...x.pick(sh, ['id', 'no', 'at', 'status', 'retryDate', 'pref', 'service', 'cod', 'rating', 'courier', 'region', 'history', 'pieces', 'desi', 'failReason', 'attempts']), receiver: { name: maskName(r.name), district: r.district, city: r.city }, sender: { name: sd.name, district: sd.district }, deliveredTo: sh.deliveredTo ? maskName(sh.deliveredTo) : undefined }],
+      ships: [{ ...x.pick(sh, ['id', 'no', 'at', 'status', 'retryDate', 'pref', 'service', 'cod', 'rating', 'courier', 'region', 'pieces', 'desi', 'failReason', 'attempts']), history, proof: !!(sh.signature || sh.geo || sh.photo), receiver: { name: maskName(r.name), district: r.district, city: r.city }, sender: { name: sd.name, district: sd.district }, deliveredTo: sh.deliveredTo ? maskName(sh.deliveredTo) : undefined }],
       couriers: cr ? [{ id: cr.id, name: String(cr.name || '').split(' ')[0], vehicle: cr.vehicle }] : [],
     };
   },
@@ -198,7 +201,8 @@ RULES.kargo = {
         else if (x.ident.k === 'v' && keys.every((k) => ['pref', 'history', 'retryDate'].includes(k)) && !['teslim', 'iade'].includes(cur.status)) {
           if ('pref' in set) out.pref = set.pref ? { ...clean({ type: 'enum:komsu|gorevli|sube|gun', note: 'str:200?', date: 'str:10?' }, set.pref), at: nowIso() } : null;
           if ('retryDate' in set) { if (cur.status !== 'edilemedi') deny(); const d = val('date', set.retryDate, 'retryDate'); if (d <= x.today || d > new Date(Date.now() + 10 * 864e5).toISOString().slice(0, 10)) bad('Geçersiz tarih'); out.retryDate = d; }
-          if ('history' in set) out.history = appendOnly(cur.history, set.history, 1, H, { status: 'retryDate' in set ? 'edilemedi' : cur.status, by: 'Alıcı (online)' });
+          // Sayfa geçmişin süzülmüş halini gördüğü için eski öğeler karşılaştırılmaz: sunucudaki kayıt korunur, yalnızca son eklenen alınır
+          if ('history' in set) { const old = cur.history || []; if (!Array.isArray(set.history) || set.history.length !== old.length + 1) deny(); out.history = [...old, { ...clean(H, set.history[old.length] || {}), status: 'retryDate' in set ? 'edilemedi' : cur.status, by: 'Alıcı (online)' }]; }
         } else deny();
         return { ...out, updated: nowIso() };
       },
