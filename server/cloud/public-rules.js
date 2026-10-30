@@ -706,8 +706,9 @@ RULES.anaokulu = {
     return { students: kids.map((s) => strip(s, ['portalCode', 'internal'])), att: keysOf(x.doc.att, ids), reports: keysOf(x.doc.reports, ids), posts: x.col('posts').filter((p) => !p.cls || cls.has(p.cls)), fees: x.col('fees').filter(own), payments: x.col('payments').filter(own), messages: x.col('messages').filter(own) };
   },
   write: {
-    messages: { ins: I({ student: 'id', text: 'str:2000', type: 'enum:izin|alma|mesaj' }, () => ({ from: 'veli', at: nowIso() }), (r, x) => {
+    messages: { ins: I({ student: 'id', text: 'str:2000', type: 'enum:izin|alma|mesaj|onay', post: 'str:40?' }, () => ({ from: 'veli', at: nowIso() }), (r, x) => {
       const s = x.get('students', r.student); if (!s || !(s.parents || []).some((p) => digits(p.phone) === me(x, 'p')) || !r.text) deny();
+      if (r.type === 'onay') { const p = x.get('posts', r.post); if (!p || !p.consent || (p.cls && p.cls !== s.cls)) bad('Bu duyuru için izin istenmiyor'); if (x.col('messages').some((m) => m.type === 'onay' && m.post === r.post && m.student === s.id)) bad('İzin zaten verildi'); } else delete r.post;
     }) },
   },
 };
