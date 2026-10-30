@@ -4,7 +4,7 @@
 //  • Donanım köprüsü: paketteki server.js 127.0.0.1 üzerinde başlatılır; programlar ağ yazıcısı, terazi, SMS vekili gibi
 //    işlemleri window.nebsoftDesktop.bridge ile bu yerel köprüye yaptırır (bulut sunucusu yerel ağa erişemez).
 //  • Sessiz yazdırma, sistem tepsisi (pencere kapansa da sipariş/garson bildirimleri çalar), kiosk modu, ikinci pencere (mutfak ekranı), otomatik güncelleme.
-const { app, BrowserWindow, ipcMain, shell, Menu, Tray, nativeImage, session } = require('electron');
+const { app, BrowserWindow, ipcMain, shell, Menu, Tray, nativeImage, session, dialog } = require('electron');
 const path = require('path'); const fs = require('fs'); const { spawn } = require('child_process');
 
 const CFG = (() => { const d = { serverUrl: '', bridgePort: 5051, minimizeToTray: true }; try { return { ...d, ...JSON.parse(fs.readFileSync(path.join(__dirname, 'config.json'), 'utf8')) }; } catch (e) { return d; } })();
@@ -58,7 +58,7 @@ ipcMain.handle('ns:bridge', async (e, pathname, body) => {
 });
 
 // ---------- Sessiz yazdırma ----------
-ipcMain.handle('ns:printers', async () => (main ? (await main.webContents.getPrintersAsync()).map((p) => ({ name: p.name, isDefault: p.isDefault })) : []));
+ipcMain.handle('ns:printers', async () => (main ? (await main.webContents.getPrintersAsync()).map((p) => ({ name: p.name, displayName: p.displayName })) : [])); // isDefault Electron 36'da kaldırıldı; boş deviceName sessiz yazdırmada sistemin varsayılan yazıcısını kullanır
 ipcMain.handle('ns:print', async (e, html, opts = {}) => {
   const w = new BrowserWindow({ show: false, webPreferences: { sandbox: true, javascript: false } });
   await w.loadURL('data:text/html;charset=utf-8,' + encodeURIComponent(`<!doctype html><html><head><meta charset="utf-8"><style>body{margin:0;font-family:Inter,Arial,sans-serif}</style></head><body>${String(html)}</body></html>`));
@@ -68,6 +68,21 @@ ipcMain.handle('ns:print', async (e, html, opts = {}) => {
 ipcMain.handle('ns:setting', (e, k, v) => { if (v !== undefined) saveUcfg({ [k]: v }); return ucfg()[k]; });
 ipcMain.handle('ns:newWindow', (e, url) => { const u = new URL(url, SERVER()); if (u.origin !== new URL(SERVER()).origin) return false; createMain(u.href); return true; });
 ipcMain.handle('ns:kiosk', (e, on) => { const w = BrowserWindow.fromWebContents(e.sender); if (w) w.setKiosk(!!on); return true; });
+
+// ---------- Seri port (terazi, seri yazıcı) ----------
+// Electron'da navigator.serial.requestPort seçimi ana süreçte yapılır: tek port doğrudan seçilir, birden fazlaysa kullanıcıya sorulur.
+// İzin bellekte tutulduğu için seçilen portlar ayarlara yazılır; program yeniden açılınca kullanıcı hareketi beklenmeden getPorts ile gelir.
+const sameOrigin = (u) => { try { return !!SERVER() && new URL(u).origin === new URL(SERVER()).origin; } catch (e) { return false; } };
+const portKey = (p) => [p.vendorId || '', p.productId || '', p.serialNumber || p.portName || ''].join(':');
+const rememberPort = (p) => { const l = ucfg().serialPorts || []; if (!l.includes(portKey(p))) saveUcfg({ serialPorts: [...l, portKey(p)] }); };
+function serialSetup(ses) {
+  ses.setPermissionCheckHandler((wc, perm, origin) => perm !== 'serial' || sameOrigin(origin)); // diğer izin denetimleri varsayılan gibi kalır
+  ses.setDevicePermissionHandler((d) => d.deviceType !== 'serial' || (sameOrigin(d.origin) && (ucfg().serialPorts || []).includes(portKey(d.device))));
+  ses.on('select-serial-port', async (ev, ports, wc, cb) => { ev.preventDefault();
+    if (!sameOrigin(wc.getURL()) || !ports.length) return cb('');
+    let i = 0; if (ports.length > 1) { const names = ports.map((p) => p.displayName || p.portName || p.portId); i = (await dialog.showMessageBox(BrowserWindow.fromWebContents(wc), { type: 'question', title: 'Seri port seçin', message: 'Cihazın bağlı olduğu portu seçin', buttons: [...names, 'Vazgeç'], cancelId: names.length })).response; }
+    if (!ports[i]) return cb(''); rememberPort(ports[i]); cb(ports[i].portId); });
+}
 
 // ---------- Pencereler ----------
 function createSplash() {
@@ -124,6 +139,7 @@ app.whenReady().then(async () => {
   app.userAgentFallback = UA(); session.defaultSession.setUserAgent(UA());
   // Bildirim ve kamera/mikrofon izinleri yalnızca NEBSOFT sunucusu için
   session.defaultSession.setPermissionRequestHandler((wc, perm, cb, d) => { let ok = false; try { ok = !!SERVER() && new URL(d.requestingUrl).origin === new URL(SERVER()).origin && ['notifications', 'media', 'clipboard-sanitized-write', 'fullscreen'].includes(perm); } catch (e) { ok = false; } cb(ok); });
+  serialSetup(session.defaultSession);
   startBridge(); createSplash(); appMenu(); createTray();
   if (!userChose() && !ucfg().serverUrl) await pickServer();
   createMain();

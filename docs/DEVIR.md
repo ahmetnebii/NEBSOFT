@@ -48,7 +48,8 @@ ebsoft güncel`). Node 24, .NET 8 var → `npm test`: 8 test dosyası geçti (XS
 - **Güvenlik ikinci tur (`docs/GUVENLIK-RAPORU.md`):** klinik, eczane, veteriner ve İK rolleri sunucuda (`rol-kural.js`), randevu kodla giriş, mysql2 3.24.6, gizli bilgi adres sınırı, müşteri sayfası kotası, alan adı TXT doğrulaması.
 - **Şifreleme:** hassas belgeler `belge.js`, PIN `pin.js`. `NEBSOFT_SECRET` kaybolursa bu veri geri gelmez (`DEPLOY.md`).
 - **Son tur:** 20 programda sunucu rolü (`rol-kural.js`), yönetici TOTP (`totp.js`), CSP `connect-src` daraltıldı, eczane kalfada onay belirteci, ürün eksikleri (E-ticaret ve Kiralama fotoğrafı, Pazaryeri elle sipariş ve gelen kutusu, Butik `/api/kanal`), pazar planı (`docs/pazarlama/`).
-- **Hâlâ açık:** 9 programda rol arayüzde (bilet, butik, emlak, fabrika, fiyatrobotu, kargo, oto, pazaryeri, servis), onay belirteci yalnız eczane kalfada, CSP `unsafe-inline`, `sunucu.json` HTTP, Electron 45, fotoğraflar belgeye gömülü (toplam 10 MB); hosting paketi, exe ve apk yeniden derlenmeli; pazar genişleme planı ile video ve sosyal medya içeriği yapılmadı; 6 mevzuat yazısı hukuk/mali müşavir kontrolü bekliyor.
+- **Masaüstü (`masaustu/electron-45`):** Electron 45.1.0, paketteki köprü ve seri port seçimi düzeltildi, ayrıntı `docs/GUVENLIK-RAPORU.md` Bölüm 6. Test veritabanı adları: `TEST_DB_NAME`, `TEST_DB_APP_USER`, `SHOPIER_TEST_DB_NAME`.
+- **Hâlâ açık:** 9 programda rol arayüzde (bilet, butik, emlak, fabrika, fiyatrobotu, kargo, oto, pazaryeri, servis), onay belirteci yalnız eczane kalfada, CSP `unsafe-inline`, `sunucu.json` HTTP, fotoğraflar belgeye gömülü (toplam 10 MB); hosting paketi, exe ve apk yeniden derlenmeli; pazar genişleme planı ile video ve sosyal medya içeriği yapılmadı; 6 mevzuat yazısı hukuk/mali müşavir kontrolü bekliyor.
 
 ---
 

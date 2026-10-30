@@ -98,13 +98,15 @@ Reçete formuna başkasının telefonunu yazan kişiye o telefon için kimlik ve
 - Webhook belirteci, yönetici API yanıtlarından çıkarılıyor; SMTP parolası şifreli ve istemciye gitmiyor.
 - CSRF: durum değiştiren API'lerde özel başlık + kaynak denetimi. CORS başlığı yok.
 - XSS, yönetim paneli ve program ekranları: `NS.table`, `modal`, `toast`, `badge` kaçış yapıyor. Anonim girilen alanlar için sezgisel tarama 51 aday verdi, incelenenler yanlış alarm çıktı. **Bu tarama kanıt değildir:** tüm ekranlar elle okunmadı.
-- `secrets.js` alan listesi, entegrasyon formlarındaki tüm parola alanlarını kapsıyor.
+- `secrets.js` alan listesi, entegrasyon formlarındaki tüm parola alanlarını kapsıyor. **30.10.2026:** API anahtarı olabilen `user` alanı da kapsamda: formu "Kullanıcı adı / API key" diyen bağlantılar ve e-Fatura özel API. SMS (Netgsm, Verimor, Mutlucell), Uyumsoft, Paraşüt ve MQTT kullanıcı adı olarak düz kalır. Eski düz kayıt sunucu açılışındaki geçişte şifrelenir.
 
 ## 3. Bağımlılıklar
 
 Araç: `npm audit` (npm kayıt defteri), 30.10.2026.
 
 **30.10.2026 güncellemesi:** `electron-updater` 6.8.11 ve `electron-builder` 26.18.0 yüklendi. Masaüstü `npm audit`: 15 açıktan **2 yüksek** kaldı (`electron` 33.2.1 ve onun bağımlılığı `extract-zip`), kritik yok. Üretim bağımlılığı `electron-updater` temiz. Electron 45.1.0 büyük sürüm atlamasıdır, yapılmadı. Aşağıdaki tablo ilk denetimin kaydıdır.
+
+**30.10.2026, dal `masaustu/electron-45`:** Electron 45.1.0 yüklendi. `desktop/` `npm audit`: **0 açık**; kök `npm audit`: 0 açık. Ayrıntı: Bölüm 6, Masaüstü.
 
 | Paket | Sürüm | Durum | Gereken |
 |---|---|---|---|
@@ -224,6 +226,30 @@ Sınırlar: Belirteç işleme özel değildir (`NS.approve` işlem kimliği alma
 
 ### Masaüstü
 
+**Electron 45.1.0 (30.10.2026, dal `masaustu/electron-45`).** Kaynak: https://www.electronjs.org/docs/latest/breaking-changes (30.10.2026'da okundu, sayfada tarih yok), https://www.electronjs.org/docs/latest/api/session, https://www.electronjs.org/docs/latest/api/structures/printer-info. Sürüm: npm `electron@45.1.0`, 27.10.2026, Chromium 156, Node 24.22.1.
+
+| Kırıcı değişiklik | `desktop/` etkisi | Sonuç |
+|---|---|---|
+| 45: korumalı preload içinde `Buffer`, `setImmediate` ve `events`/`timers`/`url` kaldırıldı | `preload.js` yalnız `electron` ve `process.platform` kullanıyor | Etkisi yok, `window.nebsoftDesktop` açılışta görüldü |
+| 45: ekran yakalama izni `display-capture` oldu | Ekran yakalama kullanılmıyor | Etkisi yok |
+| 44: `clipboard` renderer'dan kaldırıldı | Kullanılmıyor | Etkisi yok |
+| 44: 32 bit Windows kaldırıldı | Derleme zaten x64 | 32 bit Windows desteklenmez |
+| 42: ikili dosya `postinstall` ile inmiyor | İlk `npm start` indirir | `desktop/README.md` güncellendi |
+| 39: `window.open` pencereleri hep boyutlandırılabilir | `setWindowOpenHandler` hepsini reddedip `createMain` açıyor | Etkisi yok |
+| 37: Web Serial engel listesi | Yalnız engel listesindeki cihazlar etkilenir | Gerçek cihazla denenmedi |
+| 36: `PrinterInfo.isDefault` kaldırıldı | `ns:printers` bu alanı dönüyordu, kullanan kod yok | `displayName` ile değiştirildi. Boş `deviceName` varsayılan yazıcıyı kullanır |
+| 34: tam ekranda menü çubuğu gizli | Kiosk modu menüsüz çalışıyor | Etkisi yok |
+
+`contextIsolation`, `sandbox`, `webSecurity`, `protocol`: 34–45 notlarında etkileyen madde yok. `main.js` `contextIsolation: true`, `sandbox: true` kullanıyor, `webSecurity` kapatılmıyor, `protocol` kullanılmıyor.
+
+Yükseltme sırasında bulunan, Electron sürümünden bağımsız iki eski hata düzeltildi:
+- **Paketteki köprü hiç açılmıyordu:** `server/cloud/seo.js` `site/src/site.config` istiyor, paket filtresi `site/src`i dışlıyordu. Köprü `MODULE_NOT_FOUND` ile kapanıyordu; ağ yazıcısı, terazi ve MQTT kurulu uygulamada çalışmıyordu. Filtreden çıkarıldı (sunucu `/site/src` adresini yine vermez).
+- **Masaüstünde seri port seçilemiyordu:** `select-serial-port` dinleyicisi yoktu, `requestPort` `NotFoundError` veriyordu. Dinleyici eklendi: tek port doğrudan seçilir, birden fazlaysa sorulur, seçim `ayarlar.json`da hatırlanır, yalnız NEBSOFT sunucusunun adresine izin verilir.
+
+Denenen ve denenmeyen: kurulum dosyası üretildi; paketlenmiş uygulama (`win-unpacked`) başlatıldı, giriş sayfası ve iki program yüklendi, köprü yanıt verdi, yazıcı listesi geldi, olmayan yazıcıya yazdırma hatayı döndürdü, COM3 seçildi. **Denenmedi:** kurulum sihirbazı, otomatik güncelleme, gerçek yazıcıya çıktı, seri portu açıp veri okuma/yazma, kod imzası, macOS.
+
+Önceki durum:
+
 Bağımlılıklar yükseltildi, `electron-builder --win --x64` geçici klasöre derlendi, `NEBSOFT-Kurulum.exe` üretildi, depoya konmadı, sonra silindi. Kurulum dosyası **çalıştırılmadı**, otomatik güncelleme denenmedi. Electron 33.2.1 durur; 45.1.0 ayrı test ister: `main.js` pencere, IPC, otomatik güncelleme, yazıcı köprüsü, `preload.js`. Uygulama sunucudan uzak sayfa yüklediği için audit'te kalan Electron danışmaları önemsenmeli.
 
 ## A. Açık kalanlar
@@ -268,4 +294,4 @@ node server/test/guvenlik.test.js && node server/test/program-duman.test.js &&
 4. `sunucu.json` HTTP adresini kaldırıp paketleri yeniden derleme.
 5. Canlıda `data/` kod klasöründe kaldıysa: **bu açık yayında bulunduysa `NEBSOFT_SECRET`, veritabanı parolası ve entegrasyon anahtarlarını değiştirin**, sunucu günlüklerinde `..` ve `%2e` içeren istekleri arayın.
 6. Avukat soruları (Bölüm 5).
-7. Electron 45.1.0 yükseltmesi için ayrı test dalı kararı (Bölüm 6, Masaüstü).
+7. Electron 45.1.0: `masaustu/electron-45` dalında yapıldı. Gerçek yazıcı, gerçek seri cihaz ve kurulum sihirbazı sizin denemenizi bekliyor (Bölüm 6, Masaüstü).
