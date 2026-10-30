@@ -8,7 +8,7 @@ const mk = (over = {}) => {
     _settings: { minOrder: 100, ...over.set },
     customers: [{ id: 'c1', phone: '05321112233', portalCode: 'ABC123', list: 'C', limit: 10000, balance: 0, term: 30, rep: 'r1', ...over.c }, { id: 'c2', phone: '05329998877', list: 'A', limit: 1, balance: 0 }],
     products: [{ id: 'p1', name: 'Yağ', price: 100, cost: 80, vat: 20, stock: 50 }], reps: [{ id: 'r1', name: 'Hasan', phone: '1', target: 5 }],
-    orders: over.orders || [], payments: over.payments || [], returns: [],
+    orders: over.orders || [], payments: over.payments || [], returns: [], promos: over.promos || [],
   };
   const col = (k) => (doc[k] = doc[k] || []);
   return { doc, q: {}, ident: { k: 'c', i: 'c1' }, session: { k: 'c', i: 'c1' }, today: new Date().toISOString().slice(0, 10), col, get: (k, id) => col(k).find((r) => r.id === id), pick: (o, f) => Object.fromEntries(f.map((k) => [k, o[k]])), seq: () => 'S1' };
@@ -30,4 +30,8 @@ assert.strictEqual(buy(mk({ payments: [paid(9900, 'tahsil', '2020-01-01')] })).s
 assert.strictEqual(buy(mk({ orders: [{ id: 'o', customer: 'c1', status: 'teslim', at: old(45), no: 'S7000', lines: [{ pid: 'p1', qty: 1, price: 100, vat: 0 }] }] })).status, 'onay'); ok('Vadesi geçen borç siparişi onaya düşürür');
 assert.strictEqual(buy(mk({ orders: [{ id: 'o', customer: 'c1', status: 'teslim', at: old(45), no: 'S7000', lines: [{ pid: 'p1', qty: 1, price: 100, vat: 0 }] }], payments: [paid(100, 'karsiliksiz')] })).status, 'onay'); ok('Karşılıksız çek ödeme sayılmaz');
 assert.strictEqual(buy(mk({ orders: [{ id: 'o', customer: 'c1', status: 'teslim', at: old(45), no: 'S7050', lines: [{ pid: 'p1', qty: 1, price: 100, vat: 0 }] }], payments: [paid(100)] })).no, 'S7051'); ok('Sipariş numarası en büyük numaradan devam eder');
+{ const x = mk({ promos: [{ id: 'k', pid: 'p1', buy: 10, free: 1, active: true }] }); const o = R.write.orders.ins({ lines: [{ pid: 'p1', qty: 20 }] }, x); assert.strictEqual(o.lines.length, 2); assert.strictEqual(o.lines[1].qty, 2); assert.strictEqual(o.lines[1].disc, 100); assert.strictEqual(R.view(x).promos.length, 1); ok('Mal fazlası sunucuda hesaplanır'); }
+{ const o = R.write.orders.ins({ lines: [{ pid: 'p1', qty: 20 }] }, mk({ promos: [{ id: 'k', pid: 'p1', buy: 10, free: 1, end: '2020-01-01' }] })); assert.strictEqual(o.lines.length, 1); ok('Süresi geçen kampanya uygulanmaz'); }
+assert.throws(() => R.write.orders.ins({ lines: [{ pid: 'p1', qty: 47 }] }, mk({ promos: [{ id: 'k', pid: 'p1', buy: 10, free: 1 }] })), /yeterli stok yok/); ok('Bedelsiz adet stok denetimine girer');
+{ const o = R.write.orders.ins({ lines: [{ pid: 'p1', qty: 2, free: true, disc: 100 }] }, mk()); assert.strictEqual(o.lines[0].disc, 0); assert.strictEqual(o.lines[0].free, undefined); ok('Bayi bedelsiz satır gönderemez'); }
 console.log(`\n${n} test geçti`);

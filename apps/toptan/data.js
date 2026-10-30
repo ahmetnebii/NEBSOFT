@@ -1,6 +1,6 @@
 /* Toptancı & Plasiyer — fiyat listeleri, rota, cari risk, demo verisi. Panel ve bayi sipariş sayfası kullanır. */
 window.TPT = {
-  ST: { onay: ['Risk onayı bekliyor', 'err'], yeni: ['Yeni', 'info'], hazir: ['Hazırlanıyor', 'warn'], sevk: ['Sevkte', 'acc'], teslim: ['Teslim edildi', 'ok'], iptal: ['İptal', ''] },
+  ST: { onay: ['Onay bekliyor', 'err'], yeni: ['Yeni', 'info'], hazir: ['Hazırlanıyor', 'warn'], sevk: ['Sevkte', 'acc'], teslim: ['Teslim edildi', 'ok'], iptal: ['İptal', ''] },
   SRC: { saha: 'Plasiyer', b2b: 'Bayi portalı', ofis: 'Ofis / telefon' },
   LISTS: { A: ['A — Zincir / büyük market', 0], B: ['B — Market', 4], C: ['C — Bakkal / büfe', 8] },
   DAYS: ['Pazar', 'Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi'],
@@ -20,6 +20,14 @@ window.TPT = {
   // Risk: bakiye + açık siparişler + henüz paraya dönmemiş çekler
   exposure: (c, L, extra = 0) => (c.balance || 0) + (L.open[c.id] || 0) + (L.chq[c.id] || 0) + extra,
   overdue(c, L) { let paid = Math.max(0, (L.paid[c.id] || 0) - Math.max(0, c.opening || 0)); let od = 0; const now = new Date(); (L.ord[c.id] || []).forEach((o) => { const use = Math.min(paid, o.v); paid -= use; if (o.v - use > 0.01 && NS.addDays(new Date(o.at), c.term || 30) < now) od += o.v - use; }); return Math.round(od * 100) / 100; },
+  // Ekstre hareketleri tek yerde: panel ve bayi aynı bakiyeyi gösterir
+  moves(c, orders, payments, returns) {
+    const mv = [...orders.filter((o) => o.customer === c.id && ['sevk', 'teslim'].includes(o.status)).map((o) => ({ at: o.at, d: `Satış ${o.no}`, v: TPT.orderTotal(o).total })), ...payments.filter((x) => x.customer === c.id).flatMap((x) => [{ at: x.at, d: `Tahsilat (${x.method})`, v: -x.amount }, ...(x.cheque === 'karsiliksiz' ? [{ at: x.bouncedAt || x.at, d: `Karşılıksız ${String(x.method).toLocaleLowerCase('tr-TR')} ${x.serial || ''}`, v: x.amount }] : [])]), ...(returns || []).filter((r) => r.customer === c.id).map((r) => ({ at: r.at, d: `İade ${r.no}`, v: -r.total }))].sort((x, y) => x.at.localeCompare(y.at));
+    const r2 = (x) => Math.round(x * 100) / 100; let bal = r2((c.balance || 0) - mv.reduce((t, m) => t + m.v, 0)); const open = bal; mv.forEach((m) => { bal = r2(bal + m.v); m.bal = bal; }); return { open, rows: mv };
+  },
+  // Mal fazlası: X adet alana Y adet bedelsiz (kalemde %100 iskonto); stoktan düşer, tutara girmez. Tarih aralığındaki etkin kampanya uygulanır.
+  promoOf: (promos, pid, day) => (promos || []).find((x) => x.active !== false && x.pid === pid && (!x.start || x.start <= day) && (!x.end || x.end >= day)),
+  withPromo(lines, promos, products, day) { const paid = lines.filter((l) => !l.free); const free = paid.flatMap((l) => { const x = TPT.promoOf(promos, l.pid, day); const n = x ? Math.floor(l.qty / x.buy) * x.free : 0; return n > 0 ? [{ pid: l.pid, name: `${l.name} (mal fazlası)`, qty: n, price: l.price, vat: l.vat, disc: 100, free: true }] : []; }); return [...paid, ...free]; },
   avail: (p, L) => (p.stock || 0) - (L.res[p.id] || 0),
   orderTotal: (o) => { const net = o.lines.reduce((s, l) => s + l.qty * l.price * (1 - (l.disc || 0) / 100), 0); const vat = o.lines.reduce((s, l) => s + l.qty * l.price * (1 - (l.disc || 0) / 100) * (l.vat ?? 10) / 100, 0); return { net: Math.round(net * 100) / 100, vat: Math.round(vat * 100) / 100, total: Math.round((net + vat) * 100) / 100 }; },
   // Portal giriş kodu: işletme 'portal bilgisini gönder' dediğinde rastgele kod üretilir (NS.portalCode); yoksa eski formül
@@ -56,6 +64,6 @@ window.TPT = {
       c.balance = Math.round(c.balance * 100) / 100;
     });
     db.data.orders = orders; db.data.payments = payments;
-    db.data.visits = []; db.data.returns = [];
+    db.data.visits = []; db.data.returns = []; db.data.dayends = []; db.data.promos = [{ id: 'kp1', name: 'Yağ kampanyası', pid: db.data.products[1].id, buy: 24, free: 1, start: NS.iso(addDays(new Date(), -5)), end: NS.iso(addDays(new Date(), 25)), active: true }];
   },
 };

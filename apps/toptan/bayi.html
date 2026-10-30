@@ -57,7 +57,7 @@
     const P = db.all('products', (p) => (!cat || p.cat === cat) && NS.match(q, p.name, p.code));
     const t = T.orderTotal({ lines: lines(c) }); const L = led(); const no = (p) => T.avail(p, L) < p.pack;
     return `<div class="row mb" style="gap:8px;flex-wrap:wrap"><input class="input" id="q" placeholder="Ürün ara" value="${esc(q)}" style="max-width:260px"><select class="input" id="ct" style="max-width:200px"><option value="">Tüm kategoriler</option>${cats.map((x) => `<option ${x === cat ? 'selected' : ''}>${esc(x)}</option>`).join('')}</select></div>
-      <div class="pg">${P.map((p) => `<div class="pc"><b>${esc(p.name)}</b><span class="small muted">${esc(p.cat)} · koli ${p.pack} adet</span><span class="p">${money(pr(p, c))}</span><span class="small ${no(p) ? '' : 'muted'}" style="${no(p) ? 'color:var(--err)' : ''}">${no(p) ? 'Stokta yok' : 'Stokta'}</span><div class="qt"><button class="btn sm" data-k="-1" data-p="${p.id}" aria-label="Azalt">${icon('minus')}</button><input class="input" data-q="${p.id}" value="${cart[p.id] || ''}" inputmode="numeric" aria-label="Adet"><button class="btn sm primary" data-k="1" data-p="${p.id}" aria-label="1 koli ekle">${icon('plus')}</button></div></div>`).join('')}</div>
+      <div class="pg">${P.map((p) => `<div class="pc"><b>${esc(p.name)}</b><span class="small muted">${esc(p.cat)} · koli ${p.pack} adet</span><span class="p">${money(pr(p, c))}</span>${(() => { const k = T.promoOf(db.all('promos'), p.id, NS.today()); return k ? `<span class="small" style="color:var(--ok)">${k.buy} alana ${k.free} bedava</span>` : ''; })()}<span class="small ${no(p) ? '' : 'muted'}" style="${no(p) ? 'color:var(--err)' : ''}">${no(p) ? 'Stokta yok' : 'Stokta'}</span><div class="qt"><button class="btn sm" data-k="-1" data-p="${p.id}" aria-label="Azalt">${icon('minus')}</button><input class="input" data-q="${p.id}" value="${cart[p.id] || ''}" inputmode="numeric" aria-label="Adet"><button class="btn sm primary" data-k="1" data-p="${p.id}" aria-label="1 koli ekle">${icon('plus')}</button></div></div>`).join('')}</div>
       ${lines(c).length ? `<div class="cartbar"><span class="grow"><b>${lines(c).length} kalem</b> · KDV dahil <b style="font-size:18px">${money(t.total)}</b>${t.total < (Number(S().minOrder) || 0) ? `<div class="small" style="opacity:.75">En az sipariş ${money(S().minOrder)}</div>` : ''}</span><button class="btn primary" id="send" ${t.total < (Number(S().minOrder) || 0) ? 'disabled' : ''}>${icon('check')} Siparişi gönder</button></div>` : ''}`;
   }
   function siparis(c) {
@@ -65,9 +65,9 @@
     return `<section class="tk-panel"><h3>${icon('list')} Siparişlerim</h3><div class="b">${O.map((o) => `<div class="ln"><span><b>${esc(o.no)}</b> <span class="small muted">${NS.dt(o.at)} · ${o.lines.length} kalem</span><div>${NS.badge(T.ST[o.status][0], T.ST[o.status][1])}</div></span><span class="right"><b>${money(T.orderTotal(o).total)}</b><div><button class="btn sm ghost" data-re="${o.id}">${icon('refresh')} Tekrarla</button></div></span></div>`).join('') || '<span class="small muted">Henüz sipariş yok</span>'}</div></section>`;
   }
   function hesap(c) {
-    const P = db.all('payments', (x) => x.customer === c.id).sort((a, b) => b.at.localeCompare(a.at)).slice(0, 10);
-    return `<div class="tk-call"><h3>${icon('wallet')} Bakiyeniz: ${money(c.balance)}</h3><p>Limit ${money(c.limit)} · vade ${c.term} gün. Havale: ${esc(S().iban || '')}</p></div>
-      <section class="tk-panel"><h3>${icon('cash')} Son ödemeler</h3><div class="b">${P.map((x) => `<div class="ln"><span>${NS.date(x.at)} · ${esc(x.method)}</span><b>${money(x.amount)}</b></div>`).join('') || '<span class="small muted">Kayıt yok</span>'}</div></section>`;
+    const m = T.moves(c, db.all('orders'), db.all('payments'), db.all('returns')); const od = T.overdue(c, led());
+    return `<div class="tk-call"><h3>${icon('wallet')} Bakiyeniz: ${money(c.balance)}</h3><p>Limit ${money(c.limit)} · vade ${c.term} gün${od ? ` · <b>Vadesi geçen ${money(od)}</b>` : ''}. Havale: ${esc(S().iban || '')}</p></div>
+      <section class="tk-panel"><h3>${icon('file')} Hesap ekstresi</h3><div class="b">${m.rows.slice(-40).reverse().map((x) => `<div class="ln"><span>${esc(x.d)}<div class="small muted">${NS.date(x.at)}</div></span><span class="right"><b>${money(x.v)}</b><div class="small muted">bakiye ${money(x.bal)}</div></span></div>`).join('') || '<span class="small muted">Hareket yok</span>'}</div></section><button class="btn" id="pr">${icon('print')} Yazdır</button>`;
   }
   function render() {
     db.load(); const c = db.get('customers', sget()); if (!c) return login();
@@ -79,8 +79,9 @@
     $$('[data-k]').forEach((b) => { b.onclick = () => { const p = db.get('products', b.dataset.p); cart[p.id] = Math.max(0, (cart[p.id] || 0) + Number(b.dataset.k) * p.pack); render(); }; });
     $$('[data-q]').forEach((i) => { i.onchange = () => { cart[i.dataset.q] = Math.max(0, Number(i.value) || 0); render(); }; });
     $$('[data-re]').forEach((b) => { b.onclick = () => { const o = db.get('orders', b.dataset.re); o.lines.forEach((l) => { cart[l.pid] = l.qty; }); tab = 'katalog'; render(); toast('Önceki sipariş sepete eklendi', 'ok'); }; });
+    if ($('#pr')) $('#pr').onclick = () => window.print();
     if ($('#send')) $('#send').onclick = () => {
-      const L = lines(c); const t = T.orderTotal({ lines: L }); const G = led(); const over = T.exposure(c, G, t.total) > c.limit || T.overdue(c, G) > 0;
+      const L = T.withPromo(lines(c), db.all('promos'), db.all('products'), NS.today()); const t = T.orderTotal({ lines: L }); const G = led(); const over = T.exposure(c, G, t.total) > c.limit || T.overdue(c, G) > 0;
       const short = L.find((l) => l.qty > T.avail(db.get('products', l.pid), G)); if (short) return toast(`${short.name} için yeterli stok yok`, 'err');
       const o = db.insert('orders', { no: T.nextNo(db.all('orders')), customer: c.id, rep: c.rep, src: 'b2b', at: new Date().toISOString(), lines: L, status: over ? 'onay' : 'yeni', note: 'Bayi portalından' });
       Object.keys(cart).forEach((k) => delete cart[k]); tab = 'siparis'; render();

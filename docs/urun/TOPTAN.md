@@ -1,9 +1,10 @@
 # Toptancı & Plasiyer — Ürün Spesifikasyonu
 
-> **Durum (30.10.2026):** Kullanıcı dalgaları önceden onayladı. Program: `apps/toptan/` (+ `bayi.html`).
+> **Durum (30.10.2026):** Kullanıcı dalgaları önceden onayladı. 1., 2. ve 3. dalga tamamlandı. Program: `apps/toptan/` (+ `bayi.html`).
 
 ## CANLIYA ÇIKMAYI ENGELLEYENLER
 - **e-Fatura / e-İrsaliye:** gerçek gönderim sağlayıcı test hesabıyla denenmedi (`docs/DEVIR.md` B1, B4).
+- **Mal fazlası faturası:** bedelsiz ürün faturada %100 iskontolu satır olarak gider. KDV matrahı açısından doğruluğu resmî kaynaktan doğrulanmadı — DOĞRULANAMADI; canlıdan önce mali müşavire sorulmalı.
 - **Şikâyet verisi:** Şikâyetvar ve mağaza yorumlarında plasiyer yazılımlarına dair kaynak bulunamadı; öncelikler özellik sayfalarına ve kod incelemesine dayanır.
 
 ## 1. Pazar araştırması (30.10.2026)
@@ -58,3 +59,21 @@ Dalga sonuçları aşağıya eklenir.
 | T12 | Binlerce kayıtta iç içe döngüler donma yapıyordu | Cari ve hesap tek geçişte gruplanır | 5000 cari, 30.000 sipariş: özet 511 ms, raporlar 187 ms, siparişler 237 ms, cariler 1,7 sn |
 
 Kalite kapısı: telefon genişliğinde 10 ekranda taşma yok, koyu tema tek ekranda bakıldı, konsolda yeni hata yok. Boş liste: İadeler. Bulutta gerçek bayi girişi denenmedi.
+
+### 2. dalga — beklenenler
+| # | Özellik | Sonuç | Kanıt |
+|---|---|---|---|
+| B1 | Fatura | Teslimden sonra `NS.ebelge.create` ile fatura; "Faturasız" filtresi ve toplu kesme; TEST sonucu faturalı sayılmaz, yeniden kesilebilir. Satış faturası gerçekse iade faturası kesilir | Tarayıcı: TEST fatura NBS2026000000001, "gönderilmedi" uyarısı. İade faturası ve toplu kesme tarayıcıda denenmedi |
+| B2 | İskonto | Satır iskontosu; plasiyer sınırı (plasiyer bazında veya genel ayar); aşılırsa sipariş gerekçesiyle onaya düşer | Tarayıcı: sınır %3, %10 iskonto onaya düştü, onaylandı |
+| B3 | Plasiyer gün sonu | Son kapanıştan beri tahsilat; sayılan nakit; fark açıklaması zorunlu; Tahsilat ekranında geçmiş | Tarayıcı: açıklamasız fark reddedildi, açıklamalı kaydedildi |
+| B4 | Bayi hesabı | Ekstre, vadesi geçen tutar, yazdırma; bakiye panelle aynı hesaptan (`T.moves`) | Tarayıcı |
+| B5 | Excel aktarımı | Ürün ve cari; başlık eşleştirme, özet onayı, hatalı satır atlanır, var olan güncellenir | Tarayıcı (`NS.readSheet` taklit edilerek); gerçek dosyayla denenmedi |
+
+### 3. dalga — fark yaratanlar
+| # | Özellik | Sonuç | Kanıt |
+|---|---|---|---|
+| F1 | Mal fazlası kampanyası | Kampanyalar ekranı; siparişe ve bayi portalına kendiliğinden yansır; sunucu hesaplar, bayi bedelsiz satır gönderemez; bedelsiz adet stoktan düşer | Tarayıcı: 50 adette 2 bedelsiz; `toptan-kural.test.js` |
+| F2 | Sipariş önerisi | Son 6 siparişin en az ikisinde geçen ürünler, olağan miktarıyla | Tarayıcı: 14 ürün önerildi |
+| F3 | Saha raporları | Kayıp müşteri riski (45+ gün); plasiyer ziyaret uyumu ve iade | Tarayıcı |
+
+Yapılmadı: araç deposu ile sıcak satış (ayrı stok modeli gerekir), rota haritası, plasiyer prim hesabı.

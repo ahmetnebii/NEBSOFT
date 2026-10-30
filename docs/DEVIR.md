@@ -31,7 +31,8 @@ ebsoft güncel`). Node 24, .NET 8 var → `npm test`: 8 test dosyası geçti (XS
 - **B8 kapandı (kullanıcı kararı 30.10.2026): deneme hemen başlar.** Kayıtta ve `/api/trial`'da 7 gün `deneme` açılır, yönetici onayı yok; eski `talep` kayıtları müşteri karta dokununca başlar. Yönetici paneli "Deneme talepleri" yalnızca eski kayıtlar için kaldı. `cloud.test.js` 41 test geçiyor. Not: aynı kişi yeni e-postayla tekrar deneme alabilir (önceden yönetici onayı bu kapıydı).
 - **Bordro parametreleri doğrulandı** (`IK.md`); kıdem tavanı ve prim indirimi düzeltildi.
 - **Spor 1–3 (`SPOR.md`), Kurs ve Anaokulu 1. dalga (`KURS.md`, `ANAOKULU.md`), Mali Müşavir 1. dalga (`MUSAVIR.md`) yapıldı.** §4.3: **Nilvera eklendi** (`core/integrations.js`, sahte sunucuyla denendi; gerçek test hesabı gerekir), tablo `MUHASEBE-DOGRULAMA-RAPORU.md` §3.0.
-- **Sıradaki:** Toptan ve CRM için (bilinen güven hatası taraması temiz; spec yok) ve 1. dalgası yapılanlar için pazar araştırması + spec + dalgalar (portal kodu ve SMS düzeltmeleri bunların bazılarında zaten yapıldı); İK ve Eczane 2–3. dalga; kalan 2–3. dalgalar; §4.3 entegratörler.
+- **Toptan 1–3 tamamlandı** (`TOPTAN.md`): stok, risk, iade, çek, plasiyer yetkisi, fatura, gün sonu, kampanya; `toptan-kural.test.js` 15 test.
+- **Sıradaki:** CRM için (bilinen güven hatası taraması temiz; spec yok) ve 1. dalgası yapılanlar için pazar araştırması + spec + dalgalar (portal kodu ve SMS düzeltmeleri bunların bazılarında zaten yapıldı); İK ve Eczane 2–3. dalga; kalan 2–3. dalgalar; §4.3 entegratörler.
 
 ---
 
