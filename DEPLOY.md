@@ -163,6 +163,7 @@ Bu noktadan sonra tüm uygulamalar, satış sitesi ve müşteri sayfaları bu My
 ### Sistemin kendini pazarlaması
 
 - Her işletmenin `/t/<işletme>/` sayfası (online randevu, takip, portal bağlantıları) site haritasına **otomatik** eklenir.
+- İşletme sitesi yayında ve içeriği yeterliyse dizine açıktır; `/t/<işletme>/hizmet/<slug>/` hizmet sayfaları ve `/t/<işletme>/sitemap.xml` sunucuda üretilir (kendi alan adında `/hizmet/<slug>/`, `/sitemap.xml`, `/robots.txt`). Sitesi yayında olmayan işletmenin yalın sayfası `noindex`tir ve kayıt telefonu/adresi göstermez.
 - Müşteri sayfalarının altında, işletmenin tavsiye koduyla **"NEBSOFT ile hazırlandı · 7 gün ücretsiz deneyin"** bağlantısı bulunur. Bu bağlantıdan kayıt olan her işletme tavsiye programına girer.
 - 31 ürün tanıtım sitesi (`/randevusistemi`, `/adisyonprogrami` …) ve `/programlar` merkez sayfası şema (SoftwareApplication, FAQ, Organization) içerir.
 
