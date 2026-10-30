@@ -25,7 +25,8 @@ ebsoft güncel`). Node 24, .NET 8 var → `npm test`: 8 test dosyası geçti (XS
 - **Programlar (devir oturumu):** Market POS 1–3 (`POS.md`), Adisyon 1–3 (`ADISYON.md`), İK 1. dalga (`IK.md`), Eczane 1. dalga (`ECZANE.md`), Site: gecikme tazminatı KMK md. 20'ye göre gün bazında (DOĞRULANDI), Randevu: simülasyon belge no'su TEST.
 - Çekirdek `UNVERIFIED` (yalnızca simülasyon): okc, sgk, bankamaas, ebordro, pdks, medula, its, uts, aracbildirim, hgs, ilan, parca, tramer, kbs, kanal, enabiz, erecete, kps, vetbis, petkayit, meb, googleisletme.
 - `NS.approve` (yetkili PIN onayı) çekirdekte; POS ve Adisyon kullanıyor.
-- **Sıradaki:** Spor, Kurs, Anaokulu, Mali Müşavir, Kuyumcu, Toptan, Fiyat Robotu, CRM, Kiralama, Emlak için pazar araştırması + spec + dalgalar (portal kodu ve SMS düzeltmeleri bunların bazılarında zaten yapıldı); İK ve Eczane 2–3. dalga; kalan 2–3. dalgalar; §4.3 entegratörler.
+- **1. dalga (güven) ayrıca yapıldı:** Kuyumcu (`KUYUMCU.md`), Fiyat Robotu (`FIYAT-ROBOTU.md`), Araç Kiralama (`KIRALAMA.md`), Emlak (`EMLAK.md`); simülasyonda banka hareketi / arayan numara / gelen e-Fatura uydurma kaldırıldı (Ön Muhasebe, Site, Adisyon, CRM, çekirdek).
+- **Sıradaki:** Spor, Kurs, Anaokulu, Mali Müşavir, Toptan, CRM için (bunlarda bilinen güven hatası taraması temiz) ve 1. dalgası yapılanlar için pazar araştırması + spec + dalgalar (portal kodu ve SMS düzeltmeleri bunların bazılarında zaten yapıldı); İK ve Eczane 2–3. dalga; kalan 2–3. dalgalar; §4.3 entegratörler.
 
 ---
 

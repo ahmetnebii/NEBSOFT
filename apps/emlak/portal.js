@@ -9,7 +9,7 @@ window.PORTALHUB = (function () {
     hepsiemlak: { name: 'Hepsiemlak', label: 'Hepsiemlak', bg: '#e31e24', fg: '#fff', days: 60, quota: 40, monthly: 2900 },
     emlakjet: { name: 'Emlakjet', label: 'Emlakjet', bg: '#00a650', fg: '#fff', days: 90, quota: 60, monthly: 1900 },
   };
-  const ST = { yayinda: ['Yayında', 'ok'], onay: ['Onayda', 'warn'], hata: ['Hatalı', 'err'], bitiyor: ['Süresi doluyor', 'warn'], kaldirildi: ['Kaldırıldı', ''], yok: ['Yok', ''] };
+  const ST = { yayinda: ['Yayında', 'ok'], onay: ['Onayda', 'warn'], hata: ['Hatalı', 'err'], bitiyor: ['Süresi doluyor', 'warn'], kaldirildi: ['Kaldırıldı', ''], test: ['TEST — yayınlanmadı', 'warn'], yok: ['Yok', ''] };
   let db;
   const cfg = (k) => ({ ...PT[k], ...((db.data.portalCfg || {})[k] || {}) });
   const tag = (k) => `<span class="badge" style="background:${PT[k].bg};color:${PT[k].fg};border:0">${esc(PT[k].name)}</span>`;
@@ -55,29 +55,35 @@ window.PORTALHUB = (function () {
     on(el, 'change', '#pa', (e, c) => { $$('[data-ps]', el).forEach((x) => { c.checked ? sel.add(x.dataset.ps) : sel.delete(x.dataset.ps); }); draw(); });
     on(el, 'click', '[data-auth]', async (e, b) => { const x = db.get('props', b.dataset.auth); const v = await NS.formModal({ title: `Yetki belgesi · ${x.no}`, fields: [{ name: 'authNo', label: 'Yetki belgesi no', required: true }, { name: 'authEnd', label: 'Bitiş tarihi', type: 'date', value: iso(addDays(new Date(), 90)) }] }); if (!v) return; Object.assign(x, v); db.save(); draw(); });
     on(el, 'click', '[data-pub]', async (e, b) => {
-      const k = b.dataset.pub; const c = cfg(k); let ok = 0, bad = 0;
+      const k = b.dataset.pub; const c = cfg(k); let ok = 0, bad = 0, test = 0;
       for (const id of [...sel]) {
         const x = db.get('props', id); let l = L(id, k);
         const live = db.all('portalListings', (y) => y.portal === k && y.status === 'yayinda').length;
         const err = !x.authNo ? 'Yetki belgesi numarası yok' : x.authEnd && x.authEnd < today() ? 'Yetki belgesinin süresi dolmuş' : x.status !== 'aktif' ? 'İlan aktif değil' : live >= c.quota && (!l || l.status !== 'yayinda') ? 'Paket kotası dolu' : '';
         if (!l) { l = { id: NS.uid(), pid: id, portal: k, views: 0, favs: 0, msgs: 0 }; db.data.portalListings.push(l); }
-        if (!err) await send(k, l.extNo ? 'guncelle' : 'yayinla', { no: x.no, title: x.title, price: x.price, authNo: x.authNo });
-        Object.assign(l, err ? { status: 'hata', error: err } : { status: 'onay', error: '', start: today(), until: iso(addDays(new Date(), PT[k].days)), extNo: l.extNo || String(NS.rand(1000000000, 1999999999)) });
-        x.portals = x.portals || {}; x.portals[PT[k].label] = err ? 'hata' : 'yayında';
-        err ? bad++ : ok++;
+        // Portal yanıtına göre: simülasyon TEST (yayınlanmadı, ilan no uydurulmaz), hata, ya da portal onayında (no portaldan)
+        const res = err ? null : await send(k, l.extNo ? 'guncelle' : 'yayinla', { no: x.no, title: x.title, price: x.price, authNo: x.authNo });
+        const e2 = err || (res && !res.ok ? res.error || 'Portal hatası' : '');
+        if (res && res.simulated) { Object.assign(l, { status: 'test', error: '' }); test++; }
+        else Object.assign(l, e2 ? { status: 'hata', error: e2 } : { status: 'onay', error: '', start: today(), until: iso(addDays(new Date(), PT[k].days)), extNo: l.extNo || String((res && (res.ref || (res.data && res.data.extNo))) || '') });
+        x.portals = x.portals || {}; x.portals[PT[k].label] = res && res.simulated ? 'TEST' : e2 ? 'hata' : 'onayda';
+        if (!(res && res.simulated)) e2 ? bad++ : ok++;
       }
-      db.save(); sel.clear(); toast(`${PT[k].name}: ${ok} ilan gönderildi${bad ? `, ${bad} hatalı` : ''}`, bad ? 'err' : 'ok'); draw();
-      setTimeout(() => { db.load(); db.all('portalListings', (y) => y.status === 'onay').forEach((y) => { y.status = 'yayinda'; }); db.save(); if (document.body.contains(el)) draw(); }, 2500);
+      db.save(); sel.clear(); toast(test ? `${PT[k].name} TEST — ${test} ilan yayınlanmadı (portal bağlantısı simülasyonda)${bad ? `, ${bad} hatalı` : ''}` : `${PT[k].name}: ${ok} ilan gönderildi (portal onayı bekleniyor)${bad ? `, ${bad} hatalı` : ''}`, bad ? 'err' : test ? 'warn' : 'ok'); draw();
     });
     on(el, 'click', '[data-dop]', async () => {
       const ks = Object.keys(PT).filter((k) => cfg(k).connected);
       const v = await NS.formModal({ title: `Doping · ${sel.size} ilan`, fields: [{ name: 'k', label: 'Portal', type: 'select', options: ks.map((k) => ({ value: k, label: `${PT[k].name} (${cfg(k).doping} kredi)` })) }] }); if (!v) return;
-      const c = db.data.portalCfg[v.k]; let n = 0;
-      [...sel].forEach((id) => { const l = L(id, v.k); if (l && l.status === 'yayinda' && !l.doping && c.doping > 0) { l.doping = true; c.doping -= 1; n++; } });
-      if (n) send(v.k, 'doping', { count: n }); db.save(); sel.clear(); toast(n ? `${n} ilan öne çıkarıldı` : 'Uygun ilan veya kredi yok', n ? 'ok' : 'err'); draw();
+      const c = db.data.portalCfg[v.k]; const pick = [...sel].map((id) => L(id, v.k)).filter((l) => l && l.status === 'yayinda' && !l.doping).slice(0, Math.max(0, c.doping));
+      if (!pick.length) return toast('Uygun ilan veya kredi yok', 'err');
+      // Kredi ve işaret ancak portal onaylarsa düşülür (simülasyonda değişiklik yok)
+      const res = await send(v.k, 'doping', { count: pick.length, ids: pick.map((l) => l.extNo) });
+      if (res && res.simulated) return toast(`TEST — ${pick.length} ilan öne çıkarılmadı (portal bağlantısı simülasyonda)`, 'warn');
+      if (!res || !res.ok) return toast('Doping yapılamadı: ' + ((res && res.error) || 'portal hatası'), 'err');
+      pick.forEach((l) => { l.doping = true; c.doping -= 1; }); db.save(); sel.clear(); toast(`${pick.length} ilan öne çıkarıldı`, 'ok'); draw();
     });
-    on(el, 'click', '#ren', async () => { let n = 0; for (const l of db.all('portalListings', (y) => status(y) === 'bitiyor')) { await send(l.portal, 'yenile', { extNo: l.extNo }); l.until = iso(addDays(new Date(), PT[l.portal].days)); n++; } db.save(); toast(n ? `${n} ilan yenilendi` : 'Süresi dolan ilan yok', n ? 'ok' : ''); draw(); });
-    on(el, 'click', '#rmsold', async () => { const ls = db.all('portalListings', (y) => y.status === 'yayinda' && (db.get('props', y.pid) || {}).status !== 'aktif'); if (!(await confirm(`${ls.length} portal ilanı kaldırılsın mı?`, { ok: 'Kaldır' }))) return; for (const l of ls) { await send(l.portal, 'kaldir', { extNo: l.extNo }); l.status = 'kaldirildi'; const x = db.get('props', l.pid); if (x && x.portals) x.portals[PT[l.portal].label] = 'kaldırıldı'; } db.save(); toast('Kaldırıldı', 'ok'); draw(); });
+    on(el, 'click', '#ren', async () => { let n = 0, t2 = 0; for (const l of db.all('portalListings', (y) => status(y) === 'bitiyor')) { const res = await send(l.portal, 'yenile', { extNo: l.extNo }); if (res && res.ok && !res.simulated) { l.until = iso(addDays(new Date(), PT[l.portal].days)); n++; } else if (res && res.simulated) t2++; } db.save(); toast(t2 ? `TEST — ${t2} ilan yenilenmedi (portal bağlantısı simülasyonda)` : n ? `${n} ilan yenilendi` : 'Süresi dolan ilan yok', t2 ? 'warn' : n ? 'ok' : ''); draw(); });
+    on(el, 'click', '#rmsold', async () => { const ls = db.all('portalListings', (y) => y.status === 'yayinda' && (db.get('props', y.pid) || {}).status !== 'aktif'); if (!(await confirm(`${ls.length} portal ilanı kaldırılsın mı?`, { ok: 'Kaldır' }))) return; let t3 = 0, e3 = 0; for (const l of ls) { const res = await send(l.portal, 'kaldir', { extNo: l.extNo }); if (res && res.simulated) { t3++; continue; } if (!res || !res.ok) { e3++; continue; } l.status = 'kaldirildi'; const x = db.get('props', l.pid); if (x && x.portals) x.portals[PT[l.portal].label] = 'kaldırıldı'; } db.save(); toast(t3 ? `TEST — ${t3} ilan portaldan kaldırılmadı (simülasyon)` : e3 ? `${e3} ilan kaldırılamadı` : 'Kaldırıldı', t3 ? 'warn' : e3 ? 'err' : 'ok'); draw(); });
     on(el, 'click', '[data-act="pc"]', (e, b) => { const k = b.dataset.id; const c = cfg(k); modal({ title: `${PT[k].name} ayarları`, body: `<div class="form-grid">${NS.fieldsHtml([{ name: 'storeNo', label: 'Mağaza / üye no', value: c.storeNo || '' }, { name: 'apiKey', label: 'API anahtarı', value: c.apiKey || '' }, { name: 'quota', label: 'Paket ilan kotası', type: 'number', value: c.quota }, { name: 'doping', label: 'Doping kredisi', type: 'number', value: c.doping }, { name: 'monthly', label: 'Aylık paket ücreti (₺)', type: 'number', value: c.monthly }])}</div>`, actions: [{ label: 'Vazgeç' }, { label: 'Kaydet', cls: 'primary', onClick: (close, bd) => { db.data.portalCfg[k] = { ...(db.data.portalCfg[k] || {}), ...NS.readForm(bd), connected: true }; db.save(); close(); draw(); } }] }); });
     draw();
   }
