@@ -333,7 +333,7 @@
       if (r.status === 401) stopPage('Oturumunuz kapandı, tekrar giriş yapın', '/#/giris');
       if (r.status === 402) stopPage(r.j.error || 'Lisans gerekli', `/#/urun/${this.name}`);
       if (r.status !== 200) { syncState('Sunucuya ulaşılamadı', 'err'); throw new Error('Veri yüklenemedi: ' + (r.j.error || r.status)); }
-      this._v = r.j.version; let data = r.j.data; this.serverRole = r.j.rol || null; this.serverDept = r.j.rolDept || ''; this.hesapSahibi = !!r.j.hesapSahibi; // sunucudaki hesap rolü: veri süzülmüş gelir, PIN ekranı yok
+      this._v = r.j.version; let data = r.j.data; this.serverRole = r.j.rol || null; this.serverDept = r.j.rolDept || ''; this.serverKisi = r.j.rolKisi || null; this.hesapSahibi = !!r.j.hesapSahibi; // sunucudaki hesap rolü: veri süzülmüş gelir, PIN ekranı yok
       // Çevrimdışıyken bekleyen değişiklik varsa birleştir
       let pend = null; try { pend = JSON.parse(localStorage.getItem(pendKey(this.name))); } catch (e) { pend = null; }
       if (pend && pend.data) { data = data ? merge3(pend.base ? JSON.parse(pend.base) : null, pend.data, data) : pend.data; this._dirty = true; }
@@ -948,7 +948,7 @@
     const currentUser = () => {
       if (!opts.auth) return null;
       // Sunucu rolü: kimlik hesaptan gelir, PIN ekranı ve rol değiştirme yok
-      if (app.db && app.db.serverRole) return { id: CLOUD.user.id, name: CLOUD.user.name, role: app.db.serverRole, dept: app.db.serverDept || '' };
+      if (app.db && app.db.serverRole) { const k = app.db.serverKisi || {}; return { id: (!k.alan && k.id) || CLOUD.user.id, name: k.ad || CLOUD.user.name, role: app.db.serverRole, dept: app.db.serverDept || '', ...(k.alan ? { [k.alan]: k.id } : {}) }; } // k: hesabın programdaki kişisi (temsilci, plasiyer, öğretmen)
       let id = null;
       try { id = sessionStorage.getItem(SESSION); } catch (e) { /* yok */ }
       // Pazar yerindeki "canlı demo" linkleri ?demo=1 ile yönetici olarak açılır
