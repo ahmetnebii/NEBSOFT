@@ -90,4 +90,4 @@ NEBSOFT Eczane parti ve SKT takibi, FEFO ve yaklaşan SKT uyarısı, muadil ve d
 
 ## Bu ay başlayın
 
-Bu ayın sonunda bir raf bölgesi seçin, ürünleri tarih sırasına göre dizin ve yakın tarihli ürünleri listeleyin. [NEBSOFT Eczane Programı](/eczaneprogrami) 7 gün ücretsiz denenebilir. Örnek bir partiyle yaklaşan SKT raporunu inceleyin ve kendi rutininizi kurmaya başlayın.
+Bu ayın sonunda bir raf bölgesi seçin, ürünleri tarih sırasına göre dizin ve yakın tarihli ürünleri listeleyin. Kullandığınız programda yaklaşan SKT raporunu inceleyin ve kendi rutininizi kurmaya başlayın.

@@ -136,6 +136,8 @@ Her biri kendi kapısı açılınca sıraya girer.
 
 ### Durdurulan: Eczane
 
+**Kullanıcı kararı 30.10.2026:** Aktif satış durduruldu, Dalga 1 sırası onaylandı.
+
 MEDULA, İTS, ÜTS ve ÖKC bildirimleri yasal zorunluluktur ve programda yoktur (`docs/urun/ECZANE.md`). Aktif satış önerilmez. Program silinmez, tanıtım "yardımcı takip programı" diye sınırlı kalır.
 
 ## 4. Kanallar

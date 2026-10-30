@@ -87,3 +87,5 @@ Satıcı tanıtımlarıdır; iddialar bağımsız doğrulanmadı. Yalnızca hang
 Birleştirme notu: KVKK araçları (`core/kvkk.js`: hasta verisi dışa aktarma, anonimleştirme, `exportRoles`) korundu. Anonimleştirme `sales` ve `ctrl` kayıtlarındaki kişi alanlarını kapsar; `rxOrders` hasta kimliğine bağlı değildir, kapsam dışında kalır (bkz. çekirdek istekleri).
 
 Kalite kapısı: 13 ekran + hasta sayfası açıldı, konsol hatası yok; 375 px genişlikte yatay taşma yok; boş liste bakıldı. Koyu tema yalnızca İK'da görsel olarak bakıldı, Eczane'de ayrıca bakılmadı. Kâğıda basım denenmedi.
+
+> **Durum (30.10.2026):** Aktif satış kullanıcı kararıyla durduruldu. MEDULA, İTS ve ÜTS bağlantısı yok. Mevcut lisanslar çalışır ve yenilenir, kod ve veri korunur. Yeniden açmak için `market/catalog.js` içinde `ready: true`, `site/src/products.js` içinde `satisDisi` kaldırılır.

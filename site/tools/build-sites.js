@@ -86,6 +86,8 @@ const faqHtml = (L, baslik, alt = true) => (L.length ? `<section class="s${alt ?
 // ---------- Markdown kaynakları (dosya yoksa da derleme çalışır) ----------
 const mdOku = (f) => { try { return onBilgi(fs.readFileSync(f, 'utf8')); } catch (e) { return null; } };
 const TARIH = /^\d{4}-\d{2}-\d{2}$/;
+// Yeni satışa kapalı program liste ve bağlantılarda görünmez, sayfası noindex kalır
+const AKTIF = PRODUCTS.filter((x) => !x.satisDisi);
 function rehberleriOku() {
   const dir = path.join(MD_DIR, 'rehber'); if (!fs.existsSync(dir)) return [];
   const L = [];
@@ -108,7 +110,7 @@ function page(p) {
   const host = D.replace(/^https?:\/\//, '');
   const demo = `/apps/${p.id}/index.html?demo=1`;
   const buy = `/#/urun/${p.id}`;
-  const rel = PRODUCTS.filter((x) => x.id !== p.id).map((x) => ({ x, c: CAT.products.find((y) => y.id === x.id) }))
+  const rel = AKTIF.filter((x) => x.id !== p.id).map((x) => ({ x, c: CAT.products.find((y) => y.id === x.id) }))
     .sort((a, b) => (b.c.cat === c.cat) - (a.c.cat === c.cat)).slice(0, 4);
   const sector = (CAT.categories.find((y) => y.id === c.cat) || {}).name || '';
   const faq = [...(c.faq || []), ...k.sss]; const rehber = REHBER.filter((r) => r.prog && r.prog.id === p.id);
@@ -199,10 +201,10 @@ ${SITEFOOT()}
 function hub() {
   const url = `${D}/programlar`; const title = `İşletme Programları — ${CFG.brand} | ${PRODUCTS.length} Bulut Yazılım, Ücretsiz Hesap`;
   const desc = `Market, restoran, kuaför, otel, servis, eczane, emlak ve daha fazlası için ${PRODUCTS.length} bulut işletme programı. Kurulum yok; ücretsiz hesap açın, her programı ${CFG.trialDays} gün ücretsiz deneyin, havale ile ödeyin.`;
-  const groups = CAT.categories.map((k) => ({ k, list: PRODUCTS.map((x) => ({ x, c: CAT.products.find((y) => y.id === x.id) })).filter(({ c }) => c && c.cat === k.id) })).filter((g) => g.list.length);
+  const groups = CAT.categories.map((k) => ({ k, list: AKTIF.map((x) => ({ x, c: CAT.products.find((y) => y.id === x.id) })).filter(({ c }) => c && c.cat === k.id) })).filter((g) => g.list.length);
   const schema = [
     KIRINTI([[CFG.brand, D + '/'], ['Programlar', url]]),
-    { '@context': 'https://schema.org', '@type': 'ItemList', name: 'İşletme programları', itemListElement: PRODUCTS.map((x, i) => ({ '@type': 'ListItem', position: i + 1, url: `${D}/${x.slug}`, name: (CAT.products.find((y) => y.id === x.id) || {}).name })) },
+    { '@context': 'https://schema.org', '@type': 'ItemList', name: 'İşletme programları', itemListElement: AKTIF.map((x, i) => ({ '@type': 'ListItem', position: i + 1, url: `${D}/${x.slug}`, name: (CAT.products.find((y) => y.id === x.id) || {}).name })) },
   ];
   let n = 0; // ilk sıra görünür alanda: tembel yükleme LCP'yi geciktirmesin
   const kart = ({ x, c }) => { const s = `/${x.slug}/img/pc-1.jpg`; const on = n++ < 3; return `<a class="hubcard" href="/${x.slug}" style="--c:${c.accent}"><span class="hubimg"><img src="${kucukVar(s) ? kucuk(s) : s}" alt="${esc(c.name)} ekranı" width="${kucukVar(s) ? 640 : 1440}" height="${kucukVar(s) ? 400 : 900}" ${on ? (n === 1 ? 'fetchpriority="high"' : '') : 'loading="lazy"'} decoding="async"></span><span class="hubtx"><b>${esc(bas(x.kw))}</b><span>${esc(c.tagline)}</span><em><span data-p="${c.id}:0">${tl(c.prices[0])}</span> ₺/ay'dan · İncele →</em></span></a>`; };
@@ -275,7 +277,7 @@ function fiyatlar() {
   const desc = `${PRODUCTS.length} NEBSOFT programının Başlangıç, Profesyonel ve Kurumsal aylık fiyatları. KDV hariç, taahhüt yok, her programda ${CFG.trialDays} gün ücretsiz deneme.`;
   const sor = ['Kurulum gerekiyor mu?', 'Ücretsiz deneme var mı?', 'Birden fazla ürünü birlikte kullanabilir miyim?', 'İptal edebilir miyim?'];
   const faq = [...CAT.faq.filter(([q]) => sor.includes(q)), ['Ödemeyi nasıl yaparım?', 'Sipariş verdikten sonra havale veya EFT ile ödersiniz. Ödemeniz onaylanınca lisansınız açılır veya uzar.']];
-  const gr = CAT.categories.map((k) => ({ k, L: PRODUCTS.map((x) => ({ x, c: CAT.products.find((y) => y.id === x.id) })).filter(({ c }) => c && c.cat === k.id) })).filter((g) => g.L.length);
+  const gr = CAT.categories.map((k) => ({ k, L: AKTIF.map((x) => ({ x, c: CAT.products.find((y) => y.id === x.id) })).filter(({ c }) => c && c.cat === k.id) })).filter((g) => g.L.length);
   const hucre = (id, i, n) => `<td class="r"><span data-p="${id}:${i}">${tl(n)}</span> ₺</td>`;
   const govde = `
   <div class="prices">${CAT.plans.map((pl) => `<div class="price${pl.popular ? ' pop' : ''}">${pl.popular ? '<span class="tag">Önerilen paket</span>' : ''}<h3>${esc(pl.name)}</h3><p>${esc(pl.desc)}</p><p><b>${esc(pl.users)}</b></p></div>`).join('')}</div>
@@ -341,7 +343,7 @@ function yaz(yol, rel, html, { tur, noindex, updated } = {}) {
 for (const p of PRODUCTS) {
   const missing = ['pc-1.jpg', 'mobil-1.jpg'].filter((f) => !fs.existsSync(path.join(SITE_SRC, p.slug, 'img', f)));
   if (missing.length) console.warn('! görsel eksik', p.slug, missing.join(', '), '→ node site/tools/screens.js', p.id);
-  yaz(`/${p.slug}`, p.slug, page(p));
+  yaz(`/${p.slug}`, p.slug, p.satisDisi ? page(p).replace('<main id="ana">', '<main id="ana"><p class="note" style="max-width:900px;margin:16px auto;padding:12px 16px"><b>Bu program şu an yeni satışa kapalı.</b> Mevcut kullanıcılar kullanmaya devam eder. Resmî sistem bağlantıları olmadığı için ana eczane yazılımı yerine geçmez.</p>') : page(p), { noindex: !!p.satisDisi });
 }
 yaz('/programlar', 'programlar', hub());
 yaz('/fiyatlar/', 'fiyatlar', fiyatlar());

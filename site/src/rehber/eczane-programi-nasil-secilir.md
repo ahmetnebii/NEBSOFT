@@ -77,4 +77,4 @@ Bir satıcı size "her şey var" diyorsa aynı titizlikle sorun: Hangi kurumdan 
 
 ## Sınırı bilerek deneyin
 
-Stok, SKT ve depo siparişi tarafını örnek verilerle görmek isterseniz [NEBSOFT Eczane Programı](/eczaneprogrami) 7 gün ücretsiz denenebilir. Denemede bir partili ürün girin, yaklaşan SKT raporuna bakın ve TEST rozetlerinin nerede göründüğünü inceleyin. Karar verirken resmî sistem ihtiyacınızı ilk sıraya koyun.
+Eczane programımız şu an yeni satışa kapalıdır. Başka bir ürünü denerken bir partili ürün girin, yaklaşan SKT raporuna bakın ve test sonuçlarının nerede göründüğünü inceleyin. Karar verirken resmî sistem ihtiyacınızı ilk sıraya koyun.

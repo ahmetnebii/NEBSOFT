@@ -91,10 +91,10 @@ async function couponPct(code) {
 }
 // Sepet hesabı: katalog fiyatı + destek kalemi + toplu indirim veya kupon. Quote ve sipariş aynı yoldan geçer, istemciden gelen tutar kullanılmaz.
 const SUBE_UST = 1000;
-async function fiyatla(b) {
+async function fiyatla(b, izinli = []) {
   const k = await couponPct(b.coupon);
   if (b.items && !Array.isArray(b.items)) throw err(400, 'Geçersiz ürün veya paket');
-  const lines = b.items && b.items.length ? cat.price(b.items).lines : [];
+  const lines = b.items && b.items.length ? cat.price(b.items, 0, izinli).lines : [];
   let dl = null;
   if (b.support) {
     if (!destek.has(b.support.plan)) throw err(400, 'Geçersiz destek paketi');
@@ -115,7 +115,7 @@ const mailSite = async () => { const s = await site(); return { siteName: s.site
 const mailTo = (to, subject, tpl) => { if (!to) return; mailSite().then((s) => mail.send(to, subject, tpl, s)).catch(() => {}); }; // işlem e-postaları akışı bekletmez
 const maskEmail = (e) => String(e).replace(/^(.)(.*)(.@.*)$/, (m, a, b, c) => a + '•'.repeat(Math.min(6, b.length)) + c);
 const fmtTL = (n) => new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(Number(n) || 0);
-const pnameOf = (id) => (cat.product(id) || {}).name || id;
+const pnameOf = (id) => (cat.kayitli(id) || {}).name || id;
 async function sendCode(email, purpose, name, title, intro) {
   const { code, ticket } = await mail.issueCode(email, purpose, {});
   const r = await mail.send(email, `${code} — ${title}`, { title, intro: `Merhaba${name ? ' ' + name : ''}, ${intro}`, preheader: `Kodunuz: ${code}`, blocks: [{ type: 'code', code }, { type: 'p', text: 'Bu işlemi siz başlatmadıysanız e-postayı dikkate almayın; şifreniz değiştirilmedikçe hesabınız güvende.' }] }, await mailSite());
@@ -242,12 +242,12 @@ route('POST', '/api/auth/register', { auth: 'none', limit: ['reg', 5, 3600e3] },
     await t.q('INSERT INTO tenants (id, name, slug, phone, sector, ref_code, referred_by, webhook_token, created) VALUES (?,?,?,?,?,?,?,?,?)', [tid, sec.clean(b.company, 160), slug, u.phone, sec.clean(b.sector, 60), crypto.randomBytes(4).toString('hex').toUpperCase(), ref ? ref.id : null, crypto.randomBytes(16).toString('hex'), now()]);
     await t.q('INSERT INTO users (id, email, pass, name, phone, role, tenant_id, kvkk_at, created) VALUES (?,?,?,?,?,?,?,?,?)', [u.id, email, pass, u.name, u.phone, 'customer', tid, now(), now()]);
     // Hesap ücretsiz açılır; seçilen programın deneme lisansı hemen başlar (yönetici onayı yok)
-    if (b.product && cat.product(b.product) && b.product !== 'bundle') await t.q('INSERT INTO licenses (id, tenant_id, product, plan, period, status, start, end, lic_key) VALUES (?,?,?,?,?,?,?,?,?)', [uid(), tid, b.product, 1, 'aylik', 'deneme', now(), addDays(now(), trialLen(s)), licKey(b.product)]);
+    if (b.product && cat.satista(b.product) && b.product !== 'bundle') await t.q('INSERT INTO licenses (id, tenant_id, product, plan, period, status, start, end, lic_key) VALUES (?,?,?,?,?,?,?,?,?)', [uid(), tid, b.product, 1, 'aylik', 'deneme', now(), addDays(now(), trialLen(s)), licKey(b.product)]);
   });
   await auth.createSession(c.req, c.res, u, true);
   await audit({ ...c, user: u }, 'Kayıt', `${u.email} · ${b.company}${ref ? ' · davet' : ''}`, tid);
   if (b.pazarlama === true) await db.q('INSERT INTO mail_prefs (user_id, marketing, marketing_at, marketing_src, marketing_ip, updated) VALUES (?,1,?,?,?,?)', [u.id, now(), 'kayit', c.ip, now()]).catch(() => {});
-  if (b.product && cat.product(b.product)) notifyTrialRequest(sec.clean(b.company, 160), u, b.product);
+  if (b.product && cat.satista(b.product)) notifyTrialRequest(sec.clean(b.company, 160), u, b.product);
   mailTo(email, `${s.siteName} hesabınız hazır`, { title: 'Hoş geldiniz! Hesabınız hazır', intro: `Merhaba ${u.name.split(' ')[0]}, ${sec.clean(b.company, 160)} için hesabınız oluşturuldu.`, blocks: [...(b.product && cat.product(b.product) ? [{ type: 'kv', rows: [['Program', pnameOf(b.product)], ['Deneme', `${trialLen(s)} gün ücretsiz, hemen başladı`], ['Hesap', 'Süresiz ve ücretsiz']] }] : []), { type: 'list', items: ['Ürün ve müşterilerinizi Excel ile aktarın', 'Ekibinizi davet edin, her birine yetki verin', 'Telefonunuza uygulama olarak ekleyin'] }, { type: 'button', label: 'Programımı aç', url: `${s.siteUrl || ''}/#/programlarim` }, { type: 'p', text: 'Kurulum veya veri aktarımında takılırsanız bu e-postayı yanıtlayabilirsiniz.' }] });
   return { ok: true };
 });
@@ -479,9 +479,10 @@ route('POST', '/api/leads', { auth: 'none', limit: ['lead', 5, 3600e3] }, async 
 
 // Müşteri: deneme, sipariş, lisans, hesap, ekip, destek, tavsiye
 route('POST', '/api/trial', { auth: 'user', limit: ['trial', 20, 3600e3] }, async (c) => {
-  const pid = String(c.body.product || ''); if (!cat.product(pid) || pid === 'bundle') throw err(400, 'Geçersiz ürün');
+  const pid = String(c.body.product || ''); if (!cat.kayitli(pid) || pid === 'bundle') throw err(400, 'Geçersiz ürün');
   if (!c.user.tenant_id) throw err(400, 'Yönetici hesabıyla deneme başlatılamaz');
   const ex = await db.one('SELECT * FROM licenses WHERE tenant_id=? AND product=?', [c.user.tenant_id, pid]);
+  if (!ex && !cat.satista(pid)) throw err(409, 'Bu program şu an yeni satışa kapalı', { code: 'satis-kapali' });
   const s = await site();
   // Eski düzenden kalan onay bekleyen talep: deneme şimdi başlar
   if (ex && ex.status === 'talep') { await db.q("UPDATE licenses SET status='deneme', start=?, end=? WHERE id=?", [now(), addDays(now(), trialLen(s)), ex.id]); await audit(c, 'Deneme başladı', pid); return { ok: true, license: await db.one('SELECT * FROM licenses WHERE id=?', [ex.id]) }; }
@@ -502,7 +503,9 @@ route('GET', '/api/destek/paketler', { auth: 'none', db: false }, async (c) => {
 });
 route('POST', '/api/orders', { auth: 'user', limit: ['order', 20, 3600e3] }, async (c) => {
   if (!c.user.tenant_id) throw err(400, 'Yönetici hesabıyla sipariş verilemez');
-  const p = await fiyatla(c.body);
+  // Yeni satışa kapalı program: yalnızca lisansı olan işletme yenileyebilir
+  const izinli = []; for (const pid of new Set((Array.isArray(c.body.items) ? c.body.items : []).map((i) => String(i && i.pid)))) if (cat.kayitli(pid) && !cat.satista(pid)) { if (!(await db.one('SELECT id FROM licenses WHERE tenant_id=? AND product=?', [c.user.tenant_id, pid]))) throw err(409, 'Bu program şu an yeni satışa kapalı', { code: 'satis-kapali' }); izinli.push(pid); }
+  const p = await fiyatla(c.body, izinli);
   if (p.kurumsal) throw err(409, 'Bu adette sipariş kurumsal teklif ile verilir', { code: 'kurumsal' });
   if (p.sube > 1 && c.body.subeBeyan !== true) throw err(400, 'Şube sayısı beyanını onaylayın');
   const b = c.body.billing || {};
@@ -809,7 +812,7 @@ A('POST', '/licenses/:id/trial', async (c) => {
   return { ok: true };
 });
 A('POST', '/tenants/:id/license', async (c) => {
-  const pid = String(c.body.product || ''); if (!cat.product(pid) || pid === 'bundle') throw err(400, 'Geçersiz ürün');
+  const pid = String(c.body.product || ''); if (!cat.kayitli(pid) || pid === 'bundle') throw err(400, 'Geçersiz ürün');
   const days = Math.min(3660, Math.max(1, Number(c.body.days) || 7));
   await db.q('INSERT INTO licenses (id, tenant_id, product, plan, period, status, start, end, lic_key) VALUES (?,?,?,?,?,?,?,?,?) ON DUPLICATE KEY UPDATE status=VALUES(status), end=VALUES(end)', [uid(), c.params.id, pid, Number(c.body.plan) || 1, 'aylik', c.body.trial ? 'deneme' : 'aktif', now(), addDays(now(), days), licKey(pid)]);
   await audit(c, 'Lisans tanımlandı', `${pid} ${days} gün`, c.params.id); return { ok: true };
