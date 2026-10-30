@@ -1,0 +1,136 @@
+// Adisyon kullanım kılavuzu içeriği. Biçim: docs/kilavuz/DURUM.md. Üretim: node scripts/kilavuz/uret.js adisyon
+module.exports = (O) => {
+  const ACIK = ['tikla', '.tbl-node.busy']; // dolu masanın sipariş ekranı
+  const ebelge = O.ebelge();
+  return {
+    ne: 'Adisyon, restoran ve kafenin günlük servisini tek programda toplar. Garson masayı açar, siparişi mutfağa gönderir, mutfak ekranda hazırlar, kasiyer ödemeyi alır. Paket servis, rezervasyon, reçeteli malzeme stoku ve QR menü de aynı programdadır.',
+    kimler: 'Restoran, kafe, lokanta, pastane salonu ve benzeri masalı işletmeler. Tek salonlu kafede de, salon, bahçe ve teras gibi bölümleri olan yerde de kullanılır.',
+    ilkNot: 'Bu program bilgi fişi basar. Adisyon fişinin altında "Mali değeri yoktur" yazar, mali fişi yazarkasa cihazınızdan ayrıca kesersiniz.',
+    ekrantanitim: [{ git: 'masalar', kirp: 'tam', adimlar: [['Sol menüden sayfalar arasında geçersiniz. Yanındaki sayılar mutfaktaki yeni kalemleri ve açık paket siparişleri gösterir.', '.ns-nav'], ['**Ara · Ctrl K** düğmesi ekranlar arasında hızlı geçiş sağlar.', '[data-cmdk]', 'ok'], ['Ay simgesi açık ve koyu tema arasında geçer.', 'button[data-theme]'], ['Sağ üstte giriş yapan kullanıcı ve rolü görünür.', '.ns-user', 'ok']] }],
+
+    moduller: [
+      { id: 'masalar', ne: 'Salonun planıdır. Her masa durumuna göre renklenir: boş, dolu, sipariş hazır, hesap istendi ve rezerve. Üstteki kutular dolu masa sayısını, açık hesapları, bugünkü ciroyu ve mutfak kuyruğunu gösterir.',
+        gorevler: [
+          { baslik: 'Masa açma', ne: 'Boş masaya tıklayınca kişi sayısı sorulur. Masanın bugün için bekleyen rezervasyonu varsa rezervasyon geldi olarak işaretlenir.', sahneler: [
+            { git: 'masalar', adimlar: [['Üstten salon bölümünü seçin. Yanındaki sayı dolu ve toplam masa sayısıdır.', '#areas'], ['Renklerin anlamı bu satırda yazar.', '.legend-row'], ['Boş masaya tıklayın.', '.tbl-node.free']] },
+            { git: 'masalar', once: [['tikla', '.tbl-node.free']], kirp: 'pencere', adimlar: [['Kişi sayısını yazıp **Kaydet** düğmesine basın. Sipariş ekranı açılır.', 'button@Kaydet']] }] },
+          { baslik: 'Sipariş alma ve mutfağa gönderme', ne: 'Ürüne tıkladıkça kalem adisyona eklenir. Kalemler **Mutfağa gönder** düğmesine basana kadar mutfağa gitmez. Reçetesi olan ürünün malzemeleri gönderim anında stoktan düşer.', sahneler: [
+            { git: 'masalar', once: [ACIK], kirp: 'tam', adimlar: [['Kategoriyi seçin.', '#mc'], ['Ürüne tıklayın. Tükenen ürün **Tükendi** etiketiyle görünür, eklenemez.', '#mg'], ['Ürünü ada göre bulmak için **Menüde ara...** kutusunu kullanın.', '#ms']] },
+            { git: 'masalar', once: [ACIK, ['tikla', '.mi']], kirp: 'tam', adimlar: [['Eklenen kalem **Yeni (gönderilmedi)** başlığı altında görünür.', '.ci.new'], ['**Mutfağa gönder** düğmesine basın. Parantezdeki sayı gidecek kalem adedidir.', '[data-a=send]']] }] },
+          { baslik: 'Kalem değiştirme, not, ikram ve iptal', ne: 'Adisyondaki kaleme tıklayınca pencere açılır. Mutfağa gitmiş kalemin adedi artırılamaz. İptal için neden yazılır. Mutfağa gitmiş kalemin iptali, ikram ve adet azaltma garson için yetkili onayı ister.', sahneler: [
+            { git: 'masalar', once: [ACIK, ['tikla', '.ci']], kirp: 'pencere', adimlar: [['Mutfağa iletilecek notu **Not (mutfağa iletilir)** alanına yazın veya alttaki hazır düğmelere basın.', '.field@Not'], ['Ücretsiz verilecekse **İkram (ücretsiz)** kutusunu işaretleyin.', 'label.check@İkram'], ['Kalemi başka adisyona geçirmek için **Başka masaya taşı** düğmesini kullanın.', 'button@Başka masaya taşı'], ['**İptal et** kalemi iptal eder. Kararınız bitince **Kaydet** düğmesine basın.', 'button@İptal et']] }] },
+          { baslik: 'Masa taşıma, birleştirme ve indirim', ne: 'Adisyon başlığındaki üç çizgi simgesi **Diğer işlemler** penceresini açar.', sahneler: [
+            { git: 'masalar', once: [ACIK], kirp: 'tam', adimlar: [['**Diğer işlemler** simgesine basın.', '[data-a=more]']] },
+            { git: 'masalar', once: [ACIK, ['tikla', '[data-a=more]']], kirp: 'pencere', adimlar: [['**Masa taşı** hesabı boş bir masaya geçirir.', 'button@Masa taşı'], ['**Masa birleştir** başka dolu masanın kalemlerini ve ödemelerini bu hesaba alır.', 'button@Masa birleştir'], ['**İndirim uygula** yüzde veya tutar indirimi uygular.', 'button@İndirim uygula'], ['**Bahşiş (müşteri isterse)** yalnız müşterinin isteğiyle eklenir, ayrı satırda görünür.', 'button@Bahşiş'], ['**Adisyon yazdır** o anki hesabı basar.', 'button@Adisyon yazdır']] }] },
+          { baslik: 'Hesap ve ödeme alma', ne: '**Hesap fişi** müşteriye ön fişi basar ve masayı hesap istendi durumuna geçirir. **Ödeme al** tahsilat penceresini açar.', sahneler: [
+            { git: 'masalar', once: [ACIK], kirp: 'tam', adimlar: [['Ön fiş için **Hesap fişi** düğmesine basın.', '[data-a=bill]'], ['Tahsilat için **Ödeme al** düğmesine basın.', '[data-a=pay]']] },
+            { git: 'masalar', once: [ACIK, ['tikla', '[data-a=pay]']], kirp: 'pencere', adimlar: [['Üstten yöntem seçin: **Tamamı**, **Kişiye böl**, **Ürün seç** veya **Tutar gir**.', '.tabs'], ['**Alınacak tutar** burada görünür.', '#amt'], ['Ödeme türüne basın: **Nakit**, **Kredi Kartı**, **Yemek Kartı**, **Online Ödeme** veya **Havale**. Kalan tutar varsa pencere kapanır, aynı işlemi kalan için yinelersiniz.', 'button@Kredi Kartı']] },
+            { git: 'masalar', once: [ACIK, ['tikla', '[data-a=pay]'], ['tikla', '[data-pt=nakit]']], kirp: 'pencere', son: 500, adimlar: [['Kalan sıfırlanınca **Hesap kapandı** penceresi çıkar. Müşteriye fiş vermek için **Fiş yazdır** düğmesine basın.', 'button@Fiş yazdır'], ['**Tamam** masalara döner, masa boşalır.', 'button@Tamam']] }] },
+          { baslik: 'Salon planını düzenleme', ne: 'Bu düğmeyi yalnız yönetici görür. Düzenleme açıkken masalar sürüklenir, masaya tıklayınca adı, kişi sayısı ve şekli değişir. Masayı silmek için pencerede **Bu masayı sil** kutusunu işaretleyin.', sahneler: [
+            { git: 'masalar', once: [['tikla', '#ed']], adimlar: [['**Masa ekle** seçili bölüme masa ekler.', '#addt'], ['**Bölüm ekle** Kat 2 gibi yeni bölüm açar.', '#adda'], ['İşiniz bitince **Düzenlemeyi bitir** düğmesine basın.', '#ed']] }] },
+          { baslik: 'Paket ve gel-al siparişi açma', sahneler: [
+            { git: 'masalar', adimlar: [['**Paket sipariş** müşteri bilgisini sorar. Ayrıntısı Paket Servis bölümündedir.', '#pk'], ['**Gel-al** masaya bağlı olmayan hesap açar, doğrudan sipariş ekranına geçer.', '#ga']] }] }],
+        alanlar: [['Masa adı', 'Planda görünen ad. Düzenleme modunda değişir.'], ['Kişi', 'Masanın kaç kişilik olduğu.'], ['Şekil', 'Kare, Yuvarlak veya Uzun.']],
+        hatalar: [['Açık hesabı olan masa silinemez uyarısı çıkıyor.', 'Önce hesabı kapatın veya hesabı başka masaya taşıyın.'], ['Birleştirilecek dolu masa yok uyarısı çıkıyor.', 'Birleştirme için ikinci bir dolu masa gerekir.'], ['Taşınacak açık masa yok uyarısı çıkıyor.', 'Kalem ancak başka açık hesaba taşınır.'], ['Tutar seçin uyarısı çıkıyor.', '**Ürün seç** sekmesinde en az bir kalem işaretleyin veya tutar yazın.'], ['Ürün tükendi uyarısı çıkıyor.', 'Ürün **Menü & Reçeteler** sayfasında **Tükendi** işaretlidir. Satırdaki **Tükendi / satışta** simgesiyle açın.']] },
+
+      { id: 'mutfak', baslik: 'Mutfak Ekranı', ne: 'Mutfağın ve barın sipariş ekranıdır. Fiş kâğıdı yerine siparişler buraya düşer, üç sütunda izlenir. 15 dakikayı geçen fişin başlığı kırmızıya döner. Mutfak rolüyle giren kullanıcı doğrudan bu sayfada açılır.',
+        gorevler: [{ baslik: 'Siparişi hazırlama', sahneler: [
+          { git: 'mutfak', adimlar: [['Ekranı **Tümü**, **Mutfak** veya **Bar** olarak süzün. Ürünün nerede hazırlanacağı menü kaydındaki **Hazırlayan** alanından gelir.', 'button@Bar'], ['Fişteki satıra tıklayınca yalnız o kalemin durumu değişir: önce hazırlanıyor, sonra hazır.', '.ti'], ['Fişin tamamı için **Hazırlamaya başla** düğmesine basın.', 'button@Hazırlamaya başla'], ['Mutfaktaki tablet veya ekranda **Tam ekran** düğmesini kullanın.', '#full']] },
+          { git: 'mutfak', adimlar: [['Hazırlanan fiş bitince **Tümü hazır** düğmesine basın. Masa planda sipariş hazır rengine döner.', 'button@Tümü hazır'], ['Garson götürünce **Servis edildi** düğmesine basın, fiş ekrandan kalkar.', 'button@Servis edildi']] }] }],
+        hatalar: [['Sipariş mutfağa düşmedi.', 'Garsonun **Mutfağa gönder** düğmesine bastığını kontrol edin. Gönderilmeyen kalem adisyonda **Yeni (gönderilmedi)** başlığında durur.'], ['Bar siparişleri görünmüyor.', 'Üstteki süzgeç **Mutfak** seçili olabilir, **Tümü** veya **Bar** seçin.']] },
+
+      { id: 'paket', baslik: 'Paket Servis', ne: 'Telefon ve platform siparişlerini, kuryeleri ve teslimatı yönetir. Aktif siparişler durumuna göre listelenir: **Hazırlanıyor**, **Yolda**. Paket siparişi kurye yola çıkınca ve teslim edilince ilerler.',
+        gorevler: [
+          { baslik: 'Telefonla paket sipariş alma', ne: 'Daha önce sipariş vermiş müşterinin telefonu yazılınca ad ve adres kendiliğinden dolar.', sahneler: [
+            { git: 'paket', en: 1500, adimlar: [['**Yeni paket sipariş** düğmesine basın.', '#np'], ['Numarayı elle girmek için **Gelen çağrı** düğmesini kullanın.', '#cid']] },
+            { git: 'paket', once: [['tikla', '#np']], kirp: 'pencere', adimlar: [['**Telefon**, **Müşteri adı** ve **Adres** alanlarını doldurun.', '.field@Telefon'], ['Siparişin nereden geldiğini **Kaynak** alanından seçin.', '.field@Kaynak'], ['**Ödeme** alanında **Kapıda nakit**, **Kapıda kart** veya **Online ödendi** seçin.', '.field@Ödeme'], ['**Kaydet** düğmesine basın. Sipariş ekranı açılır, ürünleri ekleyip **Mutfağa gönder** düğmesine basın.', 'button@Kaydet']] }] },
+          { baslik: 'Kurye atama ve teslim', sahneler: [
+            { git: 'paket', en: 1500, adimlar: [['Hazırlanan sipariş için satırdaki **Yola çıkar** düğmesine basın.', 'button@Yola çıkar'], ['Kurye dönünce **Teslim et** düğmesine basın. Ödeme seçilen şekilde kaydedilir, hesap kapanır.', 'button@Teslim et'], ['**Siparişi aç** simgesi sipariş ekranını açar.', '[data-act=open]'], ['Yeni kurye eklemek için **Kuryeler** kartındaki artı düğmesine basın.', '#ac']] },
+            { git: 'paket', once: [['tikla', 'button@Yola çıkar']], kirp: 'pencere', adimlar: [['**Kurye** seçip **Kaydet** düğmesine basın. Sipariş **Yolda** durumuna geçer.', '.field@Kurye']] }] },
+          { baslik: 'Platform siparişlerini alma', ne: 'Bu düğmeler Yemek platformu bağlantısına bağlıdır. Bağlantı kapalıyken bağlantının kapalı olduğunu söyleyen uyarı çıkar, sipariş gelmez. Simülasyonda örnek sipariş oluşur, gerçek sipariş değildir.', sahneler: [
+            { git: 'paket', en: 1500, adimlar: [['**Platform siparişlerini al** bekleyen siparişleri alır, adisyona ve mutfağa düşürür.', '#pf'], ['**Menü senkronu** menüyü platforma göndermek içindir.', '#ms']] }] }],
+        hatalar: [['Aktif paket sipariş yok yazıyor.', 'Tüm siparişler teslim edilmiştir veya henüz sipariş açılmamıştır.'], ['Açık platform yok uyarısı çıkıyor.', '**Yemek Platformları** sayfasından platformu açın.']] },
+
+      { id: 'rezervasyon', ne: 'Masa rezervasyonlarını güne göre listeler. Misafir geldiğinde masa açılır, gelmediyse kayda işlenir. Rezerve masa, saati iki saat içine girince planda rezerve rengiyle görünür.',
+        gorevler: [
+          { baslik: 'Rezervasyon ekleme', sahneler: [
+            { git: 'rezervasyon', adimlar: [['**Yeni rezervasyon** düğmesine basın.', '#nr'], ['Tarihi buradan seçin. **Bugün** düğmesi bugüne döner.', '#dd']] },
+            { git: 'rezervasyon', once: [['tikla', '#nr']], kirp: 'pencere', boy: 820, adimlar: [['**Ad soyad**, **Telefon**, **Tarih** ve **Saat** zorunludur.', '.field@Ad soyad'], ['Masa ayırmak için **Masa** alanından seçin. **Seçilmedi** kalırsa yalnız kayıt tutulur.', '.field@Masa'], ['**Kaydet** düğmesine basın.', 'button@Kaydet']] }] },
+          { baslik: 'Misafir geldiğinde', sahneler: [{ git: 'rezervasyon', adimlar: [['**Geldi** düğmesi rezervasyonu işler. Masa seçiliyse ve boşsa hesap açılır, sipariş ekranına geçilir.', 'button@Geldi'], ['Misafir gelmediyse **Gelmedi** düğmesine basın.', 'button@Gelmedi']] }] }],
+        hatalar: [['Bu tarihte rezervasyon yok yazıyor.', 'Üstteki tarih başka güne ayarlıdır. **Bugün** düğmesine basın.']] },
+
+      { id: 'adisyonlar', ne: 'Kapanan hesapların geçmişidir. İptal ve ikram içeren hesaplar etiketle görünür. Hesabı açıp kalemleri inceler, fişi yeniden yazdırırsınız. Bu sayfa son 300 hesabı listeler.',
+        gorevler: [{ baslik: 'Geçmiş hesabı bulma', sahneler: [
+          { git: 'adisyonlar', adimlar: [['Dönemi **Bugün**, **7 gün** veya **30 gün** olarak seçin.', 'button@7 gün'], ['Arama kutusuna adisyon numarası, masa veya garson yazın.', '#q'], ['Göz simgesi hesabın kalemlerini açar.', '[data-act=v]'], ['Yazıcı simgesi adisyonu yeniden basar.', '[data-act=p]']] },
+          { git: 'adisyonlar', once: [['tikla', '[data-act=v]']], kirp: 'pencere', adimlar: [['Kalemler, adet, fiyat ve iptal nedeni burada görünür.', '.ns-table, table']] }] }] },
+
+      { id: 'platformlar', ne: 'Yemeksepeti, Getir Yemek, Trendyol Yemek ve Migros Yemek hesaplarınızı tek ekranda izlersiniz: açık kapalı durumu, hazırlık süresi, fiyat farkı, komisyon, puan ve yorumlar. Bağlantı açık değilse sarı uyarı görünür ve yapılan işlemler platforma gitmez, yalnız kayda geçer.',
+        gorevler: [
+          { baslik: 'Restoranı kapatma ve yoğunluk modu', sahneler: [{ git: 'platformlar', en: 1500, boy: 900, adimlar: [['Sarı uyarı simülasyonda olduğunuzu gösterir. Canlı bağlantı için Entegrasyonlar bölümüne bakın.', '.card@Demo / simülasyon'], ['**Tüm platformlarda kapat** yeni sipariş gelmesin diye tüm hesapları kapatır, onay ister.', '#all'], ['**Yoğunluk modu (+15 dk)** hazırlık süresini tüm platformlarda 15 dakika artırır.', '#busy'], ['Satırdaki **Açık** düğmesi tek platformu açıp kapatır.', '[data-tg]']] }] },
+          { baslik: 'Platform ayarlarını girme', ne: 'Buradaki **Komisyon % (sözleşmeye göre)** ve **Hakediş vadesi (gün)** alanları kendi sözleşmenize göre girilir. Sayfadaki komisyon ve net tutarlar bu orandan hesaplanır, platformdan okunmaz.', sahneler: [
+            { git: 'platformlar', once: [['tikla', '[data-act=pcfg]']], kirp: 'pencere', boy: 860, adimlar: [['**Restoran / şube no** alanını girin.', '.field@Restoran / şube no'], ['**Menü fiyat farkı %** platform fiyatını menü fiyatına göre artırır.', '.field@Menü fiyat farkı'], ['**Kaydet** düğmesine basın.', 'button@Kaydet']] }] },
+          { baslik: 'Ürün kapatma ve yorum yanıtlama', sahneler: [{ git: 'platformlar', en: 1500, boy: 1250, adimlar: [['Malzemesi biten ürünü listedeki platform düğmesiyle kapatın. Düğme **Kapalı** yazısına döner.', 'h3@Menü: platformda kapat / aç'], ['Yanıtı düzenleyip **Yanıtla** düğmesine basın. Bağlantı yoksa yanıt gönderilmez, taslak olarak saklanır.', '[data-rv]'], ['Tüm işlemler **İşlem günlüğü** kartına yazılır.', 'h3@İşlem günlüğü']] }] }],
+        alanlar: [['API anahtarı', 'Platformun verdiği anahtar.'], ['Hazırlık süresi (dk)', 'Sayfada gösterilen hazırlık süresi.'], ['Siparişleri otomatik kabul et ve mutfağa düşür', 'Satırda **Oto kabul** etiketi olarak görünür.']],
+        not: 'Bu penceredeki **Kaydet** veya **Bağlan** yalnız bu sayfadaki kaydı günceller. Satırda bağlı görünmesi platforma gerçek bağlantı kurulduğu anlamına gelmez. Gerçek bağlantı Entegrasyonlar sayfasından kurulur.',
+        hatalar: [['Restoran no gerekli uyarısı çıkıyor.', 'Bağlı olmayan platformu eklerken **Restoran / şube no** alanını doldurun.'], ['TEST: platform bağlı değil, yanıt gönderilmedi uyarısı çıkıyor.', 'Yanıt platforma gitmemiştir, taslak olarak saklanır.']] },
+
+      { id: 'menu', ne: 'Ürünleri, fiyatları, kategorileri ve reçeteleri yönetir. Reçetesi girilen üründe maliyet ve maliyet yüzdesi görünür: yüzde 25 üstü sarı, 35 üstü kırmızıdır. Bu sayfayı yalnız yönetici görür.',
+        gorevler: [
+          { baslik: 'Yeni ürün ekleme', sahneler: [
+            { git: 'menu', adimlar: [['**Yeni ürün** düğmesine basın.', '#add'], ['Listeyi kategoriye göre süzmek için bu düğmeleri kullanın.', '.seg']] },
+            { git: 'menu', once: [['tikla', '#add']], kirp: 'pencere', boy: 900, adimlar: [['**Ürün adı** yazın.', '.field@Ürün adı'], ['**Fiyat (₺)** alanını doldurun.', '.field@Fiyat'], ['**Hazırlayan** alanı siparişin mutfak ekranında **Mutfak** mı **Bar** mı görüneceğini belirler.', '.field@Hazırlayan'], ['**Kaydet** düğmesine basın.', 'button@Kaydet']] }] },
+          { baslik: 'Reçete girme', ne: 'Ürün mutfağa gönderildiğinde reçetedeki malzemeler stoktan düşer. Önce **Malzeme Stoku** sayfasında malzemeleri tanımlayın.', sahneler: [
+            { git: 'menu', adimlar: [['Satırdaki **Reçete** simgesine basın.', '[data-act=recipe]'], ['**Tükendi / satışta** simgesi ürünü satışa kapatır veya açar.', '[data-act=toggle]']] },
+            { git: 'menu', once: [['tikla', '[data-act=recipe]']], kirp: 'pencere', adimlar: [['**Malzeme ekle** ile satır açın, malzemeyi seçip porsiyon miktarını yazın.', '#ra'], ['Altta maliyet ve satış fiyatı görünür.', '#rc'], ['**Kaydet** düğmesine basın.', 'button@Kaydet']] }] },
+          { baslik: 'Toplu fiyat değiştirme', sahneler: [
+            { git: 'menu', once: [['tikla', '#bulk']], kirp: 'pencere', adimlar: [['**Kategori** seçin veya **Tüm menü** bırakın.', '.field@Kategori'], ['**Değişim %** alanına zam için pozitif, indirim için negatif oran yazın.', '.field@Değişim'], ['**5 ₺ katlarına yuvarla** fiyatları yuvarlar.', 'label@5 ₺ katlarına yuvarla'], ['**Kaydet** düğmesine basın.', 'button@Kaydet']] }] },
+          { baslik: 'Kategori yönetimi', sahneler: [
+            { git: 'menu', once: [['tikla', '#cats']], kirp: 'pencere', adimlar: [['Ad ve renk girip artı düğmesine basın. Sipariş ekranındaki kategori düğmeleri buradan gelir.', '#ka']] }] }],
+        alanlar: [['KDV % (boşsa 10 — oranı mali müşavirinize doğrulatın)', 'Ürünün KDV oranı. Oranı mali müşavirinize doğrulatın.'], ['Hazırlık süresi (dk)', 'Ürünün hazırlanma süresi.'], ['Açıklama (QR menüde görünür)', 'Müşterinin QR menüde okuyacağı açıklama.'], ['Satışta (tükendiyse kapatın)', 'Kapalıysa ürün sipariş ekranında **Tükendi** görünür.']],
+        hatalar: [['Kategoride ürün var uyarısı çıkıyor.', 'Önce ürünleri başka kategoriye taşıyın.'], ['Önce Malzeme Stoku ekranından malzeme ekleyin uyarısı çıkıyor.', 'Reçete için tanımlı malzeme gerekir.']] },
+
+      { id: 'stok', ne: 'Reçetede kullanılan malzemelerin stokunu ve maliyetini tutar. Sipariş mutfağa gidince reçetedeki miktar stoktan düşer. Stok kritik seviyeye inen malzeme kırmızı görünür. Bu sayfayı yalnız yönetici görür.',
+        gorevler: [
+          { baslik: 'Malzeme ekleme', sahneler: [
+            { git: 'stok', adimlar: [['**Yeni malzeme** düğmesine basın.', 'button@Yeni malzeme'], ['Azalanları görmek için **Kritik** süzgecini seçin.', 'button@Kritik'], ['Listeyi dosyaya almak için **Excel (CSV)** düğmesini kullanın.', 'button@Excel (CSV)']] },
+            { git: 'stok', once: [['tikla', 'button@Yeni malzeme']], kirp: 'pencere', adimlar: [['**Malzeme** adını ve **Birim** bilgisini girin.', '.field@Malzeme'], ['**Kritik seviye** bu miktarın altında uyarı rengi verir.', '.field@Kritik seviye'], ['**Kaydet** düğmesine basın.', 'button@Kaydet']] }] },
+          { baslik: 'Stok girişi', ne: 'Tedarikçiden gelen malzemeyi satırdan girersiniz. Birim maliyet yazılırsa malzemenin maliyeti bu değerle değişir.', sahneler: [
+            { git: 'stok', once: [['tikla', '[data-act=in]']], kirp: 'pencere', adimlar: [['Gelen miktarı yazın.', '.field@Miktar'], ['Değiştiyse **Birim maliyet** alanını güncelleyip **Kaydet** düğmesine basın.', 'button@Kaydet']] }] }],
+        alanlar: [['Stok', 'Eldeki miktar.'], ['Birim maliyet (₺)', 'Reçete maliyetinde kullanılır.']] },
+
+      { id: 'qr', ne: 'Her masaya özel QR kod üretir. Müşteri telefonuyla okutur, menüyü görür, sipariş verir, garson çağırır, hesap ister. Sipariş adisyona **QR** etiketiyle düşer, garson onaylayıp mutfağa gönderir.',
+        gorevler: [{ baslik: 'QR kodları hazırlama', sahneler: [
+          { git: 'qr', boy: 900, adimlar: [['**QR menüyü önizle** müşterinin göreceği sayfayı açar.', 'a@QR menüyü önizle'], ['**Tüm QR kodları yazdır** masa kartlarını basar. Kartları masalara yapıştırın.', '#pa'], ['Müşteri yalnız menüyü görsün istiyorsanız **QR menüden sipariş verilebilsin** kutusunu kaldırın.', 'label.check@QR menüden sipariş'], ['Garson çağrıları **Bekleyen çağrılar** kartında görünür.', 'h3@Bekleyen çağrılar']] }] }],
+        not: 'Her masanın QR adresinde o masaya özel anahtar vardır. Kodu başka masaya taşımayın. Masa silinip yeniden açılırsa o masanın kodunu yeniden basın.',
+        hatalar: [['Müşteri Geçersiz masa kodu yazısı görüyor.', 'Masa silinmiş veya kod eskimiş olabilir. **Tüm QR kodları yazdır** ile yeniden basın.']] },
+
+      { id: 'raporlar', ne: 'Ciro, adisyon sayısı, ortalama hesap, masa süresi, kategori payı, saat yoğunluğu, ödeme türleri, en çok satan ürünler, garson performansı ve iptal ikram listesini gösterir. Bu sayfayı yalnız yönetici görür.',
+        gorevler: [{ baslik: 'Dönem raporunu okuma', sahneler: [
+          { git: 'raporlar', boy: 1000, adimlar: [['Dönemi **7 gün** veya **30 gün** olarak seçin.', 'button@30 gün'], ['Üstteki kutular dönemin toplamıdır.', '.kpi']] },
+          { git: 'raporlar', boy: 1700, adimlar: [['**En çok satan ürünler** ciroya göre sıralıdır.', 'h3@En çok satan ürünler'], ['**Garson performansı** adisyon, misafir ve kişi başı ciroyu gösterir.', 'h3@Garson performansı'], ['**İptal ve ikramlar** kalem, neden ve onaylayanı listeler.', 'h3@İptal ve ikramlar']] }] }] },
+
+      O.imzali(),
+      O.belgeler({ tur: 'Kasa devir tutanağı' }),
+      O.ayarlar({ alanlar: [['Wi-Fi şifresi (fişte yazar)', 'Doluysa fişin altına yazılır, QR menüde de görünür.'], ['Fiş alt yazısı', 'Fişin altına basılan metin.']] }),
+      O.bildirimler(),
+      { ...ebelge, ne: 'e-Fatura, e-Arşiv ve e-İrsaliye kayıtlarının giden ve gelen kutusudur. Bu programın Entegrasyonlar sayfasında e-Fatura kartı yoktur, hesap kapatırken fatura kesen düğme de yoktur. Burada oluşan belgeler TEST olarak görünür, GİB’e gitmez. Fatura gerekiyorsa e-Fatura özelliği olan bir NEBSOFT programını veya entegratörünüzün panelini kullanın.', hatalar: [['Belge TEST olarak görünüyor.', 'Bu programda entegratör bağlantısı kurulamaz. TEST belgeler resmî belge değildir.']] },
+      O.entegrasyonlar(),
+    ],
+
+    roller: 'Garson mutfağa gitmiş kalemi iptal ederken, ikram yazarken veya adet azaltırken yönetici ya da kasiyerin onayı gerekir. Mutfak rolü programı **Mutfak Ekranı** sayfasında açar.',
+    musteri: [{ ad: 'QR menü', ne: 'Müşteri masadaki kodu telefon kamerasıyla okutur. Uygulama kurmaz, üyelik gerekmez. Menüyü görür, sepete ekler, siparişi gönderir, garson çağırır ve hesap ister. Ayarlarda Wi-Fi şifresi yazılıysa bu sayfada görünür. Sipariş kapalıysa müşteri yalnız menüyü görür.',
+      sahneler: [{ adres: 'qr.html?masa=a1-1', ilk: 900, kirp: 'tam', adimlar: [['Bu düğme garson çağırır.', '[data-call=garson]'], ['Sepeti bu düğmeyle açar, siparişini gönderir. Açık hesabı varsa **Hesabı iste** ile kart veya nakit ödeme istediğini bildirir.', '#cartb']] }] }],
+    yazdirma: { ne: 'Fişler sipariş ekranından ve geçmiş listesinden yazdırılır. Fiş yazıcısı Entegrasyonlar bölümünden bağlanır, bağlı değilse tarayıcının yazdırma penceresi açılır.', belgeler: [['Hesap ön fişi', 'Sipariş ekranında **Hesap fişi** düğmesi.'], ['Adisyon', '**Diğer işlemler** içinde **Adisyon yazdır**, **Hesap kapandı** penceresinde **Fiş yazdır** veya **Adisyonlar** sayfasındaki yazıcı simgesi.'], ['QR kodlar', '**QR Menü** sayfasında **Tüm QR kodları yazdır**.'], ['Kasa devir ve zimmet tutanağı', '**İmzalı belgeler** sayfası.']] },
+
+    entegrasyon: {
+      printer: { degisir: ['Tarayıcı modunda adisyon ve hesap fişi yazdırma penceresiyle basılır. USB, seri veya ağ yazıcısı seçilirse fiş pencere açılmadan yazıcıya gider.', '**Nakit** ödemede para çekmecesi yazıcı üzerinden açılır.', 'Sihirbazdaki **Mutfak fişini ayrıca yazdır (adisyon)** seçeneği bu sürümde mutfak fişi basmaz. Siparişler **Mutfak Ekranı** sayfasına düşer.'], sorun: ['Ağ yazıcısında IP adresini ve 9100 portunu kontrol edin.', 'Yazıcı yanıt vermezse tarayıcı moduna dönüp işinize devam edin.'] },
+      pos: { degisir: ['Ödeme penceresinde **Kredi Kartı** seçilince tutar bağlı POS cihazına gönderilir, sonuç ekrana döner.', 'Çekim başarısızsa **Kart ödemesi alınamadı** uyarısı çıkar, ödeme kaydedilmez.', 'Elle modda cihazdan ayrıca çekim yaparsınız, program yalnız kaydeder.'], sorun: ['Cihaz yanıt vermezse çekimi cihazdan kontrol edin, aynı tutarı yeniden göndermeden önce fişi doğrulayın.'] },
+      okc: { degisir: ['Yazarkasa bağlantısı bu sürümde kullanılamaz, program mali fiş kesmez. Mali fişi yazarkasanızdan kesin.', 'Simülasyonda hesap kapanınca kayda TEST yazılır, hiçbir cihaza gitmez.'], sorun: ['Bu bağlantı için GMP-3 üretici kütüphanesi, üretici anlaşması ve test cihazı gerekir. Durum değişirse bu kılavuz güncellenir.'] },
+      yemekplatform: { degisir: ['Platform veya entegrasyon ekibi siparişi işletmenize özel adrese gönderirse, **Paket Servis** sayfasındaki **Platform siparişlerini al** bu siparişleri adisyona ve mutfağa düşürür.', 'Menüde eşleşmeyen kalem siparişin notuna **MENÜDE EŞLEŞMEYEN** diye yazılır.', '**Menü senkronu**, restoran açma kapama, hazırlık süresi ve ürün kapatma yalnız sihirbazda **Servis adresi (API / ara servis)** tanımlıysa gider. Adres yoksa **servis adresi tanımlı değil** uyarısı çıkar veya işlem yalnız sayfanın günlüğüne yazılır.', 'Simülasyonda örnek sipariş oluşur, platforma bir şey gitmez.'], sorun: ['Platformun güncel entegrasyon şartlarını iş ortağı ekibinden öğrenin.', 'Sipariş gelmiyorsa programın adresinin internetten erişilebilir olduğunu kontrol edin.'] },
+      yemekkarti: { degisir: ['Bu bağlantıda çalışan sağlayıcı yoktur. Ödeme penceresinde **Yemek Kartı** seçilince kart markası sorulur, ödeme kayda geçer.', 'Tahsilatı yemek kartı cihazınızdan ayrıca yaparsınız.'], sorun: ['Kart cihazından çekim yapmadan ödemeyi kaydetmeyin.'] },
+      callerid: { degisir: ['Bu bağlantıda çalışan sağlayıcı yoktur. **Paket Servis** sayfasındaki **Gelen çağrı** düğmesi numarayı elle sorar.', 'Numara kayıtlı müşteriye aitse paket siparişi penceresinde ad ve adres dolar.', 'Simülasyonda **Arayan numara TEST** uyarısı çıkar.'], sorun: ['Numarayı elle yazarak işinize devam edin.'] },
+      webhook: { degisir: ['**Ödeme al** ile kapanan her hesap tanımladığınız adrese **satis** olayı olarak gönderilir.', '**Paket Servis** sayfasındaki **Teslim et** ile kapanan siparişlerde bu olay gönderilmez.'], sorun: ['Olay gelmiyorsa hedef adresin internetten erişilebilir olduğunu kontrol edin.'] },
+      backup: O.E.backup(),
+    },
+  };
+};
