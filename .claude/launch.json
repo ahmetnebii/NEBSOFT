@@ -17,6 +17,15 @@
         "process.env.PORT='5061';require('./server.js')"
       ],
       "port": 5061
+    },
+    {
+      "name": "perakende",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "-e",
+        "process.env.PORT='5062';require('./server.js')"
+      ],
+      "port": 5062
     }
   ]
 }
