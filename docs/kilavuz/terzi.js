@@ -79,7 +79,7 @@ module.exports = (O) => ({
     whatsapp: O.E.whatsappLink('İş detayındaki **WhatsApp** düğmesi'),
     email: { degisir: ['İş ekranlarında e-posta gönderen bir düğme yoktur.', 'Ayar yalnız **e-Belgeler** sayfasındaki belgeyi e-postayla göndermede ve e-Arşiv faturasının müşteriye iletilmesinde kullanılır.'], sorun: ['Gönderilemedi uyarısında sağlayıcı bilgilerini sihirbazdan yeniden test edin.'] },
     printer: { degisir: ['Bu programdaki iş fişi, askı fişi ve teslim belgesi tarayıcının yazdırma penceresiyle basılır. Yazıcı seçimi orada yapılır.', 'Bu ayardaki test düğmesi yazıcının çalıştığını denemenizi sağlar.'], sorun: ['Fiş kâğıdı dar çıkıyorsa **Belge şablonları** sayfasından kâğıt boyunu seçin.'] },
-    efatura: { degisir: ['Bağlantı açıkken teslim penceresinde **e-Arşiv / e-Fatura kes** seçeneği çıkar. Sağlayıcının altındaki sınırı okuyun: Paraşüt bu sürümde fatura göndermez.', 'Kesilen belge **e-Belgeler** sayfasında görünür ve iş kaydına numarası yazılır.', 'Simülasyonda belge numarası TEST etiketi taşır, GİB’e gitmez.'], sorun: ['Fatura kesilemedi uyarısında **e-Belgeler** sayfasındaki hata ayrıntısına bakın.'] },
+    efatura: { degisir: ['Bağlantı açıkken teslim penceresinde **e-Arşiv / e-Fatura kes** seçeneği çıkar. Sağlayıcının altındaki Kapsam notunu okuyun.', 'Kesilen belge **e-Belgeler** sayfasında görünür ve iş kaydına numarası yazılır.', 'Simülasyonda belge numarası TEST etiketi taşır, GİB’e gitmez.'], sorun: ['Fatura kesilemedi uyarısında **e-Belgeler** sayfasındaki hata ayrıntısına bakın.'] },
     backup: O.E.backup(),
   },
 });

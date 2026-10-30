@@ -7,34 +7,25 @@ Tarih: 2026-10-31. Durum: üretici kuruldu, üç örnek çıktı, kullanıcı on
 1. **PDF'ler depoda değil.** `core/kilavuz.json` commit'lidir, PDF'ler bu çalışma kopyasının `indir/kilavuz/` klasöründedir ve `.gitignore` nedeniyle birleştirmeyle taşınmaz. Birleştirmeden sonra ana klasörde `node scripts/kilavuz/uret.js pos terzi eticaret` çalıştırılmalı veya üç dosya kopyalanmalıdır. PDF eksikse `scripts/hosting-paketi.js` durur, kırık bağlantı yayına çıkmaz.
 2. **Destek bilgileri teyit bekliyor.** Kılavuzda telefon `0850 555 00 34`, e-posta `destek@nebsoft.com.tr` yazar (`site/src/site.config.js`). Alan adı `nebsoftapp.com`, e-posta alanı `nebsoft.com.tr`. Gerçek olduğu kullanıcıdan doğrulanmalı.
 3. **Logo kesin değil.** Şimdilik `assets/nebsoft-logo.webp`. Kesinleşince `scripts/kilavuz/ayar.js` içindeki `LOGO` değişir, kılavuzlar yeniden üretilir.
-4. **Ekran ile kod uyuşmazlıkları (UYUMSUZ).** Kılavuz kodda olanı yazar, ekran ise farklı söylüyor. Kullanıcıya sorulacak:
-   - POS, Pazaryerleri kartı: sihirbazda Trendyol ve n11 "Resmî dokümanla doğrulandı" görünür, kurulum tamamlanır, ama bu programın gönderimi `NS.integ.call` yolundan geçer ve servis adresi olmadan gitmez (`core/integrations.js` satır 215). Doğrudan bağlantı yoktur.
-   - E-ticaret, Pazaryerleri kartı: canlı bağlantı **Pazaryeri Merkezi** ayarından çalışır (`apps/eticaret/pazaryeri.js`, `LIVE`). Sihirbazda yapılan kayıt kanalları canlıya almaz.
-   - E-ticaret, Amazon TR, Pazarama, Çiçeksepeti: sihirbaz "Kısmen doğrulandı" gösterir, seçilebilir, ama bağlayıcı yoktur (`server/connectors/`). CLAUDE.md §1'e göre canlıda seçilemez olmalı. Kılavuz "Henüz kullanılamıyor" yazar.
-   - E-ticaret, e-İrsaliye kartı: programda e-İrsaliye kesen çağrı yoktur. Kargoya verme penceresindeki `eirs` kutusu fatura keser.
-   - `WHERE` metinleri eski: eticaret `kargofirma` "otomatik oluşturulur" der, listedeki firmalar yalnız takip içindir. pos `pazaryeri` "Hızlı Ticaret sayfası" der, menü adı **Online Siparişler**, bu kanallarda bağlantı yoktur.
-   - Paraşüt, sihirbazda "Resmî dokümanla doğrulandı" görünür, rehberdeki sınır bu sürümde fatura gönderilmediğini söyler. Kılavuz "Sınırlı" yazar.
-   - Terzi, E-posta kartı: iş ekranlarında e-posta gönderen düğme yoktur, ayar yalnız e-Belgeler sayfasında işe yarar.
-5. **Katalog SSS metinleri (`market/catalog.js`) düzeltilmeli.** İkisi kılavuzdan çıkarıldı (`sssHaric`):
-   - eticaret "Panelden fotoğraf yükleme henüz tamamlanmadı": ürün formunda fotoğraf yükleme alanı var.
-   - pos "Online sipariş panosu bugün kendi web sitenizden gelen siparişlerle çalışır": kodda doğrulanmadı.
-6. **Entegrasyonlar canlı denenmedi.** Kılavuz sağlayıcı adımlarını `core/integ-guides.js` kayıtlarından alır. Dokümanla uyum canlı test değildir (CLAUDE.md §1), kılavuzda da böyle yazar.
-7. **iyzico anlatılmadı.** Kodu `eticaret/iyzico-odeme` dalındadır, bu dala dayanılmadı. Mağazada kartla ödeme kılavuzda "Henüz hayır" görünür. Dal birleşince `docs/kilavuz/eticaret.js` güncellenip yeniden üretilmeli. `USED.eticaret` listesinde `payment` yoktur.
+4. **Entegrasyonlar gerçek hesapla denenmedi.** Kılavuz `claude/sunucu-tanimlari-cffcb8` akışını anlatır: Entegre et, Bağlantıyı dene, Bağlı. "Bağlı" yalnız deneme geçince görünür. Açık kararlar `docs/ENTEGRASYON-ENVANTERI.md` başındadır (canlı ödeme kilidi, Yurtiçi düz http, Param, Stripe).
+5. **Canlı kart ödemesi kapalı.** Sunucuda `IYZICO_CANLI=1` yoksa işletme test kutusunu kaldırsa bile kart seçeneği mağazada görünmez. Kılavuz böyle yazar.
+6. **Katalog SSS metinleri eski (`market/catalog.js`).** `sssHaric` ile çıkarıldı: eticaret fotoğraf, kartla ödeme, Trendyol/Hepsiburada; pos Getir ve Yazarkasa. Katalog düzeltilmeli, site sayfalarında hâlâ eski metin var.
+7. **E-ticaret e-İrsaliye kartı:** programda e-İrsaliye kesen çağrı yoktur, kılavuz böyle yazar.
 
 ## Çıktılar
 
 | Program | PDF | Sayfa | Ekran | Boyut |
 |---|---|---|---|---|
-| Market POS | `indir/kilavuz/pos.pdf` | 71 | 50 | 4,6 MB |
-| Terzi & Tadilat | `indir/kilavuz/terzi.pdf` | 55 | 34 | 3,3 MB |
-| E-ticaret | `indir/kilavuz/eticaret.pdf` | 68 | 38 | 4,4 MB |
+| Market POS | `indir/kilavuz/pos.pdf` | 80 | 52 | 7,1 MB |
+| Terzi & Tadilat | `indir/kilavuz/terzi.pdf` | 66 | 36 | 5,2 MB |
+| E-ticaret | `indir/kilavuz/eticaret.pdf` | 88 | 41 | 6,9 MB |
 
-Üçü toplam 12,3 MB (`du` 13 MB). 51 program için tahmini toplam 210 MB. Hedef 15 MB'ın altında.
+Üçü toplam 19,2 MB. Yeni tasarımla 51 program için tahmini toplam 330 MB. Hedef 15 MB'ın altında.
 
 ## Kararlar
 
 - **PDF nerede durur:** `indir/kilavuz/<id>.pdf`. CLAUDE.md §4'e göre derleme çıktısıdır, depoya girmez. 51 PDF her üretimde değişir, git geçmişini şişirirdi. Depoya yalnız `core/kilavuz.json` girer, site ve program bağlantıyı buna bakarak gösterir.
-- **Hosting:** `scripts/hosting-paketi.js` `KLASORLER` listesine `indir/kilavuz` eklendi. Ölçüm: üç PDF ile paket 1003 dosya, 62,5 MB. Tüm kılavuzlarla paket yaklaşık 260 MB olur. PDF kaydı olup dosyası olmayan programda paket durur.
+- **Hosting:** `scripts/hosting-paketi.js` `KLASORLER` listesine `indir/kilavuz` eklendi. Ölçüm: üç PDF ile paket 1003 dosya, 62,5 MB. Yeni tasarımla tüm kılavuzlar paketi yaklaşık 390 MB yapar. PDF kaydı olup dosyası olmayan programda paket durur.
 - **Erişim:** `DENY` listesi `/indir/` yolunu kapatmaz, üyelik gerekmez. `docs/` ve `scripts/` kapalı kalır (404 denendi). `server.js` `.pdf` türünü ve `X-Robots-Tag: noindex` başlığını verir. `sw.js` `V` değeri 88 oldu, `/indir/` service worker dışında bırakıldı.
 - **SEO:** PDF herkese açık, dizine kapalı. Gerekçe `docs/SEO-KURALLARI.md`.
 - **Üretilmiş sayfalar:** SEO oturumu `build-sites.js` üzerinde çalıştığı için yalnız üç program sayfası commit'lendi, diğer üretilmiş dosyalar geri alındı. Yeni kılavuz eklenince sayfalar `node site/tools/build-sites.js` ile yenilenir.
@@ -49,6 +40,14 @@ Tarih: 2026-10-31. Durum: üretici kuruldu, üç örnek çıktı, kullanıcı on
 - Bağlantılar tarayıcıda denendi: market, terzi ve eticaret sayfasında görünür, kılavuzu olmayan adisyonda görünmez. 390 px genişlikte yatay kayma yok. Program menüsü, destek balonu, yardım merkezi çalışıyor, konsol hatası yok.
 - `server/test/kilavuz.test.js`: 13 kontrol geçti.
 - Tüm test zinciri tek tek çalıştırıldı: 66 dosyadan 65'i geçti. **Düşen:** `server/test/bilet-kural.test.js` ("Online satış kapandı"). Test saate bağlıdır, gece çalıştırıldı, bu işin dosyalarına dokunmaz, ayrı oturumda ele alınıyor. `npm test` zincirde burada durduğu için tek tek çalıştırıldı. XSD testi .NET ile çalıştı, atlanmadı.
+
+## İçerik yazarken
+
+- Sahne ve içerik biçimi değişmedi. Entegrasyon metni `degisir` ve `sorun` alanlarında kalır. `kapali` listesi "NEBSOFT ile iletişime geçerek açtırılır" yazdırır.
+- "Henüz kullanılamıyor", "kesin çalışır" ve "gerçek hesapla denendi" ifadeleri üretimi durdurur. Yerine "NEBSOFT ile iletişime geçerek açtırılır" yazılır.
+- Düğme adları: **Entegre et**, **Bağlantıyı dene**, **İletişim talebi**. **Kur** artık yok.
+- Katalog SSS maddesi eskiyse `sssHaric` ile çıkarılır, doğrusu `sss` ile yazılır.
+- Logo: `KILAVUZ_LOGO=<dosya>` veya `scripts/kilavuz/ayar.js`.
 
 ## Yeni program için kullanım
 
