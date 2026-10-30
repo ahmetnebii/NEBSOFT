@@ -47,24 +47,27 @@
   $('#bar').innerHTML = `<div class="tk-mark">${icon('car')}</div><div class="grow"><b>${esc(S().bizName || 'Oto Yıkama')}</b><span>Aracım nerede?</span></div><a class="btn ghost icon" href="tel:${esc(String(S().bizPhone || '').replace(/\s/g, ''))}" aria-label="Ara">${icon('phone')}</a><button class="btn ghost icon" id="th" data-theme-ico aria-label="Tema">${icon(NS.getTheme() === 'dark' ? 'sun' : 'moon')}</button>`;
   $('#th').onclick = NS.toggleTheme;
 
-  const finder = (v) => `<div class="tk-find"><input class="input" id="k" placeholder="Plaka (ör. 34 ABC 123)" value="${esc(v || '')}" aria-label="Plaka" autocomplete="off"><button class="btn primary lg" id="go">${icon('search')} Sorgula</button></div><div class="tk-recent"></div>`;
+  // Plaka + fişteki takip kodu birlikte gerekir (yalnızca plakayla, plakayı bilen herkes aracın tesiste olup olmadığını görüyordu — KVKK)
+  const finder = (v, c) => `<div class="tk-find"><input class="input" id="k" placeholder="Plaka (ör. 34 ABC 123)" value="${esc(v || '')}" aria-label="Plaka" autocomplete="off"><input class="input" id="kc" placeholder="Fişteki kod" value="${esc(c || '')}" aria-label="Fişteki takip kodu" autocomplete="off" style="max-width:130px;text-transform:uppercase"><button class="btn primary lg" id="go">${icon('search')} Sorgula</button></div><div class="tk-recent"></div>`;
 
-  function render(plate) {
+  function render(plate, code) {
     clearInterval(timer);
-    const pl = norm(plate);
-    if (!pl || db.lookup({ plate: pl }) === null) db.load();
+    const pl = norm(plate); const kc = String(code || '').trim().toUpperCase();
+    if (!pl || !kc || db.lookup({ plate: pl, code: kc }) === null) db.load();
+    const mine = (r) => norm(r.plate) === pl && (NS.pub || (!!kc && r.code === kc));
     if (!pl) {
-      let ex = ''; const j = db.all('jobs', (x) => ['bekliyor', 'yikaniyor', 'hazir'].includes(x.status))[0]; if (j) ex = j.plate;
-      $('#root').innerHTML = `<div class="tk-view"><div class="tk-intro"><h1>Aracın hazır mı?</h1><p>Plakanı yaz; yıkamadaki sıranı ve tahmini hazır olma saatini gör, otopark ücretini anlık gör.</p></div>${finder('')}${ex && !NS.pub ? `<p class="small muted">Demo için örnek: <a href="#" data-ex="${esc(ex)}">${esc(ex)}</a></p>` : ''}
+      let ex = '', exc = ''; const j = db.all('jobs', (x) => ['bekliyor', 'yikaniyor', 'hazir'].includes(x.status) && x.code)[0]; if (j) { ex = j.plate; exc = j.code; }
+      $('#root').innerHTML = `<div class="tk-view"><div class="tk-intro"><h1>Aracın hazır mı?</h1><p>Plakanı ve fişteki kodu yaz; yıkamadaki sıranı ve tahmini hazır olma saatini gör, otopark ücretini anlık gör.</p></div>${finder('')}${ex && !NS.pub ? `<p class="small muted">Demo için örnek: <a href="#" data-ex="${esc(ex)}" data-exc="${esc(exc)}">${esc(ex)} · ${esc(exc)}</a></p>` : ''}
         <div class="tk-how"><div>${icon('drop')}<b>Yıkama sırası</b>Önünde kaç araç olduğunu ve tahmini süreyi gör.</div><div>${icon('card')}<b>Otopark ücreti</b>Şu an çıkarsan ödeyeceğin tutarı anlık gör.</div><div>${icon('award')}<b>Abonelik</b>Kalan yıkama hakkın ve bitiş tarihin.</div></div></div>`;
       return bind();
     }
-    try { localStorage.setItem(RK, pl); } catch (e) { /* yok */ }
-    const jobs = db.all('jobs', (x) => norm(x.plate) === pl && x.status !== 'teslim').sort((a, b) => b.in.localeCompare(a.in));
+    if (!kc) { $('#root').innerHTML = `<div class="tk-view">${finder(pl)}<div class="tk-panel"><div class="b empty">${icon('lock')}<div>Fişinizdeki <b>takip kodunu</b> yazın.</div></div></div></div>`; return bind(); }
+    try { localStorage.setItem(RK, JSON.stringify({ pl, kc })); } catch (e) { /* yok */ }
+    const jobs = db.all('jobs', (x) => mine(x) && x.status !== 'teslim').sort((a, b) => b.in.localeCompare(a.in));
     const job = jobs[0];
-    const park = db.find('parks', (x) => norm(x.plate) === pl && !x.out);
-    const sub = subOf(pl);
-    if (!job && !park && !sub) { $('#root').innerHTML = `<div class="tk-view">${finder(pl)}<div class="tk-panel"><div class="b empty">${icon('search')}<div><b>${esc(pl)}</b> plakalı araç şu an tesiste görünmüyor.</div></div></div></div>`; return bind(); }
+    const park = db.find('parks', (x) => mine(x) && !x.out);
+    const sub0 = subOf(pl); const sub = sub0 && (NS.pub || (sub0.portalCode && sub0.portalCode === kc)) ? sub0 : null;
+    if (!job && !park && !sub) { $('#root').innerHTML = `<div class="tk-view">${finder(pl, kc)}<div class="tk-panel"><div class="b empty">${icon('search')}<div>Plaka veya kod hatalı ya da araç şu an tesiste görünmüyor.</div></div></div></div>`; return bind(); }
     let wash = '';
     if (job) {
       const queue = db.all('jobs', (x) => ['bekliyor', 'yikaniyor'].includes(x.status)).sort((a, b) => a.in.localeCompare(b.in));
@@ -85,16 +88,16 @@
         ${fee(park) > 0 ? '<p class="small mt" style="margin-bottom:0">Ücreti çıkışta gişede ödeyebilirsin.</p>' : ''}
         <p class="small muted" style="margin:10px 0 0">Tarife: ilk saat ${money(S().firstHour)}, sonraki her saat ${money(S().nextHour)}, günlük en fazla ${money(S().dailyMax)}. İlk ${S().graceMin} dk ücretsiz.</p></div></section>` : '';
     const subHtml = sub ? `<section class="tk-panel"><h3>${icon('award')} Aboneliğin</h3><div class="b"><div class="row between"><b>${sub.plan === 'otopark' ? 'Aylık otopark' : 'Aylık 4 yıkama'}</b><span class="small muted">bitiş ${NS.date(sub.end)}</span></div>${sub.washesLeft !== null && sub.washesLeft !== undefined ? `<div class="small mt">Kalan yıkama hakkı: <b>${sub.washesLeft}</b></div>` : ''}</div></section>` : '';
-    $('#root').innerHTML = `<div class="tk-view">${finder(pl)}<p style="margin:0 0 16px"><span class="plate"><span>${esc(pl)}</span></span></p>${wash}${parkHtml}${subHtml}<p class="tk-help">${icon('phone')} ${esc(S().bizPhone || '')} · ${esc(S().bizAddress || '')}</p></div>`;
+    $('#root').innerHTML = `<div class="tk-view">${finder(pl, kc)}<p style="margin:0 0 16px"><span class="plate"><span>${esc(pl)}</span></span></p>${wash}${parkHtml}${subHtml}<p class="tk-help">${icon('phone')} ${esc(S().bizPhone || '')} · ${esc(S().bizAddress || '')}</p></div>`;
     bind();
-    if (park) timer = setInterval(() => { if (!$('#fe')) return clearInterval(timer); db.load(); const p2 = db.get('parks', park.id); if (!p2 || p2.out) return render(pl); $('#fe').textContent = money(fee(p2)); $('#du').textContent = durTxt(Date.now() - new Date(p2.in)); }, 30000);
+    if (park) timer = setInterval(() => { if (!$('#fe')) return clearInterval(timer); db.load(); const p2 = db.get('parks', park.id); if (!p2 || p2.out) return render(pl, kc); $('#fe').textContent = money(fee(p2)); $('#du').textContent = durTxt(Date.now() - new Date(p2.in)); }, 30000);
   }
-  const go = (k) => { const n = norm(k); history.replaceState(null, '', n ? '?plaka=' + encodeURIComponent(n) : location.pathname); render(n); };
-  const bind = () => { $('#go').onclick = () => go($('#k').value); $('#k').onkeydown = (e) => { if (e.key === 'Enter') go($('#k').value); }; };
-  on($('#root'), 'click', '[data-ex]', (e, b) => { e.preventDefault(); go(b.dataset.ex); });
-  let start = new URLSearchParams(location.search).get('plaka');
-  if (!start) { try { start = localStorage.getItem(RK) || ''; } catch (e) { start = ''; } }
-  render(start);
+  const go = (k, c) => { const n = norm(k); const cc = String(c || '').trim().toUpperCase(); history.replaceState(null, '', n ? '?plaka=' + encodeURIComponent(n) + (cc ? '&kod=' + encodeURIComponent(cc) : '') : location.pathname); render(n, cc); };
+  const bind = () => { const g = () => go($('#k').value, $('#kc').value); $('#go').onclick = g; $('#k').onkeydown = $('#kc').onkeydown = (e) => { if (e.key === 'Enter') g(); }; };
+  on($('#root'), 'click', '[data-ex]', (e, b) => { e.preventDefault(); go(b.dataset.ex, b.dataset.exc); });
+  const qs = new URLSearchParams(location.search); let start = qs.get('plaka'), startCode = qs.get('kod') || '';
+  if (!start) { try { const v = JSON.parse(localStorage.getItem(RK) || 'null'); if (v && v.pl) { start = v.pl; startCode = v.kc || ''; } } catch (e) { start = ''; } }
+  render(start, startCode);
 })();
 </script>
 </body>

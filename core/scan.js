@@ -24,7 +24,7 @@
     const hit = (raw) => {
       const code = String(raw || '').trim(); if (!code || busy) return; const now = Date.now();
       if (code === last.code && now - last.at < 1500) return; last = { code, at: now };
-      try { NS.beep(1250, 70); } catch (e) { /* yok */ } if (navigator.vibrate) navigator.vibrate(60);
+      try { NS.beep(1250, 70); } catch (e) { /* yok */ } if (navigator.vibrate && (!navigator.userActivation || navigator.userActivation.hasBeenActive)) try { navigator.vibrate(60); } catch (e) { /* yok */ }
       ov.classList.add('flash'); setTimeout(() => ov.classList.remove('flash'), 180);
       const l = ov.querySelector('.nv-scan-last'); l.hidden = false; l.textContent = code;
       const r = onCode ? onCode(code, ov) : undefined;

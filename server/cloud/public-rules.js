@@ -489,10 +489,12 @@ const plateNorm = (p) => String(p || '').toLocaleUpperCase('tr-TR').replace(/\s+
 RULES.oto = {
   pub: { packages: true, jobs: { where: (j) => ['bekliyor', 'yikaniyor'].includes(j.status), fields: ['id', 'status', 'in', 'pkg', 'started'] } },
   login: (x, q) => {
-    const pl = plateNorm(q.plate); if (pl.length < 5) return null; const m = (r) => plateNorm(r.plate) === pl;
-    return x.col('jobs').some((j) => m(j) && j.status !== 'teslim') || x.col('parks').some((p) => m(p) && !p.out) || x.col('subs').some((s) => m(s) && s.end >= x.today) ? { k: 'p', i: pl } : null;
+    // Plaka + fişteki takip kodu (abonede abone kodu) birlikte eşleşmeli; yalnızca plakayla sorgu KVKK açığıydı (servis-arac Ç6)
+    const pl = plateNorm(q.plate); const code = norm(q.code); if (pl.length < 5 || code.length < 4) return null; const m = (r) => plateNorm(r.plate) === pl;
+    const ok = x.col('jobs').some((j) => m(j) && j.status !== 'teslim' && j.code && norm(j.code) === code) || x.col('parks').some((p) => m(p) && !p.out && p.code && norm(p.code) === code) || x.col('subs').some((s) => m(s) && s.end >= x.today && s.portalCode && norm(s.portalCode) === code);
+    return ok ? { k: 'p', i: pl } : null;
   },
-  loginError: 'Bu plakalı araç şu an tesiste görünmüyor',
+  loginError: 'Plaka veya takip kodu hatalı ya da araç şu an tesiste görünmüyor',
   view: (x) => {
     const pl = me(x, 'p'); if (!pl) return {}; const m = (r) => plateNorm(r.plate) === pl;
     const own = x.col('jobs').filter((j) => m(j) && j.status !== 'teslim').map((j) => x.pick(j, ['id', 'plate', 'status', 'in', 'pkg', 'started', 'price']));
@@ -756,6 +758,18 @@ RULES.eticaret = {
 const crypto = require('crypto');
 const tixCode = () => { const A = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; return [...crypto.randomBytes(8)].map((b) => A[b % A.length]).join(''); };
 const evCode = (x, code) => code && x.col('codes').find((c) => c.code === String(code).toUpperCase() && c.active);
+// Bilet saatleri Türkiye saatidir (UTC+3, yaz saati yok): sunucunun saat diliminden bağımsız hesaplanır
+const trTime = (s) => (s ? new Date(/[zZ]|[+-]\d\d:\d\d$/.test(s) ? s : (s.length <= 16 ? s + ':00' : s) + '+03:00').getTime() : NaN);
+const evStart = (e) => trTime(`${e.date}T${e.time || '20:00'}`);
+// Program tarafıyla (apps/bilet/data.js codeCheck) aynı kurallar: aktif, tarih aralığı, etkinlik, kullanım sınırı; %100 ve gişe kodları online'da geçmez
+function evCodeCheck(x, code, e) {
+  if (!code) return null; const k = evCode(x, code); if (!k) bad('Geçersiz indirim kodu');
+  if (k.from && x.today < k.from) bad('Bu kod henüz geçerli değil'); if (k.to && x.today > k.to) bad('Bu kodun süresi doldu');
+  if (k.events && !String(k.events).split(',').map((v) => v.trim()).filter(Boolean).includes(e.id)) bad('Bu kod bu etkinlikte geçerli değil');
+  if (Number(k.pct) >= 100 || k.online === false) bad('Bu kod online satışta kullanılamaz');
+  if (Number(k.maxUses) && (k.uses || 0) + 1 > Number(k.maxUses)) bad('Bu kodun kullanım hakkı doldu');
+  return k;
+}
 RULES.bilet = {
   pub: {
     events: { where: (e) => e.status !== 'taslak', omit: ['cost', 'internal'] },
@@ -784,7 +798,9 @@ RULES.bilet = {
     tickets: {
       ins: I({ event: 'id', seat: 'str:12?', cat: 'str:20', buyer: 'json:400' }, () => ({ channel: 'online', pay: 'gise', status: 'reserved', at: nowIso() }), (r, x) => {
         const e = x.get('events', r.event); const v = e && x.get('venues', e.venue);
-        if (!e || !v || e.status === 'iptal' || e.date < x.today) bad('Etkinlik satışta değil');
+        if (!e || !v || e.status === 'iptal' || e.status === 'taslak' || e.date < x.today) bad('Etkinlik satışta değil');
+        // Online satış penceresi: başlangıç–bitiş (boşsa etkinlik saatine kadar)
+        const now = Date.now(), st = evStart(e); if (e.salesStart && now < trTime(e.salesStart)) bad('Online satış henüz başlamadı'); if (now > (e.salesEnd ? trTime(e.salesEnd) : st)) bad('Online satış kapandı');
         const price = Number((e.prices || {})[r.cat]); if (!(price >= 0) || !(r.cat in (v.cats || {}))) bad('Geçersiz kategori');
         r.buyer = clean({ name: 'str:80', phone: 'phone', email: 'email?' }, r.buyer || {});
         const live = x.col('tickets').filter((t) => t.event === e.id && t.status !== 'refunded');
@@ -792,8 +808,10 @@ RULES.bilet = {
         else { r.seat = null; if (live.filter((t) => t.cat === r.cat).length >= Number((v.capacity || {})[r.cat] || 0)) throw Object.assign(new Error('Bu kategoride yer kalmadı'), { status: 409 }); }
         x._n = (x._n || 0) + 1; if (x._n > 8) bad('En fazla 8 bilet');
         if (!x._order) x._order = x.seq('orders', 'B');
-        const k = evCode(x, x.q.code); if (k) k.uses = (k.uses || 0) + 1;
-        Object.assign(r, { code: tixCode(), price, paid: k ? Math.round(price * (1 - k.pct / 100)) : price, discount: k ? k.code : null, order: x._order });
+        const k = evCodeCheck(x, x.q.code, e); if (k) k.uses = (k.uses || 0) + 1;
+        // Hizmet bedeli ve ödeme son anı sunucuda yazılır (ayar: serviceFee, resHours — en geç etkinlikten 2 saat önce)
+        const set = { serviceFee: 15, ...(x.doc._settings || {}) }; const hold = Math.max(now + 15 * 60000, Math.min(now + (Number(set.resHours) || 48) * 3600000, st - 2 * 3600000));
+        Object.assign(r, { code: tixCode(), price, paid: k ? Math.round(price * (1 - k.pct / 100)) : price, discount: k ? k.code : null, order: x._order, fee: Number(set.serviceFee) || 0, holdUntil: hold });
       }),
     },
     codes: 'ignore',

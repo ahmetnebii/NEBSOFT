@@ -188,13 +188,13 @@ Ayrıntı: `docs/urun/ON-MUHASEBE.md` (yapılanlar tabloları) ve `docs/MUHASEBE
 | Yüksek — tutar — **DOĞRULANAMADI** (rapor B9; GİB Kod Listeleri V1.43'te vergi kodu yok) | e-Belge'de konaklama vergisi (yalnızca KDV 0015 yazılıyor) — GİB kod listesinden doğrulanarak | konaklama Ç3 |
 | ~~Yüksek — tutar~~ **yapıldı 30.10.2026** | e-SMM'de stopaj yalnızca alıcı vergi kesintisi yapmakla yükümlüyse | profesyonel Ç1 |
 | ~~Yüksek — güvenlik~~ **yapıldı 30.10.2026** (`portal-kod.test.js`) | Portal kodları formülle türetilmesin (VKN/TCKN/telefon + id): yalnızca rastgele `portalCode` (hukuk `hkkCode`, veteriner/spor/kurs telefonla giriş, anaokulu) — Ön Muhasebe portalı zaten böyle | profesyonel Ç2, randevu Ç7 |
-| Orta — bulut kuralları | `RULES.otel` (hafta sonu fiyatı vb.), `RULES.bilet` (kod sınırları), randevuda yeni alanlar (`noReminder`, `waitlist`), Klinik online randevu kuralı, Otopark plaka sorgusu kuralı | konaklama Ç7–Ç8, randevu Ç4–Ç5, servis-arac Ç6 |
+| Orta — bulut kuralları — **kısmen yapıldı 30.10.2026:** `RULES.bilet` kod sınırları/satış penceresi/ücret (`bilet-kural.test.js`), Otopark plaka + takip kodu (`portal-kod.test.js`); kalan: otel, randevu alanları, klinik online randevu | `RULES.otel` (hafta sonu fiyatı vb.), `RULES.bilet` (kod sınırları), randevuda yeni alanlar (`noReminder`, `waitlist`), Klinik online randevu kuralı, Otopark plaka sorgusu kuralı | konaklama Ç7–Ç8, randevu Ç4–Ç5, servis-arac Ç6 |
 | Orta — sunucu | Zamanlanmış hatırlatma (panel kapalıyken randevudan X saat önce SMS) | randevu Ç3 |
-| Orta — etiket | `core/labels.js`: eski fiyat uydurmasın (`fiyat × 1,2`), program alanı kaydı, önizleme bağlamı, logo öğesi, indirim yüzdesi; `printLabels` şablon desteği; `USED.butik`'e printer/label/barcode/pos | perakende Ç1–Ç7 |
-| Orta — çekirdek UI | `NS.crud`: `beforeDelete`/`canDelete` kancası, `beforeSave` false dönerse kaydetmesin; `fieldsHtml` datalist önerisi; `table()` dar ekranda kart görünümü | profesyonel Ç5–Ç6, randevu Ç6/Ç8, eticaret Ç6 |
+| ~~Orta — etiket~~ **yapıldı 30.10.2026** (Ç1–Ç5, Ç7; Ç6 ZPL/TSPL DOĞRULANAMADI) | `core/labels.js`: eski fiyat uydurmasın (`fiyat × 1,2`), program alanı kaydı, önizleme bağlamı, logo öğesi, indirim yüzdesi; `printLabels` şablon desteği; `USED.butik`'e printer/label/barcode/pos | perakende Ç1–Ç7 |
+| ~~Orta — çekirdek UI~~ **yapıldı 30.10.2026** (hukuk/klinik/veteriner geçici çözümleri kaldırıldı) | `NS.crud`: `beforeDelete`/`canDelete` kancası, `beforeSave` false dönerse kaydetmesin; `fieldsHtml` datalist önerisi; `table()` dar ekranda kart görünümü | profesyonel Ç5–Ç6, randevu Ç6/Ç8, eticaret Ç6 |
 | Orta — dosya | Fotoğraf vb. ikili veri kayıt dışında (dosya deposu) | eticaret Ç7 |
-| Düşük | `navigator.vibrate` kullanıcı dokunmadan çağrılınca konsol hatası | profesyonel Ç8 |
-| Düşük | `kanal.test.js`: Trendyol yeni yollar (`/v2/products` vb.) | eticaret Ç4 |
+| ~~Düşük~~ **yapıldı** | `navigator.vibrate` kullanıcı dokunmadan çağrılınca konsol hatası | profesyonel Ç8 |
+| ~~Düşük~~ **yapıldı** (3 test) | `kanal.test.js`: Trendyol yeni yollar (`/v2/products` vb.) | eticaret Ç4 |
 | **Yapıldı (30.10.2026)** | `sw.js` V → `nebsoft-v3-21` (tüm "V artır" istekleri); `apps/hukuk/sure.test.js` `npm test`'e eklendi (18/18); servis-arac önizleme portu 5061 Chrome'da güvensiz port → 5067 | hepsi Ç1/Ç4/Ç8, profesyonel Ç3, servis-arac Ç5 |
 | Kullanıcı kararı | `cloud.test.js` 'talep' ≠ 'deneme' (§5 B8) | eticaret Ç5, konaklama Ç6, profesyonel Ç7 |
 

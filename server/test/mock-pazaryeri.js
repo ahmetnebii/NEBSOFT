@@ -15,6 +15,8 @@ function start(port = 5099) {
         if (/\/inventory\/sellers\/\d+\/products\/price-and-inventory$/.test(p) && req.method === 'POST') return j(200, { batchRequestId: 'b-' + ++batch });
         if (/\/products\/batch-requests\/.+$/.test(p)) return j(200, { status: 'COMPLETED', items: [{ requestItem: { barcode: 'LB100-SIY-S' }, status: 'SUCCESS', failureReasons: [] }] });
         if (/\/shipment-packages\/\d+$/.test(p) && req.method === 'PUT') return j(200, {});
+        if (/\/shipment-packages\/\d+\/items\/unsupplied$/.test(p) && req.method === 'PUT') return j(200, {});
+        if (/\/product\/sellers\/\d+\/v2\/products$/.test(p) && req.method === 'POST') return j(200, { batchRequestId: 'p-' + ++batch });
         if (/\/qna\/sellers\/\d+\/questions\/filter$/.test(p)) return j(200, { content: [{ id: 77, text: 'Kalıbı dar mı?', productName: 'Saten Midi Elbise', userName: 'A*** K***', creationDate: Date.now() }] });
         if (/\/questions\/\d+\/answers$/.test(p) && req.method === 'POST') return j(200, {});
         return j(404, { errors: [{ message: 'not found ' + p }] });

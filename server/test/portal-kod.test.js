@@ -40,4 +40,11 @@ for (const [prog, col] of [['veteriner', 'owners'], ['spor', 'members']]) {
   assert.ok(R.anaokulu.login(mk({ students: [{ ...st, portalCode: 'Q9W8E7' }] })(), { phone: c.phone, code: 'Q9W8E7' }));
   ok('toptan / müşavir / hukuk / anaokulu: rastgele portalCode ile giriş çalışır'); }
 
+// Otopark / oto yıkama: plaka + fişteki takip kodu (abonede abone kodu)
+{ const today = new Date().toISOString().slice(0, 10); const x = mk({ parks: [{ id: 'p1', plate: '34 ABC 123', out: null, code: 'KX7P2' }], jobs: [{ id: 'j1', plate: '06XYZ99', status: 'bekliyor', code: 'J9W8E' }], subs: [{ id: 's1', plate: '35 AA 1', end: '2999-01-01', portalCode: 'ABONE7' }] });
+  const L = (q) => R.oto.login({ ...x(), today }, q);
+  assert.ok(L({ plate: '34abc123', code: 'kx7p2' })); assert.ok(L({ plate: '06 XYZ 99', code: 'J9W8E' })); assert.ok(L({ plate: '35AA1', code: 'abone7' }));
+  assert.strictEqual(L({ plate: '34ABC123' }), null); assert.strictEqual(L({ plate: '34ABC123', code: 'J9W8E' }), null); assert.strictEqual(L({ plate: '35AA1', code: 'XXXX' }), null);
+  ok('oto: plaka + takip kodu gerekir; yalnızca plaka veya başka aracın kodu reddedilir'); }
+
 console.log(`\n${n} test geçti`);

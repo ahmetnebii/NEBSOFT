@@ -183,15 +183,13 @@
   // ---------- Listeler / özet / rapor ----------
   function patientsPage(el, p, app) {
     // Kaydı olan hasta silinmez (tedavi, ödeme, randevu sahipsiz kalır); pasif yapılır
-    el.addEventListener('click', async (e) => {
-      const b = e.target.closest('[data-act=del]'); if (!b) return;
-      const x = db.get('patients', b.dataset.id); if (!x) return;
-      const has = db.find('plans', (y) => y.patient === x.id) || db.find('payments', (y) => y.patient === x.id) || db.find('appts', (y) => y.patient === x.id) || db.find('visits', (y) => y.patient === x.id);
-      if (!has) return;
-      e.stopImmediatePropagation(); e.preventDefault();
-      if (await confirm(`${x.name} hastasının tedavi / ödeme / randevu kayıtları var; silinemez. Pasif yapılsın mı? (Kayıtlar korunur, listede "Pasif" filtresinde görünür.)`, { ok: 'Pasif yap', danger: false })) { x.passive = true; db.log('Hasta pasif yapıldı', x.name); db.save(); app.refresh(); }
-    }, true);
     NS.crud(el, app, {
+      beforeDelete: async (x) => {
+        const has = db.find('plans', (y) => y.patient === x.id) || db.find('payments', (y) => y.patient === x.id) || db.find('appts', (y) => y.patient === x.id) || db.find('visits', (y) => y.patient === x.id);
+        if (!has) return true;
+        if (await confirm(`${x.name} hastasının tedavi / ödeme / randevu kayıtları var; silinemez. Pasif yapılsın mı? (Kayıtlar korunur, listede "Pasif" filtresinde görünür.)`, { ok: 'Pasif yap', danger: false })) { x.passive = true; db.log('Hasta pasif yapıldı', x.name); db.save(); app.refresh(); toast('Hasta pasif yapıldı (silinmedi)', 'ok'); }
+        return null;
+      },
       col: 'patients', title: 'Hastalar', sub: 'Hasta dosyaları, bakiyeler ve risk uyarıları', single: 'Hasta', addLabel: 'Yeni hasta', emptyIcon: 'users', fields: PF,
       beforeSave: (v, rec) => { if (!rec) { v.no = String(20000 + db.all('patients').length + rand(100, 999)); v.anamnez = []; v.missing = []; } },
       onSave: (v, rec) => { if (!rec) { const n = db.all('patients').slice(-1)[0]; app.go('hasta', n.id); } },

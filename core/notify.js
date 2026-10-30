@@ -112,7 +112,7 @@
     if (!c.master || !ec.on) return item;
     const quiet = inQuiet(c.quiet);
     if (!quiet) play(ec.sound || d.sound, c.volume);
-    if (navigator.vibrate && !quiet) try { navigator.vibrate(d.urgent ? [200, 100, 200] : 120); } catch (e) { /* yok */ }
+    if (navigator.vibrate && !quiet && (!navigator.userActivation || navigator.userActivation.hasBeenActive)) try { navigator.vibrate(d.urgent ? [200, 100, 200] : 120); } catch (e) { /* yok */ }
     if (c.desktop && document.hidden && 'Notification' in window && Notification.permission === 'granted') {
       try { const n = new Notification(item.title, { body: item.body, tag: key, renotify: true, icon: document.querySelector('link[rel=icon]') ? document.querySelector('link[rel=icon]').href : undefined }); n.onclick = () => { focus(); if (item.href) location.hash = item.href.replace(/^#/, ''); n.close(); }; } catch (e) { /* yok */ }
     }

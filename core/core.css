@@ -254,6 +254,15 @@ table.tbl { width: 100%; border-collapse: collapse; }
 .ns-toast.ok { background: var(--ok); color: #fff; }
 .ns-toast.err { background: var(--err); color: #fff; }
 .ns-toast.warn { background: var(--warn); color: #fff; }
+/* table({ mobileCard }) — dar ekranda kart listesi */
+.mc-list { display: none; }
+@media (max-width: 700px) {
+  .mc-list { display: flex; flex-direction: column; gap: 8px; padding: 8px; }
+  .tbl-wrap.has-mc { display: none; }
+  .mc { display: flex; gap: 8px; align-items: flex-start; padding: 10px 12px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface, var(--bg)); }
+  .mc-b { flex: 1; min-width: 0; }
+  .mc-a { display: flex; flex-wrap: wrap; gap: 4px; justify-content: flex-end; }
+}
 
 .empty { text-align: center; padding: 40px 20px; color: var(--text-3); }
 .empty .ico { width: 40px; height: 40px; margin-bottom: 8px; opacity: .6; }

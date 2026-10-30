@@ -364,9 +364,9 @@
   const lbTpls = () => { if (!Array.isArray(db.data.labelTpls) || !db.data.labelTpls.length) { db.data.labelTpls = LB_PRESETS(); db.save(); } return NS.labels.tpls(db); };
   const lbOpt = () => S().labelOpt || { tpl: '', roll: false };
   const lbProd = (m, v) => ({ name: m.name, price: unit(m), oldPrice: oldRef(m), barcode: v.barcode, unit: v.size });
-  const lbCtx = (v) => ({ biz: S().bizName, cat: v.color });
+  const lbCtx = (v) => ({ biz: S().bizName, cat: v.color, logo: S().logo || '' });
   const logoBg = () => (S().logo ? `url('${S().logo}') center/contain no-repeat` : 'transparent');
-  // İndirimsiz üründe "eski fiyat" basılmaz (çekirdek, eski fiyat yoksa fiyat×1,2 uydurur — gerçek olmayan indirim gösterilmemeli)
+  // İndirimsiz üründe "eski fiyat" öğesi şablondan çıkarılır (çekirdek de artık gerçek eski fiyat yoksa boş bırakır)
   const lbFor = (t, m) => ({ ...t, els: t.els.filter((e) => e.f !== 'old' || oldRef(m) > 0).map((e) => (e.logo ? { ...e, bg: logoBg() } : e)) });
   const lbTpl = (id) => lbTpls().find((x) => x.id === id) || lbTpls()[0];
   const lbSample = () => { const m = db.all('models').find((x) => x.disc > 0) || db.all('models')[0]; return m && m.variants[0] ? { m, v: m.variants[0] } : null; };
@@ -384,7 +384,7 @@
   function lbDesigner(onDone) {
     const it = lbSample(); const sample = it ? lbProd(it.m, it.v) : { name: 'Örnek model', price: 999, oldPrice: 1299, barcode: '8695500000001', unit: 'M' };
     lbTpls().forEach((t) => t.els.forEach((e) => { if (e.logo) e.bg = logoBg(); }));
-    modal({ title: 'Etiket şablonları', size: 'xl', body: '<p class="small muted" style="margin:0 0 10px">Renk ve mağaza adı tasarım alanında boş görünür; etiket sayfasındaki önizlemede ve baskıda dolar. Logo, “Etiket Basımı” sayfasından yüklenir ve şablona eklenir.</p><div id="ldx"></div>', onOpen: (b) => NS.labels.designer($('#ldx', b), db, sample, (id) => { S().labelOpt = { ...lbOpt(), tpl: id }; db.save(); }), onClose: () => onDone && onDone() });
+    modal({ title: 'Etiket şablonları', size: 'xl', body: '<p class="small muted" style="margin:0 0 10px">Önizleme örnek modelle gösterilir. Mağaza logosu “Etiket Basımı” sayfasından yüklenir; şablona “Logo / görsel” öğesiyle başka bir görsel de eklenebilir.</p><div id="ldx"></div>', onOpen: (b) => NS.labels.designer($('#ldx', b), db, sample, (id) => { S().labelOpt = { ...lbOpt(), tpl: id }; db.save(); }, { ...(it ? lbCtx(it.v) : { biz: S().bizName, cat: 'Siyah' }), logo: S().logo || '' }), onClose: () => onDone && onDone() });
   }
   let lbPending = null; // Başka sayfadan gelen seçim: Map(barkod → adet)
   const goLabels = (items) => { lbPending = new Map(items.map(({ v, n }) => [v.barcode, n])); location.hash = '#/etiket'; };

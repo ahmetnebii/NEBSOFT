@@ -658,6 +658,7 @@
         input = `<select class="input" ${attrs}>${f.empty !== undefined ? `<option value="">${esc(f.empty)}</option>` : ''}${opts.map((o) => `<option value="${esc(o.value)}" ${String(o.value) === String(v) ? 'selected' : ''}>${esc(o.label)}</option>`).join('')}</select>`;
       } else if (f.type === 'textarea') input = `<textarea class="input" ${attrs}>${esc(v)}</textarea>`;
       else if (f.type === 'checkbox') return `<div class="field ${f.full ? 'full' : ''}"><label class="check"><input type="checkbox" name="${f.name}" ${v ? 'checked' : ''}> ${esc(f.label)}</label></div>`;
+      else if (Array.isArray(f.list) && f.list.length) { const lid = 'dl-' + f.name + '-' + Math.random().toString(36).slice(2, 7); input = `<input class="input" type="${f.type || 'text'}" value="${esc(v)}" list="${lid}" autocomplete="off" ${attrs}><datalist id="${lid}">${f.list.map((o) => `<option value="${esc(o)}">`).join('')}</datalist>`; } // serbest yazılır, öneri listesi
       else input = `<input class="input" type="${f.type || 'text'}" value="${esc(v)}" ${attrs}>`;
       return `<div class="field ${f.full ? 'full' : ''}"><label>${esc(f.label)}${f.required ? ' *' : ''}</label>${input}${f.hint ? `<span class="small faint">${esc(f.hint)}</span>` : ''}</div>`;
     }).join('')}</div>`;
@@ -696,9 +697,12 @@
   // Boş durum: ikon türüne göre çizim (assets/empty), yoksa ikon
   const EMPTY_ART = { bell: 'bildirim', file: 'dosya', receipt: 'dosya', download: 'dosya', upload: 'dosya', rocket: 'baslayalim', sparkles: 'baslayalim' };
   function emptyArt(ic) { const base = window.__NB_ASSETS; const k = EMPTY_ART[ic] || 'kayit'; return base ? `<img class="empty-art" src="${base}empty/${k}.png" alt="" width="92" height="72" loading="lazy" onerror="this.replaceWith(document.createRange().createContextualFragment(this.dataset.ic))" data-ic='${icon(ic).replace(/'/g, '&#39;')}'>` : icon(ic); }
-  function table({ columns, rows, actions = [], empty = 'Kayıt bulunamadı', emptyIcon = 'box', foot = '', rowAttr }) {
+  // mobileCard: (row) => html — verilirse dar ekranda (≤ 700 px) tablo yerine kart listesi gösterilir; işlem düğmeleri aynı (data-act)
+  function table({ columns, rows, actions = [], empty = 'Kayıt bulunamadı', emptyIcon = 'box', foot = '', rowAttr, mobileCard }) {
     if (!rows.length) return `<div class="empty">${emptyArt(emptyIcon)}<div>${esc(empty)}</div></div>`;
-    return `<div class="tbl-wrap"><table class="tbl"><thead><tr>${columns.map((c) => `<th class="${c.cls || ''}">${esc(c.label)}</th>`).join('')}${actions.length ? '<th></th>' : ''}</tr></thead>
+    const acts = (r) => actions.filter((a) => !a.show || a.show(r)).map((a) => `<button class="btn sm ${a.label && !a.icon ? '' : 'icon'} ghost ${a.cls || ''}" title="${esc(a.title || a.label || '')}" data-act="${a.act}" data-id="${esc(r.id)}">${a.icon ? icon(a.icon) : esc(a.label)}</button>`).join('');
+    const cards = mobileCard ? `<div class="mc-list">${rows.map((r) => `<div class="mc" data-id="${esc(r.id)}"><div class="mc-b">${mobileCard(r)}</div>${actions.length ? `<div class="mc-a">${acts(r)}</div>` : ''}</div>`).join('')}</div>` : '';
+    return cards + `<div class="tbl-wrap${mobileCard ? ' has-mc' : ''}"><table class="tbl"><thead><tr>${columns.map((c) => `<th class="${c.cls || ''}">${esc(c.label)}</th>`).join('')}${actions.length ? '<th></th>' : ''}</tr></thead>
       <tbody>${rows.map((r) => `<tr data-id="${esc(r.id)}" ${rowAttr ? rowAttr(r) : ''}>${columns.map((c) => `<td class="${c.cls || ''}">${c.render ? c.render(r) : esc(r[c.key])}</td>`).join('')}${actions.length ? `<td class="act">${actions.filter((a) => !a.show || a.show(r)).map((a) => `<button class="btn sm ${a.label && !a.icon ? '' : 'icon'} ghost ${a.cls || ''}" title="${esc(a.title || a.label || '')}" data-act="${a.act}" data-id="${esc(r.id)}">${a.icon ? icon(a.icon) : esc(a.label)}</button>`).join('')}</td>` : ''}</tr>`).join('')}</tbody></table></div>${foot ? `<div class="tbl-foot">${foot}</div>` : ''}`;
   }
 
@@ -1065,7 +1069,9 @@
 
   // Standart CRUD sayfası: liste + arama + ekle/düzenle/sil
   function crud(el, app, cfg) {
-    // cfg: {col, title, sub, fields, columns, searchFields:(r)=>[..], defaults, extraActions, onSave, filters, emptyIcon, canAdd, rowsFilter, sort}
+    // cfg: {col, title, sub, fields, columns, searchFields:(r)=>[..], defaults, extraActions, onSave, filters, emptyIcon, canAdd, rowsFilter, sort, mobileCard}
+    // Kancalar: beforeSave(v, rec) → false ya da metin dönerse kaydedilmez (metin uyarı olarak gösterilir; async olabilir)
+    //          canDelete(rec) / beforeDelete(rec) → false ya da metin dönerse silinmez (bağlı kaydı olan ana kayıt silinmesin); null → sessizce durur
     let q = '';
     let filter = cfg.filters ? cfg.filters[0].value : null;
     const draw = () => {
@@ -1077,7 +1083,7 @@
       $('#tbl', el).innerHTML = table({
         columns: cfg.columns, rows, emptyIcon: cfg.emptyIcon,
         actions: [...(cfg.extraActions || []), ...(cfg.readonly ? [] : [{ icon: 'edit', act: 'edit', title: 'Düzenle' }, { icon: 'trash', act: 'del', title: 'Sil', cls: '' }])],
-        foot: `${rows.length} kayıt`,
+        foot: `${rows.length} kayıt`, mobileCard: cfg.mobileCard,
       });
     };
     el.innerHTML = pageHead(cfg.title, cfg.sub || '', `
@@ -1090,7 +1096,7 @@
       const fields = typeof cfg.fields === 'function' ? cfg.fields(rec) : cfg.fields;
       const v = await formModal({ title: rec ? `${cfg.single || 'Kayıt'} Düzenle` : `Yeni ${cfg.single || 'Kayıt'}`, fields, values: rec ? (cfg.toForm ? cfg.toForm(rec) : rec) : (typeof cfg.defaults === 'function' ? cfg.defaults() : cfg.defaults) || {}, size: fields.length > 8 ? 'wide' : '' });
       if (!v) return;
-      if (cfg.beforeSave) cfg.beforeSave(v, rec);
+      if (cfg.beforeSave) { const ok = await cfg.beforeSave(v, rec); if (ok === false || typeof ok === 'string') { if (typeof ok === 'string') toast(ok, 'err'); return; } }
       if (rec) app.db.update(cfg.col, rec.id, v); else app.db.insert(cfg.col, v);
       cfg.onSave && cfg.onSave(v, rec);
       toast('Kaydedildi', 'ok');
@@ -1101,7 +1107,10 @@
     on(el, 'click', '[data-act]', async (e, t) => {
       const rec = app.db.get(cfg.col, t.dataset.id);
       if (t.dataset.act === 'edit') edit(rec);
-      else if (t.dataset.act === 'del') { if (await confirm('Bu kayıt silinsin mi?')) { app.db.remove(cfg.col, rec.id); toast('Silindi'); draw(); } }
+      else if (t.dataset.act === 'del') {
+        for (const hook of [cfg.canDelete, cfg.beforeDelete]) { if (!hook) continue; const ok = await hook(rec); if (ok === null) return; if (ok === false || typeof ok === 'string') return toast(typeof ok === 'string' ? ok : 'Bu kayıt silinemez — bağlı kayıtları var', 'err'); }
+        if (await confirm('Bu kayıt silinsin mi?')) { app.db.remove(cfg.col, rec.id); toast('Silindi'); draw(); }
+      }
       else if (cfg.onAction) cfg.onAction(t.dataset.act, rec, draw);
     });
     draw();

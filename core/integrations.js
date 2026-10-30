@@ -761,7 +761,7 @@
   // Kaynak: ürün kodunda çağrılan entegrasyonlar. Burada olmayan bağlantı o programda işe yaramadığı için gösterilmez.
   const USED = {
     adisyon: ['printer', 'pos', 'okc', 'yemekplatform', 'yemekkarti', 'callerid', 'webhook', 'backup'], anaokulu: ['sms', 'backup'], bilet: ['sms', 'turnike', 'backup'],
-    butik: ['sms', 'pazaryeri', 'backup'], crm: ['email', 'whatsapp', 'callerid', 'takvim', 'backup'], eczane: ['printer', 'pos', 'medula', 'its', 'sms', 'whatsapp', 'webhook', 'backup'],
+    butik: ['sms', 'pazaryeri', 'printer', 'label', 'barcode', 'pos', 'backup'], crm: ['email', 'whatsapp', 'callerid', 'takvim', 'backup'], eczane: ['printer', 'pos', 'medula', 'its', 'sms', 'whatsapp', 'webhook', 'backup'],
     emlak: ['ilan', 'whatsapp', 'backup'], eticaret: ['efatura', 'eirsaliye', 'kargofirma', 'pazaryeri', 'sms', 'whatsapp', 'backup'],
     fabrika: ['printer', 'label', 'scale', 'efatura', 'eirsaliye', 'emustahsil', 'kantar', 'plc', 'sms', 'email', 'whatsapp', 'webhook', 'backup'], fiyatrobotu: ['backup'],
     galeri: ['ilan', 'sms', 'whatsapp', 'backup'], hukuk: ['sms', 'efatura', 'backup'], ik: ['sgk', 'pdks', 'ebordro', 'bankamaas', 'backup'], kargo: ['kargofirma', 'gps', 'sms', 'whatsapp', 'backup'],
