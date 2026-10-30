@@ -13,7 +13,9 @@ window.QCHUB = (function () {
   const ST = { yeni: ['Yeni', 'warn'], toplaniyor: ['Toplanıyor', 'info'], hazir: ['Kuryeye hazır', 'acc'], teslim: ['Teslim edildi', 'ok'], iptal: ['İptal', 'err'] };
   let db;
   const r2 = (n) => Math.round(n * 100) / 100;
+  // Bulut belgesinde qcChannels kullanıcı kanal bağlayana kadar yoktur: okuma boş döner, yazma yalnızca kullanıcı işleminde olur
   const cfg = (k) => ({ ...QC[k], ...((db.data.qcChannels || {})[k] || {}) });
+  const setCh = (k, v) => { db.data.qcChannels = { ...(db.data.qcChannels || {}), [k]: v }; };
   const tag = (k) => `<span class="badge" style="background:${QC[k].color};color:#fff;border:0">${esc(QC[k].name)}</span>`;
   const P = (id) => db.get('products', id) || { name: '-', stock: 0 };
   const chPrice = (p, k) => Math.ceil(p.price * (1 + (Number(cfg(k).markup) || 0) / 100) * 4) / 4;
@@ -26,8 +28,10 @@ window.QCHUB = (function () {
     const at = new Date(Date.now() - minutesAgo * 60000).toISOString();
     return { id: NS.uid(), no: (k === 'getir' ? 'G' : k === 'ys' ? 'Y' : 'T') + NS.rand(100000, 999999), ch: k, at, status, items, customer: NS.pick(['Elif K.', 'Murat A.', 'Zeynep T.', 'Can Ö.', 'Deniz Y.']), address: NS.pick(['Moda Cad. No:12 D:4', 'Bahariye Cad. No:40 D:9', 'Kuşdili Sok. No:7 D:2']), note: NS.pick(['', '', 'Zili çalmayın, bebek uyuyor', 'Poşet istemiyorum']) };
   }
+  // Demo verisi (bir kez). Yalnızca tarayıcıdaki demo/yerel veri içindir: bulut belgesi gerçek işletme verisidir, açılışta hiçbir şey yazılmaz
   function ensure(d) {
     db = d;
+    if (db.cloud) return;
     if (db.data.qcChannels) return;
     db.data.qcChannels = { getir: { connected: true, storeId: 'GC-11872', open: true, minBasket: 150, radius: 2, prep: 10, markup: 8, buffer: 2 }, ys: { connected: true, storeId: 'YSM-5521', open: true, minBasket: 200, radius: 3, prep: 15, markup: 10, buffer: 2 } };
     db.data.qcOrders = [mkOrder('getir', 2, 'yeni'), mkOrder('ys', 6, 'toplaniyor'), mkOrder('getir', 14, 'hazir')];
@@ -48,8 +52,8 @@ window.QCHUB = (function () {
   function page(el, p, app) {
     let tab = 'pano';
     const draw = () => {
-      db.load();
-      const os = db.all('qcOrders').sort((a, b) => b.at.localeCompare(a.at));
+      if (!db.cloud) db.load(); // bulutta load sunucudan okur, henüz gönderilmemiş kaydı siler
+      const os =db.all('qcOrders').sort((a, b) => b.at.localeCompare(a.at));
       const td = os.filter((o) => o.at.slice(0, 10) === today() && o.status !== 'iptal');
       const lanes = ['yeni', 'toplaniyor', 'hazir'];
       const age = (o) => Math.floor((Date.now() - new Date(o.at)) / 60000);
@@ -58,7 +62,7 @@ window.QCHUB = (function () {
         <div class="row between mt"><b>${money(total(o))}</b>${o.status === 'yeni' ? `<span class="row nw" style="gap:6px"><button class="btn sm" data-rej="${o.id}">Reddet</button><button class="btn sm primary" data-acc="${o.id}">Kabul et</button></span>` : o.status === 'toplaniyor' ? `<span class="row nw" style="gap:6px"><button class="btn sm" data-scan="${o.id}">${icon('barcode')} Okut</button><button class="btn sm primary" data-ready="${o.id}">Hazır</button></span>` : `<button class="btn sm ok" data-done="${o.id}">${icon('check')} Kuryeye teslim</button>`}</div></div>`; };
       const ks = Object.keys(QC).filter((k) => !QC[k].own);
       el.innerHTML = pageHead('Hızlı Ticaret Kanalları', 'Getir Çarşı, Yemeksepeti Market ve Trendyol Go siparişleri — kabul, toplama, kuryeye teslim', `<div class="seg"><button data-tab="pano" class="${tab === 'pano' ? 'active' : ''}">Sipariş panosu</button><button data-tab="kanal" class="${tab === 'kanal' ? 'active' : ''}">Kanallar</button><button data-tab="gecmis" class="${tab === 'gecmis' ? 'active' : ''}">Geçmiş</button></div><button class="btn" id="pull">${icon('download')} Sipariş çek</button>`) + `
-        ${NS.integ && NS.integ.isOn('pazaryeri') ? '' : `<div class="card pad mb row" style="border-color:var(--warn)">${icon('info')}<span class="grow small">Demo / simülasyon modu. Canlı için <a href="#/entegrasyonlar">Entegrasyonlar &gt; Pazaryerleri</a> bağlantısını açın.</span></div>`}
+        ${!ks.some((k) => cfg(k).connected) ? `<div class="card pad mb row">${icon('info')}<span class="grow small"><b>Bağlı kanal yok.</b> Kanallar sekmesinde kanalın ayar düğmesinden mağaza numaranızı girerek bağlayın.</span></div>` : NS.integ && NS.integ.isOn('pazaryeri') ? '' : `<div class="card pad mb row" style="border-color:var(--warn)">${icon('info')}<span class="grow small">Demo / simülasyon modu. Canlı için <a href="#/entegrasyonlar">Entegrasyonlar &gt; Pazaryerleri</a> bağlantısını açın.</span></div>`}
         <div class="grid g4 mb">${kpi('Bugün sipariş', td.length, 'bag', 'info')}${kpi('Bugün ciro', money(sum(td, total)), 'wallet', 'ok')}${kpi('Bekleyen', os.filter((o) => lanes.includes(o.status)).length, 'clock', 'warn')}${kpi('Ort. hazırlık', (() => { const d = os.filter((o) => o.doneAt); return d.length ? Math.round(sum(d, (o) => (new Date(o.doneAt) - new Date(o.at)) / 60000) / d.length) + ' dk' : '—'; })(), 'gauge')}</div>
         ${tab === 'pano' ? `<div class="grid g3">${lanes.map((l) => `<div><h3 class="mb">${ST[l][0]} <span class="small muted">${os.filter((o) => o.status === l).length}</span></h3>${os.filter((o) => o.status === l).map(card).join('') || '<div class="card pad small faint">Sipariş yok</div>'}</div>`).join('')}</div>`
         : tab === 'kanal' ? `<div class="card">${table({ rows: ks.map((k) => ({ id: k, k, c: cfg(k) })), columns: [{ label: 'Kanal', render: (r) => `${tag(r.k)}<div class="small faint mt">${r.c.connected ? 'Mağaza no ' + esc(r.c.storeId || '-') : 'Bağlı değil'}</div>` }, { label: 'Durum', render: (r) => (r.c.connected ? `<button class="btn sm ${r.c.open ? 'ok' : 'danger'}" data-tg="${r.k}">${r.c.open ? 'Açık' : 'Kapalı'}</button>` : badge('Pasif')) }, { label: 'Min. sepet', render: (r) => (r.c.connected ? money(r.c.minBasket) : '-') }, { label: 'Yarıçap', render: (r) => (r.c.connected ? r.c.radius + ' km' : '-') }, { label: 'Hazırlık', render: (r) => (r.c.connected ? r.c.prep + ' dk' : '-') }, { label: 'Fiyat farkı / tampon', render: (r) => (r.c.connected ? `+%${r.c.markup} · ${r.c.buffer} adet` : '-') }, { label: 'Yayında ürün', cls: 'right', render: (r) => (r.c.connected ? db.all('products', (p) => p.barcode && avail(p, r.k) > 0).length : '-') }], actions: [{ icon: 'settings', act: 'qcfg', title: 'Ayarlar' }] })}</div>`
@@ -68,17 +72,20 @@ window.QCHUB = (function () {
     const save = () => { db.save(); draw(); };
     on(el, 'click', '[data-tab]', (e, b) => { tab = b.dataset.tab; draw(); });
     on(el, 'click', '#pull', async () => {
-      db.load();
+      if (!db.cloud) db.load();
       // Canlı: webhook gelen kutusu (server.js /api/webhook/getircarsi, ysmarket, trendyolgo)
-      if (NS.inbox && (await NS.inbox.online())) {
+      const canli = !!(NS.inbox && (await NS.inbox.online()));
+      if (canli) {
         const KEYS = { getir: 'getircarsi', ys: 'ysmarket', tygo: 'trendyolgo', web: 'websitesi' }; let n = 0;
         for (const [k, hook] of Object.entries(KEYS)) {
           const got = (await NS.inbox.drain(hook)) || [];
-          got.forEach((x) => { if (db.find('qcOrders', (o) => o.no === x.orderNo)) return; const items = x.items.map((it) => { const p = db.find('products', (q) => q.barcode && q.barcode === it.code) || db.find('products', (q) => q.name.toLocaleLowerCase('tr') === it.name.toLocaleLowerCase('tr')); return { pid: p ? p.id : '', name: p ? p.name : it.name || it.code, qty: it.qty, price: it.price || (p ? chPrice(p, k) : 0), picked: false, removed: false }; }); db.data.qcOrders.push({ id: NS.uid(), no: x.orderNo, ch: k, at: x.receivedAt || new Date().toISOString(), status: 'yeni', items, customer: x.customer.name, address: x.customer.address, note: x.note }); n++; });
+          got.forEach((x) => { if (db.find('qcOrders', (o) => o.no === x.orderNo)) return; const items = x.items.map((it) => { const p = db.find('products', (q) => q.barcode && q.barcode === it.code) || db.find('products', (q) => q.name.toLocaleLowerCase('tr') === it.name.toLocaleLowerCase('tr')); return { pid: p ? p.id : '', name: p ? p.name : it.name || it.code, qty: it.qty, price: it.price || (p ? chPrice(p, k) : 0), picked: false, removed: false }; }); db.col('qcOrders').push({ id: NS.uid(), no: x.orderNo, ch: k, at: x.receivedAt || new Date().toISOString(), status: 'yeni', items, customer: x.customer.name, address: x.customer.address, note: x.note }); n++; });
         }
         if (n) { NS.beep(1200, 200); toast(`${n} yeni sipariş alındı`, 'ok'); return save(); }
       }
       const open = Object.keys(QC).filter((k) => !QC[k].own && cfg(k).connected && cfg(k).open); if (!open.length) return toast('Açık kanal yok', 'err');
+      // Bulutta simülasyon siparişi yazılmaz: kayıt kalsa teslimde gerçek satış ve stok düşümü oluşurdu
+      if (db.cloud) return toast(canli ? 'Yeni sipariş yok' : 'TEST: kanal bağlantısı simülasyonda, sipariş alınmadı', canli ? '' : 'warn');
       const o = mkOrder(NS.pick(open), 0, 'yeni'); db.data.qcOrders.push(o); NS.beep(1200, 200); toast(`${QC[o.ch].name}: yeni sipariş ${o.no} (simülasyon)`, 'ok'); save();
     });
     on(el, 'click', '[data-acc]', (e, b) => { const o = get(b.dataset.acc); o.status = 'toplaniyor'; o.acceptedAt = new Date().toISOString(); sendI(o.ch, 'siparis-kabul', { orderNo: o.no }); save(); });
@@ -97,7 +104,7 @@ window.QCHUB = (function () {
     on(el, 'click', '[data-act="qcfg"]', (e, b) => {
       const k = b.dataset.id; const c = cfg(k);
       modal({ title: `${QC[k].name} ayarları`, body: `<div class="form-grid">${NS.fieldsHtml([{ name: 'storeId', label: 'Mağaza no', value: c.storeId || '' }, { name: 'apiKey', label: 'API anahtarı', value: c.apiKey || '' }, { name: 'minBasket', label: 'Minimum sepet (₺)', type: 'number', value: c.minBasket ?? 150 }, { name: 'radius', label: 'Teslimat yarıçapı (km)', type: 'number', step: '0.5', value: c.radius ?? 2 }, { name: 'prep', label: 'Hazırlık süresi (dk)', type: 'number', value: c.prep ?? 10 }, { name: 'markup', label: 'Fiyat farkı %', type: 'number', value: c.markup ?? 0 }, { name: 'buffer', label: 'Stok tamponu (adet)', type: 'number', value: c.buffer ?? 2 }, { name: 'commission', label: 'Komisyon %', type: 'number', step: '0.01', value: c.commission }])}</div>`,
-        actions: [{ label: 'Vazgeç' }, { label: c.connected ? 'Kaydet' : 'Bağlan', cls: 'primary', onClick: (close, bd) => { const v = NS.readForm(bd); if (!c.connected && !v.storeId) return toast('Mağaza no gerekli', 'err'); db.data.qcChannels[k] = { ...(db.data.qcChannels[k] || {}), ...v, connected: true, open: c.connected ? c.open : true }; sendI(k, 'ayar', v); close(); save(); } }] });
+        actions: [{ label: 'Vazgeç' }, { label: c.connected ? 'Kaydet' : 'Bağlan', cls: 'primary', onClick: (close, bd) => { const v = NS.readForm(bd); if (!c.connected && !v.storeId) return toast('Mağaza no gerekli', 'err'); setCh(k, { ...((db.data.qcChannels || {})[k] || {}), ...v, connected: true, open: c.connected ? c.open : true }); sendI(k, 'ayar', v); close(); save(); } }] });
     });
     draw();
   }

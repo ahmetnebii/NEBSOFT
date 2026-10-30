@@ -86,3 +86,18 @@ Satıcı tanıtımlarıdır; iddialar bağımsız doğrulanmadı.
 - **Denenmedi:** bulut modu, gerçek kâğıt çıktı, gerçek PIN ile danışman girişi (rol `NS.currentUser` değiştirilerek denendi), danışmanın kenar menüsü.
 - İki değişiklik varsayılan görünümü etkiler: eski işlemler "Bekliyor" tahsilat görünür, örnek fotoğraflar gerçek ilanlardan kalkar.
 - Statik dosya değişti: `sw.js` sürümü birleştirme sırasında artırılmalı.
+
+## Portal tohumu bulut belgesine yazmıyor (31.10.2026)
+
+**Sorun:** `apps/emlak/portal.js` `ensure()` gerçek işletmede de üç portalı `connected: true` yazıyordu. `CLAUDE.md` §1'e aykırı.
+
+**Yapılan:**
+- `ensure()` bulutta (`db.cloud`) hiçbir şey yazmaz. Demo ve yerel aynen kaldı, yerelde üç portal yine bağlı başlar.
+- `portalCfg`, `portalListings` bulutta kullanıcı portal bağlayana kadar yoktur. Bağlı portal yokken "Bağlı portal yok" görünür, ilan listesi boşsa "Gösterilecek ilan yok" yazar.
+- Portal tablosu bağlı olmayan portalı da satır olarak gösterir ("Bağlı değil"). Eskiden tablo yalnız bağlı portalları listelediği için bağlantıya ulaşılamazdı. Bağlarken mağaza no zorunlu.
+- Doping bağlı portal yokken kırılmaz, kredisi girilmemiş portalda "undefined kredi" yazmaz.
+- `draw()` bulutta `db.load()` çağırmaz. Bu çağrı gönderilmemiş kaydı sildiği için bulutta bu ekrandaki işlemler kayboluyordu.
+
+Kanıt: `server/test/kanal-tohum.test.js` (üç programda 29 senaryo, eski kodda her programın ilk senaryosunda kırılır). Tarayıcı: gerçek sunucu, MariaDB ve başsız Chrome ile 22 denetim geçti. Yeni bulut hesabı, ilk açılış, yeniden açılış, arayüzden bağlama, 375 px, koyu tema, `?demo=1`; konsol hatası yok.
+
+Daha önce tohumlanmış bulut belgeleri otomatik düzeltilmedi; düzeltme kararı işletme bazında verilmeli. Şu kayıtlar tohumdan gelmiş olabilir, bu kurallar kod incelemesine dayanır, gerçek müşteri belgesinde denenmedi: `storeNo` alanı olmayan `portalCfg.<portal>.connected = true` kayıtları. Kullanıcı ayar girmiş olabilir, bu yüzden silinmesi güvenli değildir. Yerel kipte üç portalın bağlı başlaması bilerek korundu.

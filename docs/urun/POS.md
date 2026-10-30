@@ -50,3 +50,17 @@ Koyu tema ayrıca denenmedi (çekirdek sınıfları). 5000 kayıtla hız denenme
 ## 3. Karar / hesap gerektirenler
 - **ÖKC:** kullanılacak marka/model, üreticiyle güvenlik taahhütnamesi, üreticinin GMP-3 iletişim kütüphanesi ve test cihazı (Ingenico, Beko, Hugin, PAX…). Doğrudan TCP/IP ile kendi yazdığımız bağlantı GMP-3'e aykırıdır; ayrıntı `docs/DEVIR.md` B11. O gelene kadar POS fişi bilgi fişidir.
 - **Eksi stokla satış** varsayılanı açık (marketlerde yaygın); işletme isterse Ayarlar'dan kapatır.
+
+## Hızlı ticaret tohumu bulut belgesine yazmıyor (31.10.2026)
+
+**Sorun:** `apps/pos/hizli.js` `ensure()` bulut belgesine bağlı görünen Getir ve Yemeksepeti ile 3 uydurma sipariş yazıyordu. Sipariş teslim edilince gerçek satış ve stok düşümü oluşuyordu. `CLAUDE.md` §1'e aykırı.
+
+**Yapılan:**
+- `ensure()` bulutta (`db.cloud`) hiçbir şey yazmaz. Demo ve yerel aynen kaldı.
+- `qcChannels`, `qcOrders` bulutta kullanıcı kanal bağlayana veya webhook siparişi gelene kadar yoktur. Bağlı kanal yokken "Bağlı kanal yok" görünür.
+- "Sipariş çek" bulutta simülasyon siparişi yazmaz: gelen kutusu çevrimiçiyse "Yeni sipariş yok", değilse TEST uyarısı verir.
+- `draw()` bulutta `db.load()` çağırmaz. Bu çağrı gönderilmemiş kaydı sildiği için bulutta bu ekrandaki her işlem (kanal bağlama, sipariş kabulü) kayboluyordu.
+
+Kanıt: `server/test/kanal-tohum.test.js` (üç programda 29 senaryo, eski kodda her programın ilk senaryosunda kırılır). Tarayıcı: gerçek sunucu, MariaDB ve başsız Chrome ile 22 denetim geçti. Yeni bulut hesabı, ilk açılış, yeniden açılış, arayüzden bağlama, 375 px, koyu tema, `?demo=1`; konsol hatası yok.
+
+Daha önce tohumlanmış bulut belgeleri otomatik düzeltilmedi; düzeltme kararı işletme bazında verilmeli. Şu kayıtlar tohumdan gelmiş olabilir, bu kurallar kod incelemesine dayanır, gerçek müşteri belgesinde denenmedi: `qcChannels.getir.storeId = 'GC-11872'`, `qcChannels.ys.storeId = 'YSM-5521'`, numarası `G` veya `Y` ile başlayan ve müşterisi "Elif K., Murat A., Zeynep T., Can Ö., Deniz Y." olan `qcOrders`, bunlardan teslim edilip `sales` ve `moves` kaydına dönenler.
