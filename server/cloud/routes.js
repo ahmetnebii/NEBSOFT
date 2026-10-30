@@ -250,7 +250,9 @@ route('POST', '/api/auth/register', { auth: 'none', limit: ['reg', 5, 3600e3] },
 route('POST', '/api/auth/login', { auth: 'none', limit: ['login', 10, 600e3] }, async (c) => {
   if (!sec.V.email(c.body.email) || typeof c.body.pass !== 'string') throw err(400, 'E-posta ve şifre gerekli');
   const mc = (await mail.ready()) ? await mail.getConfig() : null;
-  if (mc && mc.twoFactorLogin) {
+  // Platform yöneticisi her işletmenin verisine erişir: müşteri ayarından bağımsız, e-posta kurulu ise kod zorunlu
+  const yonetici = mc && !mc.twoFactorLogin && !!(await db.one("SELECT id FROM users WHERE email=? AND role IN ('admin','superadmin')", [c.body.email.toLowerCase().trim()]));
+  if (mc && (mc.twoFactorLogin || yonetici)) {
     if (!c.body.ticket) {
       const r = await auth.check(c.body.email, c.body.pass); await audit({ ...c, user: r.user }, r.ok ? 'Giriş (kod gönderildi)' : 'Hatalı giriş', c.body.email); if (!r.ok) throw err(401, r.error);
       const { code, ticket } = await mail.issueCode(r.user.email, 'login', { uid: r.user.id, remember: !!c.body.remember });
@@ -335,8 +337,8 @@ const platformDomain = (domain, ...hosts) => { const d = bare(domain); return ho
 route('GET', '/api/websitem', { auth: 'user' }, async (c) => {
   if (!c.user.tenant_id) throw err(400, 'İşletme hesabı gerekli');
   const t = await db.one('SELECT slug, name, phone, address, city FROM tenants WHERE id=?', [c.user.tenant_id]);
-  const s = await db.one('SELECT data, published, domain, orders, updated FROM biz_sites WHERE tenant_id=?', [c.user.tenant_id]);
-  return { ok: true, tenant: t, site: s ? { data: J(s.data, {}), published: !!s.published, domain: s.domain || '', orders: s.orders, updated: s.updated } : null, web: await addonOn(c.user.tenant_id, 'eklenti-web'), siparis: await addonOn(c.user.tenant_id, 'eklenti-siparis') };
+  const s = await db.one('SELECT data, published, domain, domain_tok, domain_ok, orders, updated FROM biz_sites WHERE tenant_id=?', [c.user.tenant_id]);
+  return { ok: true, tenant: t, site: s ? { data: J(s.data, {}), published: !!s.published, domain: s.domain || '', alanAdi: alanAdiDurumu(s.domain, s.domain_tok, s.domain_ok), orders: s.orders, updated: s.updated } : null, web: await addonOn(c.user.tenant_id, 'eklenti-web'), siparis: await addonOn(c.user.tenant_id, 'eklenti-siparis') };
 });
 route('PUT', '/api/websitem', { auth: 'user', bodyMax: 4e6, limit: ['ws', 120, 3600e3] }, async (c) => {
   if (!c.user.tenant_id) throw err(400, 'İşletme hesabı gerekli');
@@ -345,10 +347,25 @@ route('PUT', '/api/websitem', { auth: 'user', bodyMax: 4e6, limit: ['ws', 120, 3
   let domain = String(c.body.domain || '').trim().toLowerCase().replace(/^https?:\/\//, '').replace(/\/.*$/, '') || null;
   if (domain && !DOMAIN.test(domain)) throw err(400, 'Alan adı geçersiz. Örnek: www.isletmeniz.com');
   if (domain && platformDomain(domain, c.req.headers.host, urlHost((await site()).siteUrl))) throw err(400, 'Bu alan adı kullanılamaz');
-  if (domain) { const ex = await db.one('SELECT tenant_id FROM biz_sites WHERE domain=? AND tenant_id<>?', [domain, c.user.tenant_id]); if (ex) throw err(409, 'Bu alan adı başka bir işletmede kayıtlı'); }
-  await db.q('INSERT INTO biz_sites (tenant_id, data, published, domain, updated) VALUES (?,?,?,?,?) ON DUPLICATE KEY UPDATE data=VALUES(data), published=VALUES(published), domain=VALUES(domain), updated=VALUES(updated)', [c.user.tenant_id, JSON.stringify(data), pub ? 1 : 0, domain, now()]);
+  // Doğrulanmamış kayıt alan adını tutamaz: gerçek sahibi önce yazılmış olsa da kendi adını alabilir
+  if (domain) { const ex = await db.one('SELECT tenant_id, domain_ok FROM biz_sites WHERE domain=? AND tenant_id<>?', [domain, c.user.tenant_id]); if (ex && ex.domain_ok !== 0) throw err(409, 'Bu alan adı başka bir işletmede kayıtlı'); if (ex) await db.q('UPDATE biz_sites SET domain=NULL, domain_tok=NULL, domain_ok=NULL WHERE tenant_id=?', [ex.tenant_id]); }
+  const eski = await db.one('SELECT domain, domain_tok, domain_ok FROM biz_sites WHERE tenant_id=?', [c.user.tenant_id]); const ayni = eski && eski.domain === domain;
+  const tok = !domain ? null : ayni ? eski.domain_tok : uid() + uid(); const dok = !domain ? null : ayni ? eski.domain_ok : 0; // eski kayıtlar (NULL) doğrulanmış sayılır, davranışı değişmez
+  await db.q('INSERT INTO biz_sites (tenant_id, data, published, domain, domain_tok, domain_ok, updated) VALUES (?,?,?,?,?,?,?) ON DUPLICATE KEY UPDATE data=VALUES(data), published=VALUES(published), domain=VALUES(domain), domain_tok=VALUES(domain_tok), domain_ok=VALUES(domain_ok), updated=VALUES(updated)', [c.user.tenant_id, JSON.stringify(data), pub ? 1 : 0, domain, tok, dok, now()]);
   await audit(c, 'Web sitesi kaydedildi', pub ? 'yayında' : 'taslak');
-  return { ok: true, published: pub };
+  return { ok: true, published: pub, alanAdi: alanAdiDurumu(domain, tok, dok) };
+});
+// Sahiplik: işletme alan adına TXT kaydı ekler, sunucu DNS'ten okur
+const alanAdiDurumu = (domain, tok, dok) => (domain ? { domain, dogrulandi: dok !== 0, kayit: `_nebsoft.${bare(domain)}`, deger: dok === 0 ? `nebsoft-dogrulama=${tok}` : '' } : null);
+route('POST', '/api/websitem/alan-adi-dogrula', { auth: 'user', limit: ['wsdns', 30, 3600e3] }, async (c) => {
+  if (!c.user.tenant_id) throw err(400, 'İşletme hesabı gerekli');
+  const s = await db.one('SELECT domain, domain_tok, domain_ok FROM biz_sites WHERE tenant_id=?', [c.user.tenant_id]); if (!s || !s.domain) throw err(400, 'Önce alan adını kaydedin');
+  if (s.domain_ok === 0) {
+    let txt = []; try { txt = (await require('dns').promises.resolveTxt(`_nebsoft.${bare(s.domain)}`)).map((x) => x.join('')); } catch (e) { txt = []; }
+    if (!txt.includes(`nebsoft-dogrulama=${s.domain_tok}`)) return { ok: false, error: 'TXT kaydı bulunamadı. DNS değişikliğinin yayılması birkaç saat sürebilir.', alanAdi: alanAdiDurumu(s.domain, s.domain_tok, 0) };
+    await db.q('UPDATE biz_sites SET domain_ok=1 WHERE tenant_id=?', [c.user.tenant_id]); await audit(c, 'Alan adı doğrulandı', s.domain);
+  }
+  return { ok: true, alanAdi: alanAdiDurumu(s.domain, s.domain_tok, 1) };
 });
 // Ziyaretçi siparişi → işletmenin gelen kutusu (POS > Online Siparişler, "Web siteniz" kanalı)
 // Ziyaretçinin oturumu yoktur (çerez yetkisi kullanılmaz); site sayfası özel başlık göndermez, yalnızca kaynak denetlenir

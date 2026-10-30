@@ -10,6 +10,8 @@
 //    "Basic <base64>" başlıklarının içindeki yer tutucular da çözülüp yeniden kodlanır.
 //  • Anahtar değişirse çözülemeyen alanlar boş kalır ve ilgili entegrasyon yeniden kurulmalıdır.
 const cfg = require('./config');
+const fs = require('fs');
+const path = require('path');
 const GROUPS = { entegrasyon: 'cfg', pazaryeri: 'channels', pos: 'qcChannels' };
 const SECRET = new Set(['pass', 'password', 'secret', 'token', 'apiSecret', 'apiKey', 'hash', 'key', 'clientSecret', 'clientId', 'merchantKey', 'merchantSalt', 'headers']);
 const PFX = 'enc:v1:';
@@ -39,13 +41,24 @@ const open = (app, data) => walk(app, data, (v) => dec(v));
 // İstemciye gönderilen görünüm: gizli alan yerine yer tutucu
 const mask = (app, data) => walk(app, data, (v, grp, k) => token(app, grp, k));
 
+// Gizli bilgi yalnızca entegrasyon kodunda geçen sağlayıcı adreslerine veya o entegrasyonun kayıtlı adresine gider.
+// Liste kodun kendisinden okunur: yeni sağlayıcı eklenince elle güncelleme gerekmez.
+const hostOf = (u) => { try { return new URL(String(u)).hostname.toLowerCase(); } catch (e) { return ''; } };
+let KNOWN = null;
+function knownHosts() {
+  if (KNOWN) return KNOWN; KNOWN = new Set();
+  for (const f of ['integrations.js', 'integ-wizard.js', 'ubltr.js']) { try { for (const m of fs.readFileSync(path.join(__dirname, '..', '..', 'core', f), 'utf8').matchAll(/https:\/\/[a-z0-9.-]+\.[a-z]{2,}/gi)) KNOWN.add(hostOf(m[0])); } catch (e) { /* dosya yoksa yalnızca kayıtlı adresler geçerli */ } }
+  return KNOWN;
+}
+const registered = (conf, host) => Object.values(conf || {}).some((v) => typeof v === 'string' && !v.startsWith(PFX) && (v.match(/https?:\/\/[^\s"'<>]+/g) || []).some((u) => hostOf(u) === host));
+
 // İstekteki yer tutucuları o işletmenin gerçek değerleriyle değiştirir
 async function resolve(db, tenantId, obj) {
   const s = JSON.stringify(obj || {}); const hasB64 = /Basic\s+[A-Za-z0-9+/=]{8,}/.test(s);
   if (!/__nsg_/.test(s) && !hasB64) return obj;
-  const cache = {};
+  const cache = {}; const used = new Set();
   const val = async (app, grp, field) => {
-    if (!GROUPS[app]) return '';
+    if (!GROUPS[app]) return ''; used.add(`${app}\n${grp}`);
     if (!(app in cache)) { const r = await db.one('SELECT data FROM app_data WHERE tenant_id=? AND app=?', [tenantId, app]); let d = null; try { d = r ? JSON.parse(r.data) : null; } catch (e) { d = null; } cache[app] = d; }
     const v = prevVal(app, cache[app], grp, field); return typeof v === 'string' ? dec(v) : '';
   };
@@ -70,7 +83,12 @@ async function resolve(db, tenantId, obj) {
     if (x && typeof x === 'object') { const o = {}; for (const [k, v] of Object.entries(x)) o[k] = await fix(v); return o; }
     return x;
   };
-  return fix(obj);
+  const out = await fix(obj);
+  if (used.size && obj && obj.url) {
+    const host = hostOf(obj.url); const kayitli = [...used].some((u) => { const [app, grp] = u.split('\n'); const g = cache[app] && cache[app][GROUPS[app]]; return g && registered(g[grp], host); });
+    if (!knownHosts().has(host) && !kayitli) throw Object.assign(new Error('Kayıtlı bilgiler yalnızca entegrasyonun kendi adresine gönderilir'), { status: 400 });
+  }
+  return out;
 }
 
 // Bir kerelik geçiş: daha önce düz metin kaydedilmiş gizli alanları (ve son 48 saatlik geçmişi) şifreler
@@ -90,4 +108,4 @@ async function migrate(db) {
   return n;
 }
 const covers = (app) => !!GROUPS[app];
-module.exports = { seal, open, mask, resolve, migrate, covers, token, SECRET, enc, dec };
+module.exports = { seal, open, mask, resolve, hostOf, knownHosts, migrate, covers, token, SECRET, enc, dec };

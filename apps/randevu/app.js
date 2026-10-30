@@ -162,7 +162,7 @@
       db.save(); toast('Randevu tamamlandı', 'ok'); app.refresh();
     });
   }
-  const smsText = (a) => (S().smsTemplate || '').replace('{musteri}', cust(a.customer).name).replace('{tarih}', NS.date(a.date)).replace('{saat}', a.start).replace('{hizmet}', svc(a.service).name).replace('{isletme}', S().bizName || '').replace('{personel}', staff(a.staff).name);
+  const smsText = (a) => (S().smsTemplate || '').replace('{musteri}', cust(a.customer).name).replace('{tarih}', NS.date(a.date)).replace('{saat}', a.start).replace('{hizmet}', svc(a.service).name).replace('{isletme}', S().bizName || '').replace('{personel}', staff(a.staff).name).replace('{kod}', a.tCode || '');
   // Sağlayıcının cevabı beklenir: yalnızca gerçekten kabul edilen mesaj randevuyu "hatırlatıldı" yapar; simülasyon TEST olarak kalır
   async function sendSms(a) {
     const c = cust(a.customer), text = smsText(a);
@@ -354,8 +354,8 @@
         { label: 'Ziyaret', cls: 'right', render: (c) => db.all('appointments', (a) => a.customer === c.id && a.status === 'tamam').length },
         { label: 'Toplam harcama', cls: 'right', render: (c) => `<b>${money(sum(db.all('appointments', (a) => a.customer === c.id && a.status === 'tamam'), (a) => a.price + (a.productSale || 0)))}</b>` },
       ],
-      extraActions: [{ icon: 'eye', act: 'detail', title: 'Detay' }],
-      onAction: (act, c) => app.go('musteriler', c.id),
+      extraActions: [{ icon: 'eye', act: 'detail', title: 'Detay' }, { icon: 'key', act: 'ptl', title: 'Randevu portalı kodu' }],
+      onAction: (act, c) => (act === 'ptl' ? NS.portalShare(db, c, { title: 'Randevu sorgulama', url: location.href.replace(/index\.html.*$/, '').replace(/#.*$/, '') + 'book.html', phone: c.phone, name: c.name, login: 'Telefon numaranız', loginValue: c.phone }) : app.go('musteriler', c.id)),
     });
     const hr = $('.page-h .row', el);
     if (hr) { hr.insertAdjacentHTML('afterbegin', `<button class="btn" id="wb">${icon('heart')} Geri kazanma</button>`); $('#wb', el).onclick = () => winBack(app); }
@@ -504,7 +504,7 @@
     el.innerHTML = pageHead('SMS & WhatsApp Hatırlatmaları', 'Yaklaşan randevuları SMS veya WhatsApp ile hatırlatın', `<button class="btn primary" id="all">${icon('send')} Bekleyenlerin hepsine gönder (${list.filter((a) => !a.reminded && !a.noReminder).length})</button>`) + `
       ${smsReady() ? '' : `<div class="card pad mb small" style="background:var(--warn-soft);border:0">${icon('alert')} SMS sağlayıcısı bağlı değil: gönderimler <b>TEST</b> olarak kaydedilir, müşteriye mesaj gitmez. <a href="#/entegrasyonlar">Entegrasyonlar &gt; SMS</a></div>`}
       <div class="grid g-21 mb"><div class="card"><div class="card-h"><h3>Bugün ve yarın</h3></div>${table({ rows: list, empty: 'Hatırlatılacak randevu yok', columns: [{ label: 'Randevu', render: (a) => `<b>${NS.date(a.date)} ${a.start}</b>` }, { label: 'Müşteri', render: (a) => `${esc(cust(a.customer).name)}<div class="small faint">${esc(cust(a.customer).phone)}</div>` }, { label: 'Hizmet', render: (a) => esc(svc(a.service).name) }, { label: 'Durum', render: (a) => remindBadge(a) + (remindDue(a) && !a.reminded && !a.noReminder ? ' ' + badge('Zamanı geldi', 'err') : '') }], actions: [{ icon: 'send', act: 'sms', title: 'SMS gönder' }] })}</div>
-      <div class="card"><div class="card-h"><h3>Mesaj şablonu</h3></div><div class="card-b"><textarea class="input" id="tp" rows="5">${esc(S().smsTemplate)}</textarea><div class="small faint mt">Değişkenler: {musteri} {tarih} {saat} {hizmet} {personel} {isletme}</div><button class="btn sm mt" id="st">Kaydet</button>
+      <div class="card"><div class="card-h"><h3>Mesaj şablonu</h3></div><div class="card-b"><textarea class="input" id="tp" rows="5">${esc(S().smsTemplate)}</textarea><div class="small faint mt">Değişkenler: {musteri} {tarih} {saat} {hizmet} {personel} {isletme} {kod}</div><button class="btn sm mt" id="st">Kaydet</button>
         <div class="mt" id="ar">${NS.fieldsHtml([{ name: 'reminderHours', label: 'Hatırlatma zamanı (randevudan kaç saat önce)', type: 'number' }, { name: 'autoRemind', label: 'Zamanı gelen hatırlatmaları otomatik gönder', type: 'checkbox', full: true, hint: 'Yalnızca bu panel bir cihazda açıkken çalışır ve yalnızca gerçek SMS sağlayıcısı bağlıyken gönderir. Panel kapalıyken gönderim yapılmaz.' }], { reminderHours: 24, ...S() })}<button class="btn sm" id="ars">Kaydet</button></div>
         ${list[0] ? `<div class="card pad mt small" style="background:var(--surface-2)"><b>Önizleme:</b><br>${esc(smsText(list[0]))}</div>` : ''}</div></div></div>
       <div class="card"><div class="card-h"><h3>Gönderim geçmişi</h3><span class="small muted">${db.all('sms').length} mesaj</span></div>${table({ rows: db.all('sms').slice().reverse().slice(0, 100), empty: 'Henüz mesaj gönderilmedi', columns: [{ label: 'Zaman', render: (s) => NS.dt(s.at) }, { label: 'Alıcı', render: (s) => `${esc(s.name)}<div class="small faint">${esc(s.to)}</div>` }, { label: 'Mesaj', render: (s) => `<span class="small">${esc(s.text)}</span>` }, { label: 'Durum', render: (s) => badge(smsLabel(s.status), smsTone(s.status)) }] })}</div>`;

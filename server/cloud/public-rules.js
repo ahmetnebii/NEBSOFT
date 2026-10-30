@@ -103,9 +103,18 @@ RULES.randevu = {
     appointments: { where: (r, x) => r.date >= x.today && r.status !== 'iptal', fields: ['id', 'date', 'start', 'duration', 'staff', 'status', 'service'] },
     blocks: { where: (r, x) => r.date >= x.today, fields: ['id', 'staff', 'date', 'start', 'end'] },
   },
-  login: (x, q) => { const c = q.phone && x.col('customers').find((c) => samePhone(c.phone, q.phone)); return c ? { k: 'c', i: c.id } : null; },
-  loginError: 'Bu telefon numarasıyla kayıtlı randevu bulunamadı',
+  // Telefon tek başına kimlik değildir. Portal kodu (işletme verir) tüm randevuları, randevu kodu yalnızca o randevuyu açar:
+  // başkasının numarasıyla randevu alan kişi kendi kodunu görür, ama müşterinin bilgilerine ve diğer randevularına ulaşamaz.
+  login: (x, q) => {
+    const code = norm(q.code); if (!code || !q.phone) return null;
+    const c = x.col('customers').find((r) => r.portalCode && norm(r.portalCode) === code && samePhone(r.phone, q.phone)); if (c) return { k: 'c', i: c.id };
+    const a = x.col('appointments').find((r) => r.tCode && norm(r.tCode) === code); const o = a && x.get('customers', a.customer);
+    return o && samePhone(o.phone, q.phone) ? { k: 'a', i: a.id } : null;
+  },
+  loginError: 'Telefon veya kod hatalı',
+  grant: (x, list) => { if (me(x, 'c')) return null; const a = list.find(([n, rec]) => n === 'appointments' && !rec.updated); return a ? { k: 'a', i: a[1].id } : null; },
   view: (x) => {
+    const oneId = me(x, 'a'); if (oneId) { const a = x.get('appointments', oneId); return a ? { appointments: [...x.col('appointments').filter((r) => r.id !== oneId && r.date >= x.today && r.status !== 'iptal').map((r) => x.pick(r, ['id', 'date', 'start', 'duration', 'staff', 'status', 'service'])), x.pick(a, ['id', 'date', 'start', 'duration', 'staff', 'status', 'service', 'note', 'tCode'])] } : {}; }
     const id = me(x, 'c'); if (!id) return {};
     const c = x.get('customers', id); const mine = x.col('appointments').filter((a) => a.customer === id);
     const ids = new Set(mine.map((a) => a.id));
@@ -120,7 +129,7 @@ RULES.randevu = {
       ins: I({ date: 'date', start: 'time', staff: 'id', service: 'id', customer: 'id', note: 'str:300?', noReminder: 'bool?' }, (r, x) => {
         const sv = x.get('services', r.service); const s = x.doc._settings || {};
         if (!sv || !sv.online) bad('Hizmet bulunamadı');
-        return { duration: Number(sv.duration) || 30, price: Number(sv.price) || 0, status: s.autoConfirm ? 'onay' : 'bekliyor', source: 'online', paid: false };
+        return { duration: Number(sv.duration) || 30, price: Number(sv.price) || 0, status: s.autoConfirm ? 'onay' : 'bekliyor', source: 'online', paid: false, tCode: rxCode() };
       }, (r, x) => {
         if (!x.get('customers', r.customer)) bad('Müşteri bilgisi eksik');
         randevuSlot(x, r);
@@ -128,7 +137,7 @@ RULES.randevu = {
       // Müşteri kendi randevusunu iptal eder ya da başka güne/saate taşır (iptal süresi kuralı ikisinde de geçerli; taşımada yeni saat yeniden denetlenir)
       upd: (a, set, x, unset) => {
         const s = x.doc._settings || {};
-        if (a.customer !== me(x, 'c') || ['iptal', 'tamam'].includes(a.status) || (new Date(`${a.date}T${a.start}:00+03:00`) - Date.now()) / 3600e3 <= Number(s.cancelHours || 0)) deny();
+        if ((a.customer !== me(x, 'c') && a.id !== me(x, 'a')) || ['iptal', 'tamam'].includes(a.status) || (new Date(`${a.date}T${a.start}:00+03:00`) - Date.now()) / 3600e3 <= Number(s.cancelHours || 0)) deny();
         if (!('date' in set) && !('start' in set)) return U({ status: 'enum:iptal', note: 'str:200?' })(a, set, x, unset);
         const keys = Object.keys(set).filter((k) => !['updated', 'reminded', 'remindTried', 'remindTest', 'status'].includes(k));
         if (keys.some((k) => !['date', 'start', 'note'].includes(k)) || (unset || []).some((k) => !['reminded', 'remindTried', 'remindTest'].includes(k))) deny();

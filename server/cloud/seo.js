@@ -115,7 +115,8 @@ async function pingIndexNow(req, urls) {
 // İşletme sayfası: /t/<işletme>/
 // Web sitesi eklentisi etkin ve yayında ise işletmenin tam web sitesi
 async function liveSite(t) {
-  const s = await db.one('SELECT data, published, domain, updated FROM biz_sites WHERE tenant_id=?', [t.id]); if (!s || !s.published) return null;
+  const s = await db.one('SELECT data, published, domain, domain_ok, updated FROM biz_sites WHERE tenant_id=?', [t.id]); if (!s || !s.published) return null;
+  if (s.domain_ok === 0) s.domain = null; // sahipliği doğrulanmamış alan adı kanonik adres olamaz
   const on = async (p) => !!(await db.one("SELECT id FROM licenses WHERE tenant_id=? AND product=? AND status IN ('aktif','deneme') AND end>UTC_TIMESTAMP()", [t.id, p]));
   if (!(await on('eklenti-web'))) return null;
   const apps = (await db.q("SELECT product FROM licenses WHERE tenant_id=? AND status IN ('aktif','deneme') AND end>UTC_TIMESTAMP()", [t.id])).map((r) => r.product);
@@ -142,7 +143,7 @@ async function domainSite(req, p) {
   if (!db.ready()) return null; const host = String(req.headers.host || '').toLowerCase().replace(/:\d+$/, ''); if (!host || !/^[a-z0-9.-]+$/.test(host)) return null;
   const own = await settings(); let own0 = ''; try { own0 = new URL(own.siteUrl).hostname.toLowerCase(); } catch (e) { /* ayar yok */ }
   if (own0 && host.replace(/^www\./, '') === own0.replace(/^www\./, '')) return null; // platformun kendi adresi hiçbir işletmeye ait olamaz
-  let hit = domCache.get(host); if (!hit || Date.now() - hit.at > 60e3) { if (domCache.size > 5000) domCache.clear(); const r = await db.one("SELECT t.id, t.name, t.slug, t.sector, t.ref_code FROM biz_sites b JOIN tenants t ON t.id=b.tenant_id WHERE (b.domain=? OR b.domain=?) AND t.status='active'", [host, host.replace(/^www\./, '')]); hit = { at: Date.now(), t: r || null }; domCache.set(host, hit); }
+  let hit = domCache.get(host); if (!hit || Date.now() - hit.at > 60e3) { if (domCache.size > 5000) domCache.clear(); const r = await db.one("SELECT t.id, t.name, t.slug, t.sector, t.ref_code FROM biz_sites b JOIN tenants t ON t.id=b.tenant_id WHERE (b.domain=? OR b.domain=?) AND (b.domain_ok IS NULL OR b.domain_ok=1) AND t.status='active'", [host, host.replace(/^www\./, '')]); hit = { at: Date.now(), t: r || null }; domCache.set(host, hit); }
   if (!hit.t) return null; const live = await liveSite(hit.t); if (!live) return null;
   // Kanonik adres sabittir: alan adı Host başlığından türetilmez, www'lu/www'suz çift adres oluşmaz
   const B = `https://${live.domain}`; if (live.domain !== host) return { redirect: `${B}${p}` };

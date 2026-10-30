@@ -37,9 +37,9 @@
   // ---------- Web sitesi düzenleyici ----------
   async function builder(el, ctx) {
     const cl = ctx.cloud(); el.innerHTML = `<section class="sec" style="padding-top:30px"><div class="mk-wrap">${NS.skeleton ? NS.skeleton(4) : ''}</div></section>`;
-    let srv = null, data, pub = false, domain = '', web = false, sip = false, slug = 'isletmeniz', dirty = false;
+    let srv = null, data, pub = false, domain = '', alanAdi = null, web = false, sip = false, slug = 'isletmeniz', dirty = false;
     try {
-      if (cl) { srv = await NS.api('GET', '/api/websitem'); slug = srv.tenant.slug; web = srv.web; sip = srv.siparis; if (srv.site) { data = srv.site.data; pub = srv.site.published; domain = srv.site.domain; } else data = B.defaults(srv.tenant); }
+      if (cl) { srv = await NS.api('GET', '/api/websitem'); slug = srv.tenant.slug; web = srv.web; sip = srv.siparis; if (srv.site) { data = srv.site.data; pub = srv.site.published; domain = srv.site.domain; alanAdi = srv.site.alanAdi; } else data = B.defaults(srv.tenant); }
       else { const l = lsGet(); data = l ? l.data : B.defaults({ name: (ctx.me() || {}).company || 'Lezzet Durağı', city: 'İstanbul', phone: '0212 000 00 00' }); domain = l ? l.domain || '' : ''; }
     } catch (e) { el.innerHTML = `<section class="sec"><div class="mk-wrap"><div class="card pad empty">${icon('alert')}<div>${esc(e.message)}</div></div></div></section>`; return; }
     data = B.clean(data);
@@ -93,6 +93,7 @@
         <h4>Google</h4>${fld('seo.gbp', 'Google İşletme Profili bağlantısı', d.seo.gbp, { max: 300, ph: 'https://maps.app.goo.gl/… veya https://g.page/…' })}${fld('seo.gsc', 'Search Console doğrulama kodu', d.seo.gsc, { max: 300, help: 'HTML etiketi yöntemi; etiketin tamamını da yapıştırabilirsiniz', ph: '<meta name="google-site-verification" content="…">' })}
         <h4>Adres</h4><div class="wb-addr"><div><b>NEBSOFT adresiniz</b><span>${esc(url || `${location.origin}/t/isletmeniz/`)}</span></div>${url ? `<button type="button" class="btn sm" id="wcu">${icon('copy')} Kopyala</button>` : ''}</div>
         ${fld('_domain', 'Kendi alan adınız (isteğe bağlı)', domain, { max: 190, ph: 'www.isletmeniz.com' })}
+        ${alanAdi && !alanAdi.dogrulandi ? `<div class="wb-addr" id="wdns"><div><b>Alan adı sahipliğini doğrulayın</b><span>DNS yönetiminde <b>${esc(alanAdi.kayit)}</b> adıyla bir <b>TXT</b> kaydı açın, değerine şunu yazın: <b class="mono">${esc(alanAdi.deger)}</b>. Doğrulanana kadar siteniz bu adreste açılmaz.</span></div><button type="button" class="btn sm" id="wdn">Doğrula</button></div>` : alanAdi ? `<div class="small muted">${icon('check')} Alan adı doğrulandı.</div>` : ''}
         <details class="wb-help"><summary>${icon('info')} Kendi alan adımı nasıl bağlarım?</summary><ol><li>Alan adınızı aldığınız firmanın (ör. GoDaddy, Natro, İsimtescil) <b>DNS yönetimi</b> sayfasını açın.</li><li><b>www</b> için bir <b>CNAME</b> kaydı ekleyin; hedef olarak <b>${esc(location.host)}</b> yazın. Kök alan adı (isletmeniz.com) için firmanızın “yönlendirme / forwarding” özelliğiyle www adresine yönlendirin.</li><li>Yukarıdaki kutuya <b>www.isletmeniz.com</b> yazıp kaydedin. DNS değişikliğinin yayılması birkaç saat sürebilir.</li><li>Sunucunuzda bu alan adı için SSL sertifikası (https) tanımlı olmalıdır; NEBSOFT bulut kurulumunda bu adım sistem yöneticisi tarafından yapılır.</li></ol></details>
         <details class="wb-help"><summary>${icon('map')} Google İşletme Profili rehberi</summary><ol><li><a href="https://www.google.com/business/" target="_blank" rel="noopener">google.com/business</a> adresinden Google hesabınızla giriş yapıp işletmenizi ekleyin veya mevcut kaydı sahiplenin.</li><li>İşletme adı, kategori, adres ve telefonu bu sitedekiyle <b>birebir aynı</b> yazın (tutarlılık sıralamaya yardımcı olur).</li><li>Google’ın sunduğu yöntemle (telefon, e-posta, video vb.) doğrulamayı tamamlayın.</li><li>Profilin <b>Web sitesi</b> alanına site adresinizi ekleyin; çalışma saatlerinizi ve fotoğraflarınızı girin.</li><li>Search Console’a site adresinizi ekleyin, “HTML etiketi” yöntemindeki kodu yukarıdaki alana yapıştırıp kaydedin, sonra Search Console’da <b>Doğrula</b>’ya basın ve site haritası adresini gönderin.</li></ol></details>`; drawChk(); typeOpt(); }
     };
@@ -121,13 +122,14 @@
       if (b.dataset.clr) { setK(b.dataset.clr, ''); touch(); form(); return; }
       if (b.dataset.up) { const k = b.dataset.up; const u = await pickImage(k === 'logo' ? 400 : 1600); if (u) { setK(k, u); touch(); form(); } return; }
       if (b.id === 'wcp') { const m = data.hours[0]; for (let i = 1; i < 5; i++) data.hours[i] = { ...m }; data.hoursOk = true; touch(); form(); return; }
+      if (b.id === 'wdn') { b.disabled = true; try { const r = await NS.api('POST', '/api/websitem/alan-adi-dogrula', {}); alanAdi = r.alanAdi; if (r.ok) { toast('Alan adı doğrulandı', 'ok'); redraw(); } else toast(r.error, 'err'); } catch (x) { toast(x.message, 'err'); } b.disabled = false; return; }
       if (b.id === 'wcu') { try { await navigator.clipboard.writeText(url); toast('Kopyalandı', 'ok'); } catch (x) { NS.prompt('Site adresiniz', url); } return; }
       if (b.id === 'wimp') { importProducts(ctx).then((ps) => { if (!ps) return; const have = new Set(data.products.map((p) => p.name.toLocaleLowerCase('tr'))); const add = ps.filter((p) => !have.has(p.name.toLocaleLowerCase('tr'))); data.products.push(...add.slice(0, 300 - data.products.length)); touch(); form(); toast(`${add.length} ürün eklendi`, 'ok'); }); return; }
       if (b.id === 'wsv' || b.id === 'wpb') {
         const want = b.id === 'wpb' ? !pub : pub;
         if (!cl) { lsSet({ data, domain }); dirty = false; status(); if (b.id === 'wpb') toast('Demo modunda yayınlanmaz. Bulut hesabınızda “İşletme Web Sitesi” eklentisiyle tek tıkla yayınlanır.', 'err'); else toast('Taslak bu tarayıcıya kaydedildi', 'ok'); return; }
         b.disabled = true;
-        try { await NS.api('PUT', '/api/websitem', { data, published: want, domain }); pub = want; dirty = false; status(); loadHz(); toast(b.id === 'wpb' ? (pub ? 'Siteniz yayında 🎉' : 'Site yayından kaldırıldı') : 'Kaydedildi', 'ok'); }
+        try { const r = await NS.api('PUT', '/api/websitem', { data, published: want, domain }); alanAdi = r.alanAdi || null; pub = want; dirty = false; status(); if ($('[data-k="_domain"]', el)) redraw(); loadHz(); toast(b.id === 'wpb' ? (pub ? 'Siteniz yayında 🎉' : 'Site yayından kaldırıldı') : 'Kaydedildi', 'ok'); }
         catch (x) { if (x.status === 402) { await NS.api('PUT', '/api/websitem', { data, published: false, domain }).catch(() => {}); dirty = false; status(); const go = await NS.confirm(x.message, { title: 'Eklenti gerekli', ok: 'Eklenti Mağazası’na git', danger: false }); if (go) location.hash = '#/eklentiler'; } else toast(x.message, 'err'); }
         b.disabled = false;
       }

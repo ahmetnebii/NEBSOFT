@@ -102,10 +102,14 @@ route('POST', '/api/public/:slug/:app/view', { auth: 'none', limit: ['pubv', 240
 
 // İşlemler: [{ c: 'koleksiyon', op: 'ins'|'upd'|'del', rec | id+set+unset }]
 const MAX_OPS = 60, MAX_REC = 40e3;
+// IP sınırı tek saldırganı durdurur, çok adresten gelen yazmayı durdurmaz: işletme ve program başına saatlik üst sınır
+const SAATLIK_ISLEM = 3000;
 route('POST', '/api/public/:slug/:app/ops', { auth: 'none', limit: ['pubo', 40, 60e3], bodyMax: 400e3 }, async (c) => {
   const { t, app, rule } = await context(c);
   const ops = Array.isArray(c.body.ops) ? c.body.ops : null;
   if (!ops || !ops.length || ops.length > MAX_OPS) throw err(400, 'Geçersiz işlem');
+  let kota = true; for (let i = 0; i < ops.length; i++) kota = sec.limit(`pubkota:${t.id}:${app}`, SAATLIK_ISLEM, 3600e3) && kota;
+  if (!kota) throw err(429, 'Bu sayfaya çok fazla işlem geldi. Lütfen biraz sonra tekrar deneyin.');
   const ident = readToken(c.body.token, t.id, app);
   const res = await db.tx(async (tx) => {
     const row = (await tx.q('SELECT data, version FROM app_data WHERE tenant_id=? AND app=? FOR UPDATE', [t.id, app]))[0];

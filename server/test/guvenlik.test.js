@@ -101,6 +101,8 @@ async function bulut() {
     if (/SELECT v FROM settings/.test(sql)) return p[0] === 'site' || /site/.test(sql) ? [{ v: JSON.stringify({ siteUrl: 'https://www.nebsoftapp.test' }) }] : [];
     if (/^DELETE FROM users/.test(sql)) { log.push(['sil', p[0]]); return { affectedRows: 1 }; }
     if (/^INSERT INTO users/.test(sql)) { log.push(['ekle', p[1]]); return {}; }
+    if (/SELECT tenant_id, domain_ok FROM biz_sites/.test(sql)) return p[0] === 'www.dogrulanmis.com.tr' ? [{ tenant_id: 'b', domain_ok: 1 }] : p[0] === 'www.onalinmis.com.tr' ? [{ tenant_id: 'b', domain_ok: 0 }] : [];
+    if (/^UPDATE biz_sites SET domain=NULL/.test(sql)) { log.push(['alan-birakildi', p[0]]); return {}; }
     if (/^INSERT INTO biz_sites/.test(sql)) { log.push(['site', p[3]]); return {}; }
     if (/^INSERT INTO catalog_suggest/.test(sql)) { log.push(['havuz', p[0]]); return {}; }
     if (/^UPDATE tenants SET name/.test(sql)) { log.push(['sirket', p[0]]); return {}; }
@@ -127,13 +129,31 @@ async function bulut() {
     assert.ok(!log.some((x) => x[0] === 'site')); r = await api('PUT', '/api/websitem', 'a', { data: {}, domain: 'www.isletmem.com.tr' }); assert.strictEqual(r.s, 200); assert.ok(log.some((x) => x[0] === 'site' && x[1] === 'www.isletmem.com.tr')); ok('işletme platformun alan adını ve IP adresini sahiplenemiyor');
     assert.strictEqual(await seo.domainSite({ headers: { host: 'www.nebsoftapp.test' }, socket: {} }, '/'), null); ok('eski kayıt olsa da platform adresi işletme sitesine dönmüyor');
 
+    r = await api('PUT', '/api/websitem', 'a', { data: {}, domain: 'www.dogrulanmis.com.tr' }); assert.strictEqual(r.s, 409); r = await api('PUT', '/api/websitem', 'a', { data: {}, domain: 'www.onalinmis.com.tr' }); assert.strictEqual(r.s, 200); assert.ok(log.some((x) => x[0] === 'alan-birakildi' && x[1] === 'b')); assert.strictEqual(r.j.alanAdi.dogrulandi, false); assert.ok(/^nebsoft-dogrulama=/.test(r.j.alanAdi.deger)); ok('doğrulanmamış kayıt alan adını tutamıyor, yeni kayıt TXT doğrulaması bekliyor');
     r = await api('POST', '/api/katalog/katki', null, { items: [{ barcode: '8690000000012', name: 'Sahte' }] }); assert.strictEqual(r.s, 401); assert.ok(!log.some((x) => x[0] === 'havuz')); r = await api('POST', '/api/katalog/katki', 'a', { items: [{ barcode: '8690000000012', name: 'Gerçek' }] }); assert.strictEqual(r.j.eklenen, 1); ok('ortak kataloğa yalnızca oturumlu işletme öneri gönderiyor');
 
     r = await raw(port, '/api/w/yok/siparis', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' }); assert.strictEqual(r.s, 404); r = await raw(port, '/api/w/yok/siparis', { method: 'POST', headers: { Origin: 'https://evil.example', Host: '127.0.0.1' }, body: '{}' }); assert.strictEqual(r.s, 403); ok('site siparişi: sayfanın isteği geçiyor, başka siteden reddediliyor');
   } finally { srv.close(); }
 }
 
+// Kayıtlı gizli bilgi, yer tutucuyla ekip üyesinin kendi sunucusuna gönderilemez
+async function gizliAdres() {
+  const s = require('../cloud/secrets'); const tk = s.token('entegrasyon', 'sms', 'apiKey'); const dbx = { one: async () => ({ data: JSON.stringify({ cfg: { sms: { apiKey: 'düz-anahtar', url: 'https://ozel.firmam.com/api' } } }) }) };
+  const gonder = (url) => s.resolve(dbx, 't', { url, headers: { A: tk } });
+  assert.strictEqual((await gonder('https://api.netgsm.com.tr/sms')).headers.A, 'düz-anahtar'); assert.strictEqual((await gonder('https://efatura.uyumsoft.com.tr/x')).headers.A, 'düz-anahtar'); assert.strictEqual((await gonder('https://ozel.firmam.com/v2')).headers.A, 'düz-anahtar');
+  await assert.rejects(gonder('https://kotu.example.com/topla'), (e) => e.status === 400); await assert.rejects(gonder('https://ozel.firmam.com.kotu.example/x'), (e) => e.status === 400);
+  assert.strictEqual((await s.resolve(dbx, 't', { url: 'https://kotu.example.com/', body: 'yer tutucu yok' })).body, 'yer tutucu yok'); ok('gizli bilgi yalnızca sağlayıcıya veya kayıtlı adrese çözülüyor');
+}
+// Randevu: telefon tek başına giriş açmaz; başkasının numarasıyla alınan randevunun kodu müşteri kimliği vermez
+function randevuKodu() {
+  const R = require('../cloud/public-rules').randevu; const doc = { customers: [{ id: 'c1', name: 'Ayşe', phone: '05321112233', portalCode: 'ABC234' }], appointments: [{ id: 'a1', customer: 'c1', tCode: 'XYZ789', date: '2099-01-01', start: '10:00', note: 'özel' }, { id: 'a2', customer: 'c1', tCode: 'KLM456', date: '2099-01-02', start: '11:00', note: 'gizli-not' }] };
+  const x = (ident) => ({ ident, today: '2026-01-01', col: (n) => doc[n] || [], get: (n, id) => (doc[n] || []).find((r) => r.id === id), pick: (r, f) => Object.fromEntries(f.filter((k) => k in r).map((k) => [k, r[k]])), doc });
+  assert.strictEqual(R.login(x(), { phone: '05321112233' }), null); assert.strictEqual(R.login(x(), { phone: '05321112233', code: 'YANLIS' }), null); assert.strictEqual(R.login(x(), { phone: '05329998877', code: 'XYZ789' }), null);
+  assert.deepStrictEqual(R.login(x(), { phone: '0532 111 22 33', code: 'abc234' }), { k: 'c', i: 'c1' }); assert.deepStrictEqual(R.login(x(), { phone: '05321112233', code: 'xyz789' }), { k: 'a', i: 'a1' });
+  const v = JSON.stringify(R.view(x({ k: 'a', i: 'a1' }))); assert.ok(!v.includes('Ayşe') && !v.includes('05321112233') && !v.includes('KLM456') && !v.includes('gizli-not')); assert.ok(v.includes('XYZ789')); ok('randevu kodu yalnızca kendi randevusunu açıyor, telefonla giriş yok');
+}
+
 (async () => {
-  console.log('Güvenlik testleri'); await sunucu(); await saf(); await bulut();
+  console.log('Güvenlik testleri'); await sunucu(); await saf(); await gizliAdres(); randevuKodu(); await bulut();
   console.log(`\n${passed} denetim geçti`); process.exit(0);
 })().catch((e) => { console.error(e); process.exit(1); });

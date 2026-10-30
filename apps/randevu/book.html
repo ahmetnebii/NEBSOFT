@@ -122,8 +122,8 @@
     } else if (st.step === 5) {
       const a = st.done; const stf = db.get('staff', st.assigned);
       const dd = st.date.replace(/-/g, ''); const gcal = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(sv.name + ' - ' + s.bizName)}&dates=${dd}T${st.time.replace(':', '')}00/${dd}T${R.toHM(R.toMin(st.time) + sv.duration).replace(':', '')}00&location=${encodeURIComponent(s.bizAddress || '')}`;
-      body = `<div class="center" style="padding:16px 0"><div style="width:76px;height:76px;border-radius:50%;background:#dcfce7;color:#15803d;display:grid;place-items:center;margin:0 auto">${icon('check')}</div><h1 class="mt">${a && a.status === 'onay' ? 'Randevunuz onaylandı!' : 'Randevu talebiniz alındı!'}</h1><p class="muted mt">${a && a.status === 'onay' ? 'Değişiklik veya iptal için bu sayfadaki “Randevumu sorgula” bölümünü kullanabilirsiniz.' : 'Talebiniz işletmeye iletildi. Onay durumunu bu sayfadaki “Randevumu sorgula” bölümünden görebilirsiniz.'}</p>${a ? `<div class="mt"><span class="badge acc" style="font-size:14px;padding:6px 12px">Randevu kodu: <b class="mono">${esc(a.id.slice(-6).toUpperCase())}</b></span></div>` : ''}</div>
-        <div class="card pad mb">${[['Hizmet', sv.name], ['Uzman', stf ? stf.name : '-'], ['Tarih', NS.dateLong(st.date)], ['Saat', `${st.time} (${sv.duration} dk)`], ['Ücret', money(sv.price)]].map(([k, v]) => `<div class="list-item"><span class="grow muted">${k}</span><b>${esc(v)}</b></div>`).join('')}</div><div class="small muted mb">${esc(s.bookingNote || '')}</div>
+      body = `<div class="center" style="padding:16px 0"><div style="width:76px;height:76px;border-radius:50%;background:#dcfce7;color:#15803d;display:grid;place-items:center;margin:0 auto">${icon('check')}</div><h1 class="mt">${a && a.status === 'onay' ? 'Randevunuz onaylandı!' : 'Randevu talebiniz alındı!'}</h1><p class="muted mt">${a && a.status === 'onay' ? 'Değişiklik veya iptal için bu sayfadaki “Randevumu sorgula” bölümünü kullanabilirsiniz.' : 'Talebiniz işletmeye iletildi. Onay durumunu bu sayfadaki “Randevumu sorgula” bölümünden görebilirsiniz.'}</p>${a ? `<div class="mt"><span class="badge acc" style="font-size:14px;padding:6px 12px">Randevu kodu: <b class="mono">${esc(a.tCode || a.id.slice(-6).toUpperCase())}</b></span></div>` : ''}</div>
+        <div class="card pad mb">${[['Hizmet', sv.name], ['Uzman', stf ? stf.name : '-'], ['Tarih', NS.dateLong(st.date)], ['Saat', `${st.time} (${sv.duration} dk)`], ['Ücret', money(sv.price)]].map(([k, v]) => `<div class="list-item"><span class="grow muted">${k}</span><b>${esc(v)}</b></div>`).join('')}</div>${a && a.tCode ? `<div class="small muted mb center">Randevunuzu sorgulamak, taşımak veya iptal etmek için bu kodu saklayın. Telefon numaranızla birlikte istenir.</div>` : ''}<div class="small muted mb">${esc(s.bookingNote || '')}</div>
         <div class="row" style="gap:8px"><button class="btn" id="ics">${icon('calendar')} Takvime ekle (.ics)</button><a class="btn" target="_blank" rel="noopener" href="${gcal}">${icon('calendar')} Google Takvim</a><a class="btn" target="_blank" rel="noopener" href="${mapUrl}">${icon('map')} Yol tarifi</a><span class="grow"></span><button class="btn primary" id="again">Yeni randevu</button></div>`;
     }
     const canNext = (st.step === 1 && st.service) || st.step === 2 || (st.step === 3 && st.time) || st.step === 4;
@@ -174,8 +174,8 @@
     const sv = svc(st.service);
     // Gelmeme kuralı: belirlenen sayıda gelmeyen müşterinin online randevusu otomatik onaylanmaz
     const noShow = s.noShowLimit > 0 && db.all('appointments', (a) => a.customer === c.id && a.status === 'gelmedi').length >= s.noShowLimit;
-    st.done = db.insert('appointments', { date: st.date, start: st.time, duration: sv.duration, staff: staffId, service: sv.id, customer: c.id, price: sv.price, status: s.autoConfirm && !noShow ? 'onay' : 'bekliyor', source: 'online', note: v.note || '', paid: false, noReminder: !$('#rm').checked });
-    st.assigned = staffId; st.step = 5; render(); toTop();
+    st.done = db.insert('appointments', { tCode: [...crypto.getRandomValues(new Uint8Array(6))].map((x) => 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'[x % 32]).join(''), date: st.date, start: st.time, duration: sv.duration, staff: staffId, service: sv.id, customer: c.id, price: sv.price, status: s.autoConfirm && !noShow ? 'onay' : 'bekliyor', source: 'online', note: v.note || '', paid: false, noReminder: !$('#rm').checked });
+    st.done = db.get('appointments', st.done.id) || st.done; st.assigned = staffId; st.step = 5; render(); toTop();
   });
   on(document.body, 'click', '[data-kvkk]', (e) => { e.preventDefault(); NS.modal({ title: 'Kişisel verilerin korunması — aydınlatma metni', body: s.kvkkText ? `<div style="white-space:pre-wrap;line-height:1.6">${esc(s.kvkkText)}</div>` : `<p class="muted">İşletme aydınlatma metnini henüz eklemedi. Bilgi için ${esc(s.bizName || 'işletmeyi')} ${s.bizPhone ? `(${esc(s.bizPhone)})` : ''} arayabilirsiniz.</p>` }); });
   on(document.body, 'click', '#ics', () => {
@@ -186,11 +186,14 @@
   });
   on(document.body, 'click', '[data-my]', async (e) => {
     e.preventDefault();
-    const p = await NS.prompt('Randevu aldığınız telefon numarası', '', { title: 'Randevumu sorgula', type: 'tel' });
-    if (!p) return;
-    if (db.lookup({ phone: p }) === null) db.load();
-    const c = db.find('customers', (x) => String(x.phone).replace(/\D/g, '').slice(-10) === p.replace(/\D/g, '').slice(-10));
-    const list = c ? db.all('appointments', (a) => a.customer === c.id && new Date(`${a.date}T${a.start}`) > new Date() && !['iptal', 'tamam', 'gelmedi'].includes(a.status)).sort((a, b) => (a.date + a.start).localeCompare(b.date + b.start)) : [];
+    const f = await NS.formModal({ title: 'Randevumu sorgula', fields: [{ name: 'phone', label: 'Telefon numaranız', type: 'tel', required: true, full: true }, { name: 'code', label: 'Randevu kodu veya portal kodu', required: true, full: true }], submitLabel: 'Sorgula' });
+    if (!f) return;
+    const p = String(f.phone); const kod = String(f.code).trim().toUpperCase(); const son10 = (x) => String(x || '').replace(/\D/g, '').slice(-10);
+    if (NS.pub) { if (!db.lookup({ phone: p, code: kod })) return toast('Telefon veya kod hatalı', 'err'); } else db.load();
+    const c = db.find('customers', (x) => son10(x.phone) === son10(p));
+    // Sunucu yalnızca açılan randevunun kodunu gönderir; demoda aynı eşleşme burada yapılır
+    const benim = (a) => (NS.pub ? a.tCode || (c && a.customer === c.id) : c && a.customer === c.id && (String(c.portalCode || '').toUpperCase() === kod || String(a.tCode || '').toUpperCase() === kod));
+    const list = db.all('appointments', (a) => benim(a) && new Date(`${a.date}T${a.start}`) > new Date() && !['iptal', 'tamam', 'gelmedi'].includes(a.status)).sort((a, b) => (a.date + a.start).localeCompare(b.date + b.start));
     NS.modal({
       title: 'Randevularınız',
       body: list.length ? list.map((a) => { const canCancel = (new Date(`${a.date}T${a.start}`) - Date.now()) / 3600000 > (s.cancelHours || 0); return `<div class="list-item"><img src="${R.photo(svc(a.service), 100)}" style="width:48px;height:48px;border-radius:10px;object-fit:cover" alt=""><div class="grow"><b>${NS.date(a.date)} ${a.start}</b><div class="small muted">${esc(svc(a.service).name)} · ${esc((db.get('staff', a.staff) || {}).name)}</div><div class="small">${NS.badge(a.status === 'onay' ? 'Onaylandı' : 'Onay bekliyor', a.status === 'onay' ? 'ok' : 'warn')}</div></div>${canCancel ? `<div class="col" style="gap:6px"><button class="btn sm" data-mv="${a.id}">Taşı</button><button class="btn sm danger" data-cx="${a.id}">İptal et</button></div>` : `<span class="small faint">İptal süresi geçti<br><a href="tel:${esc(tel(s.bizPhone))}">Bizi arayın</a></span>`}</div>`; }).join('') : '<div class="empty">Yaklaşan randevu bulunamadı</div>',

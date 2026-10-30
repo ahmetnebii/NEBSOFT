@@ -69,7 +69,7 @@ const SCHEMA = [
 ];
 // Var olan kurulumlara sütun ekleme: CREATE TABLE IF NOT EXISTS eski tabloyu değiştirmez. Sütun varsa dokunulmaz, eski satırlar NULL/varsayılan kalır.
 const COLUMNS = [
-  ['tenants', 'support_plan', 'VARCHAR(20) NULL'], ['tenants', 'support_until', 'DATETIME NULL'], ['orders', 'indirim', 'TEXT NULL'],
+  ['biz_sites', 'domain_tok', 'VARCHAR(40) NULL'], ['biz_sites', 'domain_ok', 'TINYINT NULL'], ['tenants', 'support_plan', 'VARCHAR(20) NULL'], ['tenants', 'support_until', 'DATETIME NULL'], ['orders', 'indirim', 'TEXT NULL'],
   ['tickets', 'plan', 'VARCHAR(20) NULL'], ['tickets', 'priority', 'TINYINT NULL'], ['tickets', 'first_due', 'DATETIME NULL'], ['tickets', 'resolve_due', 'DATETIME NULL'], ['tickets', 'first_reply_at', 'DATETIME NULL'], ['tickets', 'closed_at', 'DATETIME NULL'], ['tickets', 'breached', 'TINYINT NOT NULL DEFAULT 0'],
 ];
 async function addColumns() {

@@ -100,10 +100,12 @@ function client() {
     r = await P('POST', api + '/ops', { ops: [{ c: 'appointments', op: 'ins', rec: { id: 'apt002', date: day, start: '10:15', staff: 'u1', service: 's1', customer: 'newc1' } }] }); assert.equal(r.status, 409); ok('aynı saate ikinci randevu reddedildi');
     r = await P('POST', api + '/ops', { ops: [{ c: 'appointments', op: 'upd', id: 'apt001', set: { status: 'iptal' } }] }); assert.equal(r.status, 403); ok('kimliksiz ziyaretçi randevu iptal edemez');
     r = await P('POST', api + '/ops', { ops: [{ c: 'staff', op: 'del', id: 'u1' }] }); assert.equal(r.status, 403); ok('izin verilmeyen koleksiyon değiştirilemez');
-    r = await P('POST', api + '/view', { q: { phone: '0555 000 11 22' } }); assert.ok(r.j.token); const tok = r.j.token;
+    const kod = saved.tCode; assert.ok(/^[A-Z2-9]{6}$/.test(kod), 'randevu kodu sunucuda üretilmeli');
+    r = await P('POST', api + '/view', { q: { phone: '0555 000 11 22' } }); assert.ok(!r.j.token); r = await P('POST', api + '/view', { q: { phone: '0555 000 11 23', code: kod } }); assert.ok(!r.j.token); ok('telefon tek başına veya kodla başka telefon giriş açmıyor');
+    r = await P('POST', api + '/view', { q: { phone: '0555 000 11 22', code: kod.toLowerCase() } }); assert.ok(r.j.token); const tok = r.j.token; assert.ok(!JSON.stringify(r.j.data.customers || []).includes('Yeni Müşteri')); ok('randevu kodu yalnızca o randevuyu açıyor, müşteri bilgisini vermiyor');
     r = await P('POST', api + '/ops', { token: tok.slice(0, -2) + 'xx', ops: [{ c: 'appointments', op: 'upd', id: 'apt001', set: { status: 'iptal' } }] }); assert.equal(r.status, 403); ok('değiştirilmiş belirteç reddedildi');
     r = await P('POST', api + '/ops', { token: tok, ops: [{ c: 'appointments', op: 'upd', id: 'apt001', set: { status: 'iptal', price: 0 } }] }); assert.equal(r.status, 403);
-    r = await P('POST', api + '/ops', { token: tok, ops: [{ c: 'appointments', op: 'upd', id: 'apt001', set: { status: 'iptal' } }] }); assert.equal(r.j.ok, true, JSON.stringify(r.j)); ok('telefonla giriş yapan müşteri yalnızca izinli alanla kendi randevusunu iptal etti');
+    r = await P('POST', api + '/ops', { token: tok, ops: [{ c: 'appointments', op: 'upd', id: 'apt001', set: { status: 'iptal' } }] }); assert.equal(r.j.ok, true, JSON.stringify(r.j)); ok('kodla giriş yapan müşteri yalnızca izinli alanla kendi randevusunu iptal etti');
     const Bf = client(); for (let i = 0; i < 20; i++) await Bf('POST', api + '/view', { q: { phone: '0599' + String(1000000 + i) } });
     r = await Bf('POST', api + '/view', { q: { phone: '0555 000 11 22' } }); assert.equal(r.status, 429); ok('müşteri girişinde kaba kuvvet denemesi engellendi');
     r = await P('POST', `/api/public/${slug}/otel/view`, {}); assert.equal(r.status, 402); ok('lisansı olmayan hizmetin müşteri sayfası kapalı');
