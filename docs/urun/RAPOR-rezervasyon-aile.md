@@ -31,10 +31,10 @@ Tanıtım sayfaları, OG görselleri, ekran görüntüleri üretildi. Ekran gör
 
 ## Doğrulama
 
-- `npm test` zinciri tek tek çalıştırıldı (hata çıkınca durmadan, benzersiz veritabanı adıyla): 55 adımın hepsi geçti. Dört hesap testi, kural testi ve uçtan uca test dahil.
+- `npm test` zinciri tek tek çalıştırıldı (hata çıkınca durmadan, benzersiz veritabanı adıyla): 55 adımın hepsi geçti, GİB XSD testi dahil. Uçtan uca test sonradan eklendi, ayrı çalıştırıldı ve geçti; zincire yazıldı ama zincir onunla birlikte baştan çalıştırılmadı.
 - `server/test/rezervasyon-aile-uctan.test.js`: gerçek sunucu ve MariaDB ile lisans, belge kaydı, müşteri girişi, müşteri işlemi, dosya yükleme, yurt belgesinin şifreli saklanması.
 - Tarayıcıda `?demo=1` ile dört programın tüm menü sayfaları açıldı, ana akışlar sonuna kadar çalıştırıldı, konsolda hata yok. Boş liste, telefon genişliği, koyu tema denendi.
-- Binlerce kayıt: düğün ve fotoğrafta 6.000 kayıt, yurtta 1.500 öğrenci ve 40.000 hareket, oyunda 6.000 adisyon.
+- Binlerce kayıt: düğün ve fotoğrafta 6.000 kayıt, yurtta 1.500 öğrenci ve 40.000 hareket, oyunda 6.000 adisyon. En yavaş ekran Müşteriler, 6.000 müşteride yaklaşık 0,6 saniye. Diğerleri 0,3 saniyenin altında.
 - Denenmeyen: bulut kipinde tarayıcıdan fotoğraf yükleme (sunucu ucu test edildi, tarayıcı küçültmesi yerel kipte denendi), yazdırma çıktısının kâğıda dökümü (belge üretimi denendi), imza kanvası (imza adımı denemede taklit edildi), gerçek SMS.
 
 ## Kullanıcıdan gerekenler
