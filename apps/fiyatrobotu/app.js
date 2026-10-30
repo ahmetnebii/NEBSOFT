@@ -33,17 +33,24 @@
     return Math.abs(np - L.price) < 0.01 ? null : { L, from: L.price, to: np, why, before: res(L).profit, after: res(L, np).profit };
   }
   // Fiyatları kanala gönder (canlı Trendyol/Hepsiburada server.js köprüsüyle, diğerleri demo)
+  // Rakip fiyatı gerçek bir kaynaktan mı (pazaryeri rakip/buybox servisi ya da fiyat dosyası: comps[].source)? Demo verisi kaynaksızdır.
+  const realComps = (L) => !L.comps.length || L.comps.every((c) => c.source);
   async function push(changes) {
-    const by = NS.groupBy(changes, (c) => c.L.ch); const errs = [];
+    const by = NS.groupBy(changes, (c) => c.L.ch); const errs = []; const local = [];
     for (const [ch, L] of Object.entries(by)) {
       const cfg = (db.data.channels || {})[ch] || {};
-      if (cfg.mode === 'live' && ['trendyol', 'hepsiburada'].includes(ch)) {
+      const live = cfg.mode === 'live' && ['trendyol', 'hepsiburada'].includes(ch);
+      // Uydurma (demo) rakip fiyatına göre hesaplanmış fiyat canlı kanala gönderilmez
+      if (live && L.some((c) => !realComps(c.L) && ['buybox', 'esitle'].includes(c.L.strategy))) { errs.push(`${CH[ch].name}: rakip fiyatları gerçek bir kaynaktan alınmadı (demo) — rakibe göre hesaplanan fiyatlar gönderilmedi`); continue; }
+      if (!live) local.push(CH[ch].name);
+      if (live) {
         try { const r = await (await fetch('/api/kanal', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ channel: ch, action: 'stok-fiyat', creds: { sellerId: cfg.sellerId, apiKey: cfg.apiKey, apiSecret: cfg.apiSecret }, payload: { items: L.map((c) => ({ barcode: prod(c.L.pid).barcode, sku: prod(c.L.pid).sku, stock: prod(c.L.pid).stock, price: c.to, listPrice: Math.max(c.to, Number(c.L.maxPrice) || c.to) })) } }) })).json(); if (!r.ok) { errs.push(`${CH[ch].name}: ${r.error}`); continue; } } catch (e) { errs.push(`${CH[ch].name}: sunucu köprüsü yok`); continue; }
       }
-      L.forEach((c) => { c.L.price = c.to; c.L.updated = new Date().toISOString(); c.L.buybox = minComp(c.L) == null || c.to <= minComp(c.L); db.insert('history', { lid: c.L.id, at: today(), own: c.to, min: minComp(c.L) || c.to }, true); });
+      // Canlı olmayan kanalda fiyat yalnızca programda değişir (kanala gönderilmedi, buybox bilinmez)
+      L.forEach((c) => { c.L.price = c.to; c.L.updated = new Date().toISOString(); c.L.notSynced = !live; c.L.buybox = live ? minComp(c.L) == null || c.to <= minComp(c.L) : false; db.insert('history', { lid: c.L.id, at: today(), own: c.to, min: minComp(c.L) || c.to }, true); });
     }
-    db.insert('runs', { at: new Date().toISOString(), n: changes.length, gain: sum(changes, (c) => c.after - c.before), errs }, true); db.save();
-    return errs;
+    db.insert('runs', { at: new Date().toISOString(), n: changes.length, gain: sum(changes, (c) => c.after - c.before), errs, local }, true); db.save();
+    errs.local = local; return errs;
   }
 
   // ---------- Özet ----------
@@ -65,7 +72,7 @@
       const rows = db.all('listings', (x) => (!chf || x.ch === chf) && NS.match(q, prod(x.pid).name, prod(x.pid).sku)).map((x) => ({ id: x.id, x, r: res(x) })).filter((y) => !f || (f === 'zarar' ? y.r.profit < 0 : f === 'dusuk' ? y.r.margin < (Number(S().minMargin) || 8) : !y.x.buybox)).sort((a, b) => a.r.margin - b.r.margin);
       $('#t', el).innerHTML = table({ rows, emptyIcon: 'percent', columns: [
         { label: 'Ürün', render: (y) => `${chB(y.x.ch)} <b>${esc(prod(y.x.pid).name)}</b><div class="small faint">${esc(prod(y.x.pid).sku)} · ${esc(prod(y.x.pid).cat)} · ${prod(y.x.pid).desi} desi</div>` },
-        { label: 'Satış', cls: 'right', render: (y) => `<b>${money(y.x.price)}</b>${y.x.buybox ? '<div>' + badge('Buybox', 'ok') + '</div>' : `<div class="small faint">rakip ${money(minComp(y.x))}</div>`}` },
+        { label: 'Satış', cls: 'right', render: (y) => `<b>${money(y.x.price)}</b>${y.x.notSynced ? '<div>' + badge('Kanala gönderilmedi', 'warn') + '</div>' : y.x.buybox ? '<div>' + badge('Buybox', 'ok') + '</div>' : `<div class="small faint">rakip ${money(minComp(y.x))}${realComps(y.x) ? '' : ' (demo)'}</div>`}` },
         { label: 'Maliyet', cls: 'right', render: (y) => money(prod(y.x.pid).cost) },
         { label: 'Komisyon', cls: 'right', render: (y) => `${money(y.r.comAmt)}<div class="small faint">%${comOf(prod(y.x.pid), y.x.ch)}</div>` },
         { label: 'Kargo + bedel', cls: 'right', render: (y) => money(y.r.cargo + y.r.fee) },
@@ -107,7 +114,7 @@
     ], foot: `${list.length} öneri` }); };
     on(el, 'change', '[data-s]', (e, b) => (b.checked ? sel.add(b.dataset.s) : sel.delete(b.dataset.s)));
     $('#re', el).onclick = () => { list = db.all('listings').map(ch).filter(Boolean); sel.clear(); list.forEach((c) => sel.add(c.L.id)); draw(); };
-    $('#ap', el).onclick = async () => { const L = list.filter((c) => sel.has(c.L.id)); if (!L.length) return toast('Seçili öneri yok', 'err'); if (!(await confirm(`${L.length} fiyat değişikliği pazaryerlerine gönderilsin mi?`))) return; const errs = await push(L); toast(errs.length ? `Bazı kanallar hata verdi: ${errs.join(' · ')}` : `${L.length} fiyat güncellendi`, errs.length ? 'err' : 'ok'); list = db.all('listings').map(ch).filter(Boolean); sel.clear(); list.forEach((c) => sel.add(c.L.id)); draw(); };
+    $('#ap', el).onclick = async () => { const L = list.filter((c) => sel.has(c.L.id)); if (!L.length) return toast('Seçili öneri yok', 'err'); if (!(await confirm(`${L.length} fiyat değişikliği pazaryerlerine gönderilsin mi?`))) return; const errs = await push(L); toast(errs.length ? `Bazı kanallar gönderilmedi: ${errs.join(' · ')}` : errs.local.length ? `TEST — ${errs.local.join(', ')} canlı bağlı değil: fiyatlar yalnızca programda güncellendi, kanala gönderilmedi` : `${L.length} fiyat kanala gönderildi`, errs.length ? 'err' : errs.local.length ? 'warn' : 'ok'); list = db.all('listings').map(ch).filter(Boolean); sel.clear(); list.forEach((c) => sel.add(c.L.id)); draw(); };
     draw();
   }
 
