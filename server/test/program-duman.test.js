@@ -155,8 +155,8 @@ function textAudit() {
 (() => {
   console.log('Program duman testi'); syntax();
   const cat = catalog(); const apps = fs.readdirSync(path.join(ROOT, 'apps')).filter((d) => fs.existsSync(path.join(ROOT, 'apps', d, 'index.html')));
-  assert.ok(apps.length >= 31, 'en az 31 program olmalı'); const out = apps.map((a) => program(a, cat)).filter(Boolean);
-  ok(`${out.length}/${apps.length} program yüklendi; ${out.reduce((t, x) => t + x.routes, 0)} yönlendirme, ${out.reduce((t, x) => t + x.rows, 0)} tohum kaydı, ${out.reduce((t, x) => t + x.req, 0)} zorunlu alan denetlendi`);
+  assert.strictEqual(apps.length, 31, 'program sayısı 31 olmalı'); const out = apps.map((a) => program(a, cat)).filter(Boolean);
+  ok(`${out.length}/31 program yüklendi; ${out.reduce((t, x) => t + x.routes, 0)} yönlendirme, ${out.reduce((t, x) => t + x.rows, 0)} tohum kaydı, ${out.reduce((t, x) => t + x.req, 0)} zorunlu alan denetlendi`);
   if (V) console.table(out);
   textAudit();
   if (fails.length) { console.error(`\n${fails.length} sorun:`); fails.forEach((x) => console.error('  ✗ ' + x)); process.exit(1); }

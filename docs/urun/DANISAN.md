@@ -75,4 +75,4 @@ Bu ürünlere özgü Şikâyetvar araştırması sonuç vermedi. Aşağıdaki ih
 
 ## Deneme
 
-`?demo=1`: tüm ekranlar, not ve kilit, ölçüm, paket düşümü, çakışma, TEST SMS metni, sekreter ve uzman görünümü, anonimleştirme penceresi. Konsol hatası yok. Şifreli saklama tür listesi saf testle doğrulandı. `npm test` geçti (MariaDB, XSD dahil, 30.10.2026). Danışan belgesiyle gerçek bulut akışı ayrıca denenmedi.
+`?demo=1`: tüm ekranlar, not ve kilit, ölçüm, paket düşümü, çakışma, TEST SMS metni, sekreter ve uzman görünümü, anonimleştirme penceresi. Konsol hatası yok. Şifreli saklama tür listesi saf testle doğrulandı. `npm test` çekirdek yaması gelene kadar kırmızı kalır, ayrıntı `CEKIRDEK-ISTEKLERI-uyelik-egitim-saglik.md`. Danışan belgesiyle gerçek bulut akışı ayrıca denenmedi.
