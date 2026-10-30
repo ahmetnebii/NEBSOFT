@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NEBSOFT Fotoğrafçı & Stüdyo</title>
+<link rel="stylesheet" href="../../core/core.css">
+<style>
+  .cal { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; }
+  .cal .dow { text-align: center; font-size: 11px; font-weight: 700; color: var(--text-3); padding: 4px 0; }
+  .cal .gun { min-height: 100px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); padding: 6px; cursor: pointer; display: flex; flex-direction: column; gap: 3px; min-width: 0; font: inherit; color: inherit; text-align: left; }
+  .cal .gun:hover { border-color: var(--accent); }
+  .cal .gun.dis { opacity: .4; }
+  .cal .gun.bugun { box-shadow: inset 0 0 0 2px var(--accent); }
+  .cal .n { font-size: 12px; font-weight: 700; }
+  .cal .ev { display: block; border-radius: 6px; padding: 2px 5px; font-size: 11px; font-weight: 600; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; background: var(--ev); }
+  .adim { display: flex; gap: 4px; overflow-x: auto; padding-bottom: 4px; }
+  .adim span { flex: 1 0 auto; text-align: center; font-size: 11px; font-weight: 600; padding: 6px 8px; border-radius: 8px; background: var(--surface-2); color: var(--text-3); white-space: nowrap; }
+  .adim span.ok { background: var(--accent-soft); color: var(--accent); }
+  .adim span.cur { background: var(--accent); color: #fff; }
+  .kolon { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(210px, 1fr); gap: 10px; overflow-x: auto; padding-bottom: 8px; }
+  .kolon > div { background: var(--surface-2); border-radius: 12px; padding: 8px; min-height: 120px; }
+  .kolon h4 { margin: 2px 4px 8px; font-size: 13px; }
+  .kart { display: block; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 8px 10px; margin-bottom: 6px; color: inherit; text-decoration: none; font-size: 13px; }
+  .fotolar { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 6px; }
+  .fotolar figure { position: relative; margin: 0; aspect-ratio: 1; border-radius: 8px; overflow: hidden; background: var(--bg-2); }
+  .fotolar img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .fotolar .sec { position: absolute; left: 4px; top: 4px; background: var(--accent); color: #fff; border-radius: 6px; font-size: 10px; font-weight: 700; padding: 1px 5px; }
+  .fotolar button { position: absolute; right: 4px; top: 4px; width: 24px; height: 24px; border: 0; border-radius: 6px; background: rgba(0,0,0,.6); color: #fff; cursor: pointer; display: grid; place-items: center; padding: 0; }
+  .fotolar button .ico { width: 14px; height: 14px; }
+  @media (max-width: 700px) { .cal { gap: 2px; } .cal .gun { min-height: 58px; padding: 3px; border-radius: 6px; } .cal .ev { font-size: 0; height: 7px; padding: 0; } }
+</style>
+</head>
+<body>
+<script src="../../core/core.js"></script>
+<script src="../../core/integrations.js"></script>
+<script src="hesap.js"></script>
+<script src="data.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Fotoğraf Galerim</title>
+<link rel="stylesheet" href="../../core/core.css">
+<link rel="stylesheet" href="../../core/track.css">
+<style>
+  :root { --app-accent: #7c3aed; --app-accent-soft: #ede9fe; --app-accent-soft-dark: #2e1065; }
+  .gl { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
+  .gl button { position: relative; aspect-ratio: 4/3; padding: 0; border: 3px solid transparent; border-radius: 10px; overflow: hidden; background: var(--bg-2); cursor: pointer; }
+  .gl button.on { border-color: var(--accent); }
+  .gl img { width: 100%; height: 100%; object-fit: cover; display: block; -webkit-user-drag: none; }
+  .gl .ic { position: absolute; right: 6px; top: 6px; width: 26px; height: 26px; border-radius: 50%; background: rgba(0,0,0,.55); color: #fff; display: grid; place-items: center; }
+  .gl button.on .ic { background: var(--accent); }
+  .gl .ic .ico { width: 15px; height: 15px; }
+  .ln { display: grid; grid-template-columns: 1fr auto; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--border); }
+  .ln:last-child { border-bottom: 0; }
+  .alt { position: sticky; bottom: 0; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 10px 14px; display: flex; gap: 10px; align-items: center; margin-top: 12px; }
+</style>
+</head>
+<body>
+<header class="tk-bar"><div class="in" id="bar"></div></header>
+<main class="tk-wrap" id="root"></main>
+<script src="../../core/core.js"></script>
+<script src="hesap.js"></script>
+<script src="data.js"></script>
+<script>
+(function () {
+  const { esc, $, icon, money, toast, today, on, badge } = NS; const H = window.FOTO_HESAP; const F = window.FOTO;
+  const db = new NS.DB('fotograf', F.seed); const S = () => db.settings({});
+  let musteri = null, aktif = null;
+  const digits = (x) => String(x || '').replace(/\D/g, '').slice(-10);
+  $('#bar').innerHTML = `<div class="tk-mark">${icon('camera')}</div><div class="grow"><b>${esc(S().bizName || 'Stüdyo')}</b><span>Fotoğraf galerim</span></div><span id="out"></span>`;
+  function login() {
+    $('#out').innerHTML = '';
+    $('#root').innerHTML = `<div class="tk-intro"><h1>Fotoğraflarınız burada</h1><p>Stüdyonun verdiği kodla girin, işinizin aşamasını görün, albüme girecek kareleri seçin.</p></div><div class="tk-find" style="flex-wrap:wrap"><input class="input" id="ph" type="tel" placeholder="05xx xxx xx xx" aria-label="Telefon"><input class="input" id="cd" placeholder="Kod" aria-label="Kod" style="max-width:140px"><button class="btn primary" id="go">Giriş</button></div>${db.pub ? '' : '<p class="small muted">Demo: <a href="#" id="hint">örnek müşteriyle gir</a></p>'}`;
+    const go = () => { const ph = $('#ph').value, cd = $('#cd').value.trim().toUpperCase(); if (db.pub && !db.lookup({ phone: ph, code: cd })) return; const c = db.all('customers').find((x) => digits(x.phone) === digits(ph) && (db.pub || String(x.portalCode || '').toUpperCase() === cd)); if (!c) return toast('Telefon veya kod hatalı', 'err'); musteri = c.id; panel(); };
+    $('#go').onclick = go; $('#cd').onkeydown = (e) => { if (e.key === 'Enter') go(); };
+    if ($('#hint')) $('#hint').onclick = (e) => { e.preventDefault(); const g = db.all('galleries', (x) => !x.pickDone)[0] || db.all('galleries')[0]; const c = db.get('customers', db.get('shoots', g.shoot).customer); $('#ph').value = c.phone; $('#cd').value = NS.portalCode(db, c); };
+  }
+  function panel() {
+    const L = db.all('shoots', (s) => s.customer === musteri && s.status !== 'iptal').sort((a, b) => b.date.localeCompare(a.date)); $('#out').innerHTML = '<button class="btn sm" id="cik">Çıkış</button>'; aktif = null;
+    $('#root').innerHTML = L.length ? L.map((s) => { const no = H.asamaNo(s.status); const k = H.kalan(s, db.all('payments')); const g = db.all('galleries', (x) => x.shoot === s.id && H.galeriAcik(x, today()))[0]; const soz = H.sozTarihi(s); return `<div class="tk-head"><div class="top"><div><h2>${esc(s.type)}</h2><div class="muted">${NS.dateLong(s.date)} · ${esc(s.pkgName || '')}</div></div><div class="tk-eta"><b>${soz ? NS.date(soz) : '-'}</b><span>teslim sözü</span></div></div><div class="tk-steps" style="--n:${H.ASAMA.length}">${H.ASAMA.map(([id, ad], i) => `<div class="tk-step ${i < no ? 'done' : i === no ? 'cur' : 'todo'}"><div class="d">${i < no ? icon('check') : i + 1}</div><b>${esc(ad)}</b></div>`).join('')}</div></div>
+      <section class="tk-panel"><h3>${icon('wallet')} Ödeme</h3><div class="b"><div class="ln"><span>Toplam</span><b>${money(H.toplam(s))}</b></div><div class="ln"><span>Kalan</span><b>${money(k)}</b></div>${k > 0 && S().iban ? `<p class="small">IBAN: <span class="mono">${esc(S().iban)}</span></p>` : ''}</div></section>
+      ${g ? `<section class="tk-panel"><h3>${icon('image')} ${esc(g.name)}</h3><div class="b"><p class="small muted">${g.photos.length} fotoğraf · son gün ${NS.date(g.expires)}${g.pickLimit ? ` · en çok ${g.pickLimit} kare seçebilirsiniz` : ''}</p>${g.pickDone ? `<p>${badge('Seçiminiz stüdyoya iletildi', 'ok')} ${(g.picks || []).length} kare</p>` : ''}<button class="btn primary" data-g="${g.id}">${icon('eye')} Galeriyi aç</button>${g.downloadLink ? ` <a class="btn" href="${esc(g.downloadLink)}" target="_blank" rel="noopener noreferrer">${icon('download')} Dosyaları indir</a>` : ''}</div></section>` : ''}`; }).join('') : `<div class="tk-call"><h3>Kayıt bulunamadı</h3><p>Çekiminiz görünmüyorsa stüdyoyla görüşün.</p></div>`;
+  }
+  function galeri() {
+    const g = db.get('galleries', aktif); if (!g) return panel(); const set = new Set(g.picks || []); const kilit = g.pickDone;
+    $('#root').innerHTML = `<div class="row mb"><button class="btn" id="dn">${icon('back')} Geri</button><b class="grow">${esc(g.name)}</b></div><div class="gl">${g.photos.map((u, i) => `<button class="${set.has(u) ? 'on' : ''}" data-p="${i}" ${kilit ? 'disabled' : ''} aria-pressed="${set.has(u)}" aria-label="Fotoğraf ${i + 1}"><img loading="lazy" src="${esc(F.src(u))}" alt=""><span class="ic">${icon(set.has(u) ? 'check' : 'plus')}</span></button>`).join('')}</div>${kilit ? '<p class="muted mt">Seçiminiz tamamlandı. Değişiklik için stüdyoyla görüşün.</p>' : `<div class="alt"><b class="grow">${set.size}${g.pickLimit ? ' / ' + g.pickLimit : ''} seçildi</b><button class="btn" id="kay">Kaydet</button><button class="btn primary" id="bit" ${set.size ? '' : 'disabled'}>${icon('check')} Seçimi bitir</button></div>`}`;
+  }
+  on(document.body, 'click', '[data-g]', (e, b) => { aktif = b.dataset.g; galeri(); });
+  on(document.body, 'click', '#dn', panel);
+  on(document.body, 'click', '[data-p]', (e, b) => { const g = db.get('galleries', aktif); const u = g.photos[Number(b.dataset.p)]; const L = g.picks || []; if (L.includes(u)) g.picks = L.filter((x) => x !== u); else { if (g.pickLimit && L.length >= g.pickLimit) return toast(`En fazla ${g.pickLimit} kare seçebilirsiniz`, 'warn'); g.picks = [...L, u]; } galeri(); });
+  on(document.body, 'click', '#kay', () => { db.save(); toast('Seçiminiz kaydedildi', 'ok'); });
+  on(document.body, 'click', '#bit', async () => { const g = db.get('galleries', aktif); if (!(await NS.confirm(`${g.picks.length} kare seçildi. Seçim bitince değiştirilemez, stüdyo albüme bu kareleri alır.`, { ok: 'Seçimi bitir', danger: false }))) return; g.pickDone = true; if (!db.pub) g.pickAt = new Date().toISOString(); db.save(); toast('Seçiminiz stüdyoya iletildi', 'ok'); galeri(); });
+  on(document.body, 'click', '#cik', () => { musteri = null; if (db.pub) db.pubLogout(); login(); });
+  login();
+})();
+</script>
+</body>
+</html>

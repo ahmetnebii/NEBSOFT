@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NEBSOFT Yurt & Apart</title>
+<link rel="stylesheet" href="../../core/core.css">
+<style>
+  .kat { margin-bottom: 16px; }
+  .kat h3 { margin: 0 0 8px; }
+  .odalar { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 10px; }
+  .oda { border: 1px solid var(--border); border-radius: 12px; background: var(--surface); padding: 10px 12px; }
+  .oda.kapali { opacity: .55; border-style: dashed; }
+  .oda.dolu { border-color: var(--ok); }
+  .oda .no { font-weight: 800; font-size: 15px; }
+  .yatak { display: flex; align-items: center; gap: 6px; width: 100%; border: 0; background: none; color: var(--text); font: 500 12px var(--font); padding: 4px 0; cursor: pointer; text-align: left; min-width: 0; }
+  .yatak .ico { width: 14px; height: 14px; flex: none; color: var(--text-3); }
+  .yatak.bos { color: var(--accent); }
+  .yatak span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .gate { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .gate-s { border-radius: 16px; padding: 22px; text-align: center; background: var(--surface); border: 1px solid var(--border); margin-top: 12px; }
+  .gate-s.giris { background: var(--ok); color: #fff; border-color: var(--ok); }
+  .gate-s.cikis { background: var(--warn); color: #fff; border-color: var(--warn); }
+  .plan-sat { display: grid; grid-template-columns: 1fr auto auto; gap: 10px; align-items: center; padding: 9px 0; border-bottom: 1px solid var(--border); }
+  .plan-sat:last-child { border-bottom: 0; }
+  @media (max-width: 900px) { .gate { grid-template-columns: 1fr; } }
+  @media (max-width: 700px) { .plan-sat { grid-template-columns: 1fr auto; } }
+</style>
+</head>
+<body>
+<script src="../../core/core.js"></script>
+<script src="../../core/integrations.js"></script>
+<script src="hesap.js"></script>
+<script src="data.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

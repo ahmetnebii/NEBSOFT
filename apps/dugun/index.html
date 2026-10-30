@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NEBSOFT Düğün Salonu</title>
+<link rel="stylesheet" href="../../core/core.css">
+<style>
+  .cal { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; }
+  .cal .dow { text-align: center; font-size: 11px; font-weight: 700; color: var(--text-3); padding: 4px 0; }
+  .cal .gun { min-height: 104px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); padding: 6px; cursor: pointer; display: flex; flex-direction: column; gap: 3px; min-width: 0; font: inherit; color: inherit; text-align: left; }
+  .cal .gun:hover { border-color: var(--accent); }
+  .cal .gun.dis { opacity: .4; }
+  .cal .gun.bugun { box-shadow: inset 0 0 0 2px var(--accent); }
+  .cal .gun.hs .n { color: var(--accent); }
+  .cal .n { font-size: 12px; font-weight: 700; }
+  .cal .ev { display: block; border-radius: 6px; padding: 2px 5px; font-size: 11px; font-weight: 600; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .cal .ev.opsiyon { background: repeating-linear-gradient(45deg, var(--ev), var(--ev) 6px, color-mix(in srgb, var(--ev) 72%, #000) 6px, color-mix(in srgb, var(--ev) 72%, #000) 12px); }
+  .cal .ev.kesin, .cal .ev.tamam { background: var(--ev); }
+  .leg { display: flex; flex-wrap: wrap; gap: 12px; font-size: 12px; color: var(--text-2); margin-top: 10px; }
+  .leg i { display: inline-block; width: 12px; height: 12px; border-radius: 3px; margin-right: 4px; vertical-align: -1px; }
+  .plan-sat { display: grid; grid-template-columns: 1fr auto auto; gap: 10px; align-items: center; padding: 9px 0; border-bottom: 1px solid var(--border); }
+  .plan-sat:last-child { border-bottom: 0; }
+  @media (max-width: 700px) { .cal { gap: 2px; } .cal .gun { min-height: 58px; padding: 3px; border-radius: 6px; } .cal .ev { font-size: 0; height: 7px; padding: 0; } .plan-sat { grid-template-columns: 1fr auto; } }
+</style>
+</head>
+<body>
+<script src="../../core/core.js"></script>
+<script src="../../core/integrations.js"></script>
+<script src="hesap.js"></script>
+<script src="data.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

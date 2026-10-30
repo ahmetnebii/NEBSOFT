@@ -1045,6 +1045,89 @@ RULES.nakliyat = sahaKural(['inventory', 'damages']);
 RULES.temizlik = sahaKural();
 RULES.usta = sahaKural();
 RULES.peyzaj = sahaKural(['uses', 'target', 'safety']);
+// ---------- Düğün salonu: müsaitlik, teklif talebi, müşteri planı (salon.html) ----------
+// Dolu günler isimsiz gider. Ödeme planı ve kalemler yalnızca kendi telefonu + koduyla giren müşteriye gider; iç not, işlem geçmişi ve imza görseli gitmez.
+const DH = require('../../apps/dugun/hesap.js');
+const dgnCode = (c) => (c.portalCode ? norm(c.portalCode) : null);
+RULES.dugun = {
+  settings: ['bizName', 'bizPhone', 'bizAddress', 'iban', 'showPrices'],
+  pub: { halls: { fields: ['id', 'name', 'capacity', 'desc', 'color'] } },
+  login: (x, q) => { const code = norm(q.code); const d = digits(q.phone); const c = code && d.length === 10 ? x.col('customers').find((r) => digits(r.phone) === d && dgnCode(r) === code) : null; return c ? { k: 'm', i: c.id } : null; },
+  loginError: 'Telefon veya kod hatalı',
+  view: (x) => {
+    const fiyat = (x.doc._settings || {}).showPrices !== false; const out = { busy: x.col('events').filter((e) => DH.aktif(e, x.today)).map((e) => ({ d: e.date, h: e.hall, s: e.seans })), packages: x.col('packages').map((p) => { const r = { id: p.id, name: p.name, desc: p.desc, perPerson: p.perPerson }; if (fiyat) r.price = p.price; return r; }) };
+    const m = me(x, 'm'); if (!m) return out; const c = x.get('customers', m); if (!c) return out;
+    const ev = x.col('events').filter((e) => e.customer === m && e.status !== 'iptal'); const ids = new Set(ev.map((e) => e.id));
+    return { ...out, customers: [{ id: c.id, name: c.name, phone: c.phone }], events: ev.map((e) => ({ ...strip(e, ['note', 'opsNote', 'log', 'tasks', 'contract', 'cancel']), hallName: (x.get('halls', e.hall) || {}).name, addenda: (e.addenda || []).map((a) => ({ text: a.text, amount: a.amount, sign: a.sign ? { name: a.sign.name } : undefined })) })), payments: x.col('payments').filter((p) => ids.has(p.event)).map((p) => ({ id: p.id, event: p.event, amount: p.amount, at: p.at })) };
+  },
+  write: {
+    leads: { ins: I({ name: 'str:80', phone: 'phone', date: 'date?', seans: 'enum:gunduz|aksam?', hall: 'id?', type: 'str:30?', guests: 'int:0:5000?', note: 'str:500?', consent: 'bool' }, () => ({ status: 'yeni', src: 'web' }), (r, x) => {
+      if (!r.consent) bad('Aranma izni gerekli'); if (r.date && r.date < x.today) bad('Geçmiş tarih seçilemez'); if (r.hall && !x.get('halls', r.hall)) bad('Salon bulunamadı');
+      const gun = x.col('leads').filter((l) => samePhone(l.phone, r.phone) && String(l.created || '').slice(0, 10) === x.today).length; if (gun >= 3) bad('Bugün için talebiniz alındı, işletme sizi arayacak');
+    }) },
+  },
+};
+
+// ---------- Yurt: veli ve öğrenci portalı (veli.html) ----------
+// Veli kodu ile öğrenci kodu ayrıdır. Reşit öğrencinin velisi yalnızca kayıtlı izinle girer. Sağlık, kimlik ve iç not hiçbir görünüme gitmez. Belge şifrelidir (belge.js).
+const YH = require('../../apps/yurt/hesap.js');
+const yurtOgr = (x) => { const k = x.ident && x.ident.k; const s = x.ident ? x.get('students', x.ident.i) : null; return s && (k === 's' || (k === 'v' && YH.veliPaylasir(s, x.today))) ? s : null; };
+const ykod = (o) => (o && o.portalCode ? norm(o.portalCode) : null);
+RULES.yurt = {
+  settings: ['bizName', 'bizPhone', 'bizAddress', 'iban'],
+  pub: {},
+  login: (x, q) => {
+    const code = norm(q.code); const d = digits(q.phone); if (!code || d.length !== 10) return null;
+    const s = x.col('students').find((r) => digits(r.phone) === d && ykod(r) === code); if (s) return { k: 's', i: s.id };
+    const v = x.col('students').find((r) => r.guardian && digits(r.guardian.phone) === d && ykod(r.guardian) === code && YH.veliPaylasir(r, x.today)); return v ? { k: 'v', i: v.id } : null;
+  },
+  loginError: 'Bilgiler eşleşmedi veya öğrenci veli paylaşımına izin vermedi',
+  view: (x) => {
+    const s = yurtOgr(x); if (!s) return {}; const stays = x.col('stays').filter((k) => k.student === s.id); const ids = new Set(stays.map((k) => k.id)); const kalan = stays.find((k) => !k.left); const sinir = addDay(x.today, -30);
+    return { students: [{ id: s.id, name: s.name, phone: s.phone, birth: s.birth, guardian: { phone: (s.guardian || {}).phone }, veliIzni: s.veliIzni ? { at: s.veliIzni.at } : undefined }], stays: stays.map((k) => strip(k, ['leftInfo', 'depoOut', 'sign', 'roomLog', 'idIn', 'idOut'])), rooms: kalan ? x.col('rooms').filter((r) => r.id === kalan.room).map((r) => ({ id: r.id, no: r.no })) : [], payments: x.col('payments').filter((p) => ids.has(p.stay)).map((p) => ({ id: p.id, stay: p.stay, amount: p.amount, kind: p.kind, at: p.at })), moves: x.col('moves').filter((m) => m.student === s.id && String(m.at).slice(0, 10) >= sinir).map((m) => ({ id: m.id, student: m.student, type: m.type, at: m.at })), leaves: x.col('leaves').filter((l) => l.student === s.id), tickets: x.ident.k === 's' ? x.col('tickets').filter((t) => t.student === s.id) : [] };
+  },
+  write: {
+    leaves: {
+      ins: I({ student: 'id', from: 'date', to: 'date', dest: 'str:200' }, (r, x) => ({ status: 'bekliyor', src: x.ident && x.ident.k === 'v' ? 'veli' : 'ogrenci', guardianOk: !!x.ident && x.ident.k === 'v' }), (r, x) => { const s = yurtOgr(x); if (!s || s.id !== r.student) deny(); if (!r.dest) bad('Kalacağı yeri yazın'); if (r.to < r.from || r.from < x.today) bad('Tarihleri kontrol edin'); if (x.col('leaves').filter((l) => l.student === s.id && l.status === 'bekliyor').length >= 5) bad('Bekleyen izin talebiniz var'); }),
+      upd: U({ guardianOk: 'bool' }, (cur, x, set) => { const s = yurtOgr(x); return !!s && x.ident.k === 'v' && cur.student === s.id && cur.status === 'bekliyor' && set.guardianOk === true; }, () => ({ guardianAt: nowIso() })),
+    },
+    tickets: { ins: I({ student: 'id', room: 'id?', text: 'str:500' }, (r, x) => ({ status: 'acik', src: 'ogrenci', at: nowIso() }), (r, x) => { const s = yurtOgr(x); if (!s || s.id !== r.student || x.ident.k !== 's') deny(); if (!r.text) bad('Açıklama yazın'); const k = x.col('stays').find((q) => q.student === s.id && !q.left); r.room = k ? k.room : ''; if (x.col('tickets').filter((t) => t.student === s.id && t.status === 'acik').length >= 10) bad('Açık bildiriminiz çok'); }) },
+  },
+};
+
+// ---------- Fotoğrafçı: müşteri galerisi (galeri.html) ----------
+// Fotoğraf adresleri yalnız giriş yapan müşteriye, galeri açıkken ve süresi dolmamışsa gider. Müşteri yalnız kendi galerisinde seçim yazar; seçim galerideki karelerle sınırlı, bitince kilitlenir.
+const FH = require('../../apps/fotograf/hesap.js');
+const fotoCode = (c) => (c.portalCode ? norm(c.portalCode) : null);
+const fotoGal = (cur, x) => { const m = me(x, 'm'); const s = m && x.get('shoots', cur.shoot); return !!s && s.customer === m && s.status !== 'iptal' && FH.galeriAcik(cur, x.today); };
+RULES.fotograf = {
+  settings: ['bizName', 'bizPhone', 'bizAddress', 'iban'],
+  pub: {},
+  login: (x, q) => { const code = norm(q.code); const d = digits(q.phone); const c = code && d.length === 10 ? x.col('customers').find((r) => digits(r.phone) === d && fotoCode(r) === code) : null; return c ? { k: 'm', i: c.id } : null; },
+  loginError: 'Telefon veya kod hatalı',
+  view: (x) => {
+    const m = me(x, 'm'); const c = m && x.get('customers', m); if (!c) return {}; const sh = x.col('shoots').filter((s) => s.customer === m && s.status !== 'iptal'); const ids = new Set(sh.map((s) => s.id));
+    return { customers: [{ id: c.id, name: c.name, phone: c.phone }], shoots: sh.map((s) => ({ id: s.id, customer: s.customer, type: s.type, date: s.date, pkgName: s.pkgName, price: s.price, extras: (s.extras || []).map((e) => ({ qty: e.qty, price: e.price, name: e.name })), discount: s.discount, status: s.status, dueAt: s.dueAt, promiseDays: s.promiseDays })), payments: x.col('payments').filter((p) => ids.has(p.shoot)).map((p) => ({ id: p.id, shoot: p.shoot, amount: p.amount })), galleries: x.col('galleries').filter((g) => ids.has(g.shoot) && FH.galeriAcik(g, x.today)).map((g) => ({ id: g.id, shoot: g.shoot, name: g.name, photos: g.photos, picks: g.picks || [], pickLimit: g.pickLimit, expires: g.expires, published: g.published, pickDone: !!g.pickDone, downloadLink: g.downloadLink })) };
+  },
+  write: {
+    galleries: { upd: U({ picks: 'strs:1000', pickDone: 'bool' }, (cur, x, set) => { if (!fotoGal(cur, x) || cur.pickDone) return false; if (set.picks !== undefined) { const h = FH.secimHata(cur, set.picks); if (h) bad(h); } if (set.pickDone === false) return false; return true; }, (cur, x, p) => (p.pickDone ? { pickAt: nowIso() } : {})) },
+  },
+};
+
+// ---------- Oyun salonu: üye kartı ve doğum günü talebi (kart.html) ----------
+// Bakiye yalnız kendi telefonu + koduyla görünür. Doğum günü talebinde fiyat, bitiş saati ve durum sunucuda hesaplanır; dolu saatler isimsiz denetlenir.
+const OH = require('../../apps/oyun/hesap.js');
+const oyunCode = (m) => (m.portalCode ? norm(m.portalCode) : null);
+RULES.oyun = {
+  settings: ['bizName', 'bizPhone', 'bizAddress', 'iban', 'rulesText'],
+  pub: { packages: { fields: ['id', 'name', 'price', 'kids', 'dur', 'includes'] }, areas: { fields: ['id', 'name', 'capacity'] } },
+  login: (x, q) => { const code = norm(q.code); const d = digits(q.phone); const m = code && d.length === 10 ? x.col('members').find((r) => digits(r.phone) === d && oyunCode(r) === code) : null; return m ? { k: 'm', i: m.id } : null; },
+  loginError: 'Telefon veya kod hatalı',
+  view: (x) => { const i = me(x, 'm'); const m = i && x.get('members', i); if (!m) return {}; return { members: [{ id: m.id, no: m.no, name: m.name, phone: m.phone }], cardTx: x.col('cardTx').filter((t) => t.member === i).map((t) => ({ id: t.id, member: t.member, amount: t.amount, kind: t.kind, at: t.at, note: t.note })) }; },
+  write: {
+    bookings: { ins: I({ child: 'str:80', guardian: 'str:80', phone: 'phone', date: 'date', start: 'time', kids: 'int:1:200', pkg: 'id', area: 'id' }, (r, x) => { const p = x.get('packages', r.pkg); if (!p) bad('Paket bulunamadı'); const z = OH.toMin(r.start) + (Number(p.dur) || 120); return { end: `${String(Math.floor(z / 60) % 24).padStart(2, '0')}:${String(z % 60).padStart(2, '0')}`, status: 'talep', src: 'web', no: x.seq('bookings', 'DG'), pkgName: p.name, total: OH.rezTutar(p, r.kids, 0), paid: 0 }; }, (r, x) => { if (!r.child || !r.guardian) bad('Ad gerekli'); if (r.date < x.today) bad('Geçmiş tarih seçilemez'); if (!x.get('areas', r.area)) bad('Alan bulunamadı'); const tampon = (x.doc._settings || {}).bufferMin; if (OH.cakisan(x.col('bookings'), r, tampon === undefined ? 30 : tampon, r.id)) throw Object.assign(new Error('Bu saat dolu, başka saat seçin'), { status: 409 }); if (x.col('bookings').filter((b) => samePhone(b.phone, r.phone) && b.status === 'talep').length >= 3) bad('Bekleyen talebiniz var'); }) },
+  },
+};
 
 module.exports = RULES;
 module.exports._lib = { appendOnly, strip, bad, deny, val, clean, I, U, me, mergeByPhone, samePhone, digits, norm, overlap, toMin, nowIso };

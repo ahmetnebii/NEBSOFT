@@ -21,7 +21,7 @@ const BEKLEME = 7 * 864e5; // referansı kalkan dosya bu süre durur: yanlış s
 const TUR = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp' };
 const TID = /^[0-9a-f]{16}$/; const ID = /^[0-9a-f]{32}$/;
 // Program, fotoğrafın durduğu alanlar ve sınıf. Burada olmayan program yükleyemez: depo genel dosya barındırma değildir.
-const PROG = { eticaret: { kol: 'products', alan: ['photos'], sinif: 'acik' }, galeri: { kol: 'vehicles', alan: ['photos'], sinif: 'acik' }, kiralama: { kol: 'rents', alan: ['outPhotos', 'inPhotos'], sinif: 'gizli' } };
+const PROG = { eticaret: { kol: 'products', alan: ['photos'], sinif: 'acik' }, galeri: { kol: 'vehicles', alan: ['photos'], sinif: 'acik' }, kiralama: { kol: 'rents', alan: ['outPhotos', 'inPhotos'], sinif: 'gizli' }, fotograf: { kol: 'galleries', alan: ['photos'], sinif: 'acik' } }; // fotograf: müşteri galerisi, kod ve bağlantıyla paylaşılır
 ['nakliyat', 'temizlik', 'usta', 'peyzaj'].forEach((a) => { PROG[a] = { kol: 'jobs', alan: ['photos'], sinif: 'gizli' }; }); // saha iş fotoğrafı: müşterinin evi, yalnız işletmenin oturumu okur
 const prog = (app) => (Object.hasOwn(PROG, app) ? PROG[app] : null);
 

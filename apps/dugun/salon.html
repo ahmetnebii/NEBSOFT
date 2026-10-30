@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Müsait Tarih ve Teklif</title>
+<link rel="stylesheet" href="../../core/core.css">
+<link rel="stylesheet" href="../../core/track.css">
+<style>
+  :root { --app-accent: #be185d; --app-accent-soft: #fce7f3; --app-accent-soft-dark: #500724; }
+  .mcal { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; }
+  .mcal .dw { text-align: center; font-size: 11px; font-weight: 700; color: var(--text-3); }
+  .mcal button { aspect-ratio: 1; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); color: var(--text); font: 600 13px var(--font); cursor: pointer; padding: 0; }
+  .mcal button.dolu { background: var(--bg-2); color: var(--text-3); text-decoration: line-through; cursor: not-allowed; }
+  .mcal button.kismi { border-color: var(--warn); }
+  .mcal button.sec { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .mcal button:disabled { opacity: .45; cursor: not-allowed; }
+  .ln { display: grid; grid-template-columns: 1fr auto; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--border); }
+  .ln:last-child { border-bottom: 0; }
+  .pk { border: 1px solid var(--border); border-radius: 12px; padding: 14px; background: var(--surface); }
+  .pks { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px; }
+</style>
+</head>
+<body>
+<header class="tk-bar"><div class="in" id="bar"></div></header>
+<main class="tk-wrap" id="root" style="max-width:760px"></main>
+<script src="../../core/core.js"></script>
+<script src="hesap.js"></script>
+<script src="data.js"></script>
+<script>
+(function () {
+  const { esc, $, icon, money, toast, today, on } = NS; const H = window.DUGUN_HESAP;
+  const db = new NS.DB('dugun', window.DUGUN.seed); const S = () => db.settings({});
+  let ay = today().slice(0, 7), hall = null, tarih = null, musteri = null;
+  $('#bar').innerHTML = `<div class="tk-mark">${icon('heart')}</div><div class="grow"><b>${esc(S().bizName || 'Düğün salonu')}</b><span>Müsait tarih ve teklif</span></div><span id="out"></span>`;
+  const digits = (x) => String(x || '').replace(/\D/g, '').slice(-10);
+  // Sunucu dolu günleri isimsiz (busy) verir; demoda aynı liste yerel kayıttan çıkar
+  const busy = () => (db.pub ? db.data.busy || [] : db.all('events', (e) => H.aktif(e, today())).map((e) => ({ d: e.date, h: e.hall, s: e.seans })));
+  const dolu = (d, s) => busy().some((b) => b.d === d && b.h === hall && H.seansCakisir(b.s, s));
+  function takvim() {
+    const [y, m] = ay.split('-').map(Number); const ilk = new Date(y, m - 1, 1); const bos = (ilk.getDay() + 6) % 7; const son = new Date(y, m, 0).getDate(); const G = Array.from({ length: son }, (_, i) => `${ay}-${NS.pad(i + 1)}`);
+    return `<div class="row between mb"><button class="btn icon" data-ay="-1" aria-label="Önceki ay">${icon('left')}</button><b>${esc(NS.MONTHS[m - 1])} ${y}</b><button class="btn icon" data-ay="1" aria-label="Sonraki ay">${icon('right')}</button></div>
+      <div class="mcal">${['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'].map((x) => `<div class="dw">${x}</div>`).join('')}${'<span></span>'.repeat(bos)}${G.map((d) => { const a = dolu(d, 'gunduz'), b = dolu(d, 'aksam'); const hep = a && b; return `<button data-d="${d}" class="${hep ? 'dolu' : a || b ? 'kismi' : ''} ${d === tarih ? 'sec' : ''}" ${d <= today() || hep ? 'disabled' : ''} aria-label="${NS.date(d)}${hep ? ', dolu' : a || b ? ', bir seans dolu' : ', müsait'}">${Number(d.slice(8))}</button>`; }).join('')}</div>
+      <p class="small muted mt">Üstü çizili gün dolu, sarı kenarlı günde bir seans dolu. Kesin bilgi için talep bırakın; rezervasyon işletme onayıyla kesinleşir.</p>`;
+  }
+  function vitrin() {
+    const halls = db.all('halls'); hall = hall || (halls[0] || {}).id; const pk = db.all('packages');
+    $('#out').innerHTML = `<button class="btn sm" id="gir">${icon('user')} Müşteri girişi</button>`;
+    $('#root').innerHTML = `<div class="tk-intro"><h1>Hayalinizdeki tarih müsait mi?</h1><p>Salonu ve günü seçin, müsaitliği görün, teklif isteyin.</p></div>
+      <section class="tk-panel"><h3>${icon('calendar')} Takvim</h3><div class="b">${halls.length > 1 ? `<div class="seg mb">${halls.map((h) => `<button data-h="${h.id}" class="${h.id === hall ? 'active' : ''}">${esc(h.name)}</button>`).join('')}</div>` : ''}${halls.length ? takvim() : '<p class="muted">Salon bilgisi henüz girilmedi.</p>'}</div></section>
+      ${pk.length ? `<section class="tk-panel"><h3>${icon('gift')} Paketler</h3><div class="b"><div class="pks">${pk.map((p) => `<div class="pk"><b>${esc(p.name)}</b><div class="small muted">${esc(p.desc || '')}</div>${p.price ? `<div class="mt"><b>${money(p.price)}</b>${p.perPerson ? ' <span class="small faint">kişi başı, başlangıç</span>' : ' <span class="small faint">başlangıç</span>'}</div>` : ''}</div>`).join('')}</div></div></section>` : ''}
+      <section class="tk-panel"><h3>${icon('message')} Teklif isteyin</h3><div class="b" id="tf"><div class="form-grid"><div class="field"><label>Ad soyad *</label><input class="input" id="n" autocomplete="name"></div><div class="field"><label>Telefon *</label><input class="input" id="p" type="tel" autocomplete="tel"></div><div class="field"><label>Tarih</label><input class="input" id="dt" type="date" min="${today()}" value="${tarih || ''}"></div><div class="field"><label>Seans</label><select class="input" id="sn">${H.SEANS.map((s) => `<option value="${s.id}">${s.name}</option>`).join('')}</select></div><div class="field"><label>Etkinlik</label><select class="input" id="ty">${H.TUR.map((t) => `<option>${esc(t)}</option>`).join('')}</select></div><div class="field"><label>Davetli sayısı</label><input class="input" id="gs" type="number" min="0" max="5000"></div><div class="field full"><label>Not</label><textarea class="input" id="nt" maxlength="500"></textarea></div></div><label class="check small mt"><input type="checkbox" id="kv"> Telefon numaramın teklif için aranmak amacıyla kullanılmasını kabul ediyorum.</label><div class="mt"><button class="btn primary" id="gn">${icon('send')} Teklif iste</button></div></div></section>`;
+    $('#gn').onclick = () => {
+      const r = { id: NS.uid(), name: $('#n').value.trim(), phone: $('#p').value.trim(), date: $('#dt').value || undefined, seans: $('#sn').value, hall, type: $('#ty').value, guests: Number($('#gs').value) || 0, note: $('#nt').value.trim(), consent: $('#kv').checked };
+      if (!r.name || digits(r.phone).length < 10) return toast('Ad ve telefon gerekli', 'err'); if (!r.consent) return toast('Devam etmek için aranma iznini işaretleyin', 'err');
+      if (!db.pub) Object.assign(r, { status: 'yeni', src: 'web', created: new Date().toISOString() }); (db.data.leads = db.data.leads || []).push(r); db.save(); $('#tf').innerHTML = `<div class="tk-call"><h3>${icon('check')} Talebiniz işletmeye iletildi</h3><p>İşletme ${esc(S().bizPhone || '')} numarasından sizi arayacak. Bu kayıt rezervasyon değildir; tarih işletme onayıyla kesinleşir.</p></div>`;
+    };
+  }
+  function giris() {
+    $('#out').innerHTML = `<button class="btn sm" id="geri">${icon('back')} Takvim</button>`;
+    $('#root').innerHTML = `<div class="tk-intro"><h1>Etkinliğiniz</h1><p>Sözleşme tutarınızı, ödeme planınızı ve kalan borcunuzu görün. İşletmenin verdiği kodla girin.</p></div><div class="tk-find" style="flex-wrap:wrap"><input class="input" id="ph" type="tel" placeholder="05xx xxx xx xx" aria-label="Telefon"><input class="input" id="cd" placeholder="Kod" aria-label="Kod" style="max-width:140px"><button class="btn primary" id="go">Giriş</button></div>${db.pub ? '' : '<p class="small muted">Demo: <a href="#" id="hint">örnek müşteriyle gir</a></p>'}`;
+    const go = () => { const ph = $('#ph').value, cd = $('#cd').value.trim().toUpperCase(); if (db.pub) { if (!db.lookup({ phone: ph, code: cd })) return; } const c = db.all('customers').find((x) => digits(x.phone) === digits(ph) && (db.pub || String(x.portalCode || '').toUpperCase() === cd)); if (!c) return toast('Telefon veya kod hatalı', 'err'); musteri = c.id; panel(); };
+    $('#go').onclick = go; $('#cd').onkeydown = (e) => { if (e.key === 'Enter') go(); };
+    if ($('#hint')) $('#hint').onclick = (e) => { e.preventDefault(); const ev = db.all('events', (x) => x.status === 'kesin')[0]; const c = db.get('customers', ev.customer); $('#ph').value = c.phone; $('#cd').value = NS.portalCode(db, c); };
+  }
+  function panel() {
+    const L = db.all('events', (e) => e.customer === musteri && e.status !== 'iptal').sort((a, b) => a.date.localeCompare(b.date)); const P = db.all('payments');
+    $('#out').innerHTML = `<button class="btn sm" id="cik">Çıkış</button>`;
+    $('#root').innerHTML = L.length ? L.map((e) => { const o = H.odeme(e, P, today()); const t = H.toplam(e); return `<div class="tk-head"><div class="top"><div><h2>${esc(e.type)}</h2><div class="muted">${NS.dateLong(e.date)} · ${esc(e.hallName || (db.get('halls', e.hall) || {}).name || '')}</div></div><div class="tk-eta"><b>${money(o.kalan)}</b><span>kalan</span></div></div></div>
+      <section class="tk-panel"><h3>${icon('receipt')} Kalemler</h3><div class="b"><div class="ln"><span>${esc(e.pkgName)}</span><b>${money(e.pkgPrice)}</b></div>${(e.extras || []).map((x) => `<div class="ln"><span>${esc(x.name)} × ${x.qty}</span><b>${money(x.qty * x.price)}</b></div>`).join('')}${t.indirim ? `<div class="ln"><span>İndirim</span><b>-${money(t.indirim)}</b></div>` : ''}${(e.addenda || []).filter((a) => a.sign).map((a) => `<div class="ln"><span>Ek protokol: ${esc(a.text)}</span><b>${money(a.amount)}</b></div>`).join('')}<div class="ln"><b>Genel toplam</b><b>${money(t.genel)}</b></div></div></section>
+      <section class="tk-panel"><h3>${icon('wallet')} Ödeme planı</h3><div class="b">${o.satir.map((s) => `<div class="ln"><span><b>${esc(s.label)}</b><div class="small muted">${NS.date(s.due)}</div></div><span>${money(s.amount)} ${s.kalan <= 0 ? NS.badge('Ödendi', 'ok') : s.gecikti ? NS.badge('Gecikti', 'err') : ''}</span></div>`).join('') || '<p class="muted">Plan, etkinlik kesinleşince görünür.</p>'}${o.kalan > 0 && S().iban ? `<p class="small mt">IBAN: <span class="mono">${esc(S().iban)}</span></p>` : ''}</div></section>`; }).join('') : `<div class="tk-call"><h3>Kayıt bulunamadı</h3><p>Etkinliğiniz görünmüyorsa işletmeyle görüşün.</p></div>`;
+  }
+  on(document.body, 'click', '[data-h]', (e, b) => { hall = b.dataset.h; tarih = null; vitrin(); });
+  on(document.body, 'click', '[data-ay]', (e, b) => { const [y, m] = ay.split('-').map(Number); ay = new Date(Date.UTC(y, m - 1 + Number(b.dataset.ay), 1)).toISOString().slice(0, 7); const v = { n: $('#n').value, p: $('#p').value }; vitrin(); $('#n').value = v.n; $('#p').value = v.p; });
+  on(document.body, 'click', '[data-d]', (e, b) => { tarih = b.dataset.d; const v = { n: $('#n').value, p: $('#p').value }; vitrin(); $('#n').value = v.n; $('#p').value = v.p; $('#dt').value = tarih; $('#sn').value = dolu(tarih, 'aksam') ? 'gunduz' : 'aksam'; });
+  on(document.body, 'click', '#gir', giris); on(document.body, 'click', '#geri', vitrin);
+  on(document.body, 'click', '#cik', () => { musteri = null; if (db.pub) db.pubLogout(); vitrin(); });
+  vitrin();
+})();
+</script>
+</body>
+</html>
