@@ -1,6 +1,24 @@
 # Ön Muhasebe — Ürün Spesifikasyonu
 
-> **Durum (29.10.2026):** Kullanıcı onayladı. **1. ve 2. dalga tamamlandı** (aşağıda). 3. dalga sırada.
+> **Durum (30.10.2026):** Kullanıcı onayladı. **1., 2. ve 3. dalga tamamlandı** (aşağıda).
+
+## 3. dalga — yapılanlar (30.10.2026)
+| Konu | Sonuç | Kanıt |
+|---|---|---|
+| Cari portalı (`cari.html`) | VKN + rastgele kodla giriş; özet, ekstre, faturalar, ödemeler, mutabakat onay/itiraz (sunucu kuralı `RULES.muhasebe`) | Tarayıcı (yerel mod): Cariler > Akdeniz Otelcilik > "Mutabakat iste" → portal girişi → "Bakiyeyi onaylıyorum" (Ali Veli) → programda Mutabakatlar kartında "Onaylandı · Ali Veli". Bulutta (`NS.pub`) gerçek giriş denenmedi |
+| Özelleştirilebilir özet | `ozet.js`: 8 kart (hesaplar, özet göstergeler, uyarılar, grafik, geciken, ödenecek, nakit tahmini, projeler); "Özelleştir" ile göster/gizle ve sırala; ayar kullanıcı başına `S().dash[kullanıcı]`; ayar yoksa varsayılan düzen; "Varsayılana dön" | Tarayıcı: grafik gizlendi, uyarılar en üste alındı, yeniden açılınca korundu |
+| Akıllı uyarılar | Mükerrer fatura şüphesi (aynı tür + cari + TL toplam, 3 gün içinde, son 60 gün; "Mükerrer değil" ile susturulur), risk limiti aşımı, kritik nakit (13 haftalık tahminde bakiye < 0), vadesi bugün dolan alacak/ödeme. Özet kartı + bildirim merkezi (tür başına günde bir, saatlik kontrol) | Tarayıcı: kopya fatura → "Mükerrer olabilir: … SF2026001075 ve SF2026001075X"; risk limiti 1.000 → "Risk limiti aşıldı"; bildirim zilinde 2 kayıt; "Mükerrer değil" → uyarı kalktı |
+| Proje / etiket kârlılığı | `boyut.js`: proje kartı (ad, kod, bütçe, açık/kapalı); fatura düzenleyicisinde ve gelir/gider kaydında "Proje"; "Proje & Şube" sayfası: dönem içi gelir − gider = kâr, marj, bütçe aşımı; "Projesiz kayıtlar" satırı; faturalar listesinde proje etiketi ve proje adıyla arama | Tarayıcı: "Otel A Projesi" → 1.500 ₺ satış faturası → proje satırında gelir 1.500 ₺ |
+| Çoklu şube | Şube tanımı; depo ve kasa/banka hesabı şubeye bağlanır; yeni fatura şubeyi kullanıcıdan → depodan, gelir/gider hesaptan alır; Faturalar, Kasa & Banka ve Özet'te şube seçimi; şube kârlılığı; kullanıcı şube kısıtı (yönetici hariç, yalnızca o şubenin fatura ve kasa hareketleri) | Tarayıcı: Ankara şubesi (Merkez Depo + Merkez Kasa) → yeni faturada şube Ankara geldi; filtre Ankara → 1 fatura; satış kullanıcısı Ankara'ya kısıtlanınca listede yalnızca 1 fatura ve şube seçiminde yalnızca Ankara |
+| Hız (5000 fatura) | Fatura başına ödenen tutar dizinle hesaplanıyor (önceden her satırda tüm hareketler taranıyordu); fatura listesi 200'er satır çizilir ("200 daha göster"), alt toplam tüm kayıtlardan; tahsilat takibi ilk 300 satır | 5000 fatura: satış faturaları listesi 3.983 ms → 161 ms; özet 323 ms; Proje & Şube 105 ms; tahsilat 941 ms → (300 satır sınırı, ölçüm sonrası eklendi) |
+
+**Sınırlar (bilerek):** şube kısıtı Cariler/ekstre, Raporlar, Analizler ve beyan ekranlarına uygulanmaz (cari bakiyesi tüm şubelerin
+toplamıdır); kısıtlı kullanıcının bu menülere erişimi rollerle kapatılmalıdır. Kârlılıkta stok maliyeti satışa dağıtılmaz (alış,
+alındığı dönemde gider). Teklif → fatura dönüşümünde proje/şube taşınması ayrıca denenmedi.
+
+Kalite kapısı: `npm test` (cloud.test.js hariç — MySQL yok) geçti; konsolda hata yok; 375 px'te 5 sayfada taşma yok; koyu temada
+yalnızca çekirdek sınıfları kullanıldı (ayrı göz kontrolü yapılmadı); eski kayıtlarda proje/şube alanı yok → "Projesiz/Şubesiz"
+gösterilir, şube kullanıcı ataması yapılmadıkça kimse kısıtlanmaz. `sw.js` V → `nebsoft-v3-23`.
 
 ## 2. dalga — yapılanlar
 | Konu | Sonuç |
