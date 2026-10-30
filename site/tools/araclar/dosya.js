@@ -120,18 +120,86 @@
   // ---------- Paketler ----------
   const CRC = (() => { const t = new Uint32Array(256); for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; } return t; })();
   D.crc32 = (b) => { let c = 0xffffffff; for (let i = 0; i < b.length; i++) c = CRC[(c ^ b[i]) & 255] ^ (c >>> 8); return (c ^ 0xffffffff) >>> 0; };
-  // Sıkıştırmasız ZIP: içindekiler zaten sıkıştırılmış görsel ve PDF. Türkçe ad için UTF-8 bayrağı açık
+  // Varsayılan sıkıştırmasız ZIP: içindekiler zaten sıkıştırılmış görsel ve PDF. d.ham verilirse d.veri deflate kabul edilir. Türkçe ad için UTF-8 bayrağı açık
   D.zip = (dosyalar) => {
     const yerel = [], merkez = []; let o = 0; const te = new TextEncoder(); const ad = D.adlariAyir(dosyalar.map((d) => d.ad));
     dosyalar.forEach((d, i) => {
-      const n = te.encode(ad[i]); const crc = D.crc32(d.veri); const s = d.veri.length;
-      const y = new Uint8Array(30 + n.length); const v = new DataView(y.buffer); v.setUint32(0, 0x04034b50, true); v.setUint16(4, 20, true); v.setUint16(6, 0x0800, true); v.setUint16(12, 0x5a21, true); v.setUint32(14, crc, true); v.setUint32(18, s, true); v.setUint32(22, s, true); v.setUint16(26, n.length, true); y.set(n, 30);
-      const m = new Uint8Array(46 + n.length); const w = new DataView(m.buffer); w.setUint32(0, 0x02014b50, true); w.setUint16(4, 20, true); w.setUint16(6, 20, true); w.setUint16(8, 0x0800, true); w.setUint16(14, 0x5a21, true); w.setUint32(16, crc, true); w.setUint32(20, s, true); w.setUint32(24, s, true); w.setUint16(28, n.length, true); w.setUint32(42, o, true); m.set(n, 46);
+      const n = te.encode(ad[i]); const crc = d.crc ?? D.crc32(d.veri); const s = d.veri.length; const ham = d.ham ?? s; const yt = d.ham == null ? 0 : 8;
+      const y = new Uint8Array(30 + n.length); const v = new DataView(y.buffer); v.setUint32(0, 0x04034b50, true); v.setUint16(4, 20, true); v.setUint16(6, 0x0800, true); v.setUint16(8, yt, true); v.setUint16(12, 0x5a21, true); v.setUint32(14, crc, true); v.setUint32(18, s, true); v.setUint32(22, ham, true); v.setUint16(26, n.length, true); y.set(n, 30);
+      const m = new Uint8Array(46 + n.length); const w = new DataView(m.buffer); w.setUint32(0, 0x02014b50, true); w.setUint16(4, 20, true); w.setUint16(6, 20, true); w.setUint16(8, 0x0800, true); w.setUint16(10, yt, true); w.setUint16(14, 0x5a21, true); w.setUint32(16, crc, true); w.setUint32(20, s, true); w.setUint32(24, ham, true); w.setUint16(28, n.length, true); w.setUint32(42, o, true); m.set(n, 46);
       yerel.push(y, d.veri); merkez.push(m); o += y.length + s;
     });
     const mt = merkez.reduce((t, m) => t + m.length, 0); const e = new Uint8Array(22); const z = new DataView(e.buffer); z.setUint32(0, 0x06054b50, true); z.setUint16(8, dosyalar.length, true); z.setUint16(10, dosyalar.length, true); z.setUint32(12, mt, true); z.setUint32(16, o, true);
     return birlestir([...yerel, ...merkez, e]);
   };
+  // ---------- Metin dosyası ve Excel ----------
+  // BOM varsa ona, yoksa geçerli UTF-8 mi diye bakılır; değilse Türkçe Excel'in yazdığı Windows-1254 kabul edilir
+  D.metinCoz = (b) => {
+    if (b.length > 1 && b[0] === 0xff && b[1] === 0xfe) return { metin: new TextDecoder('utf-16le').decode(b), kodlama: 'UTF-16' }; if (b.length > 1 && b[0] === 0xfe && b[1] === 0xff) return { metin: new TextDecoder('utf-16be').decode(b), kodlama: 'UTF-16' };
+    try { return { metin: new TextDecoder('utf-8', { fatal: true }).decode(b), kodlama: 'UTF-8' }; } catch (e) { return { metin: new TextDecoder('windows-1254').decode(b), kodlama: 'Windows-1254 (eski Türkçe)' }; }
+  };
+  D.zipAc = async (b) => {
+    const v = new DataView(b.buffer, b.byteOffset, b.byteLength); let e = -1; for (let i = b.length - 22; i >= 0 && i >= b.length - 66000; i--) if (v.getUint32(i, true) === 0x06054b50) { e = i; break; } if (e < 0) throw new Error('zip');
+    const n = v.getUint16(e + 10, true); let p = v.getUint32(e + 16, true); const g = new Map(); const td = new TextDecoder();
+    for (let i = 0; i < n; i++) { if (v.getUint32(p, true) !== 0x02014b50) throw new Error('zip'); const a = v.getUint16(p + 28, true), x = v.getUint16(p + 30, true), y = v.getUint16(p + 32, true); g.set(td.decode(b.subarray(p + 46, p + 46 + a)), { yontem: v.getUint16(p + 10, true), boyut: v.getUint32(p + 20, true), yer: v.getUint32(p + 42, true) }); p += 46 + a + x + y; }
+    return async (ad) => { const k = g.get(ad); if (!k) return null; const h = k.yer + 30 + v.getUint16(k.yer + 26, true) + v.getUint16(k.yer + 28, true); const ham = b.subarray(h, h + k.boyut); if (k.yontem === 0) return td.decode(ham); if (typeof DecompressionStream !== 'function') throw new Error('Bu tarayıcı Excel dosyası açamıyor. Tarayıcınızı güncelleyin veya dosyayı CSV olarak kaydedin.'); return new Response(new Blob([ham]).stream().pipeThrough(new DecompressionStream('deflate-raw'))).text(); };
+  };
+  const xmlCoz = (s) => s.replace(/_x000[dD]_/g, '').replace(/&(?:#(\d+)|#x([0-9a-fA-F]+)|(amp|lt|gt|quot|apos));/g, (_, d, x, a) => (d ? String.fromCodePoint(Number(d)) : x ? String.fromCodePoint(parseInt(x, 16)) : { amp: '&', lt: '<', gt: '>', quot: '"', apos: '\'' }[a]));
+  const ozn = (t, a) => { const m = new RegExp(`\\s${a}="([^"]*)"`).exec(t); return m ? m[1] : ''; };
+  const onekSil = (s) => s.replace(/<(\/?)[A-Za-z0-9]+:(?=[A-Za-z])/g, '<$1');
+  const yaziAl = (s) => [...s.replace(/<rPh\b[\s\S]*?<\/rPh>/g, '').matchAll(/<t(?:\s[^>]*)?>([\s\S]*?)<\/t>/g)].map((m) => xmlCoz(m[1])).join('');
+  const sutunNo = (r) => { let n = 0; for (const c of r) { const k = c.charCodeAt(0); if (k < 65 || k > 90) break; n = n * 26 + k - 64; } return n - 1; };
+  const sutunAd = (n) => { let s = ''; for (let i = n + 1; i > 0; i = Math.floor((i - 1) / 26)) s = String.fromCharCode(65 + (i - 1) % 26) + s; return s; };
+  const iki = (n) => String(n).padStart(2, '0');
+  const ISO_TARIH = new Set([14, 15, 16, 17, 22, 27, 28, 29, 30, 31, 34, 35, 36, 50, 51, 52, 53, 54, 57, 58]), ISO_SAAT = new Set([18, 19, 20, 21, 32, 33, 45, 46, 47]);
+  // 0: tarih değil, 1: tarih, 2: yalnız saat
+  const bicimTuru = (kod) => { const t = kod.replace(/\[[^\]]*\]|"[^"]*"|\\./g, ''); if (/[yd]/i.test(t)) return 1; if (/h|s/i.test(t)) return 2; return /m/i.test(t) ? 1 : 0; };
+  // 1900 sisteminde 30.12.1899 sıfır günüdür (Excel'in 1900 şubat hatası 60'tan büyük seri numaralarında böyle düzelir)
+  D.excelTarih = (n, tur, b1904) => { const ms = Math.round(((b1904 ? n + 1462 : n)) * 864e5) + Date.UTC(1899, 11, 30); const d = new Date(ms); const saat = `${iki(d.getUTCHours())}:${iki(d.getUTCMinutes())}`; if (tur === 2) return saat; const g = `${iki(d.getUTCDate())}.${iki(d.getUTCMonth() + 1)}.${d.getUTCFullYear()}`; return n % 1 ? `${g} ${saat}` : g; };
+  D.xlsxOku = async (b, no = 1) => {
+    let al; try { al = await D.zipAc(b); } catch (e) { throw new Error('Excel dosyası açılamadı. Dosya bozuk veya parola korumalı olabilir.'); }
+    const kitap = await al('xl/workbook.xml'); if (!kitap) throw new Error('Bu dosya gerçek bir Excel (.xlsx) dosyası değil.');
+    const kb = onekSil(kitap); const bag = {}; const rel = await al('xl/_rels/workbook.xml.rels'); [...onekSil(rel || '').matchAll(/<Relationship\b[^>]*>/g)].forEach((m) => { bag[ozn(m[0], 'Id')] = ozn(m[0], 'Target'); });
+    const sayfalar = [...kb.matchAll(/<sheet\b[^>]*>/g)].map((m) => { const r = /\s[A-Za-z0-9]+:id="([^"]*)"/.exec(m[0]); const h = bag[r ? r[1] : ''] || ''; return { ad: xmlCoz(ozn(m[0], 'name')), gizli: !!ozn(m[0], 'state') && ozn(m[0], 'state') !== 'visible', yol: h.startsWith('/') ? h.slice(1) : `xl/${h}` }; });
+    if (!sayfalar.length) throw new Error('Excel dosyasında sayfa bulunamadı.'); const S = sayfalar[no - 1]; if (!S) throw new Error(`Bu dosyada ${sayfalar.length} sayfa var, ${no}. sayfa yok.`);
+    const b1904 = /date1904="(1|true)"/.test(kb); const ss = onekSil((await al('xl/sharedStrings.xml')) || ''); const paylasim = [...ss.matchAll(/<si\b[^>]*?(?:\/>|>([\s\S]*?)<\/si>)/g)].map((m) => yaziAl(m[1] || ''));
+    const st = onekSil((await al('xl/styles.xml')) || ''); const ozel = {}; [...st.matchAll(/<numFmt\b[^>]*>/g)].forEach((m) => { ozel[ozn(m[0], 'numFmtId')] = bicimTuru(xmlCoz(ozn(m[0], 'formatCode'))); }); const xf = /<cellXfs\b[^>]*>([\s\S]*?)<\/cellXfs>/.exec(st);
+    const stiller = xf ? [...xf[1].matchAll(/<xf\b[^>]*>/g)].map((m) => { const k = Number(ozn(m[0], 'numFmtId')); return ISO_TARIH.has(k) ? 1 : ISO_SAAT.has(k) ? 2 : ozel[k] || 0; }) : [];
+    const xml = await al(S.yol); if (xml == null) throw new Error('Excel sayfası okunamadı.'); const satirlar = [];
+    for (const m of onekSil(xml).matchAll(/<row\b[^>]*?(?:\/>|>([\s\S]*?)<\/row>)/g)) {
+      const sat = []; let sira = 0; for (const c of (m[1] || '').matchAll(/<c\b([^>]*?)(?:\/>|>([\s\S]*?)<\/c>)/g)) {
+        const a = ` ${c[1]}`; const ic = c[2] || ''; const k = ozn(a, 'r') ? sutunNo(ozn(a, 'r')) : sira; sira = k + 1; const t = ozn(a, 't'); const vm = /<v(?:\s[^>]*)?>([\s\S]*?)<\/v>/.exec(ic); const d = vm ? xmlCoz(vm[1]) : ''; let y = '';
+        if (t === 's') y = paylasim[Number(d)] ?? ''; else if (t === 'inlineStr') y = yaziAl(ic); else if (t === 'b') y = d === '1' ? 'DOĞRU' : 'YANLIŞ'; else if (t === 'str' || t === 'e' || t === 'd') y = d; else if (d !== '') { const n = Number(Number(d).toPrecision(15)); const tur = stiller[Number(ozn(a, 's')) || 0] || 0; y = Number.isNaN(n) ? d : tur ? D.excelTarih(n, tur, b1904) : n; }
+        while (sat.length < k) sat.push(''); sat[k] = y;
+      }
+      satirlar.push(sat);
+    }
+    // Excel sondaki boş hücreleri yazmaz: bu, gerçek bir sütun kayması değildir
+    const G = satirlar.reduce((t, r) => Math.max(t, r.length), 0); satirlar.forEach((r) => { while (r.length < G) r.push(''); });
+    return { satirlar, sayfalar: sayfalar.map((x) => x.ad), gizli: S.gizli, secili: S.ad };
+  };
+  // Metin hücresi gerçek sayıya yalnız kesinse çevrilir: başı sıfırlı kodlar, 10 haneden uzun barkod ve numaralar metin kalır
+  D.sayiMi = (s) => { if (/^-?(0|[1-9]\d{0,9})(,\d+)?$/.test(s)) return Number(s.replace(',', '.')); if (/^-?[1-9]\d{0,2}(\.\d{3})+(,\d+)?$/.test(s)) return Number(s.replace(/\./g, '').replace(',', '.')); return null; };
+  D.tarihSeri = (s) => { const m = /^(\d{2})\.(\d{2})\.(\d{4})$/.exec(s); if (!m) return null; const t = Date.UTC(+m[3], +m[2] - 1, +m[1]); const d = new Date(t); if (d.getUTCMonth() !== +m[2] - 1 || +m[3] < 1901) return null; return Math.round((t - Date.UTC(1899, 11, 30)) / 864e5); };
+  const xmlKac = (s) => s.replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f￾￿]/g, '').replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
+  const xlsxParca = (S) => {
+    const MS = 'http://schemas.openxmlformats.org/spreadsheetml/2006/main', RL = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships', PK = 'http://schemas.openxmlformats.org/package/2006', XML = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n';
+    const sat = S.map((r, i) => `<row r="${i + 1}">${r.map((x, c) => { if (x == null || x === '') return ''; const ref = `${sutunAd(c)}${i + 1}`; if (typeof x === 'number') return `<c r="${ref}"><v>${x}</v></c>`; const n = i ? D.sayiMi(x) : null; if (n !== null) return `<c r="${ref}"><v>${n}</v></c>`; const t = i ? D.tarihSeri(x) : null; if (t !== null) return `<c r="${ref}" s="1"><v>${t}</v></c>`; return `<c r="${ref}" t="inlineStr"><is><t xml:space="preserve">${xmlKac(String(x).slice(0, 32767))}</t></is></c>`; }).join('')}</row>`).join('');
+    const gen = []; S.forEach((r) => r.forEach((x, c) => { gen[c] = Math.max(gen[c] || 11, Math.min(String(x == null ? '' : x).length + 2, 60)); })); const kol = gen.length ? `<cols>${gen.map((g, c) => `<col min="${c + 1}" max="${c + 1}" width="${g}" customWidth="1"/>`).join('')}</cols>` : '';
+    const te = new TextEncoder(); const dosya = (ad, m) => ({ ad, veri: te.encode(XML + m) });
+    return [
+      dosya('[Content_Types].xml', `<Types xmlns="${PK}/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/></Types>`),
+      dosya('_rels/.rels', `<Relationships xmlns="${PK}/relationships"><Relationship Id="rId1" Type="${RL}/officeDocument" Target="xl/workbook.xml"/></Relationships>`),
+      dosya('xl/workbook.xml', `<workbook xmlns="${MS}" xmlns:r="${RL}"><sheets><sheet name="Temiz" sheetId="1" r:id="rId1"/></sheets></workbook>`),
+      dosya('xl/_rels/workbook.xml.rels', `<Relationships xmlns="${PK}/relationships"><Relationship Id="rId1" Type="${RL}/worksheet" Target="worksheets/sheet1.xml"/><Relationship Id="rId2" Type="${RL}/styles" Target="styles.xml"/></Relationships>`),
+      dosya('xl/styles.xml', `<styleSheet xmlns="${MS}"><fonts count="1"><font><sz val="11"/><name val="Calibri"/></font></fonts><fills count="2"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill></fills><borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="2"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/><xf numFmtId="14" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/></cellXfs></styleSheet>`),
+      dosya('xl/worksheets/sheet1.xml', `<worksheet xmlns="${MS}">${kol}<sheetData>${sat}</sheetData></worksheet>`),
+    ];
+  };
+  D.xlsxYaz = (S) => D.zip(xlsxParca(S));
+  // Büyük tablo sıkıştırılmadan on katından fazla yer tutar. Tarayıcı desteklemiyorsa sıkıştırmasız yazar
+  D.xlsxSikisik = async (S) => { const p = xlsxParca(S); if (typeof CompressionStream !== 'function') return D.zip(p); const q = await Promise.all(p.map(async (d) => ({ ad: d.ad, ham: d.veri.length, crc: D.crc32(d.veri), veri: new Uint8Array(await new Response(new Blob([d.veri]).stream().pipeThrough(new CompressionStream('deflate-raw'))).arrayBuffer()) }))); return D.zip(q); };
+
   // PNG gövdeli ICO: tarayıcılar ve Windows Vista sonrası okur. 256 piksel başlıkta 0 yazılır
   D.ico = (resimler) => {
     const b = new Uint8Array(6 + 16 * resimler.length); const v = new DataView(b.buffer); v.setUint16(2, 1, true); v.setUint16(4, resimler.length, true); let o = b.length;
