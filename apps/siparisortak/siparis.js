@@ -37,6 +37,7 @@ window.SIPARIS = (function () {
     const baslik = (o) => (C.title ? C.title(o) : (o.lines[0] ? o.lines[0].name + (o.lines.length > 1 ? ` +${o.lines.length - 1}` : '') : WORD));
     const noteOf = (l) => [...(l.unit === 'm²' && l.en && l.boy && !l.size ? [`${H.sayi(l.en)} × ${H.sayi(l.boy)} m`] : []), ...(C.lineExtra || []).map((x) => l[x.name]).filter(Boolean), l.note].filter(Boolean).join(' · ');
     const kuryeMi = () => !!(NS.currentUser && NS.currentUser.role === 'kurye');
+    const tutarKapali = () => !!(NS.currentUser && (C.tutarKapali || []).includes(NS.currentUser.role)); // sunucu da reddeder (rol-kural: sipTutarYaz)
     const adresli = (o) => o.mode === 'adres' || (!!o.pickup && !!o.address); // adresten alınan iş mağazadan teslim edilse de adresi görünür
     const ayar = (k) => { const v = S()[k]; return v === undefined ? (C.settingDefaults || {})[k] : v; }; // ayar hiç kaydedilmemişse programın varsayılanı geçerli
     const trackUrl = (o) => location.href.replace(/index\.html.*$/, '').replace(/[?#].*$/, '') + 'takip.html?kod=' + o.code;
@@ -146,7 +147,7 @@ window.SIPARIS = (function () {
     // ---------- Teslim ve tahsilat ----------
     async function teslimEt(o, app) {
       if (C.beforeTeslim && (await C.beforeTeslim(o, ctx)) === false) return;
-      const due = H.borc(o); const fat = !!(NS.ebelge && NS.integ && NS.integ.isOn('efatura') && H.toplam(o) > 0);
+      const kapali = tutarKapali(); const due = kapali ? 0 : H.borc(o); const fat = !kapali && !!(NS.ebelge && NS.integ && NS.integ.isOn('efatura') && H.toplam(o) > 0);
       const adr = o.mode === 'adres';
       const fields = [...(due > 0 ? [{ name: 'amount', label: 'Tahsil edilen (₺)', type: 'number', step: '0.01', min: 0 }, { name: 'type', label: 'Ödeme', type: 'select', options: PAY }] : []), ...(adr ? [{ name: 'recv', label: 'Teslim alan kişi', required: true }, { name: 'recvNote', label: 'Teslim notu', placeholder: 'Komşuya bırakıldı…' }] : []), ...(fat ? [{ name: 'inv', label: 'e-Arşiv / e-Fatura kes', type: 'checkbox' }] : [])];
       let v = {}; if (fields.length) { v = await formModal({ title: due > 0 ? `Teslim: kalan ${money(due)}` : 'Teslim', fields, values: { amount: due, type: 'nakit', inv: fat && !o.invoice, recv: adr ? o.recipient || '' : '' }, submitLabel: 'Teslim et' }); if (!v) return; }
@@ -170,7 +171,7 @@ window.SIPARIS = (function () {
     const nextOf = (o) => { const i = FLOW.findIndex((s) => s.id === o.status); return o.status === C.pickupStatus ? FLOW[0] : FLOW[i + 1]; };
     function detailPage(el, id, app) {
       const o = db.get('orders', id); if (!o) return app.go('siparisler'); norm(o);
-      const c = cust(o.customer); const idx = FLOW.findIndex((s) => s.id === o.status); const nx = acik(o) ? nextOf(o) : null; const K = H.borc(o); const kurye = kuryeMi();
+      const c = cust(o.customer); const idx = FLOW.findIndex((s) => s.id === o.status); const nx = acik(o) ? nextOf(o) : null; const K = H.borc(o); const kapali = tutarKapali(); const kurye = kuryeMi() || kapali;
       const sonraki = !nx ? '' : nx.id === 'teslim' ? `<button class="btn primary" data-x="teslim">${icon('user')} Teslim et</button>` : `<button class="btn ${nx.id === 'hazir' ? 'ok' : 'primary'}" data-st="${nx.id}">${icon(nx.id === 'hazir' ? 'check' : nx.icon)} ${esc(nx.name)}</button>`;
       el.innerHTML = `<div class="row mb"><a class="btn" href="#/${C.home || 'pano'}" aria-label="Panoya dön">${icon('back')}</a><h1 class="grow sp-h">${esc(o.no)} · ${esc(baslik(o))}</h1>${gec(o) ? badge('Gecikti', 'err') : ''}${pill(o)}</div>
         <div class="card pad mb"><div class="sp-steps">${FLOW.map((s, i) => `<div><i style="background:${i <= idx ? s.color : 'var(--border)'}"></i><span class="${s.id === o.status ? '' : 'faint'}" ${s.id === o.status ? 'style="font-weight:700"' : ''}>${esc(s.name)}</span></div>`).join('')}</div>
@@ -186,7 +187,7 @@ window.SIPARIS = (function () {
           ${C.photos ? `<div class="card"><div class="card-h"><h3>${icon('image')} ${esc(C.photos)}</h3><label class="btn sm">${icon('plus')} Fotoğraf<input type="file" accept="image/*" id="sp-ph-f" hidden></label></div><div class="card-b sp-photos">${o.photos.length ? o.photos.map((p, i) => `<figure><img src="${esc(p.url)}" alt="${esc(p.note || 'Fotoğraf')}" loading="lazy" width="120" height="120"><figcaption class="small faint">${NS.date(p.at)}</figcaption><button class="btn sm icon ghost" data-ph="${i}" aria-label="Fotoğrafı sil">${icon('x')}</button></figure>`).join('') : '<span class="small muted">Henüz fotoğraf yok</span>'}</div></div>` : ''}
           ${C.cards ? C.cards(o, ctx) : ''}
         </div><div class="col" style="gap:16px">
-          <div class="card"><div class="card-h"><h3>Ödeme</h3>${K > 0 ? `<button class="btn sm" data-x="pay">${icon('plus')} Tahsilat</button>` : ''}</div><div class="card-b">
+          <div class="card"><div class="card-h"><h3>Ödeme</h3>${K > 0 && !kapali ? `<button class="btn sm" data-x="pay">${icon('plus')} Tahsilat</button>` : ''}</div><div class="card-b">
             ${o.disc ? `<div class="row between small"><span>İndirim</span><span>-${money(o.disc)}</span></div>` : ''}${o.fee ? `<div class="row between small"><span>Teslimat</span><span>${money(o.fee)}</span></div>` : ''}
             <div class="row between"><span>Toplam</span><b style="font-size:20px">${money(H.toplam(o))}</b></div><div class="row between small muted"><span>Ödenen</span><span>${money(H.odenen(o))}</span></div>${o.status === 'iptal' ? '<div class="small muted">İptal edildi, tahsil edilecek tutar yok</div>' : `<div class="row between"><span>Kalan</span><b style="color:${K > 0 ? 'var(--err)' : 'var(--ok)'}">${money(K)}</b></div>`}
             ${o.payments.map((p) => `<div class="small faint">${NS.date(p.at)} · ${esc(PAYN[p.type] || p.type)} · ${money(p.amount)}${p.kind === 'kapora' ? ' · kapora' : p.kind === 'iade' ? ' · iade' : ''}</div>`).join('')}${o.invoice ? `<div class="small mt">Fatura: ${esc(o.invoice)}</div>` : ''}</div></div>
@@ -213,11 +214,11 @@ window.SIPARIS = (function () {
       let q = ''; const COLS = [...C.status].filter((s) => s.id !== 'teslim'); const MAX = 60;
       const draw = () => {
         const list = openO().filter((o) => !q || NS.match(q, o.no, o.code, baslik(o), cust(o.customer).name, cust(o.customer).phone)).sort(H.sira); const O = openO();
-        el.innerHTML = pageHead(C.panoBaslik || `${WORD} Panosu`, 'Kartı sürükleyin veya açıp durumunu değiştirin', `${NS.searchBox('q', 'No, müşteri, telefon...', q)}<button class="btn primary" id="ni">${icon('plus')} Yeni ${esc(word)}</button>`) +
+        el.innerHTML = pageHead(C.panoBaslik || `${WORD} Panosu`, 'Kartı sürükleyin veya açıp durumunu değiştirin', `${NS.searchBox('q', 'No, müşteri, telefon...', q)}${tutarKapali() ? '' : `<button class="btn primary" id="ni">${icon('plus')} Yeni ${esc(word)}</button>`}`) +
           `<div class="grid g4 mb">${kpi('Açık iş', O.length, 'list')}${kpi('Bugün teslim', O.filter((o) => o.due === today()).length, 'calendar', 'info')}${kpi('Hazır bekleyen', O.filter((o) => o.status === 'hazir').length, 'check', 'ok')}${kpi('Geciken', O.filter(gec).length, 'alert', 'err')}</div>
           <div class="sp-kanban">${COLS.map((s) => { const cards = list.filter((o) => o.status === s.id); return `<div class="sp-col" data-col="${s.id}"><h4 style="color:${s.color}">${icon(s.icon)} ${esc(s.name)} <span class="badge">${cards.length}</span></h4>${cards.slice(0, MAX).map((o) => `<div class="sp-card ${gec(o) ? 'late' : ''}" draggable="true" tabindex="0" role="link" data-o="${o.id}" style="--c:${s.color}"><b>${esc(baslik(o))}</b><div class="muted">${esc(cust(o.customer).name)}</div><div class="small faint">${esc(o.no)} · ${esc(dueText(o))}${o.mode === 'adres' ? ' · adrese' : ''}</div></div>`).join('')}${cards.length > MAX ? `<div class="small faint center">+${cards.length - MAX} iş daha, aramayla bulun</div>` : ''}</div>`; }).join('')}</div>`;
         $('#q', el).oninput = (e) => { q = e.target.value; const pos = e.target.selectionStart; draw(); const i = $('#q', el); i.focus(); i.setSelectionRange(pos, pos); };
-        $('#ni', el).onclick = () => orderForm(app);
+        const ni = $('#ni', el); if (ni) ni.onclick = () => orderForm(app);
       };
       let drag = null;
       el.addEventListener('dragstart', (e) => { const c = e.target.closest('[data-o]'); if (c) { drag = c.dataset.o; e.dataTransfer.effectAllowed = 'move'; } });
@@ -232,13 +233,13 @@ window.SIPARIS = (function () {
     // ---------- Liste ----------
     function listPage(el, p, app) {
       let q = '', f = 'acik', max = LIST_MAX;
-      el.innerHTML = pageHead(C.listeBaslik || `${WORD} Kayıtları`, 'Arama, durum süzgeci ve Excel’e aktarma', `<button class="btn" id="ex">${icon('download')} Excel (CSV)</button><button class="btn primary" id="ni">${icon('plus')} Yeni ${esc(word)}</button>`) + `<div class="card"><div class="card-h">${NS.searchBox('q', 'No, müşteri, telefon, kalem...')}<div class="seg">${[['acik', 'Açık'], ['teslim', 'Teslim edilen'], ['iptal', 'İptal'], ['all', 'Tümü']].map(([v, l]) => `<button data-f="${v}" class="${v === f ? 'active' : ''}">${l}</button>`).join('')}</div></div><div id="t"></div></div>`;
+      el.innerHTML = pageHead(C.listeBaslik || `${WORD} Kayıtları`, 'Arama, durum süzgeci ve Excel’e aktarma', `<button class="btn" id="ex">${icon('download')} Excel (CSV)</button>${tutarKapali() ? '' : `<button class="btn primary" id="ni">${icon('plus')} Yeni ${esc(word)}</button>`}`) + `<div class="card"><div class="card-h">${NS.searchBox('q', 'No, müşteri, telefon, kalem...')}<div class="seg">${[['acik', 'Açık'], ['teslim', 'Teslim edilen'], ['iptal', 'İptal'], ['all', 'Tümü']].map(([v, l]) => `<button data-f="${v}" class="${v === f ? 'active' : ''}">${l}</button>`).join('')}</div></div><div id="t"></div></div>`;
       const rows = () => orders((o) => (f === 'all' || (f === 'acik' ? acik(o) : o.status === f)) && NS.match(q, o.no, o.code, baslik(o), cust(o.customer).name, cust(o.customer).phone)).sort((a, b) => String(b.at).localeCompare(String(a.at)));
       const draw = () => { const r = rows(); const v = r.slice(0, max); $('#t', el).innerHTML = table({ rows: v, emptyIcon: 'list', empty: 'Bu görünümde kayıt yok', mobileCard: (o) => `<b>${esc(o.no)}</b> ${pill(o)}<div>${esc(cust(o.customer).name)}</div><div class="small faint">${esc(baslik(o))} · ${esc(dueText(o))} · ${money(H.toplam(o))}</div>`, columns: [{ label: 'No', render: (o) => `<b>${esc(o.no)}</b>` }, { label: 'Müşteri', render: (o) => `${esc(cust(o.customer).name)}<div class="small faint">${esc(cust(o.customer).phone)}</div>` }, { label: 'İş', render: (o) => esc(baslik(o)) }, { label: 'Teslim', render: (o) => esc(dueText(o)) }, { label: 'Durum', render: (o) => pill(o) + (gec(o) ? ' ' + badge('Gecikti', 'err') : '') }, { label: 'Tutar', cls: 'right', render: (o) => money(H.toplam(o)) }, { label: 'Kalan', cls: 'right', render: (o) => money(H.borc(o)) }], actions: [{ icon: 'eye', act: 'v', title: 'Aç' }], foot: `${r.length} kayıt` }) + (r.length > max ? `<div class="center pad"><button class="btn" id="more">${r.length - max} kayıt daha göster</button></div>` : ''); const m = $('#more', el); if (m) m.onclick = () => { max += LIST_MAX; draw(); }; };
       $('#q', el).oninput = (e) => { q = e.target.value; max = LIST_MAX; draw(); };
       on(el, 'click', '[data-f]', (e, b) => { f = b.dataset.f; max = LIST_MAX; $$('[data-f]', el).forEach((x) => x.classList.toggle('active', x === b)); draw(); });
       on(el, 'click', '[data-act=v]', (e, b) => app.go('siparis', b.dataset.id));
-      $('#ni', el).onclick = () => orderForm(app);
+      const ni = $('#ni', el); if (ni) ni.onclick = () => orderForm(app);
       $('#ex', el).onclick = () => NS.csv(`${C.id}-kayitlari`, rows(), [{ key: 'no', label: 'No' }, { label: 'Müşteri', value: (o) => cust(o.customer).name }, { label: 'Telefon', value: (o) => cust(o.customer).phone }, { label: 'İş', value: baslik }, { label: 'Teslim', value: dueText }, { label: 'Durum', value: (o) => ST[o.status].name }, { label: 'Tutar', value: H.toplam }, { label: 'Kalan', value: H.borc }]);
       draw();
     }

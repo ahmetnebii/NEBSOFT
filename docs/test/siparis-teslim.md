@@ -6,8 +6,6 @@ Tarih: 2026-10-31. Kapsam: `kurutemizleme`, `matbaa`, `pastane`, `cicekci`, `ter
 
 | # | Engel | Kanıt | Kim çözer |
 |---|---|---|---|
-| E1 | **Kurye kendi işinde fiyat, ödeme ve durumu değiştirebiliyor, başka kuryeye yeni iş açabiliyor.** Sunucu rolü yalnız satır görünürlüğünü kısıtlıyor. | Gerçek HTTP: kurye hesabı `PUT /api/data/cicekci` ile `price: 1`, `payments: 9999`, `status: teslim` yazdı, yanıt 200, sahip hesabında bu değerler göründü. Yeni `orders` kaydı da kabul edildi. | `server/cloud/rol-kural.js` `sipKurye`. Kapsam dışı bir dosya, **karar sizde**. Arayüzdeki Düzenle ve İptal kuryeden gizlendi, ama bu yalnız arayüzdür. |
-| E2 | **Matbaa üretim ve pastane usta rolleri de sipariş tutarını ve ödemeyi yazabiliyor.** | `rol-kural` sondası: üretim hesabı `lines.price` ve `payments` yazdı, sunucu geri koymadı. Tasarım gereği olabilir, spec'te açık değil. | Karar gerekli: bu roller fiyat görsün ve yazsın mı? |
 | E3 | **Uyumsoft canlıda seçilebiliyor, resmî API dokümanı yok.** Yalnız WSDL var, WSDL bu oturumda okunmadı. | Entegrasyon tablosu. `EFAT_OK` listesinde. Kural gereği DOĞRULANAMADI olan seçilemez. | `core/integrations.js`. Sizden: WSDL ile karşılaştırma veya canlıda kapatma kararı. |
 | E4 | **WhatsApp Cloud API canlıda seçilebiliyor, istek resmî zorunlu alanla uyuşmuyor.** Meta sayfası `recipient_type` alanını zorunlu yazıyor, kod göndermiyor. Metin ve şablon alanları ile 24 saat kuralı doğrulanamadı. | Entegrasyon tablosu. | `core/integrations.js` |
 | E5 | **Hiçbir entegrasyon test hesabıyla denenmedi.** Dokümanla uyum canlı test yerine geçmez (`CLAUDE.md` §1). | Görev gereği gerçek hesap ve ileti kullanılmadı. | Sizden: Netgsm, Nilvera veya Paraşüt test hesabı. |
@@ -16,20 +14,22 @@ Tarih: 2026-10-31. Kapsam: `kurutemizleme`, `matbaa`, `pastane`, `cicekci`, `ter
 
 `server/test/bilet-kural.test.js` bu sınamada da kaldı (`Online satış kapandı`, gece saati). Bu grupla ilgisi yok, düzeltmesi ayrı dalda.
 
+Kapanan engeller: kurye, matbaa üretim ve pastane usta rollerinin tutar ve ödeme yazabilmesi kullanıcı kararıyla kapatıldı (aşağıda "Rol koruması").
+
 ## Özet
 
 - 5 programın menüsündeki her ekran açıldı. Ana akışlar elle hesapla karşılaştırıldı.
 - **28 hata bulundu ve düzeltildi.** Hepsi tarayıcıda yeniden sınandı, hesap olanlara test eklendi.
 - En ağır üç bulgu: e-Belge tutarı fişle uyuşmuyordu; kesilemeyen fatura kayıtta kesilmiş görünüyordu; gizli gönderenin adı alıcının imzaladığı belgede yazıyordu.
-- `core/` ve `server/cloud/` değişmedi. Değişenler: `apps/siparisortak/`, beş program klasörü, `server/test/siparis-kural.test.js`, `sw.js` (`V` sürümü).
+- `core/` değişmedi. `server/cloud/rol-kural.js` kullanıcı kararıyla değişti. Diğer değişenler: `apps/siparisortak/`, beş program klasörü, `server/test/siparis-kural.test.js`, `sw.js` (`V` sürümü).
 
 ## Test sonucu
 
-- Test zinciri tek tek çalıştırıldı: **65 dosyanın 64'ü geçti**, kalan `bilet-kural` (yukarıda). Dosyaları tek tek çalıştırdım, tek `npm test` komutuyla değil: `npm test` ilk hatada durduğu için `bilet-kural` zinciri keserdi.
+- Test zinciri rol korumasından sonra tek tek yeniden çalıştırıldı: **65 dosyanın 64'ü geçti**, kalan `bilet-kural` (yukarıda). Dosyaları tek tek çalıştırdım, tek `npm test` komutuyla değil: `npm test` ilk hatada durduğu için `bilet-kural` zinciri keserdi.
 - `shopier` ve `katalog` ilk turda kaldı, sebebi paylaşılan port (5098) ve başka oturumların sunucularıydı. Kendi portlarıyla yeniden çalıştırıldı: 54 ve 57 denetim geçti.
 - GİB XSD testi çalıştı, atlanmadı: 9 belge geçti.
-- `siparis-kural`: 27 denetim (5'i bu raporla eklendi). `siparis-bulut`: 12 denetim.
-- `siparis.js` üzerindeki son değişiklikten (e-Belge sonucu, VKN alanı) sonra tüm zincir yeniden çalıştırılmadı; `siparis-kural`, `siparis-bulut` ve tarayıcı denemesi yapıldı.
+- `siparis-kural`: 30 denetim (8'i bu raporla eklendi). `siparis-bulut`: 12 denetim.
+- `siparis-bulut` rol korumasından sonra bir kez kaldı, hata metni kaydedilmeden üzerine yazıldı. Aynı koşulda dört kez daha geçti. Sebebi bulunamadı, kararsız olabilir.
 
 ## Program başına sonuç
 
@@ -65,6 +65,31 @@ Bulutta (MariaDB, 5122) denendi: işletme adresli takip bağlantısı doğru (`/
 | Kod tahmini | 20 denemeden sonra 429 |
 
 Not: 429 alan müşteri "kayıt bulunamadı" görüyor, sebebi anlatılmıyor. `db.lookup` hatayı yutuyor (`core/`).
+
+## Rol koruması
+
+Kullanıcı kararı: kurye, üretim ve usta fiyatı ve ödemeyi değiştiremez. Kural `server/cloud/rol-kural.js` içinde, sunucuda uygulanır.
+
+| Rol | Yazabilir | Yazamaz |
+|---|---|---|
+| Kurye, şoför | Durum, geçmiş ekleme, teslim kaydı, parça, raf, fotoğraf, başarısız deneme, kalan borcu aşmayan tahsilat | Fiyat, kalem, indirim, teslimat ücreti, müşteri, kurye ataması, numara, kod, iptal, yeni sipariş, eski ödeme ve geçmişi silme |
+| Matbaa üretim, pastane usta | Aşama, kontrol listesi, sürüm, hata kaydı, üretim işareti, fotoğraf, not | Kalem, indirim, teslimat ücreti, ödeme, müşteri, numara, kod, fatura, iptal, yeni sipariş |
+| Kapanmış iş (teslim, iptal) | | Bu rollerde yeniden açılamaz |
+
+Tezgâh ve matbaa satış rolü aynen kaldı: sipariş açar, fiyat yazar. **Terzi usta rolü de değişmedi:** terzide tek çalışan rolüdür, sipariş ve kapora alır, tutara kapatılırsa yönetici dışında kimse iş açamaz.
+
+Kanıt, gerçek HTTP ve MariaDB, çiçekçi kuryesi:
+
+| Deneme | Önce | Sonra |
+|---|---|---|
+| Fiyatı 1 ₺ yapma | Kabul | 100 ₺ kaldı |
+| 9.999 ₺ ödeme | Kabul | Kayda geçmedi |
+| Başka kuryeye yeni sipariş | Kabul | Kayda geçmedi |
+| Normal teslim, teslim alan, 60 ₺ tahsilat | Kabul | Kabul |
+
+Sunucu 200 döner, yasak alanı sessizce sunucudaki değerine çevirir. Bu, projedeki diğer rol kurallarıyla aynı davranıştır. Arayüz bu rollere ilgili düğmeleri göstermez: tarayıcıda usta ve üretim hesabında Yeni, Düzenle, İptal, Tahsilat düğmesi yok; aşama ilerletme ve tahsilatsız teslim çalıştı, kalan borç korundu; satış rolünde Yeni düğmesi duruyor. Kurye için tahsilat düğmesi kaldı. Çiçekçi dışındaki kurye, üretim ve usta kuralları HTTP ile değil, `geriKoy` testleriyle sınandı (`siparis-kural`, 3 yeni denetim).
+
+Yan bulgu: hesap sahibi `users` tablosunda `ORDER BY created, id` ile bulunuyor (`routes.js` `isOwner`). Sahip ve ilk ekip üyesi aynı saniyede açılırsa sahiplik rastgele kimliğe kalır. Sınamada ekip üyesi sahip sayıldı, gerçek sahip 403 aldı. Elle kullanımda olası değil, toplu kurulumda olabilir. Düzeltilmedi.
 
 ## Düzeltilen hatalar
 
@@ -177,7 +202,7 @@ Sahte başarı denetimi, tarayıcıda:
 - 375 px ölçümü pastane, çiçekçi, matbaa özel ekranlarında ve takip sayfasında yapılmadı (motor ortak, terzide ölçüldü).
 - 1920 px açık tema görsel olarak doğrulanamadı: ekran görüntüsü karanlık çıktı. Taşma ve hata ölçümü geçerli.
 - Hiç veri girilmemiş yeni işletme ekranları tarayıcıda açılmadı. Boş liste yalnız Gelen Talepler ve Dağıtım'da görüldü.
-- Sunucu rolleri HTTP ile yalnız çiçekçi kuryesinde denendi; tezgâh, üretim, usta `filtrele` ve `geriKoy` işlevleriyle sınandı.
+- Sunucu rolleri HTTP ile yalnız çiçekçi kuryesinde denendi; diğerleri `filtrele` ve `geriKoy` işlevleriyle sınandı. Rol ekranları demo kipinde `NS.currentUser` değiştirilerek denendi, gerçek ekip hesabıyla tarayıcıda açılmadı.
 
 ## Olay notu
 
@@ -185,8 +210,7 @@ Kendi 5102 portlu sunucumu durdururken `Stop-Process` iki süreci birden sonland
 
 ## Senden gerekenler
 
-1. **E1 ve E2:** Kurye, üretim ve usta fiyat ile ödemeyi yazabilsin mi? Hayırsa `rol-kural.js` değişmeli.
-2. **E3, E4:** Uyumsoft ve WhatsApp Cloud API düzelene kadar canlıda kapatılsın mı?
-3. **E5:** Netgsm ile bir entegratörün test hesabı.
-4. **E6:** Mali müşavirden KDV oranı.
-5. Teslim edilmiş işte iade akışı eklensin mi?
+1. **Uyumsoft ve WhatsApp Cloud API:** Düzelene kadar canlıda kapatılsın mı?
+2. Netgsm ve bir entegratörün test hesabı.
+3. Mali müşavirden KDV oranı.
+4. Teslim edilmiş işte iade akışı eklensin mi?

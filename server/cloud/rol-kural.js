@@ -63,7 +63,18 @@ const posIadeGeri = (o, r) => { if (!Array.isArray(o.products)) return; const m 
 const bordro = () => { try { return require('../../apps/ik/bordro.js'); } catch (e) { return null; } };
 // Sipariş ve Teslim ailesi ortak rolleri
 const sipTezgah = (ad = 'Tezgâh') => ({ ad, saltOkunur: ['services', 'staff'], silemez: ['orders', 'customers'], ekle: ['sms'] });
-const sipKurye = (ad, kapat = []) => ({ ad, kisi: { kol: 'staff', alan: 'courier', baslik: ad, yok: `${ad} seçin (seçilmezse iş görünmez)` }, satir: { orders: (o, b) => eslesir(o, 'courier', b), customers: (c, b) => b.alanlar('orders', 'customer').has(c.id) }, kapat: ['requests', ...kapat], saltOkunur: ['services', 'staff', 'customers'], silemez: ['orders'], ekle: ['sms'] });
+// Sipariş tutarı sunucuda korunur: kurye yalnız teslim bilgisini ve kalan borç kadar tahsilatı yazar; üretim ve usta aşama ilerletir, tutara, ödemeye ve yeni kayda dokunamaz.
+// Ödeme ve geçmiş yalnız eklenir, var olan satır değişmez. Kapanmış iş yeniden açılmaz, iptal bu rollerde yoktur (iade tutarı içerir).
+const SIPH = () => require('../../apps/siparisortak/hesap.js');
+const SIP_KURYE = ['status', 'log', 'payments', 'delivered', 'proof', 'pieces', 'shelf', 'photos', 'attempts', 'invoice', 'signIn', 'signOut', 'remindedAt', 'updated'];
+const SIP_TUTAR = ['lines', 'disc', 'fee', 'payments', 'customer', 'no', 'code', 'at', 'invoice'];
+const sipEk = (eski, yeni) => { const E = dizi(eski); const k = new Set(E.map((x) => JSON.stringify(x))); return [...E, ...dizi(yeni).filter((x) => nesne(x) && !k.has(JSON.stringify(x)))]; };
+const sipDurum = (y, e) => (['teslim', 'iptal'].includes(e.status) || y === 'iptal' ? e.status : y);
+const sipOdeme = (r, e) => { const H = SIPH(); const P = dizi(e.payments).slice(); sipEk(P, r.payments).slice(P.length).forEach((p) => { if (!H.tahsilHata({ ...e, payments: P }, p.amount)) P.push(p); }); return P; };
+const sipYaz = (f) => (o, s) => { if (!Array.isArray(o.orders)) return; const S = idHarita(s.orders); o.orders = o.orders.filter((r) => nesne(r) && S.has(r.id)).map((r) => f(r, S.get(r.id))); };
+const sipKuryeYaz = sipYaz((r, e) => { const n = { ...e }; SIP_KURYE.forEach((a) => { if (a in r) n[a] = r[a]; else delete n[a]; }); return { ...n, status: sipDurum(r.status, e), log: sipEk(e.log, r.log), payments: sipOdeme(r, e) }; });
+const sipTutarYaz = sipYaz((r, e) => { const n = { ...r }; SIP_TUTAR.forEach((a) => { if (a in e) n[a] = e[a]; else delete n[a]; }); return { ...n, status: sipDurum(r.status, e), log: sipEk(e.log, r.log) }; });
+const sipKurye = (ad, kapat = []) => ({ ad, sonra: sipKuryeYaz, kisi: { kol: 'staff', alan: 'courier', baslik: ad, yok: `${ad} seçin (seçilmezse iş görünmez)` }, satir: { orders: (o, b) => eslesir(o, 'courier', b), customers: (c, b) => b.alanlar('orders', 'customer').has(c.id) }, kapat: ['requests', ...kapat], saltOkunur: ['services', 'staff', 'customers'], silemez: ['orders'], ekle: ['sms'] });
 // apps/saha-ortak/saha.js: saha ekibi yalnız kendi ekibinin işini ve o işlerin müşterisini görür (benim). Sözleşme, dönem kaydı ve alış fiyatı yöneticide. İşte kullanılan stok düşümü yazılır (izinli).
 const sahaEkip = (ek = {}) => ({ ad: ek.ad || 'Saha ekibi', kisi: { kol: 'teams', alan: 'team', kayitAdi: false, baslik: 'Ekip', yok: 'Ekip seçin (seçilmezse iş görünmez)' }, kapat: ['contracts', 'invoices', ...(ek.kapat || [])], ekle: ['sms'], gizle: { items: ['cost'], customers: ['taxNo'], ...(ek.gizle || {}) }, saltOkunur: ['teams', 'services', 'customers', 'items', ...(ek.saltOkunur || [])], izinli: { items: ['stock'], ...(ek.izinli || {}) }, silemez: ['jobs'], satir: { jobs: (j, b) => eslesir(j, 'team', b), customers: (c, b) => b.alanlar('jobs', 'customer').has(c.id), ...(ek.satir || {}) }, numara: { jobs: 'no' } });
 const SAHA_FIYAT = { jobs: ['lines', 'payments', 'offer', 'accepted', 'invoice'] }; // nakliyat, temizlik, peyzaj: ücret ekipte kapalı (ekipFiyat)
@@ -314,10 +325,10 @@ const RULES = {
     usta: { ad: 'Lastik ustası', kapat: ['payments', 'claims', 'sms'], gizle: { stock: ['cost'], customers: ['taxNo', 'limit'] }, saltOkunur: ['stock', 'customers'], izinli: { stock: ['stock'] }, yeniSerbest: ['customers'], silemez: ['jobs', 'hotels', 'vehicles'] },
   },
   // apps/servis: ROLES var, ekranlarda rol denetimi yok. Teknisyen ve kabul Özet, Teknisyenler, Ayarlar menüsünü görmez; parça alış fiyatı Parça Stoku ekranında herkese açık. Yalnız menü farkı: kural eklenmedi.
-  // Sipariş ve Teslim ailesi (apps/siparisortak): şoför/kurye kendi işini görür ve yalnız iş aldığı müşterinin kaydını okur; fiyat listesi ve personel tezgâhta salt okunurdur; sipariş silinmez. Teslimde kurye tahsilat yazar (sipariş içinde), SMS günlüğü okunmaz yazılır.
+  // Sipariş ve Teslim ailesi (apps/siparisortak): şoför/kurye kendi işini görür ve yalnız iş aldığı müşterinin kaydını okur; fiyat listesi ve personel tezgâhta salt okunurdur; sipariş silinmez. Teslimde kurye kalan borç kadar tahsilat yazar, tutarı değiştiremez, yeni iş açamaz (sipKuryeYaz). Matbaa üretim ve pastane ustası tutara ve ödemeye dokunamaz (sipTutarYaz). SMS günlüğü okunmaz yazılır.
   kurutemizleme: { tezgah: sipTezgah(), kurye: sipKurye('Şoför') },
-  matbaa: { satis: sipTezgah('Satış'), uretim: { ad: 'Üretim', gizle: { services: ['cost'] }, saltOkunur: ['services', 'staff'], yeniSerbest: ['customers'], silemez: ['orders', 'customers'], ekle: ['sms'] } },
-  pastane: { tezgah: sipTezgah(), kurye: sipKurye('Kurye', ['ingredients', 'recipes', 'plans', 'waste']), usta: { ad: 'Usta', gizle: { ingredients: ['cost'], waste: ['cost'] }, saltOkunur: ['services', 'recipes', 'staff', 'ingredients'], izinli: { ingredients: ['stock'] }, yeniSerbest: ['customers'], silemez: ['orders', 'customers', 'plans', 'waste'], ekle: ['sms'] } },
+  matbaa: { satis: sipTezgah('Satış'), uretim: { ad: 'Üretim', sonra: sipTutarYaz, gizle: { services: ['cost'] }, saltOkunur: ['services', 'staff'], yeniSerbest: ['customers'], silemez: ['orders', 'customers'], ekle: ['sms'] } },
+  pastane: { tezgah: sipTezgah(), kurye: sipKurye('Kurye', ['ingredients', 'recipes', 'plans', 'waste']), usta: { ad: 'Usta', sonra: sipTutarYaz, gizle: { ingredients: ['cost'], waste: ['cost'] }, saltOkunur: ['services', 'recipes', 'staff', 'ingredients'], izinli: { ingredients: ['stock'] }, yeniSerbest: ['customers'], silemez: ['orders', 'customers', 'plans', 'waste'], ekle: ['sms'] } },
   cicekci: { tezgah: sipTezgah(), kurye: sipKurye('Kurye', ['stems', 'fire', 'occasions', 'zones']) },
   terzi: { usta: { ad: 'Usta', saltOkunur: ['services', 'staff', 'mtpls'], silemez: ['orders', 'customers', 'measures'], ekle: ['sms'] } },
 };
