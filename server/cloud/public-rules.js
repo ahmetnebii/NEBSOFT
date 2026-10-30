@@ -1056,5 +1056,20 @@ RULES.fotograf = {
   },
 };
 
+// ---------- Oyun salonu: üye kartı ve doğum günü talebi (kart.html) ----------
+// Bakiye yalnız kendi telefonu + koduyla görünür. Doğum günü talebinde fiyat, bitiş saati ve durum sunucuda hesaplanır; dolu saatler isimsiz denetlenir.
+const OH = require('../../apps/oyun/hesap.js');
+const oyunCode = (m) => (m.portalCode ? norm(m.portalCode) : null);
+RULES.oyun = {
+  settings: ['bizName', 'bizPhone', 'bizAddress', 'iban', 'rulesText'],
+  pub: { packages: { fields: ['id', 'name', 'price', 'kids', 'dur', 'includes'] }, areas: { fields: ['id', 'name', 'capacity'] } },
+  login: (x, q) => { const code = norm(q.code); const d = digits(q.phone); const m = code && d.length === 10 ? x.col('members').find((r) => digits(r.phone) === d && oyunCode(r) === code) : null; return m ? { k: 'm', i: m.id } : null; },
+  loginError: 'Telefon veya kod hatalı',
+  view: (x) => { const i = me(x, 'm'); const m = i && x.get('members', i); if (!m) return {}; return { members: [{ id: m.id, no: m.no, name: m.name, phone: m.phone }], cardTx: x.col('cardTx').filter((t) => t.member === i).map((t) => ({ id: t.id, member: t.member, amount: t.amount, kind: t.kind, at: t.at, note: t.note })) }; },
+  write: {
+    bookings: { ins: I({ child: 'str:80', guardian: 'str:80', phone: 'phone', date: 'date', start: 'time', kids: 'int:1:200', pkg: 'id', area: 'id' }, (r, x) => { const p = x.get('packages', r.pkg); if (!p) bad('Paket bulunamadı'); const z = OH.toMin(r.start) + (Number(p.dur) || 120); return { end: `${String(Math.floor(z / 60) % 24).padStart(2, '0')}:${String(z % 60).padStart(2, '0')}`, status: 'talep', src: 'web', no: x.seq('bookings', 'DG'), pkgName: p.name, total: OH.rezTutar(p, r.kids, 0), paid: 0 }; }, (r, x) => { if (!r.child || !r.guardian) bad('Ad gerekli'); if (r.date < x.today) bad('Geçmiş tarih seçilemez'); if (!x.get('areas', r.area)) bad('Alan bulunamadı'); const tampon = (x.doc._settings || {}).bufferMin; if (OH.cakisan(x.col('bookings'), r, tampon === undefined ? 30 : tampon, r.id)) throw Object.assign(new Error('Bu saat dolu, başka saat seçin'), { status: 409 }); if (x.col('bookings').filter((b) => samePhone(b.phone, r.phone) && b.status === 'talep').length >= 3) bad('Bekleyen talebiniz var'); }) },
+  },
+};
+
 module.exports = RULES;
 module.exports._lib = { appendOnly, strip, bad, deny, val, clean, I, U, me, mergeByPhone, samePhone, digits, norm, overlap, toMin, nowIso };

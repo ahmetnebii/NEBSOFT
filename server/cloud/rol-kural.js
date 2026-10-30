@@ -257,6 +257,16 @@ const RULES = {
       satir: { shoots: (r, b) => eslesir(r, 'staff', b), galleries: (g, b) => b.ids('shoots').has(g.shoot) },
       suz: (o) => { if (Array.isArray(o.shoots)) o.shoots = o.shoots.map((x) => (nesne(x) ? { ...x, extras: dizi(x.extras).map((e) => (nesne(e) ? { id: e.id, name: e.name, qty: e.qty } : e)) } : x)); if (Array.isArray(o.extras)) o.extras = o.extras.map((x) => (nesne(x) ? { id: x.id, name: x.name } : x)); } },
   },
+  // apps/oyun: kart bakiyesi hareket defteridir, kayıt silinmez. Kasiyerde indirim üst sınırı, kalem iptali ve bakiye iadesi yönetici PIN'i ister: belirteçsiz değişiklik geri alınır, iade satırı eklenmez. Görevli yalnız çocuk girişi, teslim ve olay yazar; ödeme, bakiye, indirim gitmez, başka kayıtta çocuk teslim alanı dışında değişiklik yapamaz.
+  oyun: {
+    kasa: { ad: 'Kasiyer', saltOkunur: ['tariffs', 'packages', 'areas', 'staff'], silemez: ['sessions', 'payments', 'cardTx', 'members', 'incidents', 'bookings'], onayTurleri: ['iptal', 'indirim', 'bakiye', 'teslim'], onayGeri: { bakiye: ['payments'] },
+      onayAdim: (o, s, onayla) => {
+        const lim = Number((nesne(s._settings) ? s._settings : {}).discMax); const sinir = Number.isFinite(lim) ? lim : 10;
+        if (Array.isArray(o.sessions)) { const m = idHarita(s.sessions); o.sessions = o.sessions.map((x) => { const e = nesne(x) ? m.get(x.id) : null; if (!e) return x; let y = x; const eI = idHarita(e.items); if (dizi(x.items).some((i) => nesne(i) && i.cancel && eI.has(i.id) && !eI.get(i.id).cancel) && !onayla('iptal', 'sessions')) y = { ...y, items: dizi(y.items).map((i) => (nesne(i) && eI.has(i.id) ? { ...i, cancel: eI.get(i.id).cancel } : i)) }; const ara = dizi(x.items).reduce((t, i) => t + (nesne(i) && !i.cancel ? (Number(i.qty) || 0) * (Number(i.price) || 0) : 0), 0) + (Number(x.total) || 0); if (Number(x.discount) !== Number(e.discount || 0) && Number(x.discount) > (ara * sinir) / 100 && !onayla('indirim', 'sessions')) y = { ...y, discount: e.discount || 0 }; return y; }); }
+        if (Array.isArray(o.cardTx)) { const m = idHarita(s.cardTx); o.cardTx = o.cardTx.filter((t) => !nesne(t) || m.has(t.id) || !['iade', 'duzelt'].includes(t.kind) || onayla('bakiye', 'cardTx')).map((t) => (nesne(t) && m.has(t.id) ? m.get(t.id) : t)); }
+      } },
+    gorevli: { ad: 'Oyun görevlisi', kapat: ['payments', 'cardTx', 'staff', 'signedDocs', 'sms'], gizle: { sessions: ['discount', 'pay', 'total', 'minutes'], bookings: ['total', 'paid', 'deposit', 'extra', 'cancel'], menu: ['stock'], packages: ['price', 'extraKid'], members: ['portalCode'] }, saltOkunur: ['sessions', 'bookings', 'menu', 'tariffs', 'packages', 'areas', 'stations', 'members'], yeniSerbest: ['sessions'], izinli: { sessions: ['kid', 'end'] }, silemez: ['incidents'] }, // tarife gizlenmez: çocuk girişi tarifeyi oturuma kopyalar, ücret zaten herkese açıktır
+  },
   // apps/servis: ROLES var, ekranlarda rol denetimi yok. Teknisyen ve kabul Özet, Teknisyenler, Ayarlar menüsünü görmez; parça alış fiyatı Parça Stoku ekranında herkese açık. Yalnız menü farkı: kural eklenmedi.
 };
 // Pazaryeri kanal kaydı: bağlantı alanları gerekir, komisyon ve hizmet bedeli kâr hesabıdır

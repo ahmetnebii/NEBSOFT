@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kartım ve Doğum Günü</title>
+<link rel="stylesheet" href="../../core/core.css">
+<link rel="stylesheet" href="../../core/track.css">
+<style>
+  :root { --app-accent: #ea580c; --app-accent-soft: #ffedd5; --app-accent-soft-dark: #431407; }
+  .ln { display: grid; grid-template-columns: 1fr auto; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--border); }
+  .ln:last-child { border-bottom: 0; }
+</style>
+</head>
+<body>
+<header class="tk-bar"><div class="in" id="bar"></div></header>
+<main class="tk-wrap" id="root" style="max-width:720px"></main>
+<script src="../../core/core.js"></script>
+<script src="hesap.js"></script>
+<script src="data.js"></script>
+<script>
+(function () {
+  const { esc, $, icon, money, toast, today, on, badge } = NS; const H = window.OYUN_HESAP;
+  const db = new NS.DB('oyun', window.OYUN.seed); const S = () => db.settings({});
+  let uye = null;
+  const digits = (x) => String(x || '').replace(/\D/g, '').slice(-10);
+  $('#bar').innerHTML = `<div class="tk-mark">${icon('star')}</div><div class="grow"><b>${esc(S().bizName || 'Oyun salonu')}</b><span>Kartım ve doğum günü</span></div><span id="out"></span>`;
+  const KI = { yukle: 'Yükleme', bonus: 'Bonus', harca: 'Harcama', iade: 'İade', duzelt: 'Düzeltme' };
+  const talep = () => { const P = db.all('packages'); const A = db.all('areas'); return `<section class="tk-panel"><h3>${icon('gift')} Doğum günü talebi</h3><div class="b" id="dg">${P.length && A.length ? `<div class="form-grid"><div class="field"><label>Çocuğun adı *</label><input class="input" id="c"></div><div class="field"><label>Veli adı *</label><input class="input" id="v"></div><div class="field"><label>Telefon *</label><input class="input" id="t" type="tel"></div><div class="field"><label>Tarih *</label><input class="input" id="d" type="date" min="${today()}"></div><div class="field"><label>Başlangıç</label><input class="input" id="s" type="time" value="14:00"></div><div class="field"><label>Çocuk sayısı</label><input class="input" id="n" type="number" min="1" max="100" value="10"></div><div class="field"><label>Paket</label><select class="input" id="p">${P.map((x) => `<option value="${x.id}">${esc(x.name)}${x.price ? ' · ' + money(x.price) : ''}</option>`).join('')}</select></div><div class="field"><label>Alan</label><select class="input" id="a">${A.map((x) => `<option value="${x.id}">${esc(x.name)}</option>`).join('')}</select></div></div><div class="mt"><button class="btn primary" id="gn">${icon('send')} Talep gönder</button></div><p class="small muted mt">Talep rezervasyon değildir, işletme onayıyla kesinleşir.</p>` : '<p class="muted">Doğum günü paketi henüz girilmedi.</p>'}</div></section>`; };
+  function giris() {
+    $('#out').innerHTML = '';
+    $('#root').innerHTML = `<div class="tk-intro"><h1>Kart bakiyeniz telefonunuzda</h1><p>Her yükleme ve harcama satır satır görünür. Kart unutulunca yeni bedel yoktur.</p></div><div class="tk-find" style="flex-wrap:wrap"><input class="input" id="ph" type="tel" placeholder="05xx xxx xx xx" aria-label="Telefon"><input class="input" id="cd" placeholder="Kod" aria-label="Kod" style="max-width:140px"><button class="btn primary" id="go">Giriş</button></div>${db.pub ? '' : '<p class="small muted">Demo: <a href="#" id="hint">örnek üyeyle gir</a></p>'}${talep()}<section class="tk-panel"><h3>${icon('info')} Kurallar</h3><div class="b small">${esc(S().rulesText || '')}</div></section>`;
+    const go = () => { const ph = $('#ph').value, cd = $('#cd').value.trim().toUpperCase(); if (db.pub && !db.lookup({ phone: ph, code: cd })) return; const m = db.all('members').find((x) => digits(x.phone) === digits(ph) && (db.pub || String(x.portalCode || '').toUpperCase() === cd)); if (!m) return toast('Telefon veya kod hatalı', 'err'); uye = m.id; panel(); };
+    $('#go').onclick = go; $('#cd').onkeydown = (e) => { if (e.key === 'Enter') go(); };
+    if ($('#hint')) $('#hint').onclick = (e) => { e.preventDefault(); const m = db.all('members')[1]; $('#ph').value = m.phone; $('#cd').value = NS.portalCode(db, m); };
+  }
+  function panel() {
+    const m = db.get('members', uye); if (!m) return giris(); const tx = db.all('cardTx', (x) => x.member === uye).sort((a, b) => String(b.at).localeCompare(String(a.at))); $('#out').innerHTML = '<button class="btn sm" id="cik">Çıkış</button>';
+    $('#root').innerHTML = `<div class="tk-head"><div class="top"><div><h2>${esc(m.name)}</h2><div class="muted">Üye no ${esc(m.no)}</div></div><div class="tk-eta"><b>${money(H.bakiye(uye, tx))}</b><span>bakiye</span></div></div></div><section class="tk-panel"><h3>${icon('wallet')} Hareketler</h3><div class="b">${tx.slice(0, 40).map((x) => `<div class="ln"><span>${esc(KI[x.kind] || x.kind)}<div class="small muted">${NS.dt(x.at)}${x.note ? ' · ' + esc(x.note) : ''}</div></span><b style="color:${x.amount < 0 ? 'var(--err)' : 'var(--ok)'}">${money(x.amount)}</b></div>`).join('') || '<p class="muted">Hareket yok.</p>'}</div></section>${talep()}`;
+  }
+  on(document.body, 'click', '#gn', () => { const r = { id: NS.uid(), child: $('#c').value.trim(), guardian: $('#v').value.trim(), phone: $('#t').value.trim(), date: $('#d').value, start: $('#s').value, kids: Number($('#n').value) || 1, pkg: $('#p').value, area: $('#a').value }; if (!r.child || !r.guardian || digits(r.phone).length < 10 || !r.date) return toast('Yıldızlı alanları doldurun', 'err'); const p = db.get('packages', r.pkg); if (!db.pub) { const z = H.toMin(r.start) + (Number(p.dur) || 120); r.end = `${NS.pad(Math.floor(z / 60) % 24)}:${NS.pad(z % 60)}`; if (H.cakisan(db.all('bookings'), r, S().bufferMin)) return toast('Bu saat dolu, başka saat seçin', 'err'); Object.assign(r, { status: 'talep', src: 'web', no: db.nextNo('bookings', 'DG'), pkgName: p.name, total: H.rezTutar(p, r.kids, 0), paid: 0 }); } (db.data.bookings = db.data.bookings || []).push(r); db.save(); $('#dg').innerHTML = `<div class="tk-call"><h3>${icon('check')} Talebiniz işletmeye iletildi</h3><p>Rezervasyon işletme onayıyla kesinleşir.</p></div>`; });
+  on(document.body, 'click', '#cik', () => { uye = null; if (db.pub) db.pubLogout(); giris(); });
+  giris();
+})();
+</script>
+</body>
+</html>
