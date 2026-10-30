@@ -126,6 +126,7 @@ function handle(req, res) {
   let p;
   try { p = decodeURIComponent(req.url.split('?')[0]); } catch (e) { res.writeHead(400); return res.end('Geçersiz adres'); }
   if (p.includes('\0')) { res.writeHead(400); return res.end('Geçersiz adres'); }
+  if (/[?&]demo=1(&|$)/.test(req.url)) res.setHeader('X-Robots-Tag', 'noindex, nofollow'); // demo verisi dizine girmez
   if (p.startsWith('/api/')) {
     return cloud.handle(req, res, p).then((done) => { if (!done) return api(req, res, p); }).catch((e) => { console.error(e); json(res, 500, { ok: false, error: 'Beklenmeyen bir hata oluştu' }); });
   }
@@ -147,7 +148,13 @@ function handle(req, res) {
       if (!tm[2]) { res.writeHead(301, { Location: `/t/${tm[1]}/` }); return res.end(); }
       return cloud.seo.tenantPage(req, tm[1]).then((r) => { const html = r && typeof r === 'object' ? r.html : r; if (r && r.csp) res.setHeader('Content-Security-Policy', r.csp); if (!html) { res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' }); return res.end('Bulunamadı'); } sendText(req, res, html, 'text/html; charset=utf-8', 'no-cache'); }).catch(() => { res.writeHead(500); res.end(); });
     }
+    // İşletme sitemap'i ve hizmet sayfaları sunucuda üretilir (ana sitemap'e düşmez)
+    const NF = () => { res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' }); res.end('Bulunamadı'); };
+    if (tm[2] === '/sitemap.xml') return cloud.seo.tenantSitemap(req, tm[1]).then((r) => { if (!r) return NF(); if (r.redirect) { res.writeHead(301, { Location: r.redirect }); return res.end(); } sendText(req, res, r.body, 'application/xml; charset=utf-8', 'public, max-age=3600'); }).catch(() => { res.writeHead(500); res.end(); });
+    const sv = /^\/hizmet\/([a-z0-9-]{1,80})(\/?)$/.exec(tm[2]);
+    if (sv) { if (!sv[2]) { res.writeHead(301, { Location: `/t/${tm[1]}${tm[2]}/` }); return res.end(); } return cloud.seo.tenantService(req, tm[1], sv[1]).then((r) => { if (!r) return NF(); res.setHeader('Content-Security-Policy', r.csp); sendText(req, res, r.html, 'text/html; charset=utf-8', 'no-cache'); }).catch(() => { res.writeHead(500); res.end(); }); }
     p = tm[2]; if (DENY.test(p)) { res.writeHead(404); return res.end(); }
+    if (/^\/apps\/[a-z0-9]+\/(index\.html)?$/.test(p)) res.setHeader('X-Robots-Tag', 'noindex'); // programın giriş ekranı arama sonucuna girmez
   }
   // PWA manifest: ?app=pos gibi programa özel ad, renk ve açılış adresi (ana ekrana eklenince doğrudan o program açılır)
   if (p === '/manifest.webmanifest') {
@@ -166,9 +173,9 @@ function handle(req, res) {
 // İşletmenin kendi alan adı (web sitesi eklentisi): kök sayfa, site haritası ve robots o işletmeye aittir; diğer her şey normal akar
 const server = http.createServer((req, res) => {
   const p0 = req.url.split('?')[0];
-  if (req.method === 'GET' && cloud.db.ready() && ['/', '/index.html', '/sitemap.xml', '/robots.txt'].includes(p0)) {
+  if (['GET', 'HEAD'].includes(req.method) && cloud.db.ready() && (['/', '/index.html', '/sitemap.xml', '/robots.txt'].includes(p0) || /^\/hizmet\/[a-z0-9-]{1,80}\/?$/.test(p0))) {
     sec.headers(req, res);
-    return cloud.seo.domainSite(req, p0).then((x) => { if (!x) return handle(req, res); if (x.csp) res.setHeader('Content-Security-Policy', x.csp); sendText(req, res, x.body, x.type, 'no-cache'); }).catch(() => handle(req, res));
+    return cloud.seo.domainSite(req, p0).then((x) => { if (!x) return handle(req, res); if (x.redirect) { res.writeHead(301, { Location: x.redirect }); return res.end(); } if (x.csp) res.setHeader('Content-Security-Policy', x.csp); sendText(req, res, x.body, x.type, 'no-cache'); }).catch(() => handle(req, res));
   }
   handle(req, res);
 });
