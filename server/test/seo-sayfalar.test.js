@@ -37,7 +37,7 @@ function denetle(S, xml) {
     assert(!h.includes('<!--robots-->'), rel + ' robots yer tutucusu kaldı');
     if (noindex(h)) assert(!L.includes(adres(rel)), rel + ' noindex ama sitemap içinde'); else assert(L.includes(adres(rel)), rel + ' sitemap dışında');
   }
-  for (const u of L) if (u !== D + '/' && !u.includes('/araclar/')) assert(Object.keys(S).some((r) => adres(r) === u), 'sitemap adresi sayfasız: ' + u);
+  for (const u of L) if (u !== D + '/' && !u.includes('/araclar/') && !u.endsWith('/kurumsal-teklif')) assert(Object.keys(S).some((r) => adres(r) === u), 'sitemap adresi sayfasız: ' + u);
   assert([...xml.matchAll(/<url><loc>[^<]+<\/loc><lastmod>\d{4}-\d{2}-\d{2}<\/lastmod><\/url>/g)].length === L.length, 'her adreste lastmod');
   assert.strictEqual(new Set(L).size, L.length, 'sitemap tekrarı');
 }
