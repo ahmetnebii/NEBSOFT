@@ -55,7 +55,8 @@ Yazma yolları:
 |---|---|
 | Ortak yapı taşları | `core/core.js`: `NS.shell`, `NS.DB`, `NS.table`, `NS.crud`, `NS.formModal`, `NS.settingsPage`, `NS.approve`, `NS.pinKontrol`, `NS.dosya` |
 | Belge tasarımı, imzalı form | `core/docs.js`, `core/forms.js` |
-| Entegrasyon, e-Belge | `core/integrations.js`, `core/integ-wizard.js`; doğrulanmamışlar `UNVERIFIED` listesinde |
+| Entegrasyon, e-Belge | `core/integrations.js`, `core/integ-wizard.js`, rehberler `core/integ-guides*.js`; sözleşme gerektirenler `UNVERIFIED` listesinde, envanter `docs/ENTEGRASYON-ENVANTERI.md` |
+| Sağlayıcı istemcileri | `server/cloud/entegrasyon/<saglayici>.js`, uçlar `server/cloud/entegrasyon-api.js`, durum tablosu `entegrasyon_durum` |
 | API uçları | `server/cloud/routes.js` |
 | Rol kuralları | `server/cloud/rol-kural.js`, ekip ekranı `market/market.js` |
 | Belge şifreleme | `server/cloud/belge.js` (klinik, eczane, veteriner, danisan, ik, anaokulu, entegrasyon) |
@@ -112,7 +113,7 @@ node scripts/hosting-paketi.js
 - Dosyalarda CRLF olabilir, yamadan önce satır sonunu kontrol et.
 - Tarayıcı panelinde service worker kaydı hata verir; bu hata panele özgü görünüyor, gerçek Chrome'da doğrulanmadı.
 - `CLOUD` bulut kipinde birden çok kullanıcı varsa PIN ekranı açılır; rol atanmış hesapta PIN ekranı yoktur.
-- Doğrulanmamış entegrasyon canlıda seçilemez, simülasyon her yerde TEST görünür. Ayrıntı `CLAUDE.md` §1.
+- Entegrasyonda Bağlı yalnız gerçek Bağlantıyı dene sonucundan yazılır, bilgi değişince yeniden deneme gerekir. Simülasyon her yerde TEST görünür. Sanal POS canlı işlemi `<SAGLAYICI>_CANLI=1` olmadan yapılmaz.
 
 ## Token tasarrufu
 

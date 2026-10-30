@@ -22,6 +22,7 @@ const cloud = require('./server/cloud');
 const sec = require('./server/cloud/security');
 const log = require('./server/cloud/log');
 const cfg = require('./server/cloud/config');
+const ent = require('./server/cloud/entegrasyon');
 
 const ROOT = __dirname;
 const PORT = Number(process.env.PORT) || 5050;
@@ -105,6 +106,12 @@ async function api(req, res, p) {
   if (p === '/api/kanal') {
     if (!b.channel || !b.action) return json(res, 400, { ok: false, error: 'channel ve action gerekli' });
     return json(res, 200, await kanal.run(b.channel, b.action, b.creds || {}, b.payload || {}));
+  }
+  // Entegrasyon istemcileri: yerelde kimlik bilgisi bu bilgisayardaki tarayıcıdan gelir, istek buradan çıkar. Bulutta aynı işi entegrasyon-api.js yapar
+  if (p === '/api/entegrasyon/dene') return json(res, 200, await ent.dene(`${b.tur}:${b.saglayici}`, b.alanlar || {}));
+  if (p === '/api/entegrasyon/islem') {
+    const a = `${b.tur}:${b.saglayici}`; if (!b.parmak || b.parmak !== ent.parmakIzi(a, b.alanlar || {})) return json(res, 200, { ok: false, kod: 'baglanmadi', hata: 'Bağlantı denenmedi. Entegrasyonlar sayfasından Bağlantıyı dene adımını tamamlayın.' });
+    return json(res, 200, await ent.islem(a, String(b.islem || ''), b.alanlar, b.veri));
   }
   if (p === '/api/inbox') return json(res, 200, { ok: true, items: kanal.drain(String(b.channel || '')) });
 

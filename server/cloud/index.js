@@ -7,7 +7,7 @@ const crypto = require('crypto');
 const log = require('./log');
 const analitik = require('./analitik');
 const { R, err } = require('./routes');
-require('./public'); require('./totp-api'); require('./seo'); require('./odeme'); require('./eticaret-odeme'); require('./analitik-api'); require('./deneme'); require('./guven'); require('./vitrin'); require('./teklif'); require('./katalog-api'); const dosya = require('./dosya'); // müşteriye açık sayfaların, ödemenin, denemenin, güven bölümünün ve analitiğin uç noktaları (R listesine eklenir)
+require('./public'); require('./totp-api'); require('./seo'); require('./odeme'); require('./eticaret-odeme'); require('./entegrasyon-api'); require('./analitik-api'); require('./deneme'); require('./guven'); require('./vitrin'); require('./teklif'); require('./katalog-api'); const dosya = require('./dosya'); // müşteriye açık sayfaların, ödemenin, denemenin, güven bölümünün ve analitiğin uç noktaları (R listesine eklenir)
 
 // Günlük ve sayaçlara gerçek adres değil kalıp yazılır: /api/public/:slug/... (adresteki belirteçler kayda girmez)
 const kalip = (re) => re.source.replace(/\(\?<(\w+)>\[\^\/\]\+\)/g, ':$1').replace(/\\/g, '').replace(/^\^|\$$/g, '');
