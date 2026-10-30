@@ -37,7 +37,13 @@ ebsoft güncel`). Node 24, .NET 8 var → `npm test`: 8 test dosyası geçti (XS
 - **Kurs 1–3 tamamlandı** (`KURS.md`): md. 56 iade, gerçek SMS sonucu, hakediş, ön kayıt, ödev, etüt.
 - **Anaokulu 1–3 tamamlandı** (`ANAOKULU.md`): sahte fotoğraf kaldırıldı, kardeş indirimi, md. 56 ayrılış, sınıf/rota, olay, ilaç, etkinlik izni.
 - **Mali Müşavir 1–3 tamamlandı** (`MUSAVIR.md`): uydurma makbuz no kaldırıldı, e-SMM tahsilatta, resmî tatil kayması, süre uzatma, süreli belgeler; `musavir-kural.test.js` 8 test.
-- **Sıradaki:** İK, Eczane, Kuyumcu, Fiyat Robotu, Kiralama, Emlak; ardından (bilinen güven hatası taraması temiz; spec yok) ve 1. dalgası yapılanlar için pazar araştırması + spec + dalgalar (portal kodu ve SMS düzeltmeleri bunların bazılarında zaten yapıldı); İK ve Eczane 2–3. dalga; kalan 2–3. dalgalar; §4.3 entegratörler.
+- **SEO ve site:** anahtar kelime altyapısı, işletme sayfaları, 20+ ücretsiz araç, yardım merkezi, 62 rehber yazısı (`site/src/rehber/`, program başına 2). Statik `#/` bağlantıları kaldırıldı, sitemap yalnız dizinlenebilir adresleri içerir.
+- **Ödeme ve yasal:** Shopier adaptörü birleşti (kişisel erişim anahtarını kullanıcı girecek, kart verisi bizde tutulmaz); KVKK ve sözleşme taslakları yazıldı, `**TASLAK` veya `[...]` içeren metin yayınlanmaz.
+- **Yönetim:** ortak olay şeması, analitik, maskelenmiş günlük (`denetimGun` varsayılan 3650), güvenlik denetiminin kritikleri (yol aşımı, nginx arkasında köprü).
+- **Satın alma:** destek paketi (`config/destek-paketleri.json`), toplu indirim (`config/toplu-indirim.json`), kurumsal teklif; fiyat ve süreler örnek değerdir, kullanıcı değiştirecek.
+- **Program dalgaları:** Kuyumcu, Fiyat Robotu, E-ticaret, Pazaryeri, Kargo, Kiralama, Emlak, Fabrika, Bilet, Veteriner, Galeri, İK ve Eczane 2-3. dalgaları birleşti. `ic-araclar/nebsoftpazarlama/` özel araç olarak eklendi.
+- **Çekirdek:** `NS.uid` sayaçlı (duman testindeki yinelenen id çözüldü), `NS.kvkk` telefonla bağlı kayıtları kapsıyor (`phoneCols`, eczanede online reçete), `eczadeposu` doğrulanmamış listede.
+- **Hâlâ açık:** sunucuda rol zorlaması yok (sağlık ve maaş verisi için önemli), randevu portalı yalnız telefonla giriş, mysql2 3.11.5 yükseltilmeli (3.24.6), sağlık verisi şifresiz, CSP ve 2FA yok; hosting paketi, exe ve apk yeniden derlenmeli; pazar genişleme planı ile video ve sosyal medya içeriği yapılmadı; 6 mevzuat yazısı hukuk/mali müşavir kontrolü bekliyor.
 
 ---
 
