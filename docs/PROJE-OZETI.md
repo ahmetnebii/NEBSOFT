@@ -68,6 +68,7 @@ Yazma yolları:
 | Log ve analitik | `server/cloud/log.js`, `analitik.js`, `docs/LOG-YAPISI.md` |
 | Dış istek köprüsü | `server/cloud/bridge.js`, `/api/istek` |
 | SEO | `site/tools/build-sites.js`, `site/src/products.js`, `server/cloud/seo.js`, `docs/SEO-KURALLARI.md` |
+| Ücretsiz araçlar | `site/src/araclar/<slug>.js`, `site/tools/build-araclar.js`, görsel ve PDF altyapısı `docs/ARACLAR-DOSYA.md` |
 | Rehber yazıları | `site/src/rehber/*.md` |
 | Güvenlik durumu | `docs/GUVENLIK-RAPORU.md` |
 | Söylenebilir iddialar | `docs/IDDIA-LISTESI.md` |

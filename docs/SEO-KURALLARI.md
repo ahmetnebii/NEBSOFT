@@ -42,6 +42,16 @@ Gövde: başlık, liste, paragraf, tablo. Ham HTML kabul edilmez.
 - **Görsel:** `width` + `height` zorunlu; ilk ekrandaki görsel hariç `loading="lazy"`.
 - **Bağlantı:** Herkese açık sayfaya gerçek adresle bağlanın (`/fiyatlar/`). `#/` yalnız uygulama içi akışlar içindir (kayıt, giriş, sepet, ödeme, hesabım).
 
+## Ücretsiz araç sayfası
+
+Kaynak `site/src/araclar/<slug>.js`, derleme `node site/tools/build-araclar.js`, sonra `node site/tools/build-sites.js`.
+
+- Yeni araç gerçekten farklı bir iş yapmalıdır. Aynı işin biçim, şehir veya sektör çeşidi için sayfa açılmaz; bu aramalar mevcut sayfada, doğal cümleyle karşılanır.
+- Sayfada araç çalışır. Sonuç almak için kayıt, üyelik veya programa geçiş istenmez.
+- Metin elle yazılır, aracın sınırını da söyler. Başka araçta geçen cümle özgün sayılmaz, 200 özgün kelime altı `noindex` olur.
+- Dosya aracı dosyayı sunucuya göndermez. `isle` alanı olan araçlarda sayfa `connect-src` kuralı derleyiciden gelir, kaldırılmaz.
+- Ayrıntı ve Google kaynakları: `docs/ARACLAR-DOSYA.md`.
+
 ## Anahtar kelime
 
 - `keywords` listesi **adaydır**: hacim verisi yoktur, Search Console verisi gelince gözden geçirilir. Hacim veya sıra rakamı yazmayın.

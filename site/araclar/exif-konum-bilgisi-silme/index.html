@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="connect-src 'self' blob: data:; form-action 'none'">
+<title>EXIF ve Konum Bilgisi Silme — Fotoğraftan GPS Kaldırma | NEBSOFT</title>
+<meta name="description" content="Fotoğrafın içindeki GPS konumunu, telefon modelini ve çekim tarihini görün, tek tıkla silin. Görüntü yeniden sıkıştırılmaz, dosya sunucuya gönderilmez.">
+<meta name="robots" content="index,follow">
+<link rel="canonical" href="https://www.nebsoftapp.com/araclar/exif-konum-bilgisi-silme/">
+<meta name="theme-color" content="#1d7bf5">
+<meta property="og:type" content="website"><meta property="og:locale" content="tr_TR"><meta property="og:site_name" content="NEBSOFT">
+<meta property="og:title" content="EXIF ve Konum Bilgisi Silme — Fotoğraftan GPS Kaldırma | NEBSOFT"><meta property="og:description" content="Fotoğrafın içindeki GPS konumunu, telefon modelini ve çekim tarihini görün, tek tıkla silin. Görüntü yeniden sıkıştırılmaz, dosya sunucuya gönderilmez."><meta property="og:url" content="https://www.nebsoftapp.com/araclar/exif-konum-bilgisi-silme/"><meta property="og:image" content="https://www.nebsoftapp.com/assets/og/og.png"><meta name="twitter:card" content="summary_large_image"><meta name="twitter:title" content="EXIF ve Konum Bilgisi Silme — Fotoğraftan GPS Kaldırma | NEBSOFT"><meta name="twitter:description" content="Fotoğrafın içindeki GPS konumunu, telefon modelini ve çekim tarihini görün, tek tıkla silin. Görüntü yeniden sıkıştırılmaz, dosya sunucuya gönderilmez."><meta name="twitter:image" content="https://www.nebsoftapp.com/assets/og/og.png">
+<link rel="icon" href="/assets/icons/icon-32.png" sizes="32x32" type="image/png"><link rel="icon" href="/assets/favicon.svg" type="image/svg+xml"><link rel="apple-touch-icon" href="/assets/icons/apple-touch-icon.png">
+<link rel="stylesheet" href="/site/assets/site.css"><link rel="stylesheet" href="/site/assets/araclar.css">
+<style>:root{--c:#0f766e}</style>
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"WebApplication","name":"EXIF ve Konum Bilgisi Silme","url":"https://www.nebsoftapp.com/araclar/exif-konum-bilgisi-silme/","description":"Fotoğrafın içindeki GPS konumunu, telefon modelini ve çekim tarihini görün, tek tıkla silin. Görüntü yeniden sıkıştırılmaz, dosya sunucuya gönderilmez.","inLanguage":"tr-TR","applicationCategory":"BusinessApplication","operatingSystem":"Web","browserRequirements":"JavaScript gerekir","isAccessibleForFree":true,"dateModified":"2026-10-30","offers":{"@type":"Offer","price":0,"priceCurrency":"TRY"},"publisher":{"@type":"Organization","name":"NEBSOFT","url":"https://www.nebsoftapp.com/"}}</script>
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"Organization","@id":"https://www.nebsoftapp.com/#kurulus","name":"NEBSOFT","url":"https://www.nebsoftapp.com/"}</script>
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"WebSite","@id":"https://www.nebsoftapp.com/#site","name":"NEBSOFT","url":"https://www.nebsoftapp.com/","inLanguage":"tr-TR","publisher":{"@id":"https://www.nebsoftapp.com/#kurulus"}}</script>
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"NEBSOFT","item":"https://www.nebsoftapp.com/"},{"@type":"ListItem","position":2,"name":"Ücretsiz Araçlar","item":"https://www.nebsoftapp.com/araclar"},{"@type":"ListItem","position":3,"name":"EXIF ve Konum Bilgisi Silme","item":"https://www.nebsoftapp.com/araclar/exif-konum-bilgisi-silme/"}]}</script>
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[{"@type":"Question","name":"Fotoğrafımda konum olup olmadığını nasıl anlarım?","acceptedAnswer":{"@type":"Answer","text":"Dosyayı seçmeniz yeterli. Kayıt varsa tabloda Konum (GPS) satırı çıkar ve uyarı gösterilir."}},{"@type":"Question","name":"Silme işlemi kaliteyi düşürür mü?","acceptedAnswer":{"@type":"Answer","text":"Hayır. Görüntü verisi yeniden kodlanmaz, yalnız bilgi blokları çıkarılır."}},{"@type":"Question","name":"Silinen bilgi geri gelir mi?","acceptedAnswer":{"@type":"Answer","text":"Temizlenmiş kopyada gelmez. Özgün dosyanız cihazınızda aynen durur, onu ayrıca silmeniz gerekir."}},{"@type":"Question","name":"Çekim sırasında konum kaydı nasıl kapatılır?","acceptedAnswer":{"@type":"Answer","text":"Telefonun kamera ayarlarında konum etiketi seçeneğini kapatabilirsiniz. Menü adı cihaza göre değişir."}}]}</script>
+</head>
+<body>
+<a class="skip" href="#ana">İçeriğe geç</a>
+<header class="hd mk"><div class="w">
+  <a class="logo" href="/" aria-label="NEBSOFT ana sayfa"><img src="/assets/icons/icon-64.png" alt="" width="36" height="36"><span class="wm"><b>NEB</b><i>SOFT</i></span><span class="sub">Ücretsiz Araçlar</span></a>
+  <nav class="nav" aria-label="Ana menü"><a href="/programlar">Programlar</a><a href="/araclar">Araçlar</a><a href="/fiyatlar/">Fiyatlar</a><a href="/#/sektorler">Sektörler</a><a href="/#/iletisim">İletişim</a></nav>
+  <a class="btn g" href="/#/giris">Giriş yap</a><a class="btn p" href="/#/kayit">Ücretsiz başla <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
+</div></header>
+<main id="ana">
+<div class="w ar-hero">
+  <nav class="crumb" aria-label="Konum"><a href="/">NEBSOFT</a> / <a href="/araclar">Ücretsiz Araçlar</a> / EXIF ve Konum Bilgisi Silme</nav>
+  <h1>EXIF ve Konum Bilgisi Silme</h1>
+  <p class="lead">Fotoğrafın içindeki GPS konumunu, telefon modelini ve çekim tarihini görün, tek tıkla silin. Görüntü yeniden sıkıştırılmaz, dosya sunucuya gönderilmez.</p>
+  <p class="ar-gizli"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg><span>Dosyanız sunucuya yüklenmez, işlem bu cihazda tarayıcınızın içinde yapılır. Sayfayı kapatınca hiçbir kopyası kalmaz.</span></p>
+</div>
+<div class="w ar-is">
+  <form class="ar-kart ar-form-k" id="ar-form" novalidate><h2>Bilgileri girin</h2><div class="ar-alanlar">
+<div class="ar-dosya" data-dosya="dosyalar" data-kabul="image/jpeg,image/png,image/webp" data-coklu="1"><label class="ar-birak"><input type="file" accept="image/jpeg,image/png,image/webp" multiple><b>Fotoğraf seçin</b><span>veya sürükleyin. JPG, PNG, WebP</span></label><small class="ar-dosya-u" role="alert"></small><ul class="ar-dosyalar"></ul></div>
+  </div></form>
+  <section class="ar-kart ar-sonuc" aria-live="polite"><h2>Fotoğrafın içindeki bilgiler</h2><div id="ar-duzen"></div><div id="sonuc"><p class="ar-bos">Aracın çalışması için tarayıcınızda JavaScript açık olmalı.</p></div></section>
+</div>
+<section class="ar-metin"><div class="w"><div class="ar-yazi">
+  <h2>Fotoğrafın içinde hangi bilgiler saklanır?</h2>
+  <p>Telefonla çekilen her fotoğrafın içinde, görüntüden ayrı bir bilgi bölümü bulunur. Buna EXIF denir. Konum servisi açıksa burada çekimin yapıldığı noktanın enlem ve boylamı yazabilir. Ayrıca telefon markası ve modeli, çekim tarihi ve saati, bazı cihazlarda seri numarası ile kullanılan yazılım da saklanır. Fotoğrafa bakan kişi bunları görmez, ama basit bir programla okuyabilir.</p>
+  <p>Bu bilgi sıradan görünür ama sonuç doğurabilir. Evinizde çekip ilana koyduğunuz bir ürün fotoğrafı ev adresinizi, dükkânda çekilen bir fotoğraf çalışma saatinizi ele verebilir. Birçok sosyal ağ yüklenen görseldeki bilgiyi kendi kaldırır, fakat e-postayla gönderilen, dosya olarak paylaşılan veya kendi sitenize yüklediğiniz fotoğraf için bu geçerli olmayabilir. Araç önce dosyada ne bulunduğunu gösterir, sonra temiz kopya üretir.</p>
+  <p>Buradaki işlem sıkıştırma değildir. Araç dosyanın baytları içinde bilgi bölümlerini bulup çıkarır, görüntü verisine hiç dokunmaz, bu yüzden tek bir piksel bile değişmez ve kalite düşmez. JPG için EXIF, XMP, IPTC ve yorum blokları, PNG için metin ve tarih parçaları, WebP için EXIF ve XMP kaldırılır. Renk profili korunur. Yön etiketi ise bilinçli olarak bırakılır, yoksa dikey fotoğraf yan görünürdü.</p>
+  <h2>Kullanım örneği: ikinci el ürün ilanı</h2>
+  <p>Bir kişi evdeki koltuğu satmak için fotoğrafını çekti ve bir alıcıya dosya olarak gönderecek. Fotoğrafı araca attığında listede Konum (GPS) satırını, telefon modelini ve çekim saatini görüyor. Temiz kopyayı indirip onu gönderiyor.</p>
+  <p>Bir fotoğrafçı ise müşteriye teslimden önce kendi cihaz seri numarasını ve yazılım bilgisini çıkarmak istiyor. Aynı anda elli dosyayı seçer, hepsi yeniden sıkıştırılmadan temizlenir, ZIP olarak iner. Baskı kalitesi etkilenmez, çünkü görüntü verisi hiç değişmemiştir.</p>
+  <h2>Kaynaklar ve son güncelleme</h2>
+  <p><b>Son güncelleme:</b> <time datetime="2026-10-30">30 Ekim 2026</time>. Bu araç mevzuat oranı kullanmaz; hesap girdiğiniz değerlerle yapılır.</p>
+  
+  
+  <div class="ar-prog"><p>Müşteriyle sürekli fotoğraf paylaşan bir emlak ofisiyseniz Emlak Ofisi programı portföyü, yer göstermeleri ve kira takibini tek panelde toplar.</p><a class="btn p" href="/emlakprogrami">Emlak programı <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a></div>
+  <h2>Sık sorulan sorular</h2>
+  <div class="faq"><details open><summary>Fotoğrafımda konum olup olmadığını nasıl anlarım?</summary><p>Dosyayı seçmeniz yeterli. Kayıt varsa tabloda Konum (GPS) satırı çıkar ve uyarı gösterilir.</p></details><details><summary>Silme işlemi kaliteyi düşürür mü?</summary><p>Hayır. Görüntü verisi yeniden kodlanmaz, yalnız bilgi blokları çıkarılır.</p></details><details><summary>Silinen bilgi geri gelir mi?</summary><p>Temizlenmiş kopyada gelmez. Özgün dosyanız cihazınızda aynen durur, onu ayrıca silmeniz gerekir.</p></details><details><summary>Çekim sırasında konum kaydı nasıl kapatılır?</summary><p>Telefonun kamera ayarlarında konum etiketi seçeneğini kapatabilirsiniz. Menü adı cihaza göre değişir.</p></details></div>
+</div>
+<h2 class="ar-grup">İlgili araçlar</h2><div class="ar-kartlar"><a href="/araclar/fotograf-bulaniklastirma/"><b>Fotoğraf Bulanıklaştırma ve Bilgi Gizleme</b><span>Plaka, yüz, telefon ve kimlik numarasını kapatın</span></a><a href="/araclar/resim-sikistirma/"><b>Resim Sıkıştırma</b><span>Fotoğrafın KB değerini düşürün, hedef boyuta indirin</span></a><a href="/araclar/resim-boyutlandirma/"><b>Resim Boyutlandırma</b><span>Fotoğrafın piksel ölçüsünü değiştirin, kare yapın, kenar ekleyin</span></a><a href="/araclar/resim-format-donusturme/"><b>Resim Format Dönüştürme</b><span>WebP, PNG ve JPG dosyalarını birbirine çevirin</span></a></div>
+</div></section>
+</main>
+<footer class="ft"><div class="w">
+  <div class="cols">
+    <div><a class="logo" href="/"><img src="/assets/icons/icon-64.png" alt="" width="34" height="34"><span class="wm"><b>NEB</b><i>SOFT</i></span></a><p>Türkiye'deki işletmeler için bulut tabanlı yazılımlar ve ücretsiz iş araçları.</p><p><a href="tel:+908505550034">0850 555 00 34</a><a href="mailto:destek@nebsoft.com.tr">destek@nebsoft.com.tr</a></p></div>
+    <div><h4><a href="/programlar" style="color:inherit">Programlar</a></h4><a href="/randevusistemi">Randevu sistemi</a><a href="/klinikprogrami">Klinik programı</a><a href="/eczaneprogrami">Eczane programı</a><a href="/kuyumcuprogrami">Kuyumcu programı</a></div><div><h4>&nbsp;</h4><a href="/adisyonprogrami">Adisyon programı</a><a href="/emlakprogrami">Emlak programı</a><a href="/kargotakipprogrami">Kargo takip programı</a><a href="/otogaleriprogrami">Oto galeri programı</a></div><div><h4>&nbsp;</h4><a href="/marketprogrami">Market programı</a><a href="/kursprogrami">Kurs programı</a><a href="/biletsatisprogrami">Bilet satış programı</a><a href="/hukukburosuprogrami">Hukuk bürosu programı</a></div>
+  </div>
+  <div class="copy">© 2026 NEBSOFT. Tüm hakları saklıdır. · <a href="/araclar" style="display:inline">Ücretsiz araçlar</a> · <a href="/kvkk/" style="display:inline">KVKK ve yasal metinler</a></div>
+</div></footer>
+<script src="/site/assets/araclar-hesap.js"></script>
+<script src="/site/assets/araclar-dosya-saf.js"></script>
+<script src="/site/assets/araclar-dosya.js"></script>
+<script src="/site/assets/araclar.js"></script>
+<script>AR.baslat({dosyaAdi:"exif-konum-bilgisi-silme",gerekli:[],hesap:function (v, H) { return v.dosyalar.length ? '<p class="ar-bos">Dosya okunuyor.</p>' : H.not('Fotoğraf seçtiğinizde içinde saklanan bilgiler burada listelenir.'); },dosyaAlan:"dosyalar",canli:true,isle:async function (v, H, c) {
+    const n = v.dosyalar.length; let gov = '', gpsVar = 0, hata = '';
+    for (let i = 0; i < n; i++) {
+      const f = v.dosyalar[i]; if (c.iptal()) return ''; try {
+        const b = await H.bayt(f); const m = H.metaOku(b); if (!m.tur) throw new Error('Desteklenmeyen dosya'); const e = m.exif; const y = H.temizle(b); const blob = new Blob([y], { type: f.type }); H.cikti(H.dosyaAdi(f.name, 'temiz', ({ jpeg: 'jpg', png: 'png', webp: 'webp' })[m.tur]), blob);
+        const sat = [e.gps && ['Konum (GPS)', `${H.sayi(e.gps.lat, 6)}, ${H.sayi(e.gps.lon, 6)}`, 1], (e.marka || e.model) && ['Cihaz', H.esc([e.marka, e.model].filter(Boolean).join(' '))], (e.cekim || e.tarih) && ['Çekim tarihi', H.esc(e.cekim || e.tarih)], e.seri && ['Cihaz seri no', H.esc(e.seri)], e.yazilim && ['Yazılım', H.esc(e.yazilim)], e.yazar && ['Yazar', H.esc(e.yazar)], e.sahip && ['Sahip', H.esc(e.sahip)], m.bloklar.length ? ['Bilgi blokları', H.esc(m.bloklar.join(', '))] : null, ['Önce → sonra', `${H.boyutYaz(f.size)} → ${H.boyutYaz(y.length)}`]];
+        if (e.gps) gpsVar++; gov += `${n > 1 ? `<p><b>${H.esc(f.name)}</b></p>` : ''}${sat.filter(Boolean).length > 1 ? H.tablo(sat) : H.not('Bu dosyada bilgi bloğu bulunamadı, dosya zaten temiz.')}`;
+      } catch (e) { hata += H.not(`${H.esc(f.name)}: ${H.esc(e.message)}`, 'uyari'); }
+    }
+    return `${gpsVar ? H.not(`${gpsVar} dosyada konum kaydı var. Temizlenmiş kopyalarda bu kayıt yoktur.`, 'uyari') : ''}${gov}${hata}${H.ciktiListe()}${H.ciktilar.length ? H.not('Görüntü verisine dokunulmadı. Dik çekilmiş fotoğrafın yan çıkmaması için yalnız yön etiketi korunur.') : ''}`;
+  }});</script>
+</body>
+</html>

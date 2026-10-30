@@ -15,7 +15,7 @@ const bizsite = require('../../core/bizsite');
 const analitik = require('./analitik');
 const tlf = (n) => new Intl.NumberFormat('tr-TR').format(n);
 
-const PLACEHOLDER = 'https://www.domain.com';
+const PLACEHOLDER = 'https://www.domain.com'; // eski derlemeler için; site.config.js artık gerçek adresi yazıyor
 const ROOT = path.join(__dirname, '..', '..');
 // Müşteriye açık sayfalar (sorgu/kod gerektirmeyenler)
 const PAGES = {

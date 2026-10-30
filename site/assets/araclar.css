@@ -1,5 +1,5 @@
 /* NEBSOFT ücretsiz araçlar — site.css üstüne. Açık/koyu tema site.css değişkenlerinden gelir; basılan belge her iki temada beyaz kâğıttır. */
-.ar-hero { padding: 8px 0 26px; }
+.ar-hero { padding-top: 8px; padding-bottom: 26px; }
 .ar-hero h1 { font-size: clamp(30px, 4.4vw, 48px); margin: 16px 0 12px; }
 .ar-gizli { display: flex; gap: 8px; align-items: flex-start; font-size: 14px; color: var(--ink2); margin: 14px 0 0; }
 .ar-gizli svg { width: 18px; height: 18px; flex: none; margin-top: 2px; color: var(--c); }
@@ -62,6 +62,46 @@
 .ar-kartlar a:hover { border-color: var(--c); transform: translateY(-2px); }
 .ar-kartlar b { display: block; font-family: var(--dis); margin-bottom: 4px; }
 .ar-kartlar span { font-size: 14px; color: var(--ink2); line-height: 1.45; display: block; }
+
+.ar-dosya { grid-column: 1 / -1; min-width: 0; }
+.ar-birak { display: flex; flex-direction: column; align-items: center; gap: 4px; text-align: center; padding: 26px 16px; border: 2px dashed var(--line); border-radius: 12px; cursor: pointer; background: var(--bg); position: relative; }
+.ar-birak:hover, .ar-birak.ust, .ar-birak:focus-within { border-color: var(--c); }
+.ar-birak input { position: absolute; width: 1px; height: 1px; opacity: 0; }
+.ar-birak b { font: 700 16px var(--dis); color: var(--c); }
+.ar-birak span, .ar-dosya-u { font-size: 13px; color: var(--ink2); }
+.ar-dosya-u { display: block; margin-top: 6px; } .ar-dosya-u:empty { display: none; }
+.ar-dosyalar, .ar-ciktilar { list-style: none; margin: 10px 0 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.ar-dosyalar:empty { display: none; }
+.ar-dosyalar li, .ar-ciktilar li { display: flex; align-items: center; gap: 8px; min-width: 0; padding: 7px 10px; border: 1px solid var(--line); border-radius: 10px; font-size: 14px; }
+.ar-dosyalar span, .ar-ciktilar span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ar-dosyalar small, .ar-ciktilar small { color: var(--ink3); white-space: nowrap; }
+.ar-dosyalar button, .ar-sb button { width: 30px; height: 30px; border: 1px solid var(--line); border-radius: 8px; background: transparent; color: var(--ink2); cursor: pointer; flex: none; }
+.ar-dosyalar button:disabled, .ar-sb button:disabled { opacity: .35; cursor: default; }
+.ar-dosyalar button:not(:disabled):hover, .ar-sb button:not(:disabled):hover { border-color: var(--c); color: var(--c); }
+.ar-imza { grid-column: 1 / -1; } .ar-imza canvas { display: block; width: 100%; height: auto; background: #fff; border: 1px solid var(--line); border-radius: 10px; touch-action: none; cursor: crosshair; margin-top: 5px; }
+.ar-imza .ar-ekle { margin-top: 8px; }
+.ar-alan input[type=color] { padding: 3px; cursor: pointer; } .ar-alan input[type=range] { padding: 0; border: 0; background: transparent; accent-color: var(--c); }
+#ar-duzen:not(:empty) { margin-bottom: 14px; }
+.ar-secim { position: relative; display: inline-block; max-width: 100%; line-height: 0; touch-action: none; user-select: none; cursor: crosshair; }
+.ar-tuval { display: block; max-width: 100%; height: auto; max-height: 70vh; box-shadow: 0 0 0 1px var(--line); }
+.ar-kutu { position: absolute; border: 2px solid var(--c); background: color-mix(in srgb, var(--c) 18%, transparent) center / contain no-repeat; box-shadow: 0 0 0 1px #fff; cursor: move; touch-action: none; box-sizing: border-box; }
+.ar-kutu i { position: absolute; width: 18px; height: 18px; background: #fff; border: 2px solid var(--c); border-radius: 50%; box-sizing: border-box; }
+.ar-kutu i[data-k=ua] { left: -9px; top: -9px; cursor: nwse-resize; } .ar-kutu i[data-k=us] { right: -9px; top: -9px; cursor: nesw-resize; } .ar-kutu i[data-k=as] { right: -9px; bottom: -9px; cursor: nwse-resize; } .ar-kutu i[data-k=aa] { left: -9px; bottom: -9px; cursor: nesw-resize; }
+.ar-kutu button { position: absolute; right: 8px; top: 8px; width: 26px; height: 26px; line-height: 1; border: 0; border-radius: 50%; background: #111; color: #fff; cursor: pointer; }
+.ar-izgara { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; }
+.ar-sayfa { margin: 0; padding: 8px; border: 1px solid var(--line); border-radius: 10px; text-align: center; font-size: 13px; color: var(--ink2); min-width: 0; }
+.ar-sayfa.sil .ar-kucuk { opacity: .25; } .ar-sayfa.sil figcaption { text-decoration: line-through; }
+.ar-kucuk { height: 170px; display: flex; align-items: center; justify-content: center; background: var(--bg2); border-radius: 6px; overflow: hidden; }
+.ar-kucuk img { max-width: 100%; max-height: 100%; }
+.ar-sayfa figcaption { margin: 6px 0; }
+.ar-sb { display: flex; justify-content: center; gap: 4px; }
+.ar-onizle { display: block; max-width: 100%; max-height: 420px; margin: 0 auto 12px; border-radius: 8px; background: repeating-conic-gradient(#cfd4da 0 25%, #fff 0 50%) 0 0 / 20px 20px; }
+.ar-yukleniyor { display: flex; flex-direction: column; gap: 10px; color: var(--ink2); }
+.ar-yukleniyor progress { width: 100%; height: 8px; accent-color: var(--c); }
+.ar-yukleniyor i { height: 4px; border-radius: 4px; background: linear-gradient(90deg, transparent, var(--c), transparent) 0 0 / 40% 100% no-repeat; animation: ar-kay 1.1s linear infinite; }
+@keyframes ar-kay { from { background-position: -60% 0; } to { background-position: 160% 0; } }
+@media (prefers-reduced-motion: reduce) { .ar-yukleniyor i { animation: none; background: var(--c); } }
+.ar-metin-c { width: 100%; min-height: 260px; padding: 10px 12px; font: 400 14px/1.5 ui-monospace, Consolas, monospace; color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 10px; resize: vertical; box-sizing: border-box; }
 
 /* Kâğıt önizleme: tema ne olursa olsun beyaz */
 .belge { background: #fff; color: #111; border-radius: 6px; padding: 26px; font: 13.5px/1.5 Georgia, 'Times New Roman', serif; box-shadow: 0 0 0 1px rgba(0, 0, 0, .08); overflow-wrap: anywhere; }

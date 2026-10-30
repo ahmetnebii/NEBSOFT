@@ -11,7 +11,7 @@ const ASG_KELIME = 200;
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const ORGW = [{ '@context': 'https://schema.org', '@type': 'Organization', '@id': `${CFG.domain}/#kurulus`, name: CFG.brand, url: `${CFG.domain}/` }, { '@context': 'https://schema.org', '@type': 'WebSite', '@id': `${CFG.domain}/#site`, name: CFG.brand, url: `${CFG.domain}/`, inLanguage: 'tr-TR', publisher: { '@id': `${CFG.domain}/#kurulus` } }];
 const ld = (o) => `<script type="application/ld+json">${JSON.stringify(o).replace(/</g, '\\u003c')}</script>`;
-const KATEGORI = [['kod', 'QR kod ve barkod', 'Kasada, rafta ve masada işe yarayan, hemen yazdırılabilen kodlar'], ['belge', 'Belge şablonları', 'Doldurun, yazdırın veya PDF olarak saklayın'], ['ticaret', 'Ticaret ve kârlılık', 'Satış fiyatınızı ve kârınızı girdiğiniz gerçek rakamlarla görün'], ['vergi', 'KDV ve tevkifat', 'Fatura tutarlarını GİB oranlarıyla ayrıştırın'], ['calisma', 'Personel ve ücret', 'İş Kanunu dayanaklı tazminat, izin ve mesai hesapları'], ['emlak', 'Kira, aidat ve kuyum', 'Kiracı, ev sahibi, site yönetimi ve kuyumcu için hesaplar']];
+const KATEGORI = [['gorsel', 'Görsel araçları', 'Fotoğrafı sıkıştırın, ölçüsünü değiştirin, kişisel bilgileri kapatın. Dosya bilgisayarınızdan çıkmaz'], ['pdf', 'PDF araçları', 'Birleştirin, bölün, imzalayın, küçültün. PDF sunucuya yüklenmez, işlem tarayıcınızda yapılır'], ['kod', 'QR kod ve barkod', 'Kasada, rafta ve masada işe yarayan, hemen yazdırılabilen kodlar'], ['belge', 'Belge şablonları', 'Doldurun, yazdırın veya PDF olarak saklayın'], ['ticaret', 'Ticaret ve kârlılık', 'Satış fiyatınızı ve kârınızı girdiğiniz gerçek rakamlarla görün'], ['vergi', 'KDV ve tevkifat', 'Fatura tutarlarını GİB oranlarıyla ayrıştırın'], ['calisma', 'Personel ve ücret', 'İş Kanunu dayanaklı tazminat, izin ve mesai hesapları'], ['emlak', 'Kira, aidat ve kuyum', 'Kiracı, ev sahibi, site yönetimi ve kuyumcu için hesaplar']];
 const AYLAR = ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran', 'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'];
 const trTarih = (s) => { const [y, m, g] = String(s).split('-').map(Number); return `${g} ${AYLAR[m - 1]} ${y}`; };
 const I = {
@@ -35,6 +35,7 @@ const ALTBAR = () => `<footer class="ft"><div class="w">
 
 // ---------- Özgün metin ölçümü ----------
 const cumleler = (m) => String(m).toLocaleLowerCase('tr').split(/(?<=[.!?:])\s+/).map((x) => x.replace(/[^\p{L}\p{N}\s]/gu, ' ').replace(/\s+/g, ' ').trim()).filter(Boolean);
+const dosyali = (a) => !!a.isle;
 const metinOf = (a) => [...(a.aciklama || []), ...((a.ornek || {}).metin || []), ...(a.sss || []).map((x) => x[1])].join(' ');
 // Başka bir araçta da geçen cümleler özgün sayılmaz
 function ozgunKelime(a, hepsi = []) {
@@ -52,6 +53,8 @@ function indekslenir(a, hepsi = []) {
 const alanId = (ad) => `a-${ad}`;
 function girdi(f, sinif = '') {
   const ort = `data-alan="${esc(f.ad)}" data-tip="${esc(f.tip || 'metin')}"`; const id = sinif ? '' : ` id="${alanId(f.ad)}"`; const yer = f.yer ? ` placeholder="${esc(f.yer)}"` : ''; const deg = f.deger != null ? ` value="${esc(f.deger)}"` : '';
+  if (f.tip === 'renk') return `<input${id} type="color" ${ort}${deg}>`;
+  if (f.tip === 'kaydirici') return `<input${id} type="range" min="${f.min}" max="${f.max}" step="${f.adim || 1}" ${ort}${deg}>`;
   if (f.tip === 'secim') return `<select${id} ${ort}>${f.secenekler.map(([v, l]) => `<option value="${esc(v)}"${String(v) === String(f.deger) ? ' selected' : ''}>${esc(l)}</option>`).join('')}</select>`;
   if (f.tip === 'cokmetin') return `<textarea${id} ${ort}${yer}>${esc(f.deger ?? '')}</textarea>`;
   if (f.tip === 'tarih') return `<input${id} type="date" ${ort}${deg}${f.bugun ? ' data-bugun' : ''}>`;
@@ -66,6 +69,8 @@ function satirHtml(s, r = {}) {
 function formHtml(a) {
   return (a.alanlar || []).map((f) => {
     const gst = f.goster ? ` data-goster="${esc(f.goster)}"` : ''; const gizli = f.goster ? ' hidden' : '';
+    if (f.tip === 'dosya') return `<div class="ar-dosya"${gst}${gizli} data-dosya="${esc(f.ad)}" data-kabul="${esc(f.kabul)}"${f.coklu ? ' data-coklu="1"' : ''}${f.sirali ? ' data-sirali="1"' : ''}><label class="ar-birak"><input type="file" accept="${esc(f.kabul)}"${f.coklu ? ' multiple' : ''}><b>${esc(f.etiket)}</b><span>${esc(f.ipucu || 'veya dosyayı buraya sürükleyin')}</span></label><small class="ar-dosya-u" role="alert"></small><ul class="ar-dosyalar"></ul></div>`;
+    if (f.tip === 'imza') return `<div class="ar-imza"${gst}${gizli} data-imza><span class="ar-liste-b">${esc(f.etiket)}</span><canvas width="900" height="300" aria-label="${esc(f.etiket)}"></canvas><button type="button" class="ar-ekle" data-imza-sil>Temizle</button></div>`;
     if (f.tip === 'ara') return `<div class="ar-ara"${gst}${gizli}>${esc(f.etiket)}</div>`;
     if (f.tip === 'satirlar') return `<div class="ar-satirlar" data-alan="${esc(f.ad)}" style="--kolon:${f.kolon || `repeat(${f.sutunlar.length}, minmax(0, 1fr))`}"><span class="ar-liste-b">${esc(f.etiket)}</span>${f.ipucu ? `<small style="display:block;color:var(--ink3);font-size:12.5px">${esc(f.ipucu)}</small>` : ''}<div class="ar-liste">${(f.satir || [{}]).map((r) => satirHtml(f, r)).join('')}</div><template>${satirHtml(f)}</template><button type="button" class="ar-ekle" data-ekle>+ ${esc(f.ekle || 'Satır ekle')}</button></div>`;
     if (f.tip === 'onay') return `<div class="ar-alan ar-onay genis"${gst}${gizli}>${girdi(f)}<label for="${alanId(f.ad)}">${esc(f.etiket)}</label></div>`;
@@ -83,13 +88,14 @@ function sayfa(a, hepsi = []) {
     { '@context': 'https://schema.org', '@type': 'FAQPage', mainEntity: a.sss.map(([q, c]) => ({ '@type': 'Question', name: q, acceptedAnswer: { '@type': 'Answer', text: c } })) },
   ];
   const gerekli = (a.alanlar || []).filter((f) => f.gerekli).map((f) => [f.ad, f.etiket]);
-  const cfg = `{dosyaAdi:${JSON.stringify(a.slug)},gerekli:${JSON.stringify(gerekli).replace(/</g, '\\u003c')},hesap:${String(a.hesap)}}`;
+  const dAlan = (a.alanlar || []).find((f) => f.tip === 'dosya');
+  const cfg = `{dosyaAdi:${JSON.stringify(a.slug)},gerekli:${JSON.stringify(gerekli).replace(/</g, '\\u003c')},hesap:${String(a.hesap)}${dosyali(a) ? `,dosyaAlan:${JSON.stringify(dAlan.ad)},canli:${!!a.canli},isle:${String(a.isle)}${a.hazirla ? `,hazirla:${String(a.hazirla)}` : ''}` : ''}}`;
   return `<!doctype html>
 <html lang="tr">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>${esc(a.baslik)}</title>
+${dosyali(a) ? `<meta http-equiv="Content-Security-Policy" content="connect-src 'self' blob: data:; form-action 'none'">\n` : ''}<title>${esc(a.baslik)}</title>
 <meta name="description" content="${esc(a.ozet)}">
 <meta name="robots" content="${index ? 'index,follow' : 'noindex,follow'}">
 <link rel="canonical" href="${url}">
@@ -109,13 +115,13 @@ ${USTBAR()}
   <nav class="crumb" aria-label="Konum"><a href="/">${CFG.brand}</a> / <a href="/araclar">Ücretsiz Araçlar</a> / ${esc(a.ad)}</nav>
   <h1>${esc(a.ad)}</h1>
   <p class="lead">${esc(a.ozet)}</p>
-  <p class="ar-gizli">${I.kilit}<span>İşlem tarayıcınızda yapılır. Girdiğiniz bilgiler sunucuya gönderilmez ve kaydedilmez.</span></p>
+  <p class="ar-gizli">${I.kilit}<span>${dosyali(a) ? 'Dosyanız sunucuya yüklenmez, işlem bu cihazda tarayıcınızın içinde yapılır. Sayfayı kapatınca hiçbir kopyası kalmaz.' : 'İşlem tarayıcınızda yapılır. Girdiğiniz bilgiler sunucuya gönderilmez ve kaydedilmez.'}</span></p>
 </div>
 <div class="w ar-is${a.tek ? ' tek' : ''}">
   <form class="ar-kart ar-form-k" id="ar-form" novalidate><h2>Bilgileri girin</h2><div class="ar-alanlar">
 ${formHtml(a)}
   </div></form>
-  <section class="ar-kart ar-sonuc" aria-live="polite"><h2>${esc(a.sonucBaslik || 'Sonuç')}</h2><div id="sonuc"><p class="ar-bos">Aracın çalışması için tarayıcınızda JavaScript açık olmalı.</p></div></section>
+  <section class="ar-kart ar-sonuc" aria-live="polite"><h2>${esc(a.sonucBaslik || 'Sonuç')}</h2>${dosyali(a) ? '<div id="ar-duzen"></div>' : ''}<div id="sonuc"><p class="ar-bos">Aracın çalışması için tarayıcınızda JavaScript açık olmalı.</p></div></section>
 </div>
 <section class="ar-metin"><div class="w"><div class="ar-yazi">
   <h2>${esc(a.aciklamaBaslik || `${a.ad} nedir, ne işe yarar?`)}</h2>
@@ -135,7 +141,7 @@ ${rel.length ? `<h2 class="ar-grup">İlgili araçlar</h2><div class="ar-kartlar"
 </main>
 ${ALTBAR()}
 ${a.qr ? '<script src="/site/assets/vendor/qrcode-generator-1.4.4/qrcode.js"></script>\n' : ''}<script src="/site/assets/araclar-hesap.js"></script>
-<script src="/site/assets/araclar.js"></script>
+${dosyali(a) ? '<script src="/site/assets/araclar-dosya-saf.js"></script>\n<script src="/site/assets/araclar-dosya.js"></script>\n' : ''}<script src="/site/assets/araclar.js"></script>
 <script>AR.baslat(${cfg});</script>
 </body>
 </html>
@@ -143,8 +149,8 @@ ${a.qr ? '<script src="/site/assets/vendor/qrcode-generator-1.4.4/qrcode.js"></s
 }
 
 function dizin(hepsi) {
-  const url = `${D}/araclar`; const title = `Ücretsiz İşletme Araçları — QR Menü, Barkod, Teklif, KDV ve Kıdem Hesaplama | ${CFG.brand}`;
-  const desc = `QR menü, barkod, etiket ve belge şablonları ile KDV, tevkifat, kıdem, fazla mesai, kira artışı, aidat ve komisyon hesapları: ${hepsi.length} ücretsiz araç. Üyelik yok, veriler tarayıcıdan çıkmaz.`;
+  const url = `${D}/araclar`; const title = `Ücretsiz Araçlar: PDF, Görsel, QR, KDV, Kıdem | ${CFG.brand}`;
+  const desc = `PDF birleştirme, görsel sıkıştırma, QR menü, barkod, KDV ve kıdem hesabı dahil ${hepsi.length} ücretsiz araç. Üyelik yok, dosyalarınız tarayıcıdan çıkmaz.`;
   const schema = [
     ...ORGW, { '@context': 'https://schema.org', '@type': 'BreadcrumbList', itemListElement: [{ '@type': 'ListItem', position: 1, name: CFG.brand, item: D + '/' }, { '@type': 'ListItem', position: 2, name: 'Ücretsiz Araçlar', item: url }] },
     { '@context': 'https://schema.org', '@type': 'ItemList', name: 'Ücretsiz işletme araçları', itemListElement: hepsi.map((x, i) => ({ '@type': 'ListItem', position: i + 1, url: `${D}/araclar/${x.slug}/`, name: x.ad })) },
@@ -187,6 +193,8 @@ function dogrula(a) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(a.guncelleme)) throw new Error(`${a.slug}: guncelleme YYYY-AA-GG olmalı`);
   (a.kaynaklar || []).forEach((k) => { if (!k.ad || !/^https:\/\//.test(k.url) || !/^\d{4}-\d{2}-\d{2}$/.test(k.tarih)) throw new Error(`${a.slug}: kaynak eksik (ad, url, tarih)`); });
   new Function(`return (${String(a.hesap)})`); // sayfaya gömülecek hesap kodu sözdizimi
+  ['isle', 'hazirla'].forEach((k) => { if (a[k]) new Function(`return (${String(a[k])})`); });
+  if (a.isle && !(a.alanlar || []).some((f) => f.tip === 'dosya')) throw new Error(`${a.slug}: dosya aracında dosya alanı yok`);
 }
 function yukle() { return fs.readdirSync(KAYNAK).filter((f) => f.endsWith('.js') && !f.startsWith('_')).sort().map((f) => { const a = require(path.join(KAYNAK, f)); if (a.slug !== f.replace(/\.js$/, '')) throw new Error(`${f}: slug dosya adıyla aynı olmalı`); dogrula(a); return a; }); }
 
@@ -203,6 +211,7 @@ function uret() {
   fs.writeFileSync(path.join(CIKTI, 'index.html'), dizin(hepsi));
   fs.writeFileSync(path.join(CIKTI, 'liste.json'), JSON.stringify({ guncelleme: hepsi.map((a) => a.guncelleme).sort().pop(), dizin: '/araclar', araclar: liste }, null, 2) + '\n');
   fs.copyFileSync(path.join(__dirname, 'araclar', 'hesap.js'), path.join(SITE, 'assets', 'araclar-hesap.js'));
+  fs.copyFileSync(path.join(__dirname, 'araclar', 'dosya.js'), path.join(SITE, 'assets', 'araclar-dosya-saf.js'));
   console.log(`✓ ${liste.length} araç, /araclar dizini ve liste.json üretildi (index: ${liste.filter((x) => x.index).length}, noindex: ${liste.filter((x) => !x.index).length})`);
 }
 if (require.main === module) uret();

@@ -1,4 +1,4 @@
-/* NEBSOFT ücretsiz araçlar — sayfa çalışma zamanı. Hesap tarayıcıda yapılır; bu dosya hiçbir ağ isteği atmaz, form verisi sunucuya gitmez.
+/* NEBSOFT ücretsiz araçlar — sayfa çalışma zamanı. Hesap tarayıcıda yapılır; bu dosya hiçbir ağ isteği atmaz, form verisi sunucuya gitmez. Dosya araçları: araclar-dosya.js.
    Hesap mantığı: araclar-hesap.js (kaynak site/tools/araclar/hesap.js). QR kodu: vendor/qrcode-generator-1.4.4 (MIT). */
 (function () {
   'use strict';
@@ -17,6 +17,7 @@
   const oku = (el) => { const t = el.dataset.tip; if (t === 'onay') return el.checked; const s = el.value.trim(); if (SAYISAL.has(t)) { const n = H.sayiOku(s); return Number.isNaN(n) ? undefined : n; } return s; };
   const degerler = (form) => {
     const v = {};
+    form.querySelectorAll('[data-dosya]').forEach((k) => { v[k.dataset.dosya] = k._dosyalar || []; });
     form.querySelectorAll('[data-alan]:not(.ar-satirlar)').forEach((el) => { if (!el.closest('.ar-satir')) v[el.dataset.alan] = oku(el); });
     form.querySelectorAll('.ar-satirlar').forEach((kutu) => { v[kutu.dataset.alan] = [...kutu.querySelectorAll('.ar-satir')].map((s) => { const o = {}; s.querySelectorAll('[data-alan]').forEach((el) => { o[el.dataset.alan] = oku(el); }); return o; }); });
     return v;
@@ -35,12 +36,15 @@
       const form = document.getElementById('ar-form'), sonuc = document.getElementById('sonuc'); if (!form || !sonuc) return;
       const bugun = new Date(); const yerel = `${bugun.getFullYear()}-${String(bugun.getMonth() + 1).padStart(2, '0')}-${String(bugun.getDate()).padStart(2, '0')}`;
       form.querySelectorAll('[data-bugun]').forEach((el) => { if (!el.value) el.value = yerel; });
+      const akis = cfg.dosyaAlan ? H.dosyaAkis(form, sonuc, cfg) : null; let sonV = null; if (akis) H.sonDeger = () => sonV;
       const ciz = () => {
-        const v = degerler(form); koşulluGuncelle(form, v); H.dosya = null;
+        const v = degerler(form); sonV = v; koşulluGuncelle(form, v); H.dosya = null;
         const eksik = (cfg.gerekli || []).filter(([a]) => v[a] === undefined || v[a] === '').map(([, e]) => e);
         if (eksik.length) { sonuc.innerHTML = `<p class="ar-bos">Sonuç için ${H.esc(eksik.join(', '))} alanını doldurun.</p>`; return; }
         try { sonuc.innerHTML = cfg.hesap(v, H); } catch (e) { sonuc.innerHTML = H.not(H.esc(e.message), 'uyari'); }
+        if (akis) akis(v);
       };
+      if (akis) { H.dosyaBagla(form, ciz); H.imzaBagla(form, ciz); }
       form.addEventListener('input', ciz); form.addEventListener('change', ciz); form.addEventListener('submit', (e) => { e.preventDefault(); ciz(); });
       form.addEventListener('click', (e) => {
         const ekle = e.target.closest('[data-ekle]'); if (ekle) { const k = ekle.closest('.ar-satirlar'); const t = k.querySelector('template').content.cloneNode(true); k.querySelector('.ar-liste').append(t); ciz(); k.querySelector('.ar-liste').lastElementChild.querySelector('input,select')?.focus(); return; }
@@ -53,6 +57,9 @@
         else if (ey === 'svg' && svg) indir(`${ad}.svg`, new Blob([new XMLSerializer().serializeToString(svg)], { type: 'image/svg+xml' }));
         else if (ey === 'kopyala') { const eski = b.textContent; navigator.clipboard.writeText(b.dataset.metin || sonuc.innerText).then(() => { b.textContent = 'Kopyalandı'; setTimeout(() => { b.textContent = eski; }, 1500); }, () => { b.textContent = 'Kopyalanamadı'; }); }
         else if (ey === 'dosya' && H.dosya) indir(H.dosya.ad, new Blob([H.dosya.icerik], { type: H.dosya.tur }));
+        else if (ey === 'isle' && H.calistir) H.calistir();
+        else if (ey === 'indir') { const c = H.ciktilar[Number(b.dataset.i)]; if (c) indir(c.ad, c.blob); }
+        else if (ey === 'zip') H.zipIndir(ad);
       });
       ciz();
     },

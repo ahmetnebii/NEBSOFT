@@ -102,16 +102,16 @@ assert.deepStrictEqual(H.satirlarOku('Havlu\t869\t10\nKupa;870', 3), [['Havlu', 
 ok('QR içerikleri ve etiket listesi');
 
 // --- Sayfalar ---
-const hepsi = B.yukle(); assert.ok(hepsi.length >= 20 && hepsi.length <= 30, `${hepsi.length} araç`);
+const hepsi = B.yukle(); assert.ok(hepsi.length >= 20 && hepsi.length <= 60, `${hepsi.length} araç`);
 const varsayilan = (a) => { const v = {}; const oku = (f, d) => { const x = d ?? f.deger; if (f.tip === 'onay') return !!x; if (['para', 'sayi', 'yuzde'].includes(f.tip)) { const s = H.sayiOku(x); return Number.isNaN(s) ? undefined : s; } return x == null ? (f.bugun ? '2026-10-30' : '') : String(x); }; (a.alanlar || []).forEach((f) => { if (f.tip === 'ara') return; if (f.tip === 'satirlar') v[f.ad] = (f.satir || [{}]).map((r) => { const o = {}; f.sutunlar.forEach((c) => { o[c.ad] = oku(c, r[c.ad]); }); return o; }); else v[f.ad] = oku(f); }); return v; };
 const H2 = { ...H, qrSvg: () => '<svg></svg>' };
 hepsi.forEach((a) => {
   assert.ok(B.ozgunKelime(a, hepsi) >= B.ASG_KELIME, `${a.slug}: ${B.ozgunKelime(a, hepsi)} kelime`); assert.ok(B.indekslenir(a, hepsi), a.slug); assert.ok(a.sss.length >= 3, a.slug);
   const v = varsayilan(a); (a.alanlar || []).filter((f) => f.gerekli && v[f.ad] === undefined).forEach((f) => { v[f.ad] = f.tip === 'tarih' ? '2026-10-30' : 10; });
   const h = a.hesap(v, H2); assert.strictEqual(typeof h, 'string', a.slug); assert.ok(h.length > 20 && !/undefined|NaN/.test(h), `${a.slug}: ${h.slice(0, 200)}`);
-  const s = B.sayfa(a, hepsi); assert.ok(s.startsWith('<!doctype html>')); assert.ok(s.includes(`<link rel="canonical" href="https://www.domain.com/araclar/${a.slug}/">`)); assert.ok(s.includes('content="index,follow"'));
+  const s = B.sayfa(a, hepsi); assert.ok(s.startsWith('<!doctype html>')); assert.ok(s.includes(`<link rel="canonical" href="https://www.nebsoftapp.com/araclar/${a.slug}/">`)); assert.ok(s.includes('content="index,follow"'));
   const ldler = [...s.matchAll(/<script type="application\/ld\+json">(.*?)<\/script>/g)].map((m) => JSON.parse(m[1])['@type']); assert.deepStrictEqual(ldler, ['WebApplication', 'Organization', 'WebSite', 'BreadcrumbList', 'FAQPage']);
-  assert.ok(s.includes(`href="/${a.program.slug}"`), a.slug); assert.ok(s.includes('Son güncelleme')); new vm.Script(s.match(/<script>AR\.baslat\(([\s\S]*)\);<\/script>/)[0].replace(/<\/?script>/g, ''));
+  assert.ok(s.includes(`href="/${a.program.slug}"`), a.slug); assert.ok(s.includes('Son güncelleme')); if (a.isle) { assert.ok(a.baslik.length <= 70 && a.ozet.length <= 165, `${a.slug}: başlık ${a.baslik.length}, özet ${a.ozet.length}`); assert.ok(s.includes("connect-src 'self' blob: data:"), a.slug); assert.ok(s.includes('araclar-dosya.js') && s.includes('sunucuya yüklenmez'), a.slug); assert.ok(!/https?:\/\/(?!www\.nebsoftapp|schema\.org|developers\.google|www\.mevzuat)/.test(s.match(/<script>AR\.baslat[\s\S]*<\/script>/)[0]), `${a.slug}: dış adres`); } else assert.ok(!s.includes('araclar-dosya.js'), a.slug); new vm.Script(s.match(/<script>AR\.baslat\(([\s\S]*)\);<\/script>/)[0].replace(/<\/?script>/g, ''));
   if (a.mevzuat) { assert.ok(a.kaynaklar.length, a.slug); a.kaynaklar.forEach((k) => { assert.ok(/gov\.tr/.test(k.url), `${a.slug}: resmî kaynak değil ${k.url}`); assert.ok(s.includes(k.url.replace(/&/g, '&amp;')), a.slug); }); }
 });
 ok(`${hepsi.length} araç: 200+ özgün kelime, şema, canonical, kaynak, örnek değerlerle hesap`);
@@ -132,6 +132,6 @@ const liste = JSON.parse(fs.readFileSync(path.join(__dirname, '../../site/aracla
 // Git'in satır sonu çevirisi ve alt bilgideki yıl karşılaştırmayı bozmasın
 const duz = (s) => s.replace(/\r\n/g, '\n').replace(/© \d{4}/g, '© YIL');
 hepsi.forEach((a) => assert.strictEqual(duz(fs.readFileSync(path.join(__dirname, `../../site/araclar/${a.slug}/index.html`), 'utf8')), duz(B.sayfa(a, [...hepsi].sort((x, y) => liste.araclar.findIndex((l) => l.slug === x.slug) - liste.araclar.findIndex((l) => l.slug === y.slug)))), `${a.slug} eski: node site/tools/build-araclar.js`));
-assert.strictEqual(duz(fs.readFileSync(path.join(__dirname, '../../site/assets/araclar-hesap.js'), 'utf8')), duz(fs.readFileSync(path.join(__dirname, '../../site/tools/araclar/hesap.js'), 'utf8')));
+assert.strictEqual(duz(fs.readFileSync(path.join(__dirname, '../../site/assets/araclar-hesap.js'), 'utf8')), duz(fs.readFileSync(path.join(__dirname, '../../site/tools/araclar/hesap.js'), 'utf8'))); assert.strictEqual(duz(fs.readFileSync(path.join(__dirname, '../../site/assets/araclar-dosya-saf.js'), 'utf8')), duz(fs.readFileSync(path.join(__dirname, '../../site/tools/araclar/dosya.js'), 'utf8')));
 ok('Üretilen sayfalar ve liste.json güncel');
 console.log(`\nAraçlar: ${n} test grubu geçti`);

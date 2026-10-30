@@ -19,6 +19,10 @@ Yeni oturum bu dosyayla başlar. Sonra `CLAUDE.md` ve `docs/DEVIR.md`. Ana dal: 
 
 Dosya deposu, kalan rol kuralları, işleme bağlı onay belirteci ve Electron 45 `devir/hepsi` içinde. Arka planda çalışan iş yok.
 
+## Paralel oturumlar (30.10.2026)
+
+Her biri kendi dalında, `devir/hepsi`e birleştirilmedi: Hazır Paketler ve sihirbaz, Sipariş-Teslim 5 program, saha hizmeti 4 program, rezervasyon 4 program, imalat-taşıma 4 program, üyelik-eğitim-danışan 3 program + 2 modül, güven sayfaları. Birleştirme kullanıcı onayıyla yapılır. Alan adı `www.nebsoftapp.com` olarak ayarlandı.
+
 ## Sıradaki iş
 
 1. Yukarıdaki dalları birleştir, tam `npm test` çalıştır.
@@ -28,7 +32,7 @@ Dosya deposu, kalan rol kuralları, işleme bağlı onay belirteci ve Electron 4
 
 ## Kullanıcıdan beklenenler
 
-- Alan adı ve HTTPS. Gelmeden `sunucu.json` HTTP adresi kalkmaz, exe ve apk derlenmez.
+- `www.nebsoftapp.com` için HTTPS kurulumu. Gelmeden `sunucu.json` HTTP adresi kalkmaz, exe ve apk derlenmez.
 - Şirket unvanı, MERSİS, adres, KEP, gerçek destek telefonu ve saatleri.
 - `NEBSOFT_SECRET` belirleme ve ayrı yedekleme. Kaybolursa şifreli veri geri gelmez.
 - E-posta altyapısı. Yöneticiler telefonla iki adımlı girişi açacak.

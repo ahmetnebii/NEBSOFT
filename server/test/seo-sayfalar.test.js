@@ -5,7 +5,7 @@ const { spawn, spawnSync } = require('child_process');
 const ROOT = path.join(__dirname, '..', '..'); const SITE = path.join(ROOT, 'site');
 const { md, onBilgi, esc } = require('../../site/tools/markdown');
 const PRODUCTS = require('../../site/src/products');
-const D = 'https://www.domain.com';
+const D = 'https://www.nebsoftapp.com';
 let n = 0; const ok = (ad, fn) => { fn(); n++; console.log('  ✓ ' + ad); };
 
 // Bir klasördeki tüm üretilmiş sayfaları { yol: html } olarak döndürür

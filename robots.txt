@@ -4,4 +4,4 @@ Disallow: /admin/
 Disallow: /api/
 Disallow: /apps/
 Allow: /t/
-Sitemap: https://www.domain.com/sitemap.xml
+Sitemap: https://www.nebsoftapp.com/sitemap.xml
