@@ -1,0 +1,28 @@
+{
+  "sablon": "peyzaj/sozlesme-formlari",
+  "surum": 1,
+  "program": "peyzaj",
+  "kaynak": "sablon",
+  "tur": "form",
+  "ad": "Peyzaj formları",
+  "aciklama": "Örnek tekrar ziyaret formu.",
+  "uyari": "Bu metin örnektir, hukuki danışmanlık değildir. Kullanmadan önce avukatınıza gösterin ve işinize göre düzenleyin.",
+  "kayitlar": [
+    {
+      "anahtar": "tekrar",
+      "label": "Tekrar ziyaret tutanağı",
+      "sign": [
+        "İşletme",
+        "Müşteri"
+      ],
+      "fields": [
+        {
+          "name": "neden",
+          "label": "Neden",
+          "type": "textarea"
+        }
+      ],
+      "body": "Tekrar ziyaret nedeni: {{neden}}"
+    }
+  ]
+}
