@@ -1,0 +1,42 @@
+{
+  "sablon": "temizlik/hizmet-listesi",
+  "surum": 1,
+  "program": "temizlik",
+  "kaynak": "sablon",
+  "tur": "hizmet",
+  "ad": "Temizlik hizmetleri",
+  "aciklama": "Sık kullanılan hizmetler. Fiyatı siz girin.",
+  "hedef": "services",
+  "fiyatAlan": "price",
+  "varsayilan": {
+    "price": 0,
+    "checks": ""
+  },
+  "kayitlar": [
+    {
+      "anahtar": "merdiven",
+      "name": "Bina merdiven temizliği",
+      "cat": "Bina"
+    },
+    {
+      "anahtar": "ofis",
+      "name": "Ofis temizliği",
+      "cat": "Ofis"
+    },
+    {
+      "anahtar": "ev",
+      "name": "Ev temizliği",
+      "cat": "Ev"
+    },
+    {
+      "anahtar": "insaat",
+      "name": "İnşaat sonrası temizlik",
+      "cat": "Derin"
+    },
+    {
+      "anahtar": "koltuk",
+      "name": "Koltuk yıkama",
+      "cat": "Derin"
+    }
+  ]
+}
