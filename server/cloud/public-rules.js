@@ -718,7 +718,8 @@ RULES.anaokulu = {
 };
 
 // ---------- Kuyumcu: vitrin kur ekranı (ekran.html) — yalnızca ayarlardaki kurlar ----------
-RULES.kuyumcu = { pub: {}, write: {} };
+// Beyaz liste: kur servisi adresi, kimlik sınırı, belge şablonu ve iç notlar vitrine gitmez
+RULES.kuyumcu = { settings: ['bizName', 'bizPhone', 'hasBuy', 'hasSell', 'usd', 'eur', 'rateAt', 'rateSource', 'fxSource', 'rateMaxAge', 'coinBuyCut', 'coinSellAdd', 'scrapCut'], pub: {}, write: {} };
 
 // ---------- Oto galeri: araç vitrini ve bilgi talebi (vitrin.html) ----------
 const leadLimit = (col, phoneField = 'phone') => (r, x) => { if (x.col(col).filter((l) => samePhone(l[phoneField], r[phoneField]) && String(l.at || l.created || '').slice(0, 10) === x.today).length >= 5) bad('Bugün için çok fazla talep gönderdiniz'); };

@@ -21,13 +21,14 @@
   td:first-child { font-weight: 700; }
   td.s { color: #f3c969; font-weight: 800; }
   .panel { background: linear-gradient(180deg, #19140a, #110e07); border: 1px solid #2b2414; border-radius: 22px; padding: clamp(10px, 1.4vw, 22px); }
-  footer { display: flex; gap: 24px; font-size: clamp(13px, 1.3vw, 20px); color: #b9a77a; }
+  footer { display: flex; flex-wrap: wrap; gap: 8px 24px; font-size: clamp(13px, 1.3vw, 20px); color: #b9a77a; }
   footer b { color: #f5ecd7; }
   @media (max-width: 760px) { .board { grid-template-columns: 1fr; } }
 </style>
 </head>
 <body>
 <div class="wrap"><header><svg width="46" height="46" viewBox="0 0 24 24" fill="#f3c969" aria-hidden="true"><path d="M12 2l2.9 6.9L22 10l-5.5 4.7L18.2 22 12 18.3 5.8 22l1.7-7.3L2 10l7.1-1.1z"/></svg><h1 id="nm"></h1><div class="t"><b id="clk"></b><span id="upd"></span></div></header>
+<div id="warn" role="status" style="display:none;background:#7f1d1d;color:#fff;border-radius:12px;padding:10px 16px;font-weight:700;font-size:clamp(14px,1.6vw,24px)"></div>
 <div class="board"><div class="panel"><table id="coins"></table></div><div class="panel"><table id="ayar"></table></div></div>
 <footer id="ft"></footer></div>
 <script src="../../core/core.js"></script>
@@ -37,11 +38,15 @@
   const K = window.KYM; const db = new NS.DB('kuyumcu', K.seed);
   const tl = (n) => new Intl.NumberFormat('tr-TR', { maximumFractionDigits: 2 }).format(n);
   function draw() {
-    db.load(); const s = db.settings({}); const r = K.rates(s);
+    db.load(); const s = db.settings({}); const r = K.rates(s); const st = K.rateState(s);
     document.getElementById('nm').textContent = s.bizName;
+    // Kur kaynağı ve durumu her zaman görünür; örnek veya süresi dolmuş kur fiyat gibi sunulmaz
+    const w = document.getElementById('warn'); w.textContent = st.level === 'ok' ? '' : st.level === 'ornek' ? 'ÖRNEK FİYATLAR — gerçek piyasa fiyatı değildir' : st.level === 'yok' ? 'Kur girilmedi' : `${st.text} — güncel fiyat için sorunuz`; w.style.display = st.level === 'ok' ? 'none' : 'block';
+    if (st.level === 'yok') { ['coins', 'ayar'].forEach((i) => { document.getElementById(i).innerHTML = ''; }); document.getElementById('upd').textContent = ''; document.getElementById('ft').innerHTML = ''; return; }
     document.getElementById('coins').innerHTML = `<tr><th>Altın</th><th>Alış</th><th>Satış</th></tr>${r.coin.map((c) => `<tr><td>${NS.esc(c.name)}</td><td>${tl(c.buy)}</td><td class="s">${tl(c.sell)}</td></tr>`).join('')}`;
-    document.getElementById('ayar').innerHTML = `<tr><th>Gram</th><th>Alış</th><th>Satış</th></tr><tr><td>Has (24)</td><td>${tl(s.hasBuy)}</td><td class="s">${tl(s.hasSell)}</td></tr>${r.ayar.filter((a) => [22, 18, 14].includes(a.ayar)).map((a) => `<tr><td>${a.ayar} ayar</td><td>${tl(Math.round(a.buy))}</td><td class="s">${tl(Math.round(a.sell))}</td></tr>`).join('')}`;
-    document.getElementById('ft').innerHTML = `<span>USD <b>${tl(s.usd)}</b></span><span>EUR <b>${tl(s.eur)}</b></span><span style="margin-left:auto">Fiyatlar TL'dir · işçilik hariç · ${NS.esc(s.bizPhone || '')}</span>`;
+    document.getElementById('ayar').innerHTML = `<tr><th>Gram</th><th>Alış</th><th>Satış</th></tr><tr><td>Has</td><td>${tl(s.hasBuy)}</td><td class="s">${tl(s.hasSell)}</td></tr>${r.ayar.filter((a) => [22, 18, 14].includes(a.ayar)).map((a) => `<tr><td>${a.ayar} ayar</td><td>${tl(Math.round(a.buy))}</td><td class="s">${tl(Math.round(a.sell))}</td></tr>`).join('')}`;
+    const fx = s.fxSource === 'ornek' ? ' (örnek)' : s.fxSource ? ` (${NS.esc(s.fxSource)})` : '';
+    document.getElementById('ft').innerHTML = `${Number(s.usd) > 0 ? `<span>USD <b>${tl(s.usd)}</b></span><span>EUR <b>${tl(s.eur)}</b>${fx}</span>` : ''}<span>Kaynak: ${NS.esc(K.sourceText(s))}</span><span style="margin-left:auto">Fiyatlar TL'dir · işçilik hariç · ${NS.esc(s.bizPhone || '')}</span>`;
     document.getElementById('upd').textContent = 'Güncelleme ' + new Date(s.rateAt).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
   }
   const clk = () => { document.getElementById('clk').textContent = new Date().toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }); };
