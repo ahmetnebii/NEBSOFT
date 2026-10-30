@@ -127,14 +127,15 @@
     if (v.pay > 0) r.payments.push({ amount: v.pay, type: v.type, at: new Date().toISOString() });
     db.log('Araç teslim', `${r.no} · ${c.plate}`); db.save(); toast('Araç teslim edildi', 'ok');
     // Emniyet kiralık araç bildirimi ve GPS takibinde kiralama başlangıcı
-    if (NS.integ) { const m = cust(r.customer); if (NS.integ.isOn('aracbildirim')) NS.integ.call('aracbildirim', 'kiralama-bildir', { plate: c.plate, contract: r.no, from: r.from, to: r.to, renter: { name: m.name, tc: m.tc || m.idNo, license: m.license, phone: m.phone } }, { silent: true }).then((x) => { if (x) { r.emniyet = x.ok ? x.ref : 'hata'; db.save(); } }); if (NS.integ.isOn('gps')) NS.integ.call('gps', 'kiralama-basla', { plate: c.plate, contract: r.no }, { silent: true }); }
+    if (NS.integ) { const m = cust(r.customer); if (NS.integ.isOn('aracbildirim')) NS.integ.call('aracbildirim', 'kiralama-bildir', { plate: c.plate, contract: r.no, from: r.from, to: r.to, renter: { name: m.name, tc: m.tc || m.idNo, license: m.license, phone: m.phone } }, { silent: true }).then((x) => { if (x) { r.emniyet = x.simulated ? 'TEST' : x.ok ? x.ref : 'hata'; db.save(); if (x.simulated) toast('Kiralık araç bildirimi TEST — Emniyet’e bildirim YAPILMADI (simülasyon)', 'warn'); } }); if (NS.integ.isOn('gps')) NS.integ.call('gps', 'kiralama-basla', { plate: c.plate, contract: r.no }, { silent: true }); }
     printContract(r); app.refresh();
   }
   // İade sırasında HGS/OGS geçişleri ve GPS km bilgisi
   async function tollsAndGps(r, c) {
     if (!NS.integ) return { tolls: [], km: null };
     let tolls = [], km = null;
-    if (NS.integ.isOn('hgs')) { const x = await NS.integ.call('hgs', 'gecis-sorgu', { plate: c.plate, from: r.from, to: today() }, { silent: true }); tolls = x && x.data && Array.isArray(x.data.passes) ? x.data.passes : x && x.simulated ? [{ place: 'Osmangazi Köprüsü', date: r.from, amount: 995 }, { place: 'Kuzey Marmara Otoyolu', date: today(), amount: 182.5 }].slice(0, rand(0, 2)) : []; }
+    if (NS.integ.isOn('hgs')) { const x = await NS.integ.call('hgs', 'gecis-sorgu', { plate: c.plate, from: r.from, to: today() }, { silent: true }); // Simülasyonda geçiş uydurulmaz (müşteriye yansıyordu)
+      tolls = x && !x.simulated && x.data && Array.isArray(x.data.passes) ? x.data.passes : []; if (x && x.simulated) toast('HGS TEST — geçişler sorgulanmadı (simülasyon); geçiş ücretlerini elle ekleyin', 'warn'); }
     if (NS.integ.isOn('gps')) { const x = await NS.integ.call('gps', 'km-sorgu', { plate: c.plate }, { silent: true }); km = x && x.data && x.data.km ? Number(x.data.km) : null; }
     return { tolls, km };
   }
