@@ -13,7 +13,7 @@ const KLASORLER = ['admin', 'apps', 'assets', 'config', 'content', 'core', 'mark
 // site/src/site.config.js sunucu tarafından çalışma anında okunur, pakette kalır
 const HARIC = [/^server\/test(\/|$)/, /^site\/src\/(?!site\.config\.js$)/, /^site\/tools(\/|$)/, /\.test\.js$/, /(^|\/)\.DS_Store$/, /\.md$/];
 // Pakette bulunursa işlem durur: gizli dosya kaçmasın
-const YASAK = [/^data(\/|$)/, /^\.git(\/|$)/, /^\.claude(\/|$)/, /^ic-araclar(\/|$)/, /^server\/test(\/|$)/, /\.jks$/, /\.pem$/, /secret\.key$/, /config\.enc$/, /^CLAUDE\.md$/i, /\.env/];
+const YASAK = [/^data(\/|$)/, /^dosyalar(\/|$)/, /^\.git(\/|$)/, /^\.claude(\/|$)/, /^ic-araclar(\/|$)/, /^server\/test(\/|$)/, /\.jks$/, /\.pem$/, /secret\.key$/, /config\.enc$/, /^CLAUDE\.md$/i, /\.env/];
 
 const yol = (x) => x.split(path.sep).join('/');
 const haric = (rel) => HARIC.some((r) => r.test(yol(rel)));
@@ -30,5 +30,5 @@ fs.rmSync(OUT, { recursive: true, force: true }); fs.mkdirSync(OUT);
 DOSYALAR.forEach(kopya); KLASORLER.filter((k) => fs.existsSync(path.join(ROOT, k))).forEach(kopya);
 const kacak = tara(OUT).filter((f) => YASAK.some((r) => r.test(f)));
 if (kacak.length) { fs.rmSync(OUT, { recursive: true, force: true }); console.error('DURDURULDU: pakette gizli dosya var:\n' + kacak.join('\n')); process.exit(1); }
-fs.writeFileSync(path.join(OUT, 'YUKLEME-NOTU.txt'), `NEBSOFT hosting paketi\nÜretim: ${new Date().toISOString()}\n\nBu klasörün içeriğini sunucuya yükleyin, sonra: npm ci --omit=dev && node server.js\ndata/ klasörü sunucuda kalır, üzerine yazılmaz. Ayrıntı: depodaki DEPLOY.md\n`);
+fs.writeFileSync(path.join(OUT, 'YUKLEME-NOTU.txt'), `NEBSOFT hosting paketi\nÜretim: ${new Date().toISOString()}\n\nBu klasörün içeriğini sunucuya yükleyin, sonra: npm ci --omit=dev && node server.js\ndata/ klasörü ve yüklenen fotoğraflar (NEBSOFT_DATA/dosyalar) sunucuda kalır, üzerine yazılmaz. Ayrıntı: depodaki DEPLOY.md\n`);
 console.log(`yayin/ hazır: ${adet} dosya, ${(boyut / 1048576).toFixed(1)} MB`);

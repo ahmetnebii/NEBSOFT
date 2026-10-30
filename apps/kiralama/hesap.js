@@ -57,11 +57,13 @@
   }
   const yearsBetween = (a, b) => (Date.parse(b) - Date.parse(a)) / (365.25 * 864e5);
   // Teslim/iade fotoğrafı kayda gömülür ve belge bütün olarak gider: taraf başına (sözleşme başına en çok 8) ve tüm sözleşmeler için toplam sınır
+  // Bulutta fotoğraf sunucu deposundadır; toplam sınırlar yalnız kayda gömülen yerel fotoğraf içindir
   const PHOTO = { perSide: 4, perPhoto: 300e3, total: 10e6, local: 3e6, doc: 18e6 };
   const rentChars = (r) => [...(r.outPhotos || []), ...(r.inPhotos || [])].reduce((t, u) => t + String(u).length, 0);
   // Boş dönerse sığar; list: forma eklenmiş taslak, other: sözleşmenin diğer taraf fotoğrafları
-  function photoCheck(rents, r, list, chars, { other = [], docChars = 0, local = false } = {}) {
+  function photoCheck(rents, r, list, chars, { other = [], docChars = 0, local = false, sunucu = false } = {}) {
     if (list.length >= PHOTO.perSide) return `Teslim ve iade için ayrı ayrı en fazla ${PHOTO.perSide} fotoğraf eklenebilir. Yeni fotoğraf için önce birini silin.`;
+    if (sunucu) return ''; // bulutta fotoğraf belgeye girmez, alan sınırını sunucu kotası denetler
     const size = (a) => a.reduce((t, u) => t + String(u).length, 0); const max = local ? PHOTO.local : PHOTO.total;
     const used = (rents || []).filter((x) => x.id !== r.id).reduce((t, x) => t + rentChars(x), 0) + size(list) + size(other);
     if (used + chars > max) return `Toplam fotoğraf alanı doldu (${Math.round(max / 1e6)} MB). Yeni fotoğraf için eski sözleşmelerden fotoğraf silin.`;

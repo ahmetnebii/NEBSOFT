@@ -26,8 +26,7 @@
   const adsB = (v) => { const n = Object.keys(v.ads || {}).length; return n ? `<span class="small">${n} ilan</span>` : '<span class="faint small">yok</span>'; };
   // Talep ↔ araç: kasa ve bütçe (%5 pay)
   const fits = (l, v) => (!l.body || v.body === l.body) && v.listPrice <= (l.budget || Infinity) * 1.05;
-  // Fotoğraf: tarayıcıda küçültülür (en uzun kenar 1280 px, JPEG); kayıt verisine gömülür, araç başına en fazla 6
-  const shrink = (file) => new Promise((res, rej) => { const fr = new FileReader(); fr.onerror = rej; fr.onload = () => { const im = new Image(); im.onerror = () => rej(new Error('Görsel okunamadı')); im.onload = () => { const k = Math.min(1, 1280 / Math.max(im.width, im.height)); const c = document.createElement('canvas'); c.width = Math.round(im.width * k); c.height = Math.round(im.height * k); c.getContext('2d').drawImage(im, 0, 0, c.width, c.height); res(c.toDataURL('image/jpeg', 0.72)); }; im.src = fr.result; }; fr.readAsDataURL(file); });
+  const PH_MAX = 6; // araç başına
   const nextStock = () => 'G' + (Math.max(299, ...db.all('vehicles').map((x) => Number(String(x.stockNo).replace(/\D/g, '')) || 0)) + 1);
   const match = (l) => db.all('vehicles', (v) => !['satildi', 'hazirlik'].includes(v.status) && fits(l, v)).sort((a, b) => b.listPrice - a.listPrice);
 
@@ -69,9 +68,9 @@
   // ---------- Fotoğraf ----------
   function photosModal(app, v, parent) {
     const draw = (b) => { const L = v.photos || []; $('#ph', b).innerHTML = L.length ? `<div class="row" style="gap:8px;flex-wrap:wrap">${L.map((u, i) => `<div style="position:relative;width:132px"><img src="${esc(u)}" alt="Fotoğraf ${i + 1}" style="width:100%;height:96px;object-fit:cover;border-radius:8px">${i === 0 ? '<div class="small muted">Kapak</div>' : `<button class="btn sm" data-cv="${i}">Kapak yap</button>`} <button class="btn sm ghost icon" data-rm="${i}" title="Sil">${icon('x')}</button></div>`).join('')}</div>` : '<div class="faint small">Fotoğraf yok</div>'; };
-    modal({ title: `Fotoğraflar — ${title(v)}`, size: 'wide', body: `<p class="small muted mb">En fazla 6 fotoğraf. İlk fotoğraf vitrinde kapak olur. Yüklenirken küçültülür.</p><div id="ph"></div><input class="input mt" type="file" id="fl" accept="image/*" multiple aria-label="Fotoğraf seç">`, onOpen: (b) => {
-      draw(b); on(b, 'click', '[data-rm]', (e, x) => { v.photos.splice(Number(x.dataset.rm), 1); db.save(); draw(b); }); on(b, 'click', '[data-cv]', (e, x) => { const [p] = v.photos.splice(Number(x.dataset.cv), 1); v.photos.unshift(p); db.save(); draw(b); });
-      $('#fl', b).onchange = async (e) => { const fs = [...e.target.files]; v.photos = v.photos || []; const room = 6 - v.photos.length; if (fs.length > room) toast(`En fazla 6 fotoğraf; ${Math.max(0, room)} tanesi eklenecek`, 'warn'); try { for (const f of fs.slice(0, Math.max(0, room))) v.photos.push(await shrink(f)); db.save(); draw(b); } catch (x) { toast('Fotoğraf eklenemedi: ' + (x.message || ''), 'err'); } e.target.value = ''; };
+    modal({ title: `Fotoğraflar — ${title(v)}`, size: 'wide', body: `<p class="small muted mb">En fazla ${PH_MAX} fotoğraf. İlk fotoğraf vitrinde kapak olur. Yüklenirken küçültülür.</p><div id="ph"></div><input class="input mt" type="file" id="fl" accept="image/*" multiple aria-label="Fotoğraf seç">`, onOpen: (b) => {
+      draw(b); on(b, 'click', '[data-rm]', (e, x) => { const [u] = v.photos.splice(Number(x.dataset.rm), 1); db.save(); draw(b); NS.dosya.birak(db, [u], v.photos); }); on(b, 'click', '[data-cv]', (e, x) => { const [p] = v.photos.splice(Number(x.dataset.cv), 1); v.photos.unshift(p); db.save(); draw(b); });
+      $('#fl', b).onchange = async (e) => { const fs = [...e.target.files]; v.photos = v.photos || []; const room = Math.max(0, PH_MAX - v.photos.length); if (fs.length > room) toast(`En fazla ${PH_MAX} fotoğraf; ${room} tanesi eklenecek`, 'warn'); await NS.dosya.toplu(e.target, fs.slice(0, room), async (f) => { const h = await NS.dosya.hazirla(db, f); v.photos.push(await h.yukle()); db.save(); draw(b); }); };
     }, actions: [{ label: 'Tamam', cls: 'primary', onClick: (c) => { c(); if (parent) parent.close(); carModal(app, v); } }] });
   }
   // ---------- Yeni araç ↔ talep ----------

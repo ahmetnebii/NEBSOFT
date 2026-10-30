@@ -120,7 +120,7 @@ async function api(req, res, p) {
 
 const SITES = new Set(fs.existsSync(path.join(ROOT, 'site')) ? fs.readdirSync(path.join(ROOT, 'site')).filter((d) => fs.existsSync(path.join(ROOT, 'site', d, 'index.html'))) : []);
 // Dışarıya asla sunulmayacak yollar (sunucu kodu, veriler, gizli dosyalar, araçlar)
-const DENY = /^\/(data|config|server|node_modules|site\/tools|site\/src|awesome-claude-design|docs|desktop|android|scripts|yayin|ic-araclar|\.[^/]*)(\/|$)|^\/(server\.js|sunucu\.json|package(-lock)?\.json|skills-lock\.json|baslat\.bat)$|\.(md|bat|sh|test\.js)$|\/\.[^/]+$/i;
+const DENY = /^\/(data|dosyalar|config|server|node_modules|site\/tools|site\/src|awesome-claude-design|docs|desktop|android|scripts|yayin|ic-araclar|\.[^/]*)(\/|$)|^\/(server\.js|sunucu\.json|package(-lock)?\.json|skills-lock\.json|baslat\.bat)$|\.(md|bat|sh|test\.js)$|\/\.[^/]+$/i;
 const LONG = /\.(jpg|jpeg|png|webp|svg|ico|woff2?)$/i;
 // Adresi sonda / ile biten statik sayfalar (program sayfaları ve /programlar eski biçimde kalır: sonda / yok)
 const SLASHED = new Set(['fiyatlar', 'kvkk', 'gizlilik', 'mesafeli-satis', 'iade', 'cerez', 'kayit', 'rehber']);
@@ -139,6 +139,8 @@ function handle(req, res) {
     return cloud.handle(req, res, p).then((done) => { if (!done) return api(req, res, p); }).catch((e) => { log.uygulama.hata('sunucu.istek', { hata: e }); json(res, 500, { ok: false, error: 'Beklenmeyen bir hata oluştu' }); });
   }
   if (!['GET', 'HEAD'].includes(req.method)) { res.writeHead(405, { Allow: 'GET, HEAD' }); return res.end(); }
+  const fm = /^\/f\/([^/]+)\/([^/]+)$/.exec(p); // yüklenen fotoğraflar: yetki ve başlıklar dosya.js'te
+  if (fm) return cloud.dosya.sun(req, res, fm[1], fm[2]).catch((e) => { log.uygulama.hata('dosya.sun', { hata: e }); if (!res.headersSent) res.writeHead(500); res.end(); });
   if (p === '/.well-known/assetlinks.json') { const f = path.join(ROOT, 'data', 'assetlinks.json'); return fs.readFile(f, 'utf8', (e, t) => { if (e) { res.writeHead(404); return res.end(); } sendText(req, res, t, 'application/json; charset=utf-8', 'public, max-age=3600'); }); }
   if (DENY.test(p)) { res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' }); return res.end('Bulunamadı'); }
   // Bulutta işletme sahibi uygulamayı /t/<işletme>/apps/... adresinde kullanır (paylaşılan linkler ve QR kodlar işletmeyi taşır)

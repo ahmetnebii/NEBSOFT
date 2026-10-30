@@ -901,4 +901,4 @@ A('PUT', '/settings', async (c) => {
 A('GET', '/audit', async () => ({ ok: true, rows: await db.q('SELECT a.*, u.email FROM audit a LEFT JOIN users u ON u.id=a.user_id ORDER BY a.id DESC LIMIT 500') }));
 A('GET', '/db', async () => ({ ok: true, info: db.info(), tables: await db.q('SELECT table_name AS name, table_rows AS rows_est, ROUND((data_length+index_length)/1024/1024, 2) AS mb FROM information_schema.tables WHERE table_schema = DATABASE() ORDER BY name') }));
 
-module.exports = { R, valid, canUseApp, err, site, audit, J, syncCatalog, route, A, setting, setSetting, applyOrder, paidMail, mailTo, fmtTL, mailSite, pnameOf, uid, slaTara };
+module.exports = { R, valid, canUseApp, hesapRolu, err, site, audit, J, syncCatalog, route, A, setting, setSetting, applyOrder, paidMail, mailTo, fmtTL, mailSite, pnameOf, uid, slaTara };

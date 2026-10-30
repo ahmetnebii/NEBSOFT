@@ -45,6 +45,8 @@ sudo -u nebsoft mkdir -p /opt/nebsoft/data && sudo chmod 700 /opt/nebsoft/data
 | `TRUST_PROXY` | `1` | nginx arkasında gerçek IP ve HTTPS bilgisini okur. Proxy yoksa **koymayın** |
 | `NEBSOFT_SECRET` | 64 karakter rastgele | Şifreleme ana anahtarı. Üretmek için: `openssl rand -hex 32`. **Kaybetmeyin ve değiştirmeyin**, aksi halde kayıtlı DB ayarı çözülemez |
 | `NEBSOFT_DATA` | `/opt/nebsoft/data` | Şifreli ayar, kurulum anahtarı (kod klasörünün dışında tutun) |
+| `NEBSOFT_DOSYALAR` | `/opt/nebsoft/data/dosyalar` | Yüklenen fotoğrafların klasörü. Verilmezse `NEBSOFT_DATA/dosyalar`. Kod klasörünün dışında olmalı; büyük bir diske alınacaksa burası değiştirilir |
+| `NEBSOFT_DOSYA_KOTA_MB` | `2048` | İşletme başına fotoğraf alanı (varsayılan 2 GB) |
 | `DB_POOL` | `10` | MySQL bağlantı havuzu boyutu |
 
 `/etc/nebsoft.env` dosyasını oluşturun ve `chmod 600` yapın:
@@ -182,6 +184,19 @@ Bu noktadan sonra tüm uygulamalar, satış sitesi ve müşteri sayfaları bu My
 - Bu sürümden önce alınan yedekler sağlık verisini ve PIN'leri düz metin içerir. Süresi dolunca silindiklerini doğrulayın.
 - Yedekleri başka bir sunucuya veya nesne depolamaya kopyalayın.
 - Geri yükleme: `gunzip < yedek.sql.gz | mysql nebsoft`
+- **Fotoğraflar veritabanında değildir.** E-ticaret, Galeri ve Kiralama fotoğrafları diskte `NEBSOFT_DATA/dosyalar/<işletme>/` altındadır (`NEBSOFT_DOSYALAR` ile değişir). `mysqldump` bunları almaz, klasör ayrı yedeklenir:
+
+```bash
+# /etc/cron.d/nebsoft-dosya-yedek — her gece 03:45, veritabanı dökümünden SONRA
+45 3 * * * root rsync -a /opt/nebsoft/data/dosyalar/ /var/backups/nebsoft-dosyalar/
+```
+
+  `rsync --delete` kullanmayın: yanlışlıkla silinen dosya yedekte kalmalı. Veritabanı önce, klasör sonra alınır: böylece yedekteki her kaydın dosyası yedekte bulunur. Klasör veritabanından eskiyse yeni fotoğraflar 404 verir; diğer kayıtlar bozulmaz.
+- Fotoğraf geri yükleme: sunucuyu durdurun, veritabanını yukarıdaki gibi yükleyin, `rsync -a /var/backups/nebsoft-dosyalar/ /opt/nebsoft/data/dosyalar/` çalıştırın, sahibi uygulama kullanıcısı olacak şekilde `chown -R nebsoft: /opt/nebsoft/data/dosyalar` yapın ve sunucuyu başlatın. Bir ürün fotoğrafını açıp, Kiralama'da bir teslim fotoğrafını oturum açıkken görerek doğrulayın.
+- Kiralama fotoğrafları (`.enc`) diskte `NEBSOFT_SECRET` ile şifrelidir: anahtar olmadan yedekten açılmaz. Ürün ve araç fotoğrafları şifresizdir, adresi bilen herkes görebilir (vitrinin çalışması için gerekir).
+- Anahtar değişiminde `.enc` dosyaları da açılışta yeni anahtara taşınır (`NEBSOFT_SECRET_ESKI` verilmişken). Günlükte `dosya.anahtar` hatası varsa eski anahtarı kaldırmayın.
+- Fotoğraf silme: kayıttan çıkan dosya 7 gün daha diskte kalır, sonra altı saatlik temizlikte silinir. Belgesi açılamayan işletmede temizlik hiçbir şey silmez (günlükte `dosya.temizlik`).
+- Eski sürüme dönülecekse: bu sürümden önceki kod `/f/...` adreslerini göstermez. Dosyaları silmeyin, sürüme yeniden geçince fotoğraflar geri gelir.
 - Uygulama verilerinin son 48 saatlik saatlik anlık görüntüleri `app_data_history` tablosunda tutulur. Bu, yanlışlıkla silinen verilerin kurtarılması içindir.
 
 ## 10. Güncelleme

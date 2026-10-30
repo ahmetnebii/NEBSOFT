@@ -196,8 +196,7 @@
       ],
     });
   }
-  // Teslim/iade fotoğrafı: tarayıcıda küçültülür (en uzun kenar 1280 px, JPEG), üst sınırı aşarsa kalite düşürülür; sözleşmeye gömülür
-  const shrink = (file) => new Promise((res, rej) => { if (!/^image\//.test(file.type || '')) return rej(new Error('Yalnızca görsel dosyası seçin')); const fr = new FileReader(); fr.onerror = () => rej(new Error('Dosya okunamadı')); fr.onload = () => { const im = new Image(); im.onerror = () => rej(new Error('Görsel okunamadı')); im.onload = () => { const k = Math.min(1, 1280 / Math.max(im.width, im.height)); const c = document.createElement('canvas'); c.width = Math.round(im.width * k); c.height = Math.round(im.height * k); c.getContext('2d').drawImage(im, 0, 0, c.width, c.height); let q = 0.72, u = c.toDataURL('image/jpeg', q); while (u.length > H.PHOTO.perPhoto && q > 0.3) { q -= 0.12; u = c.toDataURL('image/jpeg', q); } if (u.length > H.PHOTO.perPhoto) return rej(new Error('Görsel küçültülemedi')); res(u); }; im.src = fr.result; }; fr.readAsDataURL(file); });
+  // Teslim/iade fotoğrafı: küçültme ve yükleme NS.dosya'da. Sunucu kiralamayı "gizli" sınıfta tutar: diskte şifreli, yalnız işletmenin oturumu okur.
   // Yerel kayıt tarayıcı deposuna sığmazsa core yalnızca konsola yazar: kaydın gerçekten yazıldığı burada doğrulanır
   const stored = () => { if (db.cloud || db.pub) return true; try { return localStorage.getItem(db.key) === JSON.stringify(db.data); } catch (e) { return false; } };
   // Forma eklenen fotoğraf alanı: taslak listesi; form onaylanınca sözleşmeye yazılır (photoSave)
@@ -210,12 +209,10 @@
         draw(b);
         on(b, 'click', `[data-phrm^="${side}|"]`, (e, x) => { list.splice(Number(x.dataset.phrm.split('|')[1]), 1); draw(b); });
         $(`[data-phf=${side}]`, b).onchange = async (e) => {
-          const inp = e.target; const fs = [...inp.files]; inp.disabled = true;
-          try { for (const f of fs) { const u = await shrink(f); const msg = H.photoCheck(db.all('rents'), r, list, u.length, { other: r[otherKey] || [], docChars: JSON.stringify(db.data).length, local: !db.cloud }); if (msg) { toast(msg, 'err'); break; } list.push(u); draw(b); } } catch (x) { toast('Fotoğraf eklenemedi: ' + (x.message || ''), 'err'); }
-          inp.value = ''; inp.disabled = false;
+          await NS.dosya.toplu(e.target, [...e.target.files], async (f) => { const h = await NS.dosya.hazirla(db, f, { sinir: H.PHOTO.perPhoto }); const msg = H.photoCheck(db.all('rents'), r, list, h.boyut, { other: r[otherKey] || [], docChars: JSON.stringify(db.data).length, local: !db.cloud, sunucu: db.cloud }); if (msg) { toast(msg, 'err'); return false; } list.push(await h.yukle()); draw(b); });
         };
       },
-      save: () => { if (list.length) r[key] = list; else delete r[key]; },
+      save: () => { if (list.length) r[key] = list; else delete r[key]; NS.dosya.birak(db, old, list); },
       undo: () => { if (old) r[key] = old; else delete r[key]; },
     };
   }

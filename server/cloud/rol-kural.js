@@ -287,6 +287,8 @@ function kisiBilgi(app, rol, dept, belge) {
   const r = dizi((nesne(belge) ? belge : {})[k.kisi.kol]).find((x) => nesne(x) && x.id === dept); if (!r) return null;
   return { id: r.id, ad: k.kisi.kayitAdi === false ? '' : String(r.name || ''), ...(k.kisi.alan ? { alan: k.kisi.alan } : {}) };
 }
+// Koleksiyona yazamayan rol o koleksiyonun fotoğrafını da yükleyemez (dosya.js)
+const yazabilir = (app, rol, kol) => { const k = kuralBul(app, rol); return !k || !((k.saltOkunur || []).includes(kol) || (k.kapat || []).includes(kol)); };
 const rolVar = (app, rol) => typeof rol === 'string' && !!kuralBul(app, rol) && rol !== '*';
 
-module.exports = { RULES, ORTAK, filtrele, geriKoy, rolCoz, rolYaz, rollerTemizle, rolVar, programlar, onayRolleri, kisiler, kisiBilgi };
+module.exports = { RULES, ORTAK, filtrele, geriKoy, rolCoz, rolYaz, rollerTemizle, rolVar, yazabilir, programlar, onayRolleri, kisiler, kisiBilgi };
