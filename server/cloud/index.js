@@ -7,7 +7,7 @@ const crypto = require('crypto');
 const log = require('./log');
 const analitik = require('./analitik');
 const { R, err } = require('./routes');
-require('./public'); require('./seo'); require('./odeme'); require('./analitik-api'); // müşteriye açık sayfaların, ödemenin ve analitiğin uç noktaları (R listesine eklenir)
+require('./public'); require('./seo'); require('./odeme'); require('./analitik-api'); require('./deneme'); require('./guven'); // müşteriye açık sayfaların, ödemenin, denemenin, güven bölümünün ve analitiğin uç noktaları (R listesine eklenir)
 
 // Günlük ve sayaçlara gerçek adres değil kalıp yazılır: /api/public/:slug/... (adresteki belirteçler kayda girmez)
 const kalip = (re) => re.source.replace(/\(\?<(\w+)>\[\^\/\]\+\)/g, ':$1').replace(/\\/g, '').replace(/^\^|\$$/g, '');
@@ -70,4 +70,4 @@ async function tenantSlug(req) {
   const u = await auth.current(req); if (!u || !u.tenant_id) return null;
   const t = await db.one('SELECT slug FROM tenants WHERE id=?', [u.tenant_id]); return t ? t.slug : null;
 }
-module.exports = { handle, init, send, tenantSlug, db, log, analitik, seo: require('./seo') };
+module.exports = { handle, init, send, tenantSlug, db, log, analitik, seo: require('./seo'), guven: require('./guven') };

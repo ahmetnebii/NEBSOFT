@@ -221,7 +221,7 @@ function serve(req, res, p) {
     const cache = ext === '.html' ? 'no-cache' : ext === '.css' && /[?&]v=[0-9a-f]{6,}/.test(req.url) ? 'public, max-age=31536000, immutable' : LONG.test(ext) ? 'public, max-age=604800' : 'public, max-age=300, must-revalidate';
     const h = { 'Content-Type': type, ETag: etag, 'Cache-Control': cache, ...(GZ.test(type) ? { Vary: 'Accept-Encoding' } : {}) };
     // Tanıtım sitelerinde alan adı yer tutucusu panel ayarındaki adresle değiştirilir
-    if (ext === '.html' && (p.startsWith('/site/') || p === '/index.html')) return fs.readFile(file, 'utf8', (er, txt) => { if (er) { res.writeHead(500); return res.end(); } cloud.seo.rewrite(txt, req).then((t) => sendText(req, res, t, h['Content-Type'], h['Cache-Control'])); });
+    if (ext === '.html' && (p.startsWith('/site/') || p === '/index.html')) return fs.readFile(file, 'utf8', (er, txt) => { if (er) { res.writeHead(500); return res.end(); } cloud.seo.rewrite(txt, req).then((t) => cloud.guven.inject(t, p)).then((t) => sendText(req, res, t, h['Content-Type'], h['Cache-Control'])); });
     if (req.headers['if-none-match'] === etag) { res.writeHead(304, h); return res.end(); }
     res.writeHead(200, gz ? { ...h, 'Content-Encoding': 'gzip' } : { ...h, 'Content-Length': st.size });
     if (req.method === 'HEAD') return res.end();

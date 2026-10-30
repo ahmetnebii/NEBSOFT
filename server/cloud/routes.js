@@ -95,16 +95,16 @@ async function sendCode(email, purpose, name, title, intro) {
   if (!r.ok) throw err(503, 'Doğrulama e-postası gönderilemedi. Lütfen daha sonra tekrar deneyin.');
   return ticket;
 }
-// Lisans bitiş hatırlatmaları: 7, 3 ve 1 gün kala (6 saatte bir kontrol)
+// Lisans bitiş hatırlatmaları: 7, 3 ve 1 gün kala (6 saatte bir kontrol). Deneme lisansları server/cloud/deneme.js dizisindedir.
 async function licenseReminders() {
   if (!db.ready() || !(await mail.ready())) return;
-  const sent = await setting('lic_mail', {}); const rows = await db.q("SELECT l.id, l.product, l.status, l.end, t.name AS biz, (SELECT email FROM users u WHERE u.tenant_id=t.id AND u.role='customer' ORDER BY created LIMIT 1) AS email, (SELECT name FROM users u WHERE u.tenant_id=t.id AND u.role='customer' ORDER BY created LIMIT 1) AS uname FROM licenses l JOIN tenants t ON t.id=l.tenant_id WHERE l.status IN ('deneme','aktif') AND l.end BETWEEN UTC_TIMESTAMP() AND DATE_ADD(UTC_TIMESTAMP(), INTERVAL 8 DAY)");
+  const sent = await setting('lic_mail', {}); const rows = await db.q("SELECT l.id, l.product, l.status, l.end, t.name AS biz, (SELECT email FROM users u WHERE u.tenant_id=t.id AND u.role='customer' ORDER BY created LIMIT 1) AS email, (SELECT name FROM users u WHERE u.tenant_id=t.id AND u.role='customer' ORDER BY created LIMIT 1) AS uname FROM licenses l JOIN tenants t ON t.id=l.tenant_id WHERE l.status='aktif' AND l.end BETWEEN UTC_TIMESTAMP() AND DATE_ADD(UTC_TIMESTAMP(), INTERVAL 8 DAY)");
   const s = await site(); let ch = false;
   for (const l of rows) {
     const d = Math.ceil((new Date(l.end) - Date.now()) / 864e5); const step = d <= 1 ? 1 : d <= 3 ? 3 : d <= 7 ? 7 : 0; const k = `${l.id}:${step}`;
     if (!step || sent[k] || !l.email) continue; sent[k] = new Date().toISOString().slice(0, 10); ch = true;
     mailTo(l.email, `${pnameOf(l.product)} ${l.status === 'deneme' ? 'denemeniz' : 'lisansınız'} ${d} gün içinde bitiyor`, { title: `${d} gün kaldı`, intro: `Merhaba ${l.uname || ''}, ${l.biz} için ${pnameOf(l.product)} ${l.status === 'deneme' ? 'ücretsiz deneme süreniz' : 'lisansınız'} ${new Date(l.end).toLocaleDateString('tr-TR')} tarihinde sona eriyor.`,
-      blocks: [{ type: 'p', text: 'Süre dolduğunda verileriniz silinmez; yalnızca yeni kayıt girişi durur. Kesintisiz devam etmek için paketinizi şimdi seçebilirsiniz.' }, { type: 'button', label: l.status === 'deneme' ? 'Paketimi seç' : 'Lisansı uzat', url: `${s.siteUrl || ''}/#/hesabim` }, { type: 'note', tone: 'warn', text: 'Yıllık ödemede 2 ay ücretsiz.' }] });
+      blocks: [{ type: 'p', text: 'Süre dolduğunda verileriniz silinmez; yalnızca yeni kayıt girişi durur. Kesintisiz devam etmek için paketinizi şimdi seçebilirsiniz.' }, { type: 'button', label: l.status === 'deneme' ? 'Paketimi seç' : 'Lisansı uzat', url: `${s.siteUrl || ''}/#/hesabim` }] });
   }
   if (ch) { Object.keys(sent).forEach((k) => { if (sent[k] < new Date(Date.now() - 60 * 864e5).toISOString().slice(0, 10)) delete sent[k]; }); await setSetting('lic_mail', sent); }
 }
@@ -203,8 +203,9 @@ route('POST', '/api/auth/register', { auth: 'none', limit: ['reg', 5, 3600e3] },
   });
   await auth.createSession(c.req, c.res, u, true);
   await audit({ ...c, user: u }, 'Kayıt', `${u.email} · ${b.company}${ref ? ' · davet' : ''}`, tid);
+  if (b.pazarlama === true) await db.q('INSERT INTO mail_prefs (user_id, marketing, marketing_at, marketing_src, marketing_ip, updated) VALUES (?,1,?,?,?,?)', [u.id, now(), 'kayit', c.ip, now()]).catch(() => {});
   if (b.product && cat.product(b.product)) notifyTrialRequest(sec.clean(b.company, 160), u, b.product);
-  mailTo(email, `${s.siteName} hesabınız hazır`, { title: 'Hoş geldiniz! Hesabınız hazır', intro: `Merhaba ${u.name.split(' ')[0]}, ${sec.clean(b.company, 160)} için hesabınız oluşturuldu.`, blocks: [...(b.product && cat.product(b.product) ? [{ type: 'kv', rows: [['Program', pnameOf(b.product)], ['Deneme', `${trialLen(s)} gün ücretsiz, hemen başladı`], ['Hesap', 'Süresiz ve ücretsiz']] }] : []), { type: 'list', items: ['Ürün ve müşterilerinizi Excel ile aktarın', 'Ekibinizi davet edin, her birine yetki verin', 'Telefonunuza uygulama olarak ekleyin'] }, { type: 'button', label: 'Programımı aç', url: `${s.siteUrl || ''}/#/programlarim` }, { type: 'p', text: 'Kurulum ve veri aktarımında ücretsiz destek veriyoruz; bu e-postayı yanıtlamanız yeterli.' }] });
+  mailTo(email, `${s.siteName} hesabınız hazır`, { title: 'Hoş geldiniz! Hesabınız hazır', intro: `Merhaba ${u.name.split(' ')[0]}, ${sec.clean(b.company, 160)} için hesabınız oluşturuldu.`, blocks: [...(b.product && cat.product(b.product) ? [{ type: 'kv', rows: [['Program', pnameOf(b.product)], ['Deneme', `${trialLen(s)} gün ücretsiz, hemen başladı`], ['Hesap', 'Süresiz ve ücretsiz']] }] : []), { type: 'list', items: ['Ürün ve müşterilerinizi Excel ile aktarın', 'Ekibinizi davet edin, her birine yetki verin', 'Telefonunuza uygulama olarak ekleyin'] }, { type: 'button', label: 'Programımı aç', url: `${s.siteUrl || ''}/#/programlarim` }, { type: 'p', text: 'Kurulum veya veri aktarımında takılırsanız bu e-postayı yanıtlayabilirsiniz.' }] });
   return { ok: true };
 });
 route('POST', '/api/auth/login', { auth: 'none', limit: ['login', 10, 600e3] }, async (c) => {
@@ -650,17 +651,21 @@ A('GET', '/mail', async () => { const s = await mail.settings(); return { ok: tr
 A('PUT', '/mail', async (c) => { const b = c.body || {}; if (b.user && !sec.V.email(b.user)) throw err(400, 'Geçerli bir gönderen e-posta adresi girin'); const r = await mail.saveConfig(b); await audit(c, 'E-posta ayarları', `${r.host} · ${r.user}`); return { ok: true, mail: r }; });
 A('POST', '/mail/test', async (c) => { const to = String(c.body.to || c.user.email); if (!sec.V.email(to)) throw err(400, 'Geçerli bir alıcı girin'); const r = await mail.send(to, 'NEBSOFT e-posta testi', { title: 'E-posta ayarlarınız çalışıyor', intro: 'Bu bir deneme e-postasıdır. Doğrulama kodları, sipariş ve lisans bildirimleri bu adresten gönderilecek.', blocks: [{ type: 'kv', rows: [['Gönderim', new Date().toLocaleString('tr-TR')], ['Alıcı', to]] }, { type: 'note', text: 'Her şey yolunda görünüyor.' }] }, await mailSite()); if (!r.ok) throw err(400, r.error || 'Gönderilemedi'); return { ok: true }; });
 A('GET', '/mail/log', async () => ({ ok: true, rows: await db.q('SELECT * FROM mail_log ORDER BY id DESC LIMIT 300') }));
-const campaignTpl = (b) => ({ title: sec.clean(b.title || b.subject, 140), intro: sec.clean(b.intro, 300), preheader: sec.clean(b.intro || b.subject, 140), footer: 'Bu e-postayı NEBSOFT müşterisi olduğunuz için aldınız. Almak istemiyorsanız bu e-postayı yanıtlayarak bildirin.', blocks: [...String(b.body || '').split(/\n{2,}/).filter(Boolean).map((t) => ({ type: 'p', text: sec.clean(t, 4000) })), ...(b.btnLabel && /^https?:\/\//.test(b.btnUrl || '') ? [{ type: 'button', label: sec.clean(b.btnLabel, 40), url: String(b.btnUrl).slice(0, 300) }] : [])] });
+const campaignTpl = (b) => ({ title: sec.clean(b.title || b.subject, 140), intro: sec.clean(b.intro, 300), preheader: sec.clean(b.intro || b.subject, 140), footer: 'Tanıtım: bu e-postayı izin verdiğiniz için aldınız.', blocks: [...String(b.body || '').split(/\n{2,}/).filter(Boolean).map((t) => ({ type: 'p', text: sec.clean(t, 4000) })), ...(b.btnLabel && /^https?:\/\//.test(b.btnUrl || '') ? [{ type: 'button', label: sec.clean(b.btnLabel, 40), url: String(b.btnUrl).slice(0, 300) }] : [])] });
 A('POST', '/mail/preview', async (c) => ({ ok: true, html: mail.render({ ...campaignTpl(c.body || {}), site: await mailSite() }).html }));
 A('POST', '/mail/campaign', async (c) => {
   const b = c.body || {}; if (!sec.V.str(b.subject, 160, 3) || !sec.V.str(b.body, 8000, 5)) throw err(400, 'Konu ve metin gerekli');
   if (!(await mail.ready())) throw err(400, 'Önce e-posta ayarlarını yapın');
+  const pz = await setting('pazarlama', {}); if (!(await site()).siteUrl) throw err(400, 'Çıkış bağlantısı için önce Site Ayarları\'nda site adresini girin'); if (!(pz.iys && pz.unvan && pz.mersis)) throw err(400, 'Toplu e-posta ticari iletidir. Önce Deneme Takibi sayfasından İYS kaydını, ticaret unvanını ve MERSİS numarasını girin.');
   const Q = { all: "SELECT DISTINCT u.email, u.name FROM users u WHERE u.role='customer' AND u.status='active'", trial: "SELECT DISTINCT u.email, u.name FROM users u JOIN licenses l ON l.tenant_id=u.tenant_id WHERE u.role='customer' AND l.status='deneme' AND l.end>UTC_TIMESTAMP()", active: "SELECT DISTINCT u.email, u.name FROM users u JOIN licenses l ON l.tenant_id=u.tenant_id WHERE u.role='customer' AND l.status='aktif' AND l.end>UTC_TIMESTAMP()", expired: "SELECT DISTINCT u.email, u.name FROM users u WHERE u.role='customer' AND NOT EXISTS (SELECT 1 FROM licenses l WHERE l.tenant_id=u.tenant_id AND l.status IN ('deneme','aktif') AND l.end>UTC_TIMESTAMP())" };
-  let list = b.target === 'emails' ? String(b.emails || '').split(/[\s,;]+/).filter((e) => sec.V.email(e)).map((email) => ({ email })) : Q[b.target] ? await db.q(Q[b.target]) : [];
-  list = list.slice(0, 1000); if (!list.length) throw err(400, 'Seçilen kitlede alıcı yok');
+  let list = b.target === 'emails' ? String(b.emails || '').split(/[\s,;]+/).filter((e) => sec.V.email(e)).map((email) => ({ email: email.toLowerCase() })) : Q[b.target] ? await db.q(Q[b.target]) : [];
+  // Yalnızca kayıtlı ve izin vermiş müşteriye gider
+  const izinli = new Map((await db.q("SELECT u.email, u.id, u.name FROM users u JOIN mail_prefs p ON p.user_id=u.id WHERE u.role='customer' AND u.status='active' AND p.marketing=1")).map((x) => [String(x.email).toLowerCase(), x]));
+  const toplam = list.length; list = list.filter((r) => izinli.has(String(r.email).toLowerCase())).map((r) => izinli.get(String(r.email).toLowerCase())).slice(0, 1000);
+  if (!list.length) throw err(400, `Seçilen kitlede pazarlama izni olan alıcı yok (${toplam} kişi izinsiz, gönderilmedi)`);
   const tpl = campaignTpl(b); const s = await mailSite(); let ok = 0, fail = 0;
-  for (const r of list) { const x = await mail.send(r.email, sec.clean(b.subject, 160), { ...tpl, intro: tpl.intro.replace(/\{ad\}/g, String(r.name || '').split(' ')[0] || '') }, s); if (x.ok) ok++; else fail++; await new Promise((z) => setTimeout(z, 250)); }
-  await audit(c, 'Toplu e-posta', `${b.subject} · ${ok}/${list.length}`); return { ok: true, sent: ok, failed: fail, total: list.length };
+  for (const r of list) { const x = await mail.send(r.email, sec.clean(b.subject, 160), { ...tpl, footer: `${tpl.footer} ${pz.unvan} · MERSİS ${pz.mersis}`, unsub: require('./deneme').cikisUrl(r.id, (await site()).siteUrl), intro: tpl.intro.replace(/\{ad\}/g, String(r.name || '').split(' ')[0] || '') }, s); if (x.ok) ok++; else fail++; await new Promise((z) => setTimeout(z, 250)); }
+  await audit(c, 'Toplu e-posta', `${b.subject} · ${ok}/${list.length}`); return { ok: true, sent: ok, failed: fail, total: list.length, skipped: toplam - list.length };
 }, { uzun: true });
 // Duyurular ve bakım modu: programların üstünde bant; bakımda "erişimi kapat" seçilirse veri kaydı da durdurulur
 A('GET', '/platform', async () => ({ ok: true, platform: await setting('platform', { announcements: [], maintenance: {} }) }));
@@ -690,4 +695,4 @@ A('PUT', '/settings', async (c) => {
 A('GET', '/audit', async () => ({ ok: true, rows: await db.q('SELECT a.*, u.email FROM audit a LEFT JOIN users u ON u.id=a.user_id ORDER BY a.id DESC LIMIT 500') }));
 A('GET', '/db', async () => ({ ok: true, info: db.info(), tables: await db.q('SELECT table_name AS name, table_rows AS rows_est, ROUND((data_length+index_length)/1024/1024, 2) AS mb FROM information_schema.tables WHERE table_schema = DATABASE() ORDER BY name') }));
 
-module.exports = { R, valid, canUseApp, err, site, audit, J, syncCatalog, route, A, setting, setSetting, applyOrder, paidMail, mailTo, fmtTL };
+module.exports = { R, valid, canUseApp, err, site, audit, J, syncCatalog, route, A, setting, setSetting, applyOrder, paidMail, mailTo, fmtTL, mailSite, pnameOf, uid };

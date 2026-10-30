@@ -74,6 +74,7 @@
     { sec: 'Analitik' }, { id: 'analitik', label: 'Ziyaret & Dönüşüm', icon: 'trend' }, { id: 'sistem', label: 'Hata & Yavaşlık', icon: 'alert' },
     { sec: 'İletişim' }, { id: 'eposta', label: 'E-posta ayarları', icon: 'mail' }, { id: 'kampanya', label: 'E-posta gönder', icon: 'send' },
     { sec: 'Sistem' }, { id: 'duyuru', label: 'Duyurular & Bakım', icon: 'bell' }, { id: 'ayarlar', label: 'Site Ayarları', icon: 'settings' }, { id: 'yoneticiler', label: 'Yöneticiler', icon: 'shield' }, { id: 'veritabani', label: 'Veritabanı', icon: 'data' }, { id: 'kayitlar', label: 'Güvenlik Kayıtları', icon: 'list' }];
+  (window.PANEL_EK ? window.PANEL_EK.nav : []).forEach((n) => NAV.splice(NAV.findIndex((x) => x.id === n.after) + 1, 0, n)); // admin/panel-ek.js
   function layout() {
     document.body.innerHTML = `<div class="ns-app"><aside class="ns-side" id="side"><div class="ns-brand">${NS.logoMark('#4f46e5', 40)}<div><b>NEBSOFT</b><span>Yönetim paneli</span></div></div><nav class="ns-nav">${NAV.map((n) => (n.sec ? `<div class="sec">${n.sec}</div>` : `<a href="#/${n.id}" data-nav="${n.id}">${icon(n.icon)}<span>${n.label}</span>${n.badge ? '<span class="badge warn hide" style="margin-left:auto" id="nb"></span>' : ''}</a>`)).join('')}</nav><div class="ns-side-foot"><a class="btn ghost block" style="justify-content:flex-start" href="../" target="_blank">${icon('store')} Siteyi aç</a></div></aside>
       <main class="ns-main"><header class="ns-top"><button class="btn ghost icon ns-burger" id="bg">${icon('menu')}</button><div class="title" id="ttl"></div><button class="btn ghost icon" id="th">${icon(NS.getTheme() === 'dark' ? 'sun' : 'moon')}</button><div class="ns-user"><div class="avatar">${esc(NS.initials(ME.user.name))}</div><div class="name small"><b>${esc(ME.user.name)}</b><div class="faint" style="font-size:11px">${ME.user.role === 'superadmin' ? 'Süper yönetici' : 'Yönetici'}</div></div></div><button class="btn ghost" id="lo">${icon('logout')}</button></header><section class="ns-content" id="view"></section></main></div>`;
@@ -81,7 +82,7 @@
     $('#th').onclick = NS.toggleTheme;
     $('#lo').onclick = async () => { await api('POST', '/api/auth/logout').catch(() => {}); boot(); };
   }
-  const ROUTES = {};
+  const ROUTES = { ...(window.PANEL_EK ? window.PANEL_EK.routes : {}) };
   async function render() {
     const [r, p] = (location.hash.replace(/^#\/?/, '') || 'ozet').split('/');
     const nav = NAV.find((n) => n.id === r) || NAV[1];
@@ -288,7 +289,7 @@
     const prev = async () => { const v = NS.readForm(f); try { const r = await api('POST', '/api/admin/mail/preview', { ...v, intro: (v.intro || '').replace(/\{ad\}/g, 'Ayşe'), body: v.body || 'Metin burada görünecek.', subject: v.subject || 'Konu' }); $('#pf', el).srcdoc = r.html; } catch (x) { /* yok */ } };
     let t = null; f.addEventListener('input', () => { clearTimeout(t); t = setTimeout(prev, 500); }); f.addEventListener('change', em);
     $('#pv', el).onclick = prev; em(); prev();
-    $('#go', el).onclick = async (e) => { const v = NS.readForm(f); if (!NS.validate(f)) return; if (!(await confirm(`"${v.subject}" konulu e-posta ${T[v.target].toLowerCase()} grubuna gönderilsin mi?`))) return; const b = e.currentTarget; b.disabled = true; b.innerHTML = `${icon('clock')} Gönderiliyor…`; try { const r = await api('POST', '/api/admin/mail/campaign', v); toast(`${r.sent} / ${r.total} alıcıya gönderildi${r.failed ? `, ${r.failed} hata` : ''}`, r.failed ? 'err' : 'ok'); } catch (x) { toast(x.message, 'err'); } b.disabled = false; b.innerHTML = `${icon('send')} Gönder`; };
+    $('#go', el).onclick = async (e) => { const v = NS.readForm(f); if (!NS.validate(f)) return; if (!(await confirm(`"${v.subject}" konulu e-posta ${T[v.target].toLowerCase()} grubuna gönderilsin mi?`))) return; const b = e.currentTarget; b.disabled = true; b.innerHTML = `${icon('clock')} Gönderiliyor…`; try { const r = await api('POST', '/api/admin/mail/campaign', v); toast(`${r.skipped ? `İzinsiz ${r.skipped} kişi atlandı. ` : ''}${r.sent} / ${r.total} alıcıya gönderildi${r.failed ? `, ${r.failed} hata` : ''}`, r.failed ? 'err' : 'ok'); } catch (x) { toast(x.message, 'err'); } b.disabled = false; b.innerHTML = `${icon('send')} Gönder`; };
   };
   // Deneme talepleri: kayıt olan veya programı deneme isteyen işletmeler — onaylayınca N gün aktif olur, müşteriye e-posta gider
   // Destek asistanı: yanıtlanamayan sorular, olumsuz geri bildirimler, eğitim verisi dışa aktarımı

@@ -68,7 +68,7 @@
       const r = search(q);
       if (r.length && r[0].s >= 0.5) hist.push({ t: r[0].x.a, e: r[0].x.id, q, rel: r.slice(1).filter((y) => y.s >= 0.35).map((y) => y.x.q).slice(0, 3) });
       else if (r.length && r[0].s >= 0.3) { hist.push({ t: 'Tam emin olamadım; şunlardan biri mi?', rel: r.map((y) => y.x.q).slice(0, 4), help: 1 }); log('belirsiz', q); }
-      else { hist.push({ t: 'Bu soruyu henüz yanıtlayamıyorum; sorunuzu destek ekibimize ilettim ve bilgi bankamıza ekleyeceğiz. Hemen yardım için bizi arayabilir veya destek talebi açabilirsiniz.', help: 1 }); log('cevapsiz', q); }
+      else { hist.push({ t: `Bu soruyu yanıtlayacak doğrulanmış bilgim yok, tahmin yürütmek istemem. Sorunuz kayda alındı; hızlı yanıt için ${phone()} numarasını arayabilir, destek@nebsoft.com.tr adresine yazabilir veya destek talebi açabilirsiniz. Kullanım rehberleri [Yardım merkezinde](/#/yardim${APP ? '/' + APP : ''}).`, help: 1 }); log('cevapsiz', q); }
       ss.set(hist); render();
     };
     const open = (v) => { pan.hidden = !v; w.classList.toggle('open', v); fab.setAttribute('aria-expanded', v); if (v) { render(); setTimeout(() => inp.focus(), 120); load(); } };
