@@ -41,7 +41,7 @@ async function current(req) {
   if (req._user !== undefined) return req._user;
   req._user = null;
   const t = sec.cookies(req)[COOKIE]; if (!t || !db.ready() || t.length > 100) return null;
-  const u = await db.one('SELECT u.id, u.email, u.name, u.phone, u.role, u.tenant_id, u.status, s.expires FROM sessions s JOIN users u ON u.id = s.user_id WHERE s.id = ?', [sha(t)]);
+  const u = await db.one('SELECT u.id, u.email, u.name, u.phone, u.role, u.tenant_id, u.status, u.team_roles, s.expires FROM sessions s JOIN users u ON u.id = s.user_id WHERE s.id = ?', [sha(t)]);
   if (!u || new Date(u.expires) < now() || u.status !== 'active') return null;
   req._user = u; return u;
 }
