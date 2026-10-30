@@ -475,35 +475,37 @@ RULES.site = {
 };
 
 // ---------- Araç kiralama: online kiralama (kirala.html) ----------
-const RENT_EXTRAS = { bebek: 150, surucu: 200, sigorta: 350, navi: 100, zincir: 80 };
-const rentSet = (x) => ({ minAge: 21, minLicense: 2, longDays: 7, longPct: 10, freeCancelHours: 24, ...(x.doc._settings || {}) });
+// Fiyat tek kaynaktan: panel ve kirala.html ile aynı hesap (apps/kiralama/hesap.js)
+const KH = require('../../apps/kiralama/hesap.js');
+const rentSet = (x) => ({ ...KH.DEF, ...(x.doc._settings || {}) });
 RULES.kiralama = {
   pub: {
-    cars: { where: (c) => c.status !== 'bakim', fields: ['id', 'brand', 'model', 'cls', 'fuel', 'gear', 'daily', 'color', 'year', 'status', 'seats', 'img', 'photo'] },
-    rents: { where: (r, x) => r.to >= x.today && r.status !== 'iptal', fields: ['id', 'car', 'from', 'to', 'status'] },
+    cars: { where: (c) => KH.rentable(c), fields: ['id', 'brand', 'model', 'cls', 'fuel', 'gear', 'daily', 'color', 'year', 'status', 'seats', 'img', 'photo'] },
+    rents: { where: (r, x) => (r.to >= x.today || r.status === 'kirada') && r.status !== 'iptal', fields: ['id', 'car', 'from', 'to', 'status'] },
+    seasons: { fields: ['id', 'from', 'to', 'pct', 'cls', 'active'] },
   },
   login: (x, q) => { const no = norm(q.no); const r = no && x.col('rents').find((r) => r.no === no); const c = r && x.get('customers', r.customer); return c && samePhone(c.phone, q.phone) ? { k: 'r', i: r.id } : null; },
   loginError: 'Eşleşen rezervasyon bulunamadı',
   view: (x) => {
     const r = x.get('rents', me(x, 'r')); if (!r) return {};
     const c = x.get('customers', r.customer);
-    return { rents: [...x.col('rents').filter((o) => o.id !== r.id && o.to >= x.today && o.status !== 'iptal').map((o) => x.pick(o, ['id', 'car', 'from', 'to', 'status'])), strip(r, ['internal', 'damage'])], customers: c ? [x.pick(c, ['id', 'name', 'phone'])] : [] };
+    return { rents: [...x.col('rents').filter((o) => o.id !== r.id && (o.to >= x.today || o.status === 'kirada') && o.status !== 'iptal').map((o) => x.pick(o, ['id', 'car', 'from', 'to', 'status'])), strip(r, ['internal', 'damage', 'kabis', 'emniyet'])], customers: c ? [x.pick(c, ['id', 'name', 'phone'])] : [] };
   },
   write: {
-    customers: { ins: I({ name: 'str:80', phone: 'phone', tc: 'str:11?', birth: 'date', licenseDate: 'date' }, { license: '' }) },
+    customers: { ins: I({ name: 'str:80', phone: 'phone', tc: 'str:20?', birth: 'date', licenseDate: 'date' }, { license: '' }) },
     rents: {
       ins: I({ car: 'id', customer: 'id', from: 'date', to: 'date', fromTime: 'time', toTime: 'time', extras: 'strs:5', flight: 'str:20?' }, () => ({ status: 'rezervasyon', source: 'online', prepaid: 0, payments: [] }), (r, x) => {
         const S = rentSet(x); const car = x.get('cars', r.car); const cu = x.get('customers', r.customer);
-        if (!car || car.status === 'bakim' || !cu) bad('Araç bulunamadı');
+        if (!KH.rentable(car) || !cu) bad('Araç bulunamadı');
         const d = daysTo(r.from, r.to); if (r.from < x.today || d < 1 || d > 60) bad('Geçersiz tarih');
-        if (r.extras.some((e) => !(e in RENT_EXTRAS))) bad('Geçersiz ek hizmet');
+        if (r.extras.some((e) => !KH.EXTRAS.some((k) => k.id === e))) bad('Geçersiz ek hizmet');
         const yrs = (a, b) => (new Date(b) - new Date(a)) / (365.25 * 864e5);
         if (yrs(cu.birth, r.from) < S.minAge) bad(`Sürücü en az ${S.minAge} yaşında olmalı`);
         if (yrs(cu.licenseDate, r.from) < S.minLicense) bad(`Ehliyet en az ${S.minLicense} yıllık olmalı`);
         if (x.col('customers').some((c) => c.blacklist && (samePhone(c.phone, cu.phone) || (cu.tc && c.tc === cu.tc)))) bad('Rezervasyonunuz online alınamıyor, lütfen ofisi arayın');
-        if (x.col('rents').some((o) => o !== r && o.car === r.car && o.status !== 'iptal' && o.from < r.to && r.from < o.to)) throw Object.assign(new Error('Bu araç az önce doldu, başka araç seçin'), { status: 409 });
-        const base = Number(car.daily) * d; const disc = d >= S.longDays ? Math.round(base * S.longPct / 100) : 0;
-        r.daily = Math.round((base - disc) / d); r.deposit = Number(car.daily) * 3; r.no = x.seq('rents', 'K');
+        if (x.col('rents').some((o) => o !== r && o.car === r.car && KH.overlaps(o, r.from, r.to, x.today))) throw Object.assign(new Error('Bu araç az önce doldu, başka araç seçin'), { status: 409 });
+        const q = KH.quote(car.daily, r.from, r.to, car.cls, { seasons: x.col('seasons'), longDays: S.longDays, longPct: S.longPct });
+        r.daily = q.rate; r.disc = q.disc; r.deposit = Number(car.daily) * 3; r.no = x.seq('rents', 'K');
       }),
       upd: U({ status: 'enum:iptal', cancelNote: 'str:200?' }, (r, x) => r.id === me(x, 'r') && r.status === 'rezervasyon' && (new Date(`${r.from}T${r.fromTime || '10:00'}:00+03:00`) - Date.now()) / 3600e3 >= rentSet(x).freeCancelHours),
     },

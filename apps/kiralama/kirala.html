@@ -64,20 +64,21 @@
 <header class="bar"><div class="wrap" id="bar"></div></header>
 <div id="app"></div>
 <script src="../../core/core.js"></script>
+<script src="hesap.js"></script>
 <script>
 (function () {
   const { esc, $, $$, on, icon, money, toast, iso, today, addDays, daysBetween, sum } = NS;
   const db = new NS.DB('kiralama');
-  const S = () => db.settings({ kmLimit: 300, extraKm: 6, fuelFee: 400, minAge: 21, minLicense: 2, longDays: 7, longPct: 10, freeCancelHours: 24 });
-  const EXTRAS = [{ id: 'bebek', name: 'Bebek koltuğu', daily: 150 }, { id: 'surucu', name: 'Ek sürücü', daily: 200 }, { id: 'sigorta', name: 'Mini hasar sigortası', daily: 350 }, { id: 'navi', name: 'Navigasyon', daily: 100 }, { id: 'zincir', name: 'Kar zinciri', daily: 80 }];
+  const H = window.KIRA_HESAP; const { EXTRAS } = H;
+  const S = () => db.settings(H.DEF);
   const st = { from: iso(addDays(new Date(), 2)), to: iso(addDays(new Date(), 5)), ft: '10:00', tt: '10:00', cls: '' };
   try { Object.assign(st, JSON.parse(sessionStorage.getItem('nebsoft:rent:ara') || '{}')); } catch (e) { /* yok */ }
   if (st.from < today()) { st.from = iso(addDays(new Date(), 1)); st.to = iso(addDays(new Date(), 4)); }
   const keep = () => { try { sessionStorage.setItem('nebsoft:rent:ara', JSON.stringify(st)); } catch (e) { /* yok */ } };
   const n = () => Math.max(1, daysBetween(st.from, st.to));
-  const busy = (c, a, b) => db.all('rents', (r) => r.car === c && r.status !== 'iptal' && r.from < b && a < r.to).length > 0;
-  const models = () => { const g = {}; db.all('cars', (c) => c.status !== 'bakim').forEach((c) => { const k = `${c.brand}|${c.model}`; (g[k] = g[k] || []).push(c); }); return Object.values(g); };
-  const price = (daily, ex = []) => { const d = n(); const base = daily * d; const disc = d >= S().longDays ? Math.round(base * S().longPct / 100) : 0; const extra = sum(EXTRAS.filter((x) => ex.includes(x.id)), (x) => x.daily) * d; return { d, base, disc, extra, total: base - disc + extra }; };
+  const busy = (c, a, b) => db.all('rents', (r) => r.car === c && H.overlaps(r, a, b, today())).length > 0;
+  const models = () => { const g = {}; db.all('cars', H.rentable).forEach((c) => { const k = `${c.brand}|${c.model}`; (g[k] = g[k] || []).push(c); }); return Object.values(g); };
+  const price = (c, ex = []) => { const q = H.quote(c.daily, st.from, st.to, c.cls, { seasons: db.all('seasons'), longDays: S().longDays, longPct: S().longPct }); const extra = H.extraDaily(ex) * q.d; return { ...q, extra, total: H.r2(q.rent + extra) }; };
   // Arabanın yandan silueti, aracın kendi renginde
   const carSvg = (color, cls) => { const suv = cls === 'SUV'; return `<svg viewBox="0 0 300 120" aria-hidden="true"><path d="M20 ${suv ? 78 : 82} Q22 ${suv ? 58 : 66} 48 ${suv ? 56 : 62} L${suv ? 86 : 92} ${suv ? 54 : 60} Q${suv ? 110 : 116} ${suv ? 26 : 34} ${suv ? 150 : 152} ${suv ? 24 : 32} L${suv ? 206 : 196} ${suv ? 24 : 32} Q${suv ? 236 : 228} ${suv ? 28 : 38} ${suv ? 252 : 244} ${suv ? 54 : 60} L270 ${suv ? 60 : 64} Q284 66 282 ${suv ? 82 : 84} L282 90 L20 90 Z" fill="${color}"/><path d="M${suv ? 98 : 104} ${suv ? 54 : 60} Q${suv ? 118 : 124} ${suv ? 32 : 40} ${suv ? 150 : 152} ${suv ? 31 : 39} L${suv ? 172 : 170} ${suv ? 31 : 39} L${suv ? 172 : 170} ${suv ? 54 : 60} Z M${suv ? 180 : 178} ${suv ? 31 : 39} L${suv ? 204 : 194} ${suv ? 31 : 39} Q${suv ? 226 : 218} ${suv ? 35 : 43} ${suv ? 240 : 232} ${suv ? 54 : 60} L${suv ? 180 : 178} ${suv ? 54 : 60} Z" fill="#cbd5e1" opacity=".85"/><circle cx="76" cy="90" r="19" fill="#1c1917"/><circle cx="76" cy="90" r="8" fill="#a8a29e"/><circle cx="228" cy="90" r="19" fill="#1c1917"/><circle cx="228" cy="90" r="8" fill="#a8a29e"/><rect x="18" y="104" width="266" height="3" rx="1.5" fill="#000" opacity=".08"/></svg>`; };
 
@@ -97,9 +98,9 @@
     const shown = ms.filter((m) => !st.cls || m.c.cls === st.cls);
     el.innerHTML = search() + `<div class="wrap main view"><h2 class="h2">${NS.dateLong(st.from)} ${esc(st.ft)} → ${NS.dateLong(st.to)} ${esc(st.tt)}</h2><p class="muted" style="margin:0">${n()} gün${n() >= S().longDays ? ` · %${S().longPct} uzun dönem indirimi uygulandı` : ''}</p>
       <div class="flt" role="group" aria-label="Sınıf"><button data-cls="" aria-pressed="${!st.cls}">Tümü</button>${classes.map((c) => `<button data-cls="${esc(c)}" aria-pressed="${st.cls === c}">${esc(c)}</button>`).join('')}</div>
-      <div class="grid3">${shown.map(({ c, free }) => { const q = price(c.daily); return `<article class="car"><div class="art"><span class="cls">${esc(c.cls)}</span>${carSvg(c.color, c.cls)}</div><div class="bd"><div><h3>${esc(c.brand)} ${esc(c.model)}</h3><div class="small muted">veya benzeri · ${free.length ? `${free.length} araç müsait` : 'seçilen tarihlerde dolu'}</div></div>
+      <div class="grid3">${shown.map(({ c, free }) => { const q = price(c); return `<article class="car"><div class="art"><span class="cls">${esc(c.cls)}</span>${carSvg(c.color, c.cls)}</div><div class="bd"><div><h3>${esc(c.brand)} ${esc(c.model)}</h3><div class="small muted">veya benzeri · ${free.length ? `${free.length} araç müsait` : 'seçilen tarihlerde dolu'}</div></div>
         <div class="specs"><span>${icon('cog')}${esc(c.gear)}</span><span>${icon('drop')}${esc(c.fuel)}</span><span>${icon('users')}${c.cls === 'Minibüs' ? 9 : 5} kişi</span><span>${icon('gauge')}${S().kmLimit} km/gün</span></div>
-        <div class="pr"><div><b>${money(q.total)}</b><small>${money(c.daily)} / gün · ${q.d} gün toplam</small></div>${free.length ? `<button class="btn primary" data-pick="${c.brand}|${c.model}">Seç</button>` : '<button class="btn" disabled>Dolu</button>'}</div></div></article>`; }).join('') || '<div class="none">Bu sınıfta araç yok.</div>'}</div></div>`;
+        <div class="pr"><div><b>${money(q.total)}</b><small>${money(q.rate)} / gün · ${q.d} gün toplam</small></div>${free.length ? `<button class="btn primary" data-pick="${c.brand}|${c.model}">Seç</button>` : '<button class="btn" disabled>Dolu</button>'}</div></div></article>`; }).join('') || '<div class="none">Bu sınıfta araç yok.</div>'}</div></div>`;
     bindSearch();
   }
 
@@ -108,18 +109,17 @@
     const cs = models().find((x) => `${x[0].brand}|${x[0].model}` === st.model); if (!cs) { location.hash = '#/'; return; }
     const c = cs[0]; st.ex = st.ex || [];
     const draw = () => {
-      const q = price(c.daily, st.ex);
-      $('#sm').innerHTML = `<div class="r"><span>${q.d} gün × ${money(c.daily)}</span><span>${money(q.base)}</span></div>${q.disc ? `<div class="r" style="color:#047857"><span>Uzun dönem indirimi %${S().longPct}</span><span>−${money(q.disc)}</span></div>` : ''}${EXTRAS.filter((x) => st.ex.includes(x.id)).map((x) => `<div class="r"><span>${esc(x.name)}</span><span>${money(x.daily * q.d)}</span></div>`).join('')}<div class="r g"><span>Toplam</span><span>${money(q.total)}</span></div><p class="small muted">Depozito (kartta provizyon): ${money(c.daily * 3)} · Fazla km: ${money(S().extraKm)}/km</p>`;
+      const q = price(c, st.ex);
+      $('#sm').innerHTML = `<div class="r"><span>${q.d} gün × ${money(q.rate)}</span><span>${money(q.base)}</span></div>${q.disc >= 1 ? `<div class="r" style="color:#047857"><span>Uzun dönem indirimi %${S().longPct}</span><span>−${money(q.disc)}</span></div>` : ''}${EXTRAS.filter((x) => st.ex.includes(x.id)).map((x) => `<div class="r"><span>${esc(x.name)}</span><span>${money(x.daily * q.d)}</span></div>`).join('')}<div class="r g"><span>Toplam</span><span>${money(q.total)}</span></div><p class="small muted">Depozito: ${money(c.daily * 3)} (teslimde alınır, iadede kapatılır) · Fazla km: ${money(S().extraKm)}/km</p>`;
     };
     el.innerHTML = `<div class="wrap main view"><a href="#/" class="small">${icon('back')} Araçlara dön</a><div class="book mt">
       <form id="bf" novalidate><div class="panel"><h2 class="h2">Ekstralar</h2><div class="ex mt">${EXTRAS.map((x) => `<label><input type="checkbox" value="${x.id}" ${st.ex.includes(x.id) ? 'checked' : ''}> ${esc(x.name)}<b>${money(x.daily)}/gün</b></label>`).join('')}</div></div>
         <div class="panel"><h2 class="h2">Sürücü bilgileri</h2><p class="small muted">En az ${S().minAge} yaş ve ${S().minLicense} yıllık ehliyet gerekir. Teslimde kimlik ve ehliyet aslı istenir.</p>${NS.fieldsHtml([{ name: 'name', label: 'Ad soyad', required: true }, { name: 'phone', label: 'Telefon', type: 'tel', required: true }, { name: 'tc', label: 'TC kimlik / pasaport no', required: true }, { name: 'birth', label: 'Doğum tarihi', type: 'date', required: true }, { name: 'licenseDate', label: 'Ehliyet veriliş tarihi', type: 'date', required: true }, { name: 'flight', label: 'Uçuş no (isteğe bağlı)', placeholder: 'TK2412' }])}
-          <h3 style="margin:18px 0 0">Ödeme</h3><div class="payopt"><label><input type="radio" name="pay" value="ofis" checked><span><b>Teslimde öde</b><small>Kart bilgisi şimdi gerekmez.</small></span></label>${NS.pub ? '' : `<label><input type="radio" name="pay" value="online"><span><b>Şimdi öde, sırada bekleme</b><small>Tutarın tamamı tahsil edilir; ${S().freeCancelHours} saat öncesine kadar iade.</small></span></label>`}</div>
-          <div id="card" hidden><div class="form-grid"><div class="field full"><label>Kart numarası</label><input class="input mono" id="cc" inputmode="numeric" placeholder="0000 0000 0000 0000" autocomplete="cc-number"></div><div class="field"><label>Son kullanma</label><input class="input mono" id="ce" placeholder="AA/YY" autocomplete="cc-exp"></div><div class="field"><label>CVC</label><input class="input mono" id="cv" maxlength="4" placeholder="•••" autocomplete="cc-csc"></div></div><p class="small faint">Demo: gerçek ödeme alınmaz.</p></div>
-          <label class="check small mt"><input type="checkbox" id="ag"> Kiralama koşullarını ve KVKK metnini okudum.</label><button class="btn primary lg block mt" type="submit">${icon('lock')} Rezervasyonu tamamla</button></div></form>
+          <h3 style="margin:18px 0 0">Ödeme</h3><p class="small muted">Ödeme aracı teslim alırken yapılır; burada kart bilgisi istenmez.</p>
+          <details class="small mt"><summary>Kiralama koşulları ve kişisel veriler</summary><ul><li>Günlük ${S().kmLimit} km dahildir; aşan her km ${money(S().extraKm)}.</li><li>Araç aynı yakıt seviyesinde iade edilir; eksik her çeyrek depo ${money(S().fuelFee)}.</li><li>Alışa ${S().freeCancelHours} saatten fazla varken online ücretsiz iptal edebilirsiniz.</li><li>Kimlik ve ehliyet bilgileriniz kiralama sözleşmesi ve yasal kiralık araç bildirimi için işlenir.</li></ul></details>
+          <label class="check small mt"><input type="checkbox" id="ag"> Kiralama koşullarını ve kişisel veri bilgilendirmesini okudum.</label><button class="btn primary lg block mt" type="submit">${icon('lock')} Rezervasyonu tamamla</button></div></form>
       <aside class="panel sum" style="position:sticky;top:20px"><div class="car" style="border:0"><div class="art" style="border-radius:12px">${carSvg(c.color, c.cls)}</div></div><h3 style="margin:12px 0 2px">${esc(c.brand)} ${esc(c.model)} <span class="small muted">veya benzeri</span></h3><p class="small muted" style="margin:0 0 10px">${esc(c.gear)} · ${esc(c.fuel)} · ${esc(c.cls)}</p><div class="r"><span>Alış</span><b>${NS.date(st.from)} ${esc(st.ft)}</b></div><div class="r"><span>İade</span><b>${NS.date(st.to)} ${esc(st.tt)}</b></div><div id="sm"></div></aside></div></div>`;
     draw(); el._draw = draw;
-    $('#cc').oninput = (e) => { e.target.value = e.target.value.replace(/\D/g, '').slice(0, 16).replace(/(\d{4})(?=\d)/g, '$1 '); };
     $('#bf').onsubmit = (e) => {
       e.preventDefault(); const f = $('#bf');
       if (!NS.validate(f)) return; if (!$('#ag').checked) return toast('Koşulları onaylayın', 'err');
@@ -127,17 +127,15 @@
       const age = (new Date(st.from) - new Date(v.birth)) / (365.25 * 864e5), lic = (new Date(st.from) - new Date(v.licenseDate)) / (365.25 * 864e5);
       if (age < S().minAge) return toast(`Sürücü en az ${S().minAge} yaşında olmalı`, 'err');
       if (lic < S().minLicense) return toast(`Ehliyet en az ${S().minLicense} yıllık olmalı`, 'err');
-      const pay = $('input[name=pay]:checked').value;
-      if (pay === 'online' && ($('#cc').value.replace(/\D/g, '').length !== 16 || $('#cv').value.length < 3)) return toast('Kart bilgilerini kontrol edin', 'err');
       db.load();
       const free = cs.filter((x) => !busy(x.id, st.from, st.to)); if (!free.length) { toast('Bu model az önce doldu, başka araç seçin', 'err'); location.hash = '#/'; return; }
       const dg = String(v.phone).replace(/\D/g, '').slice(-10);
       let cu = db.find('customers', (x) => String(x.phone || '').replace(/\D/g, '').slice(-10) === dg || (v.tc && x.tc === v.tc));
       if (cu && cu.blacklist) return toast('Rezervasyonunuz online alınamıyor, lütfen ofisi arayın', 'err');
       if (!cu) cu = db.insert('customers', { name: v.name, phone: v.phone, tc: v.tc, birth: v.birth, licenseDate: v.licenseDate, license: '' }, true);
-      const q = price(c.daily, st.ex);
+      const q = price(c, st.ex);
       const no = db.nextNo('rents', 'K');
-      const rec = db.insert('rents', { no, car: free[0].id, customer: cu.id, from: st.from, to: st.to, fromTime: st.ft, toTime: st.tt, daily: Math.round((q.base - q.disc) / q.d), extras: st.ex, deposit: c.daily * 3, status: 'rezervasyon', source: 'online', flight: v.flight || '', prepaid: pay === 'online' ? q.total : 0, payments: pay === 'online' ? [{ amount: q.total, type: 'online kart', at: new Date().toISOString() }] : [], created: new Date().toISOString() }, true);
+      const rec = db.insert('rents', { no, car: free[0].id, customer: cu.id, from: st.from, to: st.to, fromTime: st.ft, toTime: st.tt, daily: q.rate, disc: q.disc, extras: st.ex, deposit: c.daily * 3, status: 'rezervasyon', source: 'online', flight: v.flight || '', prepaid: 0, payments: [], damages: [], created: new Date().toISOString() }, true);
       db.log('Online kiralama', `${no} · ${v.name}`); db.save();
       try { sessionStorage.setItem('nebsoft:rent:son', JSON.stringify({ no: rec.no, phone: v.phone })); } catch (x) { /* yok */ }
       location.hash = '#/tamam/' + rec.no;
@@ -146,8 +144,8 @@
 
   function done(el, no) {
     db.load(); const r = db.find('rents', (x) => x.no === no); if (!r) { location.hash = '#/'; return; }
-    const c = db.get('cars', r.car);
-    el.innerHTML = `<div class="wrap main view" style="max-width:640px"><div class="panel center"><div style="width:60px;height:60px;border-radius:50%;background:var(--ok-soft);color:var(--ok);display:grid;place-items:center;margin:0 auto 12px">${icon('check', 'ico-lg')}</div><h2 class="h2">Aracınız ayrıldı</h2><p class="muted">${NS.pub ? 'Rezervasyon numaranızı saklayın.' : 'Onay SMS ile gönderildi (demo).'} Teslimde kimlik ve ehliyetinizi getirin.</p><div style="font:800 30px ui-monospace,Menlo,monospace;letter-spacing:.08em">${esc(r.no)}</div>
+    const c = db.get('cars', r.car) || { brand: 'Araç', model: '' };
+    el.innerHTML = `<div class="wrap main view" style="max-width:640px"><div class="panel center"><div style="width:60px;height:60px;border-radius:50%;background:var(--ok-soft);color:var(--ok);display:grid;place-items:center;margin:0 auto 12px">${icon('check', 'ico-lg')}</div><h2 class="h2">Aracınız ayrıldı</h2><p class="muted">Rezervasyon numaranızı saklayın. Teslimde kimlik ve ehliyetinizi getirin.</p><div style="font:800 30px ui-monospace,Menlo,monospace;letter-spacing:.08em">${esc(r.no)}</div>
       <div class="sum" style="text-align:left;margin-top:18px"><div class="r"><span>Araç</span><b>${esc(c.brand)} ${esc(c.model)} veya benzeri</b></div><div class="r"><span>Alış</span><b>${NS.date(r.from)} ${esc(r.fromTime)}</b></div><div class="r"><span>İade</span><b>${NS.date(r.to)} ${esc(r.toTime)}</b></div><div class="r"><span>Ödeme</span><b>${r.prepaid ? `${money(r.prepaid)} ödendi` : 'Teslimde'}</b></div><div class="r"><span>Yer</span><b>${esc(S().bizAddress || '')}</b></div></div>
       <div class="row mt" style="justify-content:center;gap:8px"><button class="btn" id="pr">${icon('print')} Yazdır</button><a class="btn" href="#/yonet">${icon('edit')} Rezervasyonu yönet</a></div></div></div>`;
     $('#pr').onclick = () => print();
@@ -160,7 +158,7 @@
       if (db.lookup({ no, phone: dg }) === null) db.load();
       const r = db.find('rents', (x) => x.no === no); const cu = r && db.get('customers', r.customer);
       if (!r || !cu || String(cu.phone || '').replace(/\D/g, '').slice(-10) !== dg) { $('#mr').innerHTML = '<div class="none">Eşleşen rezervasyon bulunamadı.</div>'; return; }
-      const c = db.get('cars', r.car); const hrs = (new Date(r.from + 'T' + (r.fromTime || '10:00')) - new Date()) / 3600e3;
+      const c = db.get('cars', r.car) || { brand: 'Araç', model: '' }; const hrs = (new Date(r.from + 'T' + (r.fromTime || '10:00')) - new Date()) / 3600e3;
       const can = r.status === 'rezervasyon' && hrs >= S().freeCancelHours;
       $('#mr').innerHTML = `<div class="panel sum"><div class="r"><span>Durum</span><b>${{ rezervasyon: 'Onaylı', kirada: 'Kirada', tamamlandi: 'Tamamlandı', iptal: 'İptal edildi' }[r.status]}</b></div><div class="r"><span>Araç</span><b>${esc(c.brand)} ${esc(c.model)}</b></div><div class="r"><span>Tarih</span><b>${NS.date(r.from)} → ${NS.date(r.to)}</b></div>${can ? '<button class="btn danger mt" id="cx">Ücretsiz iptal et</button>' : r.status === 'rezervasyon' ? `<p class="small muted mt">Alışa ${S().freeCancelHours} saatten az kaldığı için online iptal yapılamıyor; ${esc(S().bizPhone || '')}</p>` : ''}</div>`;
       if ($('#cx')) $('#cx').onclick = async () => { if (!(await NS.confirm('Rezervasyon iptal edilsin mi?', { ok: 'İptal et' }))) return; db.load(); const x = db.find('rents', (y) => y.no === no); x.status = 'iptal'; x.cancelNote = 'Müşteri online iptal etti' + (x.prepaid ? ` · ${money(x.prepaid)} iade edilecek` : ''); db.log('Online iptal', no); db.save(); toast('Rezervasyon iptal edildi', 'ok'); show(); };
@@ -179,7 +177,6 @@
   on(app, 'click', '[data-cls]', (e, b) => { st.cls = b.dataset.cls; keep(); route(); });
   on(app, 'click', '[data-pick]', (e, b) => { st.model = b.dataset.pick; st.ex = []; keep(); location.hash = '#/bilgiler'; });
   on(app, 'change', '.ex input', () => { st.ex = $$('.ex input:checked', app).map((x) => x.value); keep(); if (app._draw) app._draw(); });
-  on(app, 'change', 'input[name=pay]', () => { $('#card').hidden = $('input[name=pay]:checked').value !== 'online'; });
   window.addEventListener('hashchange', route);
   route();
 })();
