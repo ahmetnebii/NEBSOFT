@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Servis Veli Portalı</title>
+<meta name="robots" content="noindex">
+<link rel="stylesheet" href="../../core/core.css">
+<link rel="stylesheet" href="../../core/track.css">
+<style>:root { --app-accent: #ca8a04; --app-accent-soft: #fef9c3; --app-accent-soft-dark: #3a300c; } .it { display: flex; justify-content: space-between; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--border); } .it:last-child { border-bottom: 0; }</style>
+</head>
+<body>
+<header class="tk-bar"><div class="in" id="bar"></div></header>
+<main class="tk-wrap" id="root" style="max-width:760px"></main>
+<script src="../../core/core.js"></script>
+<script src="data.js"></script>
+<script>
+(function () {
+  const { esc, $, icon, money, toast } = NS;
+  const O = window.SRV;
+  const db = new NS.DB('okulservisi', O.seed);
+  const S = () => db.settings({});
+  const KEY = 'nebsoft:okulservisi:veli';
+  const sget = () => { try { return sessionStorage.getItem(KEY); } catch (e) { return null; } };
+  const sset = (v) => { try { v ? sessionStorage.setItem(KEY, v) : sessionStorage.removeItem(KEY); } catch (e) { /* yok */ } };
+  $('#bar').innerHTML = `<div class="tk-mark">${icon('truck')}</div><div class="grow"><b>${esc(S().bizName || 'Servis')}</b><span>Veli portalı</span></div>${S().bizPhone ? `<a class="btn ghost" href="tel:${esc(String(S().bizPhone).replace(/\s/g, ''))}">${icon('phone')} Ara</a>` : ''}`;
+  const kids = () => db.all('students', (s) => s.active !== false && O.digits(s.parentPhone) === sget());
+  function login() {
+    $('#root').innerHTML = `<div class="tk-intro"><h1>Veli girişi</h1><p>Kayıtlı telefonunuz ve servis firmasından aldığınız giriş koduyla girin.</p></div><section class="tk-panel"><div class="b"><div class="field"><label for="ph">Telefon</label><input class="input" id="ph" type="tel" autocomplete="tel"></div><div class="field"><label for="cd">Giriş kodu</label><input class="input" id="cd" autocomplete="off"></div><button class="btn primary lg block mt" id="go">${icon('check')} Giriş yap</button></div></section>`;
+    $('#go').onclick = () => { const d = O.digits($('#ph').value); const code = $('#cd').value.trim().toUpperCase(); if (!code) return toast('Giriş kodunu yazın', 'err'); if (d.length !== 10 || db.lookup({ phone: d, code }) === false) return toast('Bilgiler eşleşmedi', 'err'); if (!db.pub && !db.find('students', (s) => O.digits(s.parentPhone) === d && String(s.portalCode || '').toUpperCase() === code)) return toast('Bilgiler eşleşmedi', 'err'); sset(d); render(); };
+  }
+  function render() {
+    if (!sget()) return login();
+    const K = kids(); if (!K.length) { sset(null); return login(); }
+    const today = NS.iso(new Date()); const dir = new Date().getHours() < 12 ? 'am' : 'pm';
+    const card = (s) => { const r = db.get('routes', s.route) || { stops: [] }; const st = (r.stops || []).find((x) => x.id === s.stop) || {}; const v = db.get('vehicles', r.vehicle) || {}; const t = db.get('trips', O.tid(today, s.route, dir)); const mk = t && t.marks ? t.marks[s.id] : null; const ab = db.find('absences', (a) => a.student === s.id && a.date === today && (a.dir === dir || a.dir === 'both'));
+      return `<section class="tk-panel"><h3>${icon('user')} ${esc(s.name)}</h3><div class="b"><div class="it"><span class="muted">Durak</span><b>${esc(st.name || '-')}</b></div><div class="it"><span class="muted">Sabah / akşam</span><b>${esc(st.am || '-')} / ${esc(st.pm || '-')}</b></div><div class="it"><span class="muted">Araç</span><b class="mono">${esc(v.plate || '-')}</b></div><div class="it"><span class="muted">${O.DIR[dir]} seferi</span><b>${ab ? 'Gelmeyecek bildirildi' : !t || !t.startAt ? 'Henüz başlamadı' : t.endAt ? 'Sefer bitti' : 'Yolda'}${mk ? ' · ' + esc(O.MARK[mk][0]) : ''}</b></div><div class="row mt"><button class="btn" data-ab="${s.id}">${icon('x')} Gelmeyecek bildir</button></div></div></section>`; };
+    const own = new Set(K.map((s) => s.id)); const rts = new Set(K.map((s) => s.route)); const F = db.all('fees', (f) => own.has(f.student)).sort((a, b) => b.period.localeCompare(a.period)).slice(0, 18); const N = db.all('notices', (n) => !n.route || rts.has(n.route)).sort((a, b) => String(b.at).localeCompare(String(a.at))).slice(0, 5); const M = db.all('messages', (m) => own.has(m.student)).sort((a, b) => String(b.at).localeCompare(String(a.at))).slice(0, 8);
+    $('#root').innerHTML = `${N.map((n) => `<div class="tk-call"><h3>${icon('bell')} ${esc(n.title)}</h3><p>${esc(n.text)}</p></div>`).join('')}${K.map(card).join('')}
+      <section class="tk-panel"><h3>${icon('wallet')} Ödemeler</h3><div class="b">${F.map((f) => { const s = K.find((x) => x.id === f.student) || {}; return `<div class="it"><span>${esc(O.periodName(f.period))}<div class="small muted">${esc(s.name || '')}</div></span><b style="color:var(--${O.feeLeft(f) > 0.01 ? 'err' : 'ok'})">${O.feeLeft(f) > 0.01 ? money(O.feeLeft(f)) + ' kalan' : 'Ödendi'}</b></div>`; }).join('') || '<div class="muted">Kayıt yok</div>'}</div></section>
+      <section class="tk-panel"><h3>${icon('message')} Şikâyet ve talep</h3><div class="b">${M.map((m) => `<div class="it"><span class="small">${esc(m.text)}${m.answer ? `<div class="muted">Yanıt: ${esc(m.answer)}</div>` : ''}</span><b class="small">${esc((O.MST[m.status] || ['-'])[0])}</b></div>`).join('')}<div class="field mt"><label for="mt">Tür</label><select class="input" id="mt">${Object.entries(O.MT).map(([k, l]) => `<option value="${k}">${l}</option>`).join('')}</select></div><div class="field"><label for="tx">Mesajınız</label><textarea class="input" id="tx" rows="3" maxlength="800"></textarea></div><button class="btn primary" id="sd">${icon('send')} Kaydet</button></div></section>
+      <p class="center"><button class="btn ghost" id="lo">Çıkış</button></p><p class="small muted center">Bu sayfa çocuğunuzun konumunu göstermez. Sefer durumu şoförün işaretlemesiyle güncellenir.</p>`;
+    document.querySelectorAll('[data-ab]').forEach((b) => { b.onclick = async () => { const v = await NS.formModal({ title: 'Gelmeyecek bildirimi', fields: [{ name: 'date', label: 'Tarih', type: 'date', required: true }, { name: 'dir', label: 'Sefer', type: 'select', options: [{ value: 'both', label: 'Sabah ve akşam' }, { value: 'am', label: 'Sabah' }, { value: 'pm', label: 'Akşam' }] }, { name: 'note', label: 'Not' }], values: { date: today, dir: 'both' } }); if (!v) return; if (v.date < today) return toast('Geçmiş tarih seçilemez', 'err'); db.insert('absences', { student: b.dataset.ab, date: v.date, dir: v.dir, note: v.note || '' }); db.save(); toast('Bildiriminiz kaydedildi', 'ok'); setTimeout(render, 400); }; });
+    $('#sd').onclick = () => { const text = $('#tx').value.trim(); if (text.length < 5) return toast('Mesajınızı yazın', 'err'); db.insert('messages', { student: K[0].id, type: $('#mt').value, text }); db.save(); toast('Kaydedildi, firma yanıtlayınca burada görünür', 'ok'); setTimeout(render, 400); };
+    $('#lo').onclick = () => { sset(null); db.pubLogout(); login(); };
+  }
+  render();
+})();
+</script>
+</body>
+</html>
