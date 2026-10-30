@@ -287,7 +287,7 @@
     if (Array.isArray(db.data.users)) {
       const pin = String(Math.floor(100000 + Math.random() * 899999)).slice(0, 4);
       db.data.users = [{ id: 'u1', name: (info.owner && info.owner.name) || 'Yönetici', role: 'admin', pin, active: true }];
-      db.data._meta.ownerPin = pin;
+      db.ilkPin = pin; // yalnızca bu oturumda gösterilir; sunucu özetini saklar
     }
     db.data._meta.sample = true;
     // Kurulum ilerlemesi yalnızca işletmenin eklediği kayıtları saysın diye açılıştaki örnek sayıları saklanır
@@ -426,6 +426,8 @@
       else { try { localStorage.setItem(this.key, cur); } catch (e) { console.warn('Kayıt yapılamadı', e); } }
       this.listeners.forEach((f) => f());
     }
+    // Sunucu PIN'i özetledi: düz değer bu cihazda kalmasın
+    _pinTemizle(sent) { const t = (d) => (d.users || []).forEach((u) => { if (u && u.pin != null) { delete u.pin; u.pinVar = true; } }); const b = JSON.parse(sent); t(b); t(this.data); this._base = JSON.stringify(b); this._snap = JSON.stringify(this.data); }
     _queue(ms = 350) { clearTimeout(this._qt); this._qt = setTimeout(() => this._push(), ms); }
     _backup() { try { localStorage.setItem(pendKey(this.name), JSON.stringify({ base: this._base, data: this.data, at: Date.now() })); } catch (e) { /* kota */ } }
     async _push() {
@@ -437,7 +439,7 @@
       try {
         const res = await fetch('/api/data/' + this.name, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: `{"base":${this._v}${this.serverRole ? `,"rol":${JSON.stringify(this.serverRole)}` : ''},"data":${sent}}` });
         const j = await res.json().catch(() => ({}));
-        if (res.ok) { this._v = j.version; this._base = sent; this._fails = 0; try { localStorage.removeItem(pendKey(this.name)); } catch (e) { /* yok */ } syncState('Kaydedildi', 'ok'); }
+        if (res.ok) { this._v = j.version; this._base = sent; this._fails = 0; if (/"users":\[.*?"pin":/s.test(sent)) this._pinTemizle(sent); try { localStorage.removeItem(pendKey(this.name)); } catch (e) { /* yok */ } syncState('Kaydedildi', 'ok'); }
         else if (res.status === 409 && j.code === 'rol') { this._backup(); this._dirty = false; this._flight = false; syncState(j.error || 'Hesap yetkiniz değişti', 'err'); location.reload(); return; } // rol değişti: bekleyen veri yeni görünümle birleşir
         else if (res.status === 409 && j.code === 'conflict') {
           // Başka cihaz kaydetmiş: birleştir ve yeniden gönder
@@ -593,13 +595,40 @@
   }
   // Yetkili onayı: kullanıcının rolü yetmiyorsa yetkili kişi PIN'ini girer (kasada iade, büyük indirim, fiyat değiştirme gibi).
   //   const by = await NS.approve(app, 'İade', ['admin']); if (!by) return;  → onaylayan kullanıcı (işlem geçmişine yazılır) ya da null
+  // PIN doğrulama. Bulutta sunucu karşılaştırır, özet tarayıcıya inmez; çevrimdışı giriş için son başarılı giriş bu cihazda özetli tutulur.
+  // Sunucusuz kurulumda özet kullanıcı kaydındadır. o: { uid } personel girişi, { roles } yetkili onayı.
+  const pinHex = (b) => [...new Uint8Array(b)].map((x) => x.toString(16).padStart(2, '0')).join('');
+  async function pinOzu(pin, tuz) {
+    if (!window.crypto || !crypto.subtle) return null; const enc = new TextEncoder();
+    const k = await crypto.subtle.importKey('raw', enc.encode(String(pin)), 'PBKDF2', false, ['deriveBits']);
+    return pinHex(await crypto.subtle.deriveBits({ name: 'PBKDF2', hash: 'SHA-256', salt: enc.encode(tuz), iterations: 100000 }, k, 256));
+  }
+  async function pinYap(pin) { const tuz = pinHex(crypto.getRandomValues(new Uint8Array(12))); const h = await pinOzu(pin, tuz); return h ? `p1$${tuz}$${h}` : null; }
+  async function pinEs(kayit, pin) { const [, tuz, h] = String(kayit).split('$'); return !!h && (await pinOzu(pin, tuz)) === h; }
+  const pinCihaz = (db, id) => `nebsoft:pinv:${db.name}:${id}`;
+  async function pinKontrol(db, deger, o = {}) {
+    const pin = String(deger == null ? '' : deger).trim();
+    const aday = db.all('users', (u) => u.active !== false && (o.uid ? u.id === o.uid : u.role === 'admin' || (o.roles || []).includes(u.role)));
+    if (db.cloud) {
+      try {
+        const u = (await api('POST', `/api/data/${db.name}/pin`, { pin, uid: o.uid, roles: o.roles })).user;
+        if (u && o.uid) { const h = await pinYap(pin); try { if (h) localStorage.setItem(pinCihaz(db, u.id), h); } catch (e) { /* yok */ } }
+        return u || null;
+      } catch (x) { if (x.status === 403) return null; if (x.status) throw x; }
+      for (const u of aday) { let k = null; try { k = localStorage.getItem(pinCihaz(db, u.id)); } catch (e) { /* yok */ } if (k && await pinEs(k, pin)) return u; }
+      throw new Error('İnternet yok. Çevrimdışı giriş yalnızca bu cihazda daha önce giriş yapan kullanıcıya açıktır.');
+    }
+    for (const u of aday) {
+      if (u.pinH ? !(await pinEs(u.pinH, pin)) : u.pin == null || String(u.pin) !== pin) continue;
+      if (!u.pinH && !/[?&]demo=1/.test(location.search)) { const h = await pinYap(pin); if (h) db.update('users', u.id, { pinH: h, pin: undefined }); }
+      return u;
+    }
+    return null;
+  }
   async function approve(app, reason, roles = ['admin']) {
     const me = NS.currentUser; if (!app.opts.auth || !me || me.role === 'admin' || roles.includes(me.role)) return me || {};
     const v = await formModal({ title: 'Yetkili onayı', fields: [{ name: 'pin', label: `${reason} — yetkili PIN`, type: 'password', required: true }], submitLabel: 'Onayla' }); if (!v) return null;
-    let u = null;
-    // Sunucu rolü olan hesapta PIN'ler tarayıcıya inmez: karşılaştırma sunucuda yapılır
-    if (app.db.serverRole) { try { u = (await api('POST', `/api/data/${app.db.name}/pin`, { pin: String(v.pin).trim(), roles })).user; } catch (x) { if (x.status !== 403) { toast(x.message, 'err'); return null; } } }
-    else u = app.db.find('users', (x) => x.active !== false && (x.role === 'admin' || roles.includes(x.role)) && String(x.pin) === String(v.pin).trim());
+    let u = null; try { u = await pinKontrol(app.db, v.pin, { roles }); } catch (x) { toast(x.message, 'err'); return null; }
     if (!u) { toast('PIN hatalı — işlem yapılmadı', 'err'); app.db.log('Yetkili onayı reddedildi', reason); return null; }
     app.db.log('Yetkili onayı', `${reason} · onaylayan ${u.name} · isteyen ${me.name}`); return u;
   }
@@ -955,20 +984,21 @@
       who();
       let pin = ''; let lock = false;
       const dots = () => $$('#pd i').forEach((d, i) => d.classList.toggle('on', i < pin.length));
-      const press = (k) => {
+      const press = async (k) => {
         if (lock) return;
         const btn = document.querySelector(`[data-k="${k}"]`); if (btn) { btn.classList.add('hit'); setTimeout(() => btn.classList.remove('hit'), 120); }
         if (k === 'C') pin = ''; else if (k === '⌫') pin = pin.slice(0, -1); else if (pin.length < 4) pin += k;
         dots();
         if (pin.length === 4) {
           const u = app.db.get('users', sel); lock = true;
-          if (u && String(u.pin) === pin) {
+          let oldu = null; let hata = ''; try { oldu = u ? await pinKontrol(app.db, pin, { uid: u.id }) : null; } catch (x) { hata = x.message; }
+          if (oldu) {
             $('#pd').classList.add('ok');
             try { sessionStorage.setItem(SESSION, u.id); localStorage.setItem('nebsoft:lastUser:' + opts.id, u.id); } catch (e) { /* yok */ }
             setTimeout(() => { clearInterval(clk); document.onkeydown = null; boot(); if (NS.pwa && NS.pwa.offer) setTimeout(() => NS.pwa.offer(), 1800); }, 420);
           } else {
-            $('#pd').classList.add('bad'); if (A) A.shake($('.ax-pinbox'));
-            if (NS.audit) NS.audit({ action: 'Hatalı PIN denemesi', detail: u ? u.name : '', user: u ? u.name : '', type: 'oturum', level: 'uyari' });
+            $('#pd').classList.add('bad'); if (A) A.shake($('.ax-pinbox')); if (hata) toast(hata, 'err');
+            if (NS.audit && !hata) NS.audit({ action: 'Hatalı PIN denemesi', detail: u ? u.name : '', user: u ? u.name : '', type: 'oturum', level: 'uyari' });
             setTimeout(() => { pin = ''; lock = false; $('#pd').classList.remove('bad'); dots(); }, 520);
           }
         }
@@ -988,7 +1018,7 @@
       const navHtml = groups.filter((g) => g.items.length).map((g, gi) => (!g.sec ? `<div class="nv-grp-b open">${g.items.map(link).join('')}</div>`
         : `<div class="nv-grp${closed.includes(g.sec) ? '' : ' open'}" data-grp="${esc(g.sec)}"><button class="nv-grp-h" type="button" data-grp-t aria-expanded="${!closed.includes(g.sec)}"><span>${esc(g.sec)}</span><svg class="ico nv-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></button><div class="nv-grp-b">${g.items.map(link).join('')}</div></div>`)).join('');
       document.body.innerHTML = `
-        ${app.db && app.db.cloud ? (app.db.data._meta.sample && !app.db.serverRole ? `<div class="ns-demo-bar">${icon('info')} <span>Örnek verilerle başladınız — ürünü tanıyınca örnekleri temizleyip kendi verilerinizi girin.${app.db.data._meta.ownerPin ? ` Yönetici PIN'iniz: <b>${esc(app.db.data._meta.ownerPin)}</b>` : ''}</span> <a href="#" data-clear>Örnek verileri temizle</a> · <a href="/#/hesabim" target="_top">Hesabım</a></div>` : '') : opts.demo !== false ? `<div class="ns-demo-bar">${icon('sparkles')} <span>Canlı demo: veriler yalnızca bu tarayıcıda saklanır.</span> <a href="#" data-reset>Demoyu sıfırla</a> · <a href="${opts.backUrl || '../../index.html'}#/urun/${opts.id}" target="_top">Satın al</a></div>` : ''}
+        ${app.db && app.db.cloud ? (app.db.data._meta.sample && !app.db.serverRole ? `<div class="ns-demo-bar">${icon('info')} <span>Örnek verilerle başladınız — ürünü tanıyınca örnekleri temizleyip kendi verilerinizi girin.${app.db.ilkPin ? ` Yönetici PIN'iniz: <b>${esc(app.db.ilkPin)}</b>. Bu bilgi bir kez gösterilir, Ayarlar › Kullanıcılar'dan değiştirebilirsiniz.` : ''}</span> <a href="#" data-clear>Örnek verileri temizle</a> · <a href="/#/hesabim" target="_top">Hesabım</a></div>` : '') : opts.demo !== false ? `<div class="ns-demo-bar">${icon('sparkles')} <span>Canlı demo: veriler yalnızca bu tarayıcıda saklanır.</span> <a href="#" data-reset>Demoyu sıfırla</a> · <a href="${opts.backUrl || '../../index.html'}#/urun/${opts.id}" target="_top">Satın al</a></div>` : ''}
         <div class="ns-app">
           <aside class="ns-side" id="side">
             <div class="ns-brand"><a class="nv-brand-mark" href="#/" title="${esc(opts.name)}">${logoMark(opts.accent, 30)}</a><div class="nv-brand-t"><b>${esc(opts.name)}</b><small><span class="wm"><b>NEB</b><i>SOFT</i></span>${opts.tagline ? ` · ${esc(opts.tagline)}` : ''}</small></div><button class="nv-mini-btn" type="button" data-mini title="Menüyü daralt / genişlet" aria-label="Menüyü daralt"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="M9 4v16"/></svg></button></div>
@@ -1210,8 +1240,14 @@
         });
       };
       const uf = [{ name: 'name', label: 'Ad soyad', required: true }, { name: 'role', label: 'Rol', type: 'select', options: Object.entries(roles).map(([value, label]) => ({ value, label })) }, { name: 'pin', label: 'PIN (4 hane)', required: true, type: 'password' }, { name: 'active', label: 'Aktif', type: 'checkbox', value: true }];
-      $('#ua', el).onclick = async () => { const v = await formModal({ title: 'Yeni Kullanıcı', fields: uf, values: { active: true } }); if (v) { app.db.insert('users', v); drawU(); } };
-      on(el, 'click', '[data-act=ue]', async (e, t) => { const u = app.db.get('users', t.dataset.id); const v = await formModal({ title: 'Kullanıcı', fields: uf, values: u }); if (v) { app.db.update('users', u.id, v); drawU(); } });
+      // Bulutta düz PIN'i sunucu özetler; sunucusuz kurulumda özet burada alınır
+      const pinHazirla = async (v) => {
+        if (!v.pin) { delete v.pin; return true; } if (!/^\d{4}$/.test(String(v.pin).trim())) { toast('PIN 4 haneli rakam olmalı', 'err'); return false; }
+        if (!app.db.cloud) { const h = await pinYap(String(v.pin).trim()); if (h) { v.pinH = h; v.pin = undefined; } } return true;
+      };
+      const ufDuzenle = uf.map((f) => (f.name === 'pin' ? { ...f, required: false, label: 'Yeni PIN (değişmeyecekse boş bırakın)' } : f));
+      $('#ua', el).onclick = async () => { const v = await formModal({ title: 'Yeni Kullanıcı', fields: uf, values: { active: true } }); if (v && await pinHazirla(v)) { app.db.insert('users', v); drawU(); } };
+      on(el, 'click', '[data-act=ue]', async (e, t) => { const u = app.db.get('users', t.dataset.id); const v = await formModal({ title: 'Kullanıcı', fields: ufDuzenle, values: { ...u, pin: '' } }); if (v && await pinHazirla(v)) { app.db.update('users', u.id, v); drawU(); } });
       on(el, 'click', '[data-act=ud]', async (e, t) => { if (app.db.all('users').length < 2) return toast('Son kullanıcı silinemez', 'err'); if (await confirm('Kullanıcı silinsin mi?')) { app.db.remove('users', t.dataset.id); drawU(); } });
       drawU();
     }
@@ -1245,7 +1281,7 @@
     api, esc, $, $$, on, uid, rand, pick, sum, groupBy, clamp, money, num, iso, today, addDays, daysBetween, date, dateLong, time, dt, ago, pad,
     MONTHS, DAYS, NAMES, phone, sampleGender, initials, logoMark, shade, setFavicon, slug, trLower, match, icon, ICONS, DB, toast, modal, confirm, prompt, formModal, fieldsHtml, readForm, validate,
     table, chart, compact, dailySeries, PALETTE, csv, readFile, parseCsv, printHtml, beep, barcodeSvg, qrSvg, shell, pageHead, kpi, badge, searchBox, crud,
-    settingsPage, smsLog, smsText, smsTone, smsBatch, portalShare, approve, toggleTheme, getTheme, setTheme, themeCards, THEMES, skeleton: (n = 4) => `<div class="nv-skel">${'<div class="skel" style="height:18px;width:38%"></div><div class="grid g4">' + '<div class="skel" style="height:84px"></div>'.repeat(4) + '</div>' + '<div class="skel" style="height:44px"></div>'.repeat(n)}</div>`, currentUser: null, cloud: CLOUD, merge3, pub: PUB, tenant: TENANT, payInfo, portalCode,
+    settingsPage, smsLog, smsText, smsTone, smsBatch, portalShare, approve, pinKontrol, toggleTheme, getTheme, setTheme, themeCards, THEMES, skeleton: (n = 4) => `<div class="nv-skel">${'<div class="skel" style="height:18px;width:38%"></div><div class="grid g4">' + '<div class="skel" style="height:84px"></div>'.repeat(4) + '</div>' + '<div class="skel" style="height:44px"></div>'.repeat(n)}</div>`, currentUser: null, cloud: CLOUD, merge3, pub: PUB, tenant: TENANT, payInfo, portalCode,
   };
 })();
 

@@ -17,6 +17,8 @@ function key() {
   if (!fs.existsSync(KEYFILE)) fs.writeFileSync(KEYFILE, crypto.randomBytes(32).toString('hex'), { mode: 0o600 });
   return Buffer.from(fs.readFileSync(KEYFILE, 'utf8').trim(), 'hex');
 }
+// Anahtar değişiminde eski değer NEBSOFT_SECRET_ESKI ile verilir (belge.js, pin.js)
+const anahtarEski = () => (process.env.NEBSOFT_SECRET_ESKI ? crypto.createHash('sha256').update(process.env.NEBSOFT_SECRET_ESKI).digest() : null);
 function encrypt(obj) {
   const iv = crypto.randomBytes(12); const c = crypto.createCipheriv('aes-256-gcm', key(), iv);
   const enc = Buffer.concat([c.update(JSON.stringify(obj), 'utf8'), c.final()]);
@@ -42,4 +44,4 @@ function setupToken(create) {
 function clearSetupToken() { try { fs.unlinkSync(TOKENFILE); } catch (e) { /* yok */ } }
 // İmza (müşteri sayfası belirteçleri için): ana anahtardan türetilen ayrı HMAC anahtarı
 const mac = (text) => crypto.createHmac('sha256', crypto.createHash('sha256').update(Buffer.concat([key(), Buffer.from('public-token')])).digest()).update(text).digest('base64url');
-module.exports = { mac, load, save, configured, setupToken, clearSetupToken, DATA, encrypt, decrypt };
+module.exports = { mac, load, save, configured, setupToken, clearSetupToken, DATA, encrypt, decrypt, anahtar: key, anahtarEski };

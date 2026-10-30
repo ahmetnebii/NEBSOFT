@@ -110,8 +110,8 @@ async function uctanUca() {
     // Okuma
     r = await S('GET', '/api/data/klinik'); assert.equal(r.status, 200); assert.equal(r.j.rol, 'sekreter'); assert.deepEqual(r.j.data.visits, []); const txt = JSON.stringify(r.j.data); assert.ok(!/K04\.4|periodontitis|Diyabet|Metformin|Amoksisilin|4821|7733|9001/.test(txt), txt); assert.equal(r.j.data.patients[0].name, 'Ayşe Kaya'); ok('sekreter GET: tanı, anamnez, reçete, PIN yok; rol alanı var');
     const vS = r.j.version; const gorS = r.j.data;
-    r = await O('GET', '/api/data/klinik'); assert.equal(r.j.rol, undefined); assert.equal(r.j.data.visits[0].icd, 'K04.4'); assert.equal(r.j.data.users[0].pin, '4821'); ok('sahip her şeyi görür, rol alanı yok');
-    r = await E('GET', '/api/data/klinik'); assert.equal(r.j.rol, undefined); assert.equal(r.j.data.visits[0].icd, 'K04.4'); assert.equal(r.j.data.users[1].pin, '7733'); ok('rolü olmayan eski ekip üyesi eskisi gibi tam yetkili');
+    r = await O('GET', '/api/data/klinik'); assert.equal(r.j.rol, undefined); assert.equal(r.j.data.visits[0].icd, 'K04.4'); assert.equal(r.j.data.users[0].pinVar, true); assert.ok(!r.j.data.users[0].pin && !r.j.data.users[0].pinH); ok('sahip her şeyi görür, rol alanı yok');
+    r = await E('GET', '/api/data/klinik'); assert.equal(r.j.rol, undefined); assert.equal(r.j.data.visits[0].icd, 'K04.4'); assert.equal(r.j.data.users[1].pinVar, true); ok('rolü olmayan eski ekip üyesi eskisi gibi tam yetkili');
     r = await E('PUT', '/api/data/klinik', { data: { ...r.j.data, _settings: { bizName: 'Gülüş Yeni' } }, base: r.j.version }); assert.equal(r.status, 200); ok('rolü olmayan üye eskisi gibi yazar');
     const v2 = r.j.version;
 
@@ -123,7 +123,7 @@ async function uctanUca() {
     const g = JSON.parse(JSON.stringify(r.j.data)); g.patients[0].anamnez = []; g.patients[0].meds = 'Silindi'; g.patients[0].phone = '0599'; g.patients = g.patients.filter((p) => p.id !== 'p2'); g.patients.push({ id: 'p3', name: 'Yeni Hasta', anamnez: ['Sahte'], meds: 'Sahte' }); g.visits = []; g.prescriptions = [{ id: 'x', diag: 'Sahte' }]; g.users = []; g._settings = { bizName: 'Sahte' }; g._meta.ownerPin = '0000'; g.doctors = []; g._log = [{ id: 'ln', action: 'Kart görüntülendi', detail: 'p1' }];
     r = await S('PUT', '/api/data/klinik', { data: g, base: v2, rol: 'sekreter' }); assert.equal(r.status, 200, JSON.stringify(r.j));
     r = await O('GET', '/api/data/klinik'); let d = r.j.data; const p1 = d.patients.find((p) => p.id === 'p1');
-    assert.deepEqual(p1.anamnez, ['Diyabet']); assert.equal(p1.meds, 'Metformin'); assert.equal(p1.phone, '0599'); assert.equal(d.visits[0].icd, 'K04.4'); assert.equal(d.prescriptions[0].diag, 'Pulpitis'); assert.equal(d.users.length, 3); assert.equal(d.users[0].pin, '4821'); assert.equal(d._settings.bizName, 'Gülüş Yeni'); assert.equal(d._meta.ownerPin, '4821'); assert.equal(d.doctors[0].rate, 40);
+    assert.deepEqual(p1.anamnez, ['Diyabet']); assert.equal(p1.meds, 'Metformin'); assert.equal(p1.phone, '0599'); assert.equal(d.visits[0].icd, 'K04.4'); assert.equal(d.prescriptions[0].diag, 'Pulpitis'); assert.equal(d.users.length, 3); assert.equal(d.users[0].pinVar, true); assert.equal(d._settings.bizName, 'Gülüş Yeni'); assert.ok(!('ownerPin' in d._meta)); assert.equal(d.doctors[0].rate, 40);
     assert.ok(d.patients.some((p) => p.id === 'p2')); const p3 = d.patients.find((p) => p.id === 'p3'); assert.ok(p3 && !('anamnez' in p3) && !('meds' in p3)); assert.deepEqual(d._log.map((x) => x.id), ['ln', 'l1']); ok('sekreter PUT: tanıyı silemez/değiştiremez, telefon yazılır, silinen hasta geri gelir, yeni kayıtta gizli alan boş');
 
     // Hekim değişikliği sonrası sekreterin kaydı hekimin tanısını silmez
@@ -134,7 +134,7 @@ async function uctanUca() {
     // Geçmiş ve yedek
     for (const u of ['/api/data/klinik/gecmis', '/api/data/klinik/history', '/api/data/klinik/yedek', '/api/yedek/klinik', '/api/backup/klinik']) { r = await S('GET', u); assert.ok([401, 404, 405].includes(r.status) || !r.j || r.j.ok !== true, u + ' ' + r.status); }
     r = await S('GET', '/api/data/klinik/v'); assert.deepEqual(Object.keys(r.j).sort(), ['ok', 'version']);
-    const [[h]] = await root.query(`SELECT data FROM ${DBN}.app_data_history WHERE app='klinik' ORDER BY id DESC LIMIT 1`).catch(() => [[null]]); if (h) assert.ok(/K04\.4/.test(h.data)); ok('geçmiş ve yedek için kullanıcıya açık uç yok; sürüm ucu yalnızca numara döner');
+    const [[h]] = await root.query(`SELECT data FROM ${DBN}.app_data_history WHERE app='klinik' ORDER BY id DESC LIMIT 1`).catch(() => [[null]]); if (h) assert.ok(h.data.startsWith('nsdoc1:') && !/K04\.4/.test(h.data)); ok('geçmiş ve yedek için kullanıcıya açık uç yok; sürüm ucu yalnızca numara döner');
 
     // Rol anında geçerli, eski sekme tam yetkiyle yazamaz
     const list = (await O('GET', '/api/team')).j; const uE = list.users.find((u) => u.email === 'eski@klinik.test'), uS = list.users.find((u) => u.email === 'ece@klinik.test'), uO = list.users.find((u) => u.email === 'sahip@klinik.test');
@@ -187,7 +187,7 @@ async function uctanUca() {
     r = await O('PUT', '/api/data/entegrasyon', { data: { cfg: { sms: { enabled: true, apiKey: 'gercekanahtar1' } }, log: [{ id: 'a1', text: '{"icd":"K04.4"}' }] }, base: 0 }); assert.equal(r.j.version, 1);
     r = await S('GET', '/api/data/entegrasyon'); assert.equal(r.j.rol, undefined); assert.deepEqual(r.j.data.log, []); assert.ok(!/gercekanahtar1|K04/.test(JSON.stringify(r.j.data))); const en = r.j.data; en.cfg.sms.enabled = false; en.log = [{ id: 'a2', text: 'SMS' }];
     r = await S('PUT', '/api/data/entegrasyon', { data: en, base: 1 }); assert.equal(r.status, 200, JSON.stringify(r.j)); r = await O('GET', '/api/data/entegrasyon'); assert.equal(r.j.data.cfg.sms.enabled, true); assert.deepEqual(r.j.data.log.map((x) => x.id), ['a2', 'a1']);
-    const [[ham]] = await root.query(`SELECT data FROM ${DBN}.app_data WHERE app='entegrasyon'`); assert.ok(/enc:v1:/.test(ham.data) && !/gercekanahtar1/.test(ham.data)); ok('entegrasyon günlüğü kısıtlı hesaba gitmez, ayar değişmez, şifreli değer korunur');
+    const [[ham]] = await root.query(`SELECT data FROM ${DBN}.app_data WHERE app='entegrasyon'`); assert.ok(ham.data.startsWith('nsdoc1:') && !/gercekanahtar1/.test(ham.data)); ok('entegrasyon günlüğü kısıtlı hesaba gitmez, ayar değişmez, şifreli değer korunur');
     assert.ok(!/4821|7733|Sifre1234|Metformin|K04\.4/.test(log)); ok('sunucu çıktısında PIN, parola ve sağlık verisi yok');
   } finally { srv.kill(); await root.query(`DROP DATABASE IF EXISTS ${DBN}; DROP USER IF EXISTS 'ns_rol'@'127.0.0.1'; DROP USER IF EXISTS 'ns_rol'@'localhost';`).catch(() => {}); await root.end(); }
 }

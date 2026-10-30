@@ -126,8 +126,9 @@ async function liveSite(t) {
 // İşletmenin onaylamadığı hazır şablon kayıtları da yayınlanmaz.
 async function dropSample(tid, data) {
   if (!Array.isArray(data.products) || !data.products.length) return data;
-  const rows = await db.q("SELECT data FROM app_data WHERE tenant_id=? AND app IN ('pos','butik','eticaret','toptan','eczane') AND (data LIKE '%\"sample\":true%' OR data LIKE '%\"kaynak\":\"sablon\"%')", [tid]).catch(() => []);
-  const names = new Set(); rows.forEach((r) => { const d = J(r.data, {}); const orn = d._meta && d._meta.sample; (d.products || d.urunler || []).forEach((p) => { if (p && p.name && (orn || (p.kaynak === 'sablon' && !p.onay))) names.add(String(p.name).slice(0, 120)); }); });
+  // Eczane belgesi şifreli olduğu için SQL'de aranamaz, her zaman okunur
+  const rows = await db.q("SELECT app, data FROM app_data WHERE tenant_id=? AND (app='eczane' OR (app IN ('pos','butik','eticaret','toptan') AND (data LIKE '%\"sample\":true%' OR data LIKE '%\"kaynak\":\"sablon\"%')))", [tid]).catch(() => []);
+  const names = new Set(); for (const r of rows) { const d = await require('./belge').oku(tid, r.app, r, {}).catch(() => ({})); const orn = d._meta && d._meta.sample; (d.products || d.urunler || []).forEach((p) => { if (p && p.name && (orn || (p.kaynak === 'sablon' && !p.onay))) names.add(String(p.name).slice(0, 120)); }); }
   return names.size ? { ...data, products: data.products.filter((p) => !names.has(p.name)) } : data;
 }
 // İşletme sitesinin kanonik kök adresi: kendi alan adı varsa o, yoksa /t/<işletme>/

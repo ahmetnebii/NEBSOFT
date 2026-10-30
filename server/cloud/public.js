@@ -5,6 +5,7 @@
 const db = require('./db');
 const cfg = require('./config');
 const sec = require('./security');
+const belge = require('./belge');
 const { R, err, valid, J } = require('./routes');
 const RULES = require('./public-rules');
 require('./bridge');
@@ -74,7 +75,7 @@ function buildView(rule, doc, x) {
 
 async function load(t, app) {
   const r = await db.one('SELECT data, version FROM app_data WHERE tenant_id=? AND app=?', [t.id, app]);
-  const doc = r ? J(r.data, null) : null;
+  const doc = await belge.oku(t.id, app, r);
   if (!doc) throw err(404, 'İşletme bu hizmeti henüz yayına almadı');
   return { doc, version: r.version };
 }
@@ -113,7 +114,7 @@ route('POST', '/api/public/:slug/:app/ops', { auth: 'none', limit: ['pubo', 40, 
   const ident = readToken(c.body.token, t.id, app);
   const res = await db.tx(async (tx) => {
     const row = (await tx.q('SELECT data, version FROM app_data WHERE tenant_id=? AND app=? FOR UPDATE', [t.id, app]))[0];
-    const doc = row ? J(row.data, null) : null; if (!doc) throw err(404, 'İşletme bu hizmeti henüz yayına almadı');
+    const doc = await belge.oku(t.id, app, row); if (!doc) throw err(404, 'İşletme bu hizmeti henüz yayına almadı');
     const x = helpers(doc, ident, c.body.x && typeof c.body.x === 'object' ? c.body.x : null); const after = [];
     // Önce eklemeler (kurallardaki koleksiyon sırasıyla: önce müşteri, sonra ona bağlı kayıt), sonra güncelleme ve silmeler
     const order = Object.keys(rule.write || {}); const rank = (o) => ({ ins: 0, upd: 1, key: 1, del: 2 }[o && o.op] ?? 3) * 100 + Math.max(0, order.indexOf(o && o.c));
@@ -152,7 +153,7 @@ route('POST', '/api/public/:slug/:app/ops', { auth: 'none', limit: ['pubo', 40, 
     const g = rule.grant && rule.grant(x, after); if (g) x.ident = { t: t.id, a: app, k: g.k, i: String(g.i) };
     // İşletmenin işlem kaydına not düş
     if (Array.isArray(doc._log) && after.length) { doc._log.unshift({ id: 'p' + Date.now().toString(36), at: new Date().toISOString(), action: 'Müşteri sayfası', detail: after.map(([n]) => n).filter((v, i, a) => a.indexOf(v) === i).join(', '), user: 'Online' }); if (doc._log.length > 300) doc._log.length = 300; }
-    await tx.q('UPDATE app_data SET data=?, version=version+1, updated=? WHERE tenant_id=? AND app=?', [JSON.stringify(doc), new Date(), t.id, app]);
+    await tx.q('UPDATE app_data SET data=?, version=version+1, updated=? WHERE tenant_id=? AND app=?', [await belge.kapat(t.id, app, JSON.stringify(doc)), new Date(), t.id, app]);
     return { doc, version: row.version + 1, ident: x.ident };
   });
   const fresh = res.ident && res.ident !== ident ? res.ident : null;

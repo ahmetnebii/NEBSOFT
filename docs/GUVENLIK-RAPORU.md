@@ -1,5 +1,7 @@
 # NEBSOFT güvenlik denetimi raporu
 
+> **Üçüncü tur (30.10.2026, `guvenlik/sifreleme`):** Klinik, eczane, veteriner, İK, anaokulu ve entegrasyon belgeleri veritabanında AES-256-GCM ile şifrelidir (`server/cloud/belge.js`, işletme + program başına anahtar, şifreli metin başka satıra taşınırsa açılmaz). Personel PIN'i tüm programlarda sunucu anahtarıyla özetlenir (`server/cloud/pin.js`), özet tarayıcıya gitmez, doğrulama sunucudadır. Sunucusuz kurulumda PIN ilk başarılı girişte PBKDF2 özetine geçer. Eski kayıtlar açılışta taşınır. Korumanın sınırı: veritabanı dökümü, yedek ve veritabanı erişimi için geçerlidir. Sunucuya erişen yazılım veriyi açar, tarayıcıya inen veri ve çevrimdışı bekleyen değişiklikler şifresizdir, yedek anahtarla aynı yerdeyse koruma yoktur. Eski yedekler düz metindir.
+
 Tarih: 30.10.2026 · Dal: `guvenlik/denetim` (temel: `devir/hepsi` 4ec51e1) · Kapsam: yerel kurulum (`PORT=5078`), dış sisteme denetim isteği atılmadı.
 
 ## CANLIYA ÇIKMAYI ENGELLEYENLER

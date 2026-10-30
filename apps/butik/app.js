@@ -45,7 +45,7 @@
   async function adminOk(msg) {
     if ((NS.currentUser || {}).role === 'admin') return confirm(msg);
     const pin = await NS.prompt(`${msg} — yönetici PIN'i`, ''); if (pin === null) return false;
-    const ok = db.all('users').some((u) => u.role === 'admin' && u.active !== false && String(u.pin) === String(pin).trim()); if (!ok) toast('PIN hatalı', 'err'); else db.log('Yönetici onayı', msg); return ok;
+    let ok = null; try { ok = await NS.pinKontrol(db, pin); } catch (x) { toast(x.message, 'err'); return false; } if (!ok) toast('PIN hatalı', 'err'); else db.log('Yönetici onayı', msg); return !!ok;
   }
 
   // ---------- Matris (beden × renk) ----------

@@ -7,6 +7,8 @@ const auth = require('./auth');
 const cat = require('./catalog');
 const mail = require('./mail');
 const secrets = require('./secrets');
+const belge = require('./belge');
+const pinler = require('./pin');
 const cfgMod = require('./config');
 const bizsite = require('../../core/bizsite');
 const odeme = () => require('./odeme'); // döngüsel bağımlılık olmasın diye çağrı anında yüklenir
@@ -406,14 +408,14 @@ route('GET', '/api/takvim-adres', { auth: 'user' }, async (c) => {
   if (!c.user.tenant_id) throw err(400, 'İşletme hesabı gerekli');
   const app = CAL_APPS[c.query.get('app')] ? c.query.get('app') : 'randevu';
   const t = await db.one('SELECT slug FROM tenants WHERE id=?', [c.user.tenant_id]); const r = await db.one('SELECT data FROM app_data WHERE tenant_id=? AND app=?', [c.user.tenant_id, app]);
-  const d = r ? J(r.data, {}) : {}; const base = `/api/takvim/${t.slug}.ics`; const a = app === 'randevu' ? '' : `a=${app}&`;
+  const d = await belge.oku(c.user.tenant_id, app, r, {}); const base = `/api/takvim/${t.slug}.ics`; const a = app === 'randevu' ? '' : `a=${app}&`;
   return { ok: true, app, title: CAL_APPS[app], all: `${base}?${a}k=${calSig(c.user.tenant_id, '', app)}`, staff: calPeople(app, d).map((s) => ({ id: s.id, name: s.name, url: `${base}?${a}p=${encodeURIComponent(s.id)}&k=${calSig(c.user.tenant_id, s.id, app)}` })) };
 });
 route('GET', '/api/takvim/:file', { auth: 'none', limit: ['ics', 120, 60e3] }, async (c) => {
   const slug = String(c.params.file).replace(/\.ics$/, ''); const staffId = String(c.query.get('p') || ''); const k = String(c.query.get('k') || '');
   const app = CAL_APPS[c.query.get('a')] ? c.query.get('a') : 'randevu';
   const t = await db.one("SELECT id, name FROM tenants WHERE slug=? AND status='active'", [slug]); if (!t || !sec.safeEq(k, calSig(t.id, staffId, app))) throw err(404, 'Takvim bulunamadı');
-  const r = await db.one('SELECT data FROM app_data WHERE tenant_id=? AND app=?', [t.id, app]); const d = r ? J(r.data, {}) : {};
+  const r = await db.one('SELECT data FROM app_data WHERE tenant_id=? AND app=?', [t.id, app]); const d = await belge.oku(t.id, app, r, {});
   const by = (arr) => Object.fromEntries((arr || []).map((x) => [x.id, x]));
   const from = new Date(Date.now() - 30 * 864e5).toISOString().slice(0, 10); const to = new Date(Date.now() + 180 * 864e5).toISOString().slice(0, 10);
   const stamp = new Date().toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, ''); const inRange = (x) => x >= from && x <= to;
@@ -529,7 +531,7 @@ route('GET', '/api/team', { auth: 'user' }, async (c) => {
   const sahip = await isOwner(c.user); const temel = ({ team_roles, ...u }) => u;
   if (!sahip) return { ok: true, users: users.map(temel) };
   const L = await licenses(c.user.tenant_id); const programlar = kural.programlar().filter((p) => L.some((l) => l.product === p.app && valid(l))).map((p) => ({ ...p, ad: pnameOf(p.app) }));
-  const ik = programlar.find((p) => p.app === 'ik'); if (ik) { const r = await db.one("SELECT data FROM app_data WHERE tenant_id=? AND app='ik'", [c.user.tenant_id]); const d = r ? J(r.data, {}) : {}; ik.departmanlar = [...new Set([...String((d._settings || {}).depts || '').split(',').map((x) => x.trim()), ...(Array.isArray(d.employees) ? d.employees.map((e) => e && e.dept) : [])].filter(Boolean))]; }
+  const ik = programlar.find((p) => p.app === 'ik'); if (ik) { const r = await db.one("SELECT data FROM app_data WHERE tenant_id=? AND app='ik'", [c.user.tenant_id]); const d = await belge.oku(c.user.tenant_id, 'ik', r, {}); ik.departmanlar = [...new Set([...String((d._settings || {}).depts || '').split(',').map((x) => x.trim()), ...(Array.isArray(d.employees) ? d.employees.map((e) => e && e.dept) : [])].filter(Boolean))]; }
   return { ok: true, programlar, users: users.map((u, i) => ({ ...temel(u), sahip: i === 0, roller: J(u.team_roles, null) })) };
 });
 route('POST', '/api/team', { auth: 'user', limit: ['team', 20, 3600e3] }, async (c) => {
@@ -596,7 +598,7 @@ async function hesapRolu(u, app) {
   if (k.hata) throw err(403, 'Hesap rolü geçersiz. Hesap sahibine başvurun.');
   return k;
 }
-const gorunum = (app, k, belge) => { const m = secrets.mask(app, belge); return k ? kural.filtrele(app, k.rol, m, { dept: k.dept }) : m; };
+const gorunum = (app, k, d) => { const m = pinler.gorunum(secrets.mask(app, d)); return k ? kural.filtrele(app, k.rol, m, { dept: k.dept }) : m; };
 const rolAlani = (k) => (k && !k.ortak ? { rol: k.rol, ...(k.dept ? { rolDept: k.dept } : {}) } : {});
 route('GET', '/api/data/:app', { auth: 'user' }, async (c) => {
   const app = c.params.app; if (!sec.V.app(app)) throw err(400, 'Geçersiz uygulama');
@@ -605,7 +607,7 @@ route('GET', '/api/data/:app', { auth: 'user' }, async (c) => {
   const r = await db.one('SELECT data, version FROM app_data WHERE tenant_id=? AND app=?', [c.user.tenant_id, app]);
   if (HEALTH.includes(app)) { const k = `${c.user.id}:${app}`; if (Date.now() - (readLog.get(k) || 0) > 3600e3) { if (readLog.size > 50000) readLog.clear(); readLog.set(k, Date.now()); await audit(c, 'Sağlık verisi okundu', app); } }
   const t = await tenantOf(c.user);
-  return { ok: true, data: r ? gorunum(app, k, J(r.data, null)) : null, version: r ? r.version : 0, tenant: { name: t.name, phone: t.phone, address: t.address, slug: t.slug }, owner: { name: c.user.name }, ...rolAlani(k) };
+  return { ok: true, data: r ? gorunum(app, k, await belge.oku(c.user.tenant_id, app, r)) : null, version: r ? r.version : 0, tenant: { name: t.name, phone: t.phone, address: t.address, slug: t.slug }, owner: { name: c.user.name }, ...rolAlani(k) };
 });
 route('GET', '/api/data/:app/v', { auth: 'user' }, async (c) => {
   const r = await db.one('SELECT version FROM app_data WHERE tenant_id=? AND app=?', [c.user.tenant_id || '-', String(c.params.app)]);
@@ -620,8 +622,8 @@ route('PUT', '/api/data/:app', { auth: 'user', bodyMax: 20e6, limit: ['data', 60
   const k = await hesapRolu(c.user, app); const prog = k && !k.ortak ? k : null;
   // Rolü değişen hesabın sekmesi eski görünümle yazmasın: süzülmüş belge tam yetkiyle kaydedilirse gizli veri silinirdi
   if (!(k && k.ortak) && (c.body.rol || null) !== (prog ? prog.rol : null)) throw err(409, 'Hesap yetkiniz değişti, sayfa yenileniyor', { code: 'rol', ...rolAlani(prog) });
-  const srv = k || secrets.covers(app) ? await db.one('SELECT data, version FROM app_data WHERE tenant_id=? AND app=?', [c.user.tenant_id, app]) : null;
-  const srvDoc = srv ? J(srv.data, null) : null;
+  const srv = await db.one('SELECT data, version FROM app_data WHERE tenant_id=? AND app=?', [c.user.tenant_id, app]);
+  const srvDoc = await belge.oku(c.user.tenant_id, app, srv);
   if (k) {
     if (srv && srv.version !== base) throw err(409, 'Sürüm çakışması', await conflict(c.user.tenant_id, app, k));
     if (!srv && base !== 0) throw err(409, 'Sürüm çakışması', await conflict(c.user.tenant_id, app, k));
@@ -630,9 +632,8 @@ route('PUT', '/api/data/:app', { auth: 'user', bodyMax: 20e6, limit: ['data', 60
   // Rolün yazamadığı alanlar, sürümü base'e eşit olan satırdan geri konur; UPDATE aynı sürüme koşulludur. Gizli bilgi mührü bundan sonra uygulanır (şifreli değerler aynen kalır).
   const yaz = k ? kural.geriKoy(app, k.rol, data, srvDoc, { dept: k.dept }) : data;
   // Kimlik bilgileri şifreli saklanır; programın geri gönderdiği yer tutucular mevcut şifreli değeri korur
-  const text = JSON.stringify(secrets.seal(app, yaz, srvDoc));
-  const cur = await db.one('SELECT version, updated FROM app_data WHERE tenant_id=? AND app=?', [c.user.tenant_id, app]);
-  if (!cur) {
+  const text = await belge.kapat(c.user.tenant_id, app, JSON.stringify(secrets.seal(app, pinler.yazimda(c.user.tenant_id, app, yaz, srvDoc), srvDoc)));
+  if (!srv) {
     if (base !== 0) throw err(409, 'Sürüm çakışması', await conflict(c.user.tenant_id, app, k));
     try { await db.q('INSERT INTO app_data (tenant_id, app, data, version, updated, updated_by) VALUES (?,?,?,?,?,?)', [c.user.tenant_id, app, text, 1, now(), c.user.id]); } catch (e) { if (e.code === 'ER_DUP_ENTRY') throw err(409, 'Sürüm çakışması', await conflict(c.user.tenant_id, app, k)); throw e; }
     return { ok: true, version: 1 };
@@ -647,25 +648,26 @@ route('PUT', '/api/data/:app', { auth: 'user', bodyMax: 20e6, limit: ['data', 60
   }
   return { ok: true, version: base + 1 };
 });
-async function conflict(tid, app, k) { const r = await db.one('SELECT data, version FROM app_data WHERE tenant_id=? AND app=?', [tid, app]); return { code: 'conflict', data: r ? gorunum(app, k, J(r.data, null)) : null, version: r ? r.version : 0, ...rolAlani(k) }; }
+async function conflict(tid, app, k) { const r = await db.one('SELECT data, version FROM app_data WHERE tenant_id=? AND app=?', [tid, app]); return { code: 'conflict', data: r ? gorunum(app, k, await belge.oku(tid, app, r)) : null, version: r ? r.version : 0, ...rolAlani(k) }; }
 // Yetkili onayı: PIN'ler rolü olan hesaba inmediği için karşılaştırma burada yapılır. Hesap + program başına 5 hatada 15 dakika kilit; PIN hiçbir kayda yazılmaz.
 const pinHata = new Map(); const PIN_KILIT = 15 * 60e3;
-route('POST', '/api/data/:app/pin', { auth: 'user', limit: ['pin', 10, 60e3] }, async (c) => {
+route('POST', '/api/data/:app/pin', { auth: 'user', limit: ['pin', 30, 60e3] }, async (c) => {
   const app = c.params.app; if (!sec.V.app(app)) throw err(400, 'Geçersiz uygulama');
   if (!(await canUseApp(c.user, app))) throw err(402, 'Bu uygulama için geçerli lisans veya deneme yok', { code: 'license', app });
-  const key = `${c.user.id}:${app}`; const d = pinHata.get(key);
+  const uidIn = typeof c.body.uid === 'string' ? c.body.uid.slice(0, 40) : ''; // personel girişi: seçilen kullanıcı; boşsa yetkili onayı
+  const key = `${c.user.id}:${app}:${uidIn}`; const d = pinHata.get(key);
   if (d && d.until > Date.now()) throw err(429, 'Çok fazla hatalı PIN. 15 dakika sonra tekrar deneyin.');
   const pin = String(c.body.pin == null ? '' : c.body.pin).trim().slice(0, 32); const roles = Array.isArray(c.body.roles) ? c.body.roles.filter((x) => typeof x === 'string').slice(0, 10) : [];
-  const r = await db.one('SELECT data FROM app_data WHERE tenant_id=? AND app=?', [c.user.tenant_id, app]); const users = r ? J(r.data, {}).users : null;
-  let hit = null; const oz = auth.sha(pin); // sabit süre: tüm kullanıcılar taranır, özetler karşılaştırılır
-  for (const u of Array.isArray(users) ? users : []) { if (!u || u.pin == null || u.pin === '') continue; const es = sec.safeEq(auth.sha(String(u.pin).trim()), oz); if (es && pin && !hit && u.active !== false && (u.role === 'admin' || roles.includes(u.role))) hit = u; }
+  const r = await db.one('SELECT data FROM app_data WHERE tenant_id=? AND app=?', [c.user.tenant_id, app]); const users = (await belge.oku(c.user.tenant_id, app, r, {})).users;
+  let hit = null; // sabit süre: tüm kullanıcılar taranır
+  for (const u of Array.isArray(users) ? users : []) { const es = pinler.dogrula(c.user.tenant_id, app, u, pin); if (es && !hit && u.active !== false && (uidIn ? u.id === uidIn : u.role === 'admin' || roles.includes(u.role))) hit = u; }
   if (!hit) {
     const n = (d && d.until === 0 ? d.n : 0) + 1; if (pinHata.size > 50000) pinHata.clear();
     pinHata.set(key, { n: n >= 5 ? 0 : n, until: n >= 5 ? Date.now() + PIN_KILIT : 0 });
     await audit(c, 'Yetkili PIN hatalı', `${app} · ${n >= 5 ? 'kilitlendi' : `${n}. deneme`}`);
     throw err(403, 'PIN hatalı');
   }
-  pinHata.delete(key); await audit(c, 'Yetkili PIN onaylandı', `${app} · ${hit.id}`);
+  pinHata.delete(key); if (!uidIn) await audit(c, 'Yetkili PIN onaylandı', `${app} · ${hit.id}`);
   return { ok: true, user: { id: hit.id, name: hit.name, role: hit.role } };
 });
 

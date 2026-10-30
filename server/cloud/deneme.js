@@ -58,7 +58,7 @@ function waNo(phone) { let d = String(phone || '').replace(/\D/g, ''); if (d.sta
 const waTaslak = ({ ad, pname, end, ilerleme: p }) => `Merhaba${ad ? ' ' + ad : ''}, NEBSOFT'tan yazıyorum. ${pname} denemeniz ${fDate(end)} tarihinde bitiyor; kurulumda ${p.done}/${p.total} adımdasınız. Takıldığınız bir yer varsa yardımcı olabilirim.`;
 const waLink = (phone, text) => { const n = waNo(phone); return n ? `https://wa.me/${n}?text=${encodeURIComponent(text)}` : null; };
 
-async function appVeri(tid, app) { const r = await db.one('SELECT data FROM app_data WHERE tenant_id=? AND app=?', [tid, app]); return r ? J(r.data, null) : null; }
+async function appVeri(tid, app) { return require('./belge').oku(tid, app, await db.one('SELECT data FROM app_data WHERE tenant_id=? AND app=?', [tid, app])); }
 const SORGU = "SELECT l.id, l.tenant_id, l.product, l.start, l.end, t.name AS biz, t.phone AS tphone, u.id AS uid, u.email, u.name AS uname, u.phone AS uphone, p.trial_off, p.marketing FROM licenses l JOIN tenants t ON t.id=l.tenant_id JOIN users u ON u.id=(SELECT x.id FROM users x WHERE x.tenant_id=t.id AND x.role='customer' AND x.status='active' ORDER BY x.created LIMIT 1) LEFT JOIN mail_prefs p ON p.user_id=u.id WHERE l.status='deneme' AND l.end>UTC_TIMESTAMP() AND t.status='active' ORDER BY l.end LIMIT 300";
 async function kayitlar(ids) { if (!ids.length) return {}; const rows = await db.q(`SELECT license_id, step, status, attempts, at FROM trial_mail WHERE license_id IN (${ids.map(() => '?').join(',')})`, ids); return rows.reduce((m, r) => ((m[r.license_id] = m[r.license_id] || []).push(r), m), {}); }
 

@@ -48,7 +48,7 @@ function filtrele(app, rol, belge, ek = {}) {
   const k = kuralBul(app, rol); if (!k || !nesne(belge)) return belge;
   const o = { ...belge };
   for (const c of [...(k.kapat || []), ...ekleListe(k)]) if (c in o) { const b = bos(o[c]); if (b === undefined) delete o[c]; else o[c] = b; }
-  if (Array.isArray(o.users)) o.users = o.users.map((u) => { if (!nesne(u)) return u; const { pin, ...r } = u; return r; });
+  if (Array.isArray(o.users)) o.users = o.users.map((u) => { if (!nesne(u)) return u; const { pin, pinH, ...r } = u; return r; });
   if (nesne(o._meta)) { const { ownerPin, ...r } = o._meta; o._meta = r; }
   for (const [c, alanlar] of Object.entries(k.gizle || {})) if (Array.isArray(o[c])) o[c] = o[c].map((r) => { if (!nesne(r)) return r; const n = { ...r }; alanlar.forEach((f) => delete n[f]); return n; });
   const ids = kapsamId(k, belge, ek);

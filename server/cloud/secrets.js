@@ -59,7 +59,7 @@ async function resolve(db, tenantId, obj) {
   const cache = {}; const used = new Set();
   const val = async (app, grp, field) => {
     if (!GROUPS[app]) return ''; used.add(`${app}\n${grp}`);
-    if (!(app in cache)) { const r = await db.one('SELECT data FROM app_data WHERE tenant_id=? AND app=?', [tenantId, app]); let d = null; try { d = r ? JSON.parse(r.data) : null; } catch (e) { d = null; } cache[app] = d; }
+    if (!(app in cache)) { const r = await db.one('SELECT data FROM app_data WHERE tenant_id=? AND app=?', [tenantId, app]); cache[app] = await require('./belge').oku(tenantId, app, r); }
     const v = prevVal(app, cache[app], grp, field); return typeof v === 'string' ? dec(v) : '';
   };
   const sub = async (str) => {
@@ -99,7 +99,7 @@ async function migrate(db) {
       const key = table === 'app_data' ? 'tenant_id' : 'id';
       const rows = await db.q(`SELECT ${key} AS k, data FROM ${table} WHERE app=?`, [app]);
       for (const r of rows) {
-        let d; try { d = JSON.parse(r.data); } catch (e) { continue; }
+        let d; try { d = JSON.parse(r.data); } catch (e) { continue; } // şifreli belge zaten mühürlüdür
         const t = JSON.stringify(seal(app, d, d)); if (t === r.data) continue;
         await db.q(`UPDATE ${table} SET data=? WHERE ${key}=? AND app=?`, [t, r.k, app]); n++;
       }
