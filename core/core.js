@@ -576,6 +576,15 @@
     if (!rec.portalCode) { const A = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; const b = new Uint8Array(6); crypto.getRandomValues(b); rec.portalCode = [...b].map((x) => A[x % A.length]).join(''); db.save(); }
     return rec.portalCode;
   }
+  // Yetkili onayı: kullanıcının rolü yetmiyorsa yetkili kişi PIN'ini girer (kasada iade, büyük indirim, fiyat değiştirme gibi).
+  //   const by = await NS.approve(app, 'İade', ['admin']); if (!by) return;  → onaylayan kullanıcı (işlem geçmişine yazılır) ya da null
+  async function approve(app, reason, roles = ['admin']) {
+    const me = NS.currentUser; if (!app.opts.auth || !me || me.role === 'admin' || roles.includes(me.role)) return me || {};
+    const v = await formModal({ title: 'Yetkili onayı', fields: [{ name: 'pin', label: `${reason} — yetkili PIN`, type: 'password', required: true }], submitLabel: 'Onayla' }); if (!v) return null;
+    const u = app.db.find('users', (x) => x.active !== false && (x.role === 'admin' || roles.includes(x.role)) && String(x.pin) === String(v.pin).trim());
+    if (!u) { toast('PIN hatalı — işlem yapılmadı', 'err'); app.db.log('Yetkili onayı reddedildi', reason); return null; }
+    app.db.log('Yetkili onayı', `${reason} · onaylayan ${u.name} · isteyen ${me.name}`); return u;
+  }
   // Portal giriş bilgisi penceresi: bağlantı + giriş bilgisi + rastgele kod; kopyala, SMS (gerçek sonuçla), WhatsApp, yeni kod.
   //   NS.portalShare(db, rec, { title, url, phone, name, login: 'Telefon numaranız', loginValue: '05..' })
   function portalShare(db, rec, o = {}) {
@@ -1204,7 +1213,7 @@
     api, esc, $, $$, on, uid, rand, pick, sum, groupBy, clamp, money, num, iso, today, addDays, daysBetween, date, dateLong, time, dt, ago, pad,
     MONTHS, DAYS, NAMES, phone, sampleGender, initials, logoMark, shade, setFavicon, slug, trLower, match, icon, ICONS, DB, toast, modal, confirm, prompt, formModal, fieldsHtml, readForm, validate,
     table, chart, compact, dailySeries, PALETTE, csv, readFile, parseCsv, printHtml, beep, barcodeSvg, qrSvg, shell, pageHead, kpi, badge, searchBox, crud,
-    settingsPage, smsLog, smsText, smsTone, smsBatch, portalShare, toggleTheme, getTheme, setTheme, themeCards, THEMES, skeleton: (n = 4) => `<div class="nv-skel">${'<div class="skel" style="height:18px;width:38%"></div><div class="grid g4">' + '<div class="skel" style="height:84px"></div>'.repeat(4) + '</div>' + '<div class="skel" style="height:44px"></div>'.repeat(n)}</div>`, currentUser: null, cloud: CLOUD, merge3, pub: PUB, tenant: TENANT, payInfo, portalCode,
+    settingsPage, smsLog, smsText, smsTone, smsBatch, portalShare, approve, toggleTheme, getTheme, setTheme, themeCards, THEMES, skeleton: (n = 4) => `<div class="nv-skel">${'<div class="skel" style="height:18px;width:38%"></div><div class="grid g4">' + '<div class="skel" style="height:84px"></div>'.repeat(4) + '</div>' + '<div class="skel" style="height:44px"></div>'.repeat(n)}</div>`, currentUser: null, cloud: CLOUD, merge3, pub: PUB, tenant: TENANT, payInfo, portalCode,
   };
 })();
 

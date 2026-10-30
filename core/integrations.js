@@ -188,7 +188,8 @@
   // Resmî, herkese açık API dokümanı bulunamayan bağlayıcılar (CLAUDE.md §1 — DOĞRULANAMADI): yalnızca simülasyon seçilebilir,
   // gerçek / özel API çağrısı yapılmaz. Kaynak: docs/urun/CEKIRDEK-ISTEKLERI-* (servis-arac Ç2, konaklama Ç4–Ç5, randevu Ç2).
   // Doküman bulunup doğrulanınca buradan çıkarılır. '*' = tüm sağlayıcılar (özel API dahil).
-  const UNVERIFIED = { parca: '*', tramer: '*', kbs: '*', kanal: '*', enabiz: '*', erecete: '*', kps: '*', vetbis: '*', petkayit: '*', meb: '*', googleisletme: '*' };
+  // okc (yazarkasa POS / GMP3): üreticilerin entegrasyon dokümanı herkese açık değil; marka/model + resmî doküman + test cihazı gerekir.
+  const UNVERIFIED = { okc: '*', parca: '*', tramer: '*', kbs: '*', kanal: '*', enabiz: '*', erecete: '*', kps: '*', vetbis: '*', petkayit: '*', meb: '*', googleisletme: '*' };
   const unverified = (k, prov) => prov !== 'sim' && !!UNVERIFIED[k] && (UNVERIFIED[k] === '*' || UNVERIFIED[k].includes(prov));
   Object.entries(CONN).forEach(([k, [title, ic, desc, cat, provs, extra]]) => {
     DEFS[k] = { title, icon: ic, desc, cat, conn: true, provs, defaults: { enabled: false, provider: 'sim', test: true },

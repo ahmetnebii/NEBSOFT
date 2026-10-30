@@ -111,7 +111,8 @@
   function calc(c = cart) {
     const lines = c.lines.map((l) => { const gross = l.price * l.qty; const ld = gross * (l.disc || 0) / 100; return { ...l, gross, lineDisc: ld, net: gross - ld }; });
     const campDiscs = [];
-    db.all('campaigns', (k) => k.active).forEach((k) => {
+    // İadede kampanya / kupon yeniden uygulanmaz (fişten iadede tutarlar zaten ödenen net fiyattır)
+    db.all('campaigns', (k) => k.active && c.mode !== 'return').forEach((k) => {
       if (k.type === 'xy') {
         const qty = sum(lines.filter((l) => l.pid === k.pid), (l) => l.qty);
         const free = Math.floor(qty / k.x) * (k.x - k.y);
@@ -124,7 +125,7 @@
     });
     const subtotal = sum(lines, (l) => l.net);
     let after = subtotal - sum(campDiscs, (d) => d.amount);
-    if (c.coupon) {
+    if (c.coupon && c.mode !== 'return') {
       const k = db.find('campaigns', (x) => x.type === 'coupon' && x.active && x.code === c.coupon);
       if (k) { const a = r2(after * k.pct / 100); campDiscs.push({ label: `Kupon ${k.code} (%${k.pct})`, amount: a }); after -= a; }
     }
@@ -212,7 +213,7 @@
 
   // ---------- Satış ekranı ----------
   function salePage(el, param, app) {
-    if (param === 'iade') { cart.mode = 'return'; saveCart(); }
+    if (param === 'iade' && cart.mode !== 'return') okBy('İade (fişsiz)').then((u) => { if (u) { cart.mode = 'return'; saveCart(); drawCart(); } });
     el.innerHTML = `<div class="pos">
       <div class="pos-left">
         <div class="scan">
@@ -296,10 +297,17 @@
       on(box, 'click', '[data-t]', (e, t) => tool(t.dataset.t));
     }
   }
+  // Yetkili onayı + sepete kayıt (satış fişine "onaylar" olarak geçer; Raporlar > Onaylı işlemler)
+  async function okBy(reason) { const u = await NS.approve(NS.app, reason); if (u && NS.currentUser && u.id !== NS.currentUser.id) { (cart.approvals = cart.approvals || []).push({ by: u.name, reason, at: new Date().toISOString() }); saveCart(); } return u; }
   async function lineEdit(i) {
     const l = cart.lines[i];
     const v = await formModal({ title: l.name, fields: [{ name: 'qty', label: 'Miktar', type: 'number', step: '0.001' }, { name: 'price', label: 'Birim fiyat (₺)', type: 'number', step: '0.01' }, { name: 'disc', label: 'Satır indirimi (%)', type: 'number', min: 0, max: 100 }], values: l });
-    if (v) { if (v.qty <= 0) cart.lines.splice(i, 1); else Object.assign(l, { qty: v.qty, price: v.price, disc: NS.clamp(v.disc || 0, 0, 100) }); saveCart(); drawCart(); }
+    if (v) {
+      // Kasiyer: fiyat değiştirme ve sınırı aşan satır indirimi yetkili onayı ister (onaylayan işlem geçmişine yazılır)
+      const disc = NS.clamp(v.disc || 0, 0, 100); const lim = Number(S().cashierDiscMax) || 0;
+      if ((Number(v.price) !== Number(l.price) || disc > Math.max(lim, Number(l.disc) || 0)) && !(await okBy(`${l.name}: ${Number(v.price) !== Number(l.price) ? 'fiyat ' + money(v.price) : ''}${disc ? ' indirim %' + disc : ''}`))) return focusScan();
+      if (v.qty <= 0) cart.lines.splice(i, 1); else Object.assign(l, { qty: v.qty, price: v.price, disc }); saveCart(); drawCart();
+    }
     focusScan();
   }
   async function tool(t) {
@@ -312,7 +320,7 @@
     else if (t === 'pay') { if (c.lines.length) return payModal(); }
     else if (t === 'disc') {
       const v = await formModal({ title: 'Genel İndirim', fields: [{ name: 'type', label: 'Tür', type: 'select', options: [{ value: 'tl', label: 'Tutar (₺)' }, { value: 'pct', label: 'Yüzde (%)' }] }, { name: 'val', label: 'Değer', type: 'number', step: '0.01' }], values: { type: 'tl', val: cart.manual || '' } });
-      if (v) { cart.manual = v.type === 'pct' ? r2((c.total + (cart.manual || 0)) * (v.val || 0) / 100) : (v.val || 0); saveCart(); drawCart(); }
+      if (v) { const amt = v.type === 'pct' ? r2((c.total + (cart.manual || 0)) * (v.val || 0) / 100) : (v.val || 0); const lim = Number(S().cashierDiscMax) || 0; const base = c.total + (cart.manual || 0); if (amt > 0 && (!base || amt / base * 100 > lim) && !(await okBy(`Genel indirim ${money(amt)}`))) return; cart.manual = amt; saveCart(); drawCart(); }
     } else if (t === 'coupon') {
       const code = await NS.prompt('Kupon kodu', cart.coupon || '', { title: 'Kupon' });
       if (code !== null) {
@@ -324,7 +332,7 @@
       db.insert('held', { cart: JSON.parse(JSON.stringify(cart)), total: c.total, user: NS.currentUser && NS.currentUser.id });
       cart = newCart(); saveCart(); drawCart(); toast('Fiş bekletmeye alındı', 'ok');
     } else if (t === 'held') return heldModal();
-    else if (t === 'ret') { cart.mode = cart.mode === 'return' ? 'sale' : 'return'; saveCart(); drawCart(); }
+    else if (t === 'ret') { if (cart.mode !== 'return' && !(await okBy('İade (fişsiz)'))) return; cart.mode = cart.mode === 'return' ? 'sale' : 'return'; saveCart(); drawCart(); }
     focusScan();
   }
   function chooseCustomer() {
@@ -423,6 +431,11 @@
     s.balance = r2((s.balance || 0) + total); db.log('Gelen e-Fatura aktarıldı', `${d.no} · ${s.name}`); db.save();
     return a.no;
   }, 'Alış faturası + stok girişi');
+  // ÖKC kalemleri: iskontolar satırlara dağıtılır, kuruş farkı son satıra yazılır → kalem toplamı = fiş toplamı (iskonto yazarkasaya yansır)
+  function okcLines(c) {
+    const ratio = c.subtotal ? c.total / sum(c.lines, (l) => l.net) : 1; let left = r2(c.total);
+    return c.lines.map((l, k) => { const amt = k === c.lines.length - 1 ? left : r2(l.net * (Number.isFinite(ratio) ? ratio : 1)); left = r2(left - amt); return { name: l.name, qty: l.qty, price: r2(amt / (l.qty || 1)), amount: amt, listPrice: l.price, discount: r2(l.gross - amt), vat: l.vat }; });
+  }
   function finish(payments, { given } = {}) {
     const c = calc();
     const ret = cart.mode === 'return';
@@ -432,7 +445,7 @@
       no: db.nextNo('sales', ret ? 'I' : 'F'), at: new Date().toISOString(), type: ret ? 'return' : 'sale',
       items: c.lines.map((l) => ({ pid: l.pid, name: l.name, qty: l.qty, price: l.price, disc: l.disc, vat: l.vat, buy: l.buy, unit: l.unit })),
       subtotal: sign * c.subtotal, discount: sign * c.discount, total: sign * c.total, vat: sign * c.vat, campDiscs: c.campDiscs,
-      payments: payments.map((p) => ({ ...p, amount: sign * p.amount })), customer: cart.customer, user: NS.currentUser && NS.currentUser.id, given, change: given ? r2(given - c.total) : 0, coupon: cart.coupon,
+      payments: payments.map((p) => ({ ...p, amount: sign * p.amount })), customer: cart.customer, approvals: cart.approvals || undefined, user: NS.currentUser && NS.currentUser.id, given, change: given ? r2(given - c.total) : 0, coupon: cart.coupon,
     }, true);
     c.lines.forEach((l) => {
       const p = P(l.pid); if (!p) return;
@@ -446,6 +459,7 @@
       m.points = Math.max(0, Math.round((m.points || 0) + sign * c.total * (s.pointsRate || 0) / 10));
       m.lastVisit = sale.at;
     }
+    if (ret && cart.refundOf) { const o = db.get('sales', cart.refundOf); if (o) { o.refunded = true; o.refundNo = sale.no; sale.refundOf = o.no; } }
     db.log(ret ? 'İade' : 'Satış', `${sale.no} · ${money(c.total)}`);
     cart = newCart(); selLine = -1;
     saveCart();
@@ -463,7 +477,7 @@
     else if (NS.integ && payments.some((p) => p.type === 'nakit')) NS.integ.openDrawer();
     if (NS.integ) NS.integ.emit(ret ? 'iade' : 'satis', { no: sale.no, total: sale.total, items: sale.items.length, payments: sale.payments });
     // Yazarkasa POS (ÖKC / GMP3): mali fiş cihazdan kesilir; pazaryeri bağlıysa stok değişimi gönderilir
-    if (NS.integ && NS.integ.isOn('okc')) NS.integ.call('okc', ret ? 'iade-fis' : 'mali-fis', { no: sale.no, total: Math.abs(sale.total), items: sale.items.map((i) => ({ name: i.name, qty: i.qty, price: i.price, vat: i.vat })), payments: sale.payments.map((p) => ({ type: p.type, amount: Math.abs(p.amount) })) }, { silent: true }).then((r) => { if (r) { sale.okc = r.ok ? r.ref : 'hata'; db.save(); if (!r.ok) toast('ÖKC mali fiş kesilemedi — Satışlar ekranından tekrar deneyin', 'err'); } });
+    if (NS.integ && NS.integ.isOn('okc')) NS.integ.call('okc', ret ? 'iade-fis' : 'mali-fis', { no: sale.no, total: Math.abs(sale.total), items: okcLines(c), payments: sale.payments.map((p) => ({ type: p.type, amount: Math.abs(p.amount) })) }, { silent: true }).then((r) => { if (!r) return; sale.okc = r.ok && !r.simulated ? r.ref : r.simulated ? 'TEST' : 'hata'; db.save(); if (r.unverified) toast('ÖKC bağlantısı doğrulanmadığı için mali fiş kesilmedi — fiş bilgi fişidir', 'warn'); else if (!r.ok) toast('ÖKC mali fiş kesilemedi — Satışlar ekranından tekrar deneyin', 'err'); });
     if (NS.integ && NS.integ.isOn('pazaryeri') && NS.integ.cfg('pazaryeri').auto) NS.integ.call('pazaryeri', 'stok-guncelle', { items: sale.items.map((i) => { const p = P(i.pid) || {}; return { barcode: p.barcode, stock: p.stock }; }) }, { silent: true });
   }
 
@@ -1032,10 +1046,16 @@
     $('#exp', el).onclick = () => NS.csv('satislar', rows(), [{ key: 'no', label: 'Fiş' }, { label: 'Tarih', value: (s) => NS.dt(s.at) }, { label: 'Kasiyer', value: (s) => userName(s.user) }, { label: 'Ödeme', value: (s) => s.payments.map((p) => PAY[p.type]).join('+') }, { key: 'total', label: 'Tutar' }]);
     draw();
   }
-  function refundSale(s) {
-    cart = newCart(); cart.mode = 'return'; cart.customer = s.customer;
-    cart.lines = s.items.map((i) => ({ ...i }));
-    s.refunded = true; saveCart();
+  async function refundSale(s) {
+    const u = await NS.approve(NS.app, `${s.no} iadesi`); if (!u) return;
+    cart = newCart(); cart.mode = 'return'; cart.customer = s.customer; cart.refundOf = s.id;
+    if (NS.currentUser && u.id !== NS.currentUser.id) cart.approvals = [{ by: u.name, reason: `${s.no} iadesi`, at: new Date().toISOString() }];
+    // Müşterinin ödediği net birim fiyat: satır iskontosu + o günkü kampanya/kupon/ek indirim oranı dağıtılır (bugünkü fiyat/kampanya değil)
+    const gross = sum(s.items, (i) => i.price * i.qty * (1 - (i.disc || 0) / 100)); const ratio = gross > 0 ? Math.abs(s.total) / gross : 1;
+    cart.lines = s.items.map((i) => ({ ...i, price: r2(i.price * (1 - (i.disc || 0) / 100) * ratio), disc: 0 }));
+    // Kuruş yuvarlaması: iade toplamı ödenen tutarı geçmez (fazlası 'ek indirim', eksiği tek adetli satıra eklenir)
+    const diff = r2(sum(cart.lines, (l) => l.price * l.qty) - Math.abs(s.total)); if (diff > 0) cart.manual = diff; else if (diff < 0) { const one = cart.lines.find((l) => l.qty === 1); if (one) one.price = r2(one.price - diff); }
+    saveCart();
     toast('Fiş iade moduna aktarıldı — iade edilmeyecek ürünleri çıkarıp ödemeyi tamamlayın');
     app.go('satis');
   }
@@ -1052,7 +1072,7 @@
     const expected = (shift ? shift.openCash : 0) + (byPay.nakit || 0) + cin - cout;
     el.innerHTML = pageHead('Kasa', shift ? `Vardiya açık: ${NS.dt(shift.open)} · ${esc(userName(shift.user))}` : 'Açık vardiya yok', `
       <button class="btn" id="cin">${icon('plus')} Kasaya para gir</button><button class="btn" id="cout">${icon('minus')} Kasadan para çık</button>
-      ${shift ? `<button class="btn danger" id="close">${icon('lock')} Gün sonu (Z raporu)</button>` : `<button class="btn primary" id="open">${icon('key')} Vardiya aç</button>`}`) + `
+      ${shift ? `<button class="btn danger" id="close">${icon('lock')} Gün sonu raporu</button>` : `<button class="btn primary" id="open">${icon('key')} Vardiya aç</button>`}`) + `
       <div class="grid g4 mb">${kpi('Açılış', money(shift ? shift.openCash : 0), 'key')}${kpi('Nakit satış', money(byPay.nakit || 0), 'cash', 'ok')}${kpi('Kart satış', money(byPay.kart || 0), 'card', 'info')}${kpi('Kasada olması gereken', money(expected), 'wallet', 'warn')}</div>
       <div class="grid g2"><div class="card"><div class="card-h"><h3>Ödeme türlerine göre</h3></div><div class="card-b">${chart.donut(Object.entries(byPay).filter(([, v]) => v > 0).map(([k, v]) => ({ label: PAY[k], value: v })), { format: money })}</div></div>
       <div class="card"><div class="card-h"><h3>Kasa hareketleri</h3></div>${table({ rows: cash.slice().reverse(), empty: 'Bu vardiyada hareket yok', columns: [{ label: 'Saat', render: (c) => NS.time(c.at) }, { label: 'Açıklama', key: 'note' }, { label: 'Tutar', cls: 'right', render: (c) => `<b style="color:${c.type === 'in' ? 'var(--ok)' : 'var(--err)'}">${c.type === 'in' ? '+' : '-'}${money(c.amount)}</b>` }] })}</div></div>
@@ -1144,7 +1164,8 @@
         <div class="card"><div class="card-h"><h3>Kategori dağılımı</h3></div><div class="card-b">${chart.donut(Object.entries(byCat).sort((a, b) => b[1] - a[1]).map(([label, value]) => ({ label, value })), { format: money, size: 150 })}</div></div></div>
         <div class="grid g2 mb"><div class="card"><div class="card-h"><h3>Haftanın günleri</h3></div><div class="card-b">${chart.bars(weekday, { format: money })}</div></div>
         <div class="card"><div class="card-h"><h3>Personel performansı</h3></div>${table({ rows: Object.entries(byUser).map(([n, v]) => ({ id: n, n, ...v })).sort((a, b) => b.t - a.t), columns: [{ label: 'Personel', render: (r) => `<b>${esc(r.n)}</b>` }, { label: 'Fiş', cls: 'right', render: (r) => r.n }, { label: 'Ciro', cls: 'right', render: (r) => money(r.t) }, { label: 'Ort. fiş', cls: 'right', render: (r) => money(r.t / r.n) }] })}</div></div>
-        <div class="card"><div class="card-h"><h3>Ürün bazlı kârlılık</h3><button class="btn sm" id="pexp">${icon('download')} İndir</button></div>${table({ rows: Object.values(byProd).sort((a, b) => b.profit - a.profit).map((r) => ({ ...r, id: r.name })), columns: [{ label: 'Ürün', render: (r) => `<b>${esc(r.name)}</b>` }, { label: 'Miktar', cls: 'right', render: (r) => num(r.qty) }, { label: 'Ciro', cls: 'right', render: (r) => money(r.rev) }, { label: 'Kâr', cls: 'right', render: (r) => `<b style="color:${r.profit >= 0 ? 'var(--ok)' : 'var(--err)'}">${money(r.profit)}</b>` }, { label: 'Marj', cls: 'right', render: (r) => '%' + (r.rev ? ((r.profit / r.rev) * 100).toFixed(1) : 0) }] })}</div>`;
+        <div class="card"><div class="card-h"><h3>Ürün bazlı kârlılık</h3><button class="btn sm" id="pexp">${icon('download')} İndir</button></div>${table({ rows: Object.values(byProd).sort((a, b) => b.profit - a.profit).map((r) => ({ ...r, id: r.name })), columns: [{ label: 'Ürün', render: (r) => `<b>${esc(r.name)}</b>` }, { label: 'Miktar', cls: 'right', render: (r) => num(r.qty) }, { label: 'Ciro', cls: 'right', render: (r) => money(r.rev) }, { label: 'Kâr', cls: 'right', render: (r) => `<b style="color:${r.profit >= 0 ? 'var(--ok)' : 'var(--err)'}">${money(r.profit)}</b>` }, { label: 'Marj', cls: 'right', render: (r) => '%' + (r.rev ? ((r.profit / r.rev) * 100).toFixed(1) : 0) }] })}</div>
+        ${(() => { const ap = sales.filter((x) => (x.approvals || []).length); return `<div class="card mt"><div class="card-h"><h3>Onaylı işlemler (iade, indirim, fiyat değişikliği)</h3><span class="small muted">kasiyerin yetkili PIN'iyle yaptığı işlemler</span></div>${table({ rows: ap.sort((a, b) => b.at.localeCompare(a.at)).slice(0, 200), empty: 'Bu dönemde onaylı işlem yok', columns: [{ label: 'Fiş', render: (x) => `<b>${esc(x.no)}</b>` }, { label: 'Zaman', render: (x) => NS.dt(x.at) }, { label: 'Kasiyer', render: (x) => esc(userName(x.user)) }, { label: 'İşlem / onaylayan', render: (x) => x.approvals.map((a) => `${esc(a.reason)} — <b>${esc(a.by)}</b>`).join('<br>') }, { label: 'Tutar', cls: 'right', render: (x) => money(x.total) }] })}</div>`; })()}`;
       $('#pexp', el).onclick = () => NS.csv('urun-karlilik', Object.values(byProd), [{ key: 'name', label: 'Ürün' }, { key: 'qty', label: 'Miktar' }, { key: 'rev', label: 'Ciro' }, { key: 'profit', label: 'Kâr' }]);
     };
     on(el, 'click', '[data-d]', (e, t) => { days = Number(t.dataset.d); $$('[data-d]', el).forEach((b) => b.classList.toggle('active', b === t)); draw(); });
@@ -1183,7 +1204,7 @@
       kategoriler: (el, p, a) => NS.crud(el, a, { col: 'cats', title: 'Kategoriler', single: 'Kategori', addLabel: 'Yeni kategori', fields: [{ name: 'name', label: 'Kategori adı', required: true }, { name: 'color', label: 'Renk', type: 'color', value: '#4f46e5' }], columns: [{ key: 'name', label: 'Kategori', render: (c) => `<div class="row nw"><span class="dot" style="background:${c.color};width:12px;height:12px"></span><b>${esc(c.name)}</b></div>` }, { label: 'Ürün sayısı', cls: 'right', render: (c) => db.all('products', (p) => p.cat === c.id).length }], sort: (a, b) => a.name.localeCompare(b.name, 'tr') }),
       ayarlar: (el, p, a) => NS.settingsPage(el, a, {
         roles: ROLES,
-        fields: [{ type: 'section', label: 'Satış ayarları' }, { name: 'receiptFooter', label: 'Fiş alt yazısı', full: true },  { name: 'pointsRate', label: 'Puan oranı (her 10₺ için puan)', type: 'number' }, { name: 'autoPrint', label: 'Satış sonrası otomatik fiş yazdır', type: 'checkbox' }, { name: 'allowNegative', label: 'Eksi stokla satışa izin ver', type: 'checkbox' }],
+        fields: [{ type: 'section', label: 'Satış ayarları' }, { name: 'receiptFooter', label: 'Fiş alt yazısı', full: true },  { name: 'pointsRate', label: 'Puan oranı (her 10₺ için puan)', type: 'number' }, { name: 'autoPrint', label: 'Satış sonrası otomatik fiş yazdır', type: 'checkbox' }, { name: 'allowNegative', label: 'Eksi stokla satışa izin ver', type: 'checkbox' }, { name: 'cashierDiscMax', label: 'Kasiyerin onaysız yapabileceği en fazla indirim (%) — üstü, fiyat değişikliği ve iade yetkili PIN’i ister', type: 'number', placeholder: '0' }],
       }),
     },
     onKey: (e, a) => {
