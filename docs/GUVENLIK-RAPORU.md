@@ -6,7 +6,7 @@ Tarih: 30.10.2026 · Dal: `guvenlik/denetim` (temel: `devir/hepsi` 4ec51e1) · K
 
 | # | Konu | Neden | Gereken |
 |---|---|---|---|
-| E1 | **Program rolleri sunucuda yok (A1)** | Sekreter, kalfa gibi roller yalnızca arayüzde. Sunucu işletmenin tüm verisini her ekip hesabına verir. Sağlık verisi için rol ayrımı teknik olarak zorlanmıyor. | Mimari karar: ekip hesabına rol + alan filtresi |
+| E1 | **Program rolleri sunucuda (A1): klinik, eczane, veteriner, ik için GİDERİLDİ** (dal `guvenlik/sunucu-rolleri`) | Ekip hesabına `team_roles` + `server/cloud/rol-kural.js`: okumada süzme, yazmada geri koyma, PIN sunucuda. Rol atanmamış ekip hesabı eskisi gibi tam yetkili ve PIN'leri görür. Diğer 27 programın rolleri yalnızca arayüzde. | Sağlık programı kullanan işletmelerde üyelere rol atayın; yeni programlar için `RULES`e kayıt ekleyin |
 | E2 | **Randevu sayfasında yalnızca telefonla giriş (A2)** | Numarayı bilen kişi müşterinin adını, e-postasını, randevu notlarını görür, randevuyu iptal eder veya taşır. | Karar: SMS kodu veya portal kodu |
 | E3 | **mysql2 3.11.5 açığı (B-Y)** | `npm audit`: yüksek önem, 3.24.6'da giderilmiş. `package.json` görev gereği değiştirilmedi. | Sürümü yükseltin, `cloud.test.js` çalıştırın |
 | E4 | **`cloud.test.js` çalıştırılmadı** | Görev gereği. Bu dalın bulut düzeltmeleri gerçek MySQL ile uçtan uca denenmedi. | Test veritabanıyla bir kez çalıştırın |
@@ -140,7 +140,7 @@ Hukuki değerlendirme içermez. Veteriner, hayvan sahibinin kişisel verisi kaps
 | Önlem | Klinik | Eczane | Veteriner |
 |---|---|---|---|
 | Rol ayrımı (arayüz) | Önce: not, tanı, reçete sekretere kapalı. **Eklendi:** anamnez de kapalı, "note" işlemine sunucu değil kod içi engel | Eczacı / kalfa. **Eklendi:** hasta silme ve toplu aktarım eczacıda | Hekim / asistan. **Eklendi:** sahip silme ve toplu aktarım yöneticide |
-| Rol ayrımı (sunucu) | **Yok** (E1) | **Yok** | **Yok** |
+| Rol ayrımı (sunucu) | **Eklendi:** sekreter hesabına tanı, anamnez, reçete, PIN gitmez, yazamaz | **Eklendi:** kalfa hesabına defter, kurum, PIN gitmez; defter yalnızca eklenir | **Eklendi:** asistan muayene ve aşıyı görür, değiştiremez; PIN gitmez |
 | İşlem geçmişi | Önce 4 işlem. **Eklendi:** kart görüntüleme, silme, aktarma, anonimleştirme | Önce neredeyse yok. **Eklendi:** silme, aktarma, anonimleştirme | Önce neredeyse yok. **Eklendi:** kart görüntüleme, silme, aktarma, anonimleştirme |
 | Sunucu güvenlik kaydı | **Eklendi:** "Sağlık verisi okundu" (kullanıcı/saat başına bir) | **Eklendi** | **Eklendi** |
 | Toplu dışa aktarma | Önce tüm rollere açık. **Eklendi:** yalnızca yönetici + kayıt | Aynı | Aynı |
@@ -175,7 +175,7 @@ Kalan teknik sınırlar:
 
 | # | Önem | Konu | Yer | Öneri |
 |---|---|---|---|---|
-| A1 | Yüksek | Program rolleri ve PIN yalnızca istemcide; PIN düz metin `users[].pin`; tüm veri her ekip hesabına iner | `routes.js:473-479`, `core/core.js:584` | Ekip hesabına rol, sunucuda koleksiyon filtresi, PIN özeti |
+| A1 | Yüksek → **4 programda giderildi** | Rolü atanan hesapta veri sunucuda süzülür, PIN inmez, yazma geri konur (`rol-kural.js`, `routes.js`). Kalan: PIN hâlâ düz metin `users[].pin`; rolsüz ekip hesabı ve sahip PIN'i görür; 27 programda rol yalnızca arayüzde; onay kararı (`NS.approve`) sunucuda zorlanmaz | `server/cloud/rol-kural.js`, `routes.js`, `core/core.js` | PIN özeti; yeni programlara kural |
 | A2 | Yüksek | Randevuda telefonla giriş | `public-rules.js:106` | SMS kodu veya portal kodu |
 | A3 | Orta | Ekip üyesi kayıtlı gizli bilgiyi kendi sunucusuna gönderip okuyabilir: `/api/istek` yer tutucuyu her adres için çözer | `bridge.js:36` | Yer tutucuyu sağlayıcı alan adına bağlayın |
 | A4 | Orta | CSP `unsafe-inline`; `connect-src https:` veri çıkışına izin verir | `security.js:16` | Gömülü betikleri taşımak büyük iş, aşamalı |
@@ -207,7 +207,7 @@ node server/test/guvenlik.test.js && node server/test/program-duman.test.js &&
 
 ## Senden gerekenler
 
-1. E1 ve E2 için karar: rol mimarisi ve randevu girişi yöntemi.
+1. E2 için karar: randevu girişi yöntemi. E1 kararı uygulandı (`guvenlik/sunucu-rolleri`).
 2. `mysql2` yükseltmesi, `package.json` test satırı ve `sw.js` güncellemesi.
 3. `cloud.test.js`'i test veritabanıyla çalıştırma.
 4. `sunucu.json` HTTP adresini kaldırıp paketleri yeniden derleme.

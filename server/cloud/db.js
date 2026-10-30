@@ -71,6 +71,7 @@ const SCHEMA = [
 const COLUMNS = [
   ['tenants', 'support_plan', 'VARCHAR(20) NULL'], ['tenants', 'support_until', 'DATETIME NULL'], ['orders', 'indirim', 'TEXT NULL'],
   ['tickets', 'plan', 'VARCHAR(20) NULL'], ['tickets', 'priority', 'TINYINT NULL'], ['tickets', 'first_due', 'DATETIME NULL'], ['tickets', 'resolve_due', 'DATETIME NULL'], ['tickets', 'first_reply_at', 'DATETIME NULL'], ['tickets', 'closed_at', 'DATETIME NULL'], ['tickets', 'breached', 'TINYINT NOT NULL DEFAULT 0'],
+  ['users', 'team_roles', 'TEXT NULL'], // ekip hesabının program rolleri (rol-kural.js); NULL: tam yetki
 ];
 async function addColumns() {
   for (const [tablo, sutun, tip] of COLUMNS) {

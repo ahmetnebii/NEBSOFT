@@ -295,7 +295,7 @@
   }
   // İlk kurulum kartı: yalnızca bulutta ve deneme lisansında yüklenir (demo ve ücretli hesaplar etkilenmez)
   function kurulumYukle(app) {
-    if (!CLOUD || !app.db || !app.db.cloud) return;
+    if (!CLOUD || !app.db || !app.db.cloud || app.db.serverRole) return; // kurulum hesap sahibinindir
     const L = (CLOUD.licenses || []).find((l) => l.product === app.db.name); if (!L || L.status !== 'deneme' || !L.valid) return;
     const go = () => { if (NS.kurulum) NS.kurulum.mount(app, { pid: app.db.name }); };
     if (NS.kurulum) return go();
@@ -333,10 +333,11 @@
       if (r.status === 401) stopPage('Oturumunuz kapandı, tekrar giriş yapın', '/#/giris');
       if (r.status === 402) stopPage(r.j.error || 'Lisans gerekli', `/#/urun/${this.name}`);
       if (r.status !== 200) { syncState('Sunucuya ulaşılamadı', 'err'); throw new Error('Veri yüklenemedi: ' + (r.j.error || r.status)); }
-      this._v = r.j.version; let data = r.j.data;
+      this._v = r.j.version; let data = r.j.data; this.serverRole = r.j.rol || null; this.serverDept = r.j.rolDept || ''; // sunucudaki hesap rolü: veri süzülmüş gelir, PIN ekranı yok
       // Çevrimdışıyken bekleyen değişiklik varsa birleştir
       let pend = null; try { pend = JSON.parse(localStorage.getItem(pendKey(this.name))); } catch (e) { pend = null; }
       if (pend && pend.data) { data = data ? merge3(pend.base ? JSON.parse(pend.base) : null, pend.data, data) : pend.data; this._dirty = true; }
+      if (!data && this.serverRole) stopPage('Bu programı önce hesap sahibi açmalıdır', '/#/programlarim'); // rolü olan hesap örnek veriyle işletme verisi oluşturamaz
       if (!data) {
         this.data = { _meta: { created: new Date().toISOString() } };
         this._noPush = true; if (this.seed) this.seed(this); this._noPush = false;
@@ -434,9 +435,10 @@
       this._flight = true; this._dirty = false; const sent = JSON.stringify(this.data);
       syncState('Kaydediliyor…', 'run');
       try {
-        const res = await fetch('/api/data/' + this.name, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: `{"base":${this._v},"data":${sent}}` });
+        const res = await fetch('/api/data/' + this.name, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: `{"base":${this._v}${this.serverRole ? `,"rol":${JSON.stringify(this.serverRole)}` : ''},"data":${sent}}` });
         const j = await res.json().catch(() => ({}));
         if (res.ok) { this._v = j.version; this._base = sent; this._fails = 0; try { localStorage.removeItem(pendKey(this.name)); } catch (e) { /* yok */ } syncState('Kaydedildi', 'ok'); }
+        else if (res.status === 409 && j.code === 'rol') { this._backup(); this._dirty = false; this._flight = false; syncState(j.error || 'Hesap yetkiniz değişti', 'err'); location.reload(); return; } // rol değişti: bekleyen veri yeni görünümle birleşir
         else if (res.status === 409 && j.code === 'conflict') {
           // Başka cihaz kaydetmiş: birleştir ve yeniden gönder
           const merged = merge3(JSON.parse(this._base), JSON.parse(sent), j.data);
@@ -467,6 +469,7 @@
           if (v > this._v) {
             const j = await (await fetch('/api/data/' + this.name)).json();
             if (!j.ok || this._dirty || this._flight) return;
+            if ((j.rol || null) !== (this.serverRole || null)) { location.reload(); return; }
             this.data = j.data; this._v = j.version; this._base = JSON.stringify(j.data); this._snap = this._base;
             this.listeners.forEach((f) => f()); this._refreshUi();
           }
@@ -593,7 +596,10 @@
   async function approve(app, reason, roles = ['admin']) {
     const me = NS.currentUser; if (!app.opts.auth || !me || me.role === 'admin' || roles.includes(me.role)) return me || {};
     const v = await formModal({ title: 'Yetkili onayı', fields: [{ name: 'pin', label: `${reason} — yetkili PIN`, type: 'password', required: true }], submitLabel: 'Onayla' }); if (!v) return null;
-    const u = app.db.find('users', (x) => x.active !== false && (x.role === 'admin' || roles.includes(x.role)) && String(x.pin) === String(v.pin).trim());
+    let u = null;
+    // Sunucu rolü olan hesapta PIN'ler tarayıcıya inmez: karşılaştırma sunucuda yapılır
+    if (app.db.serverRole) { try { u = (await api('POST', `/api/data/${app.db.name}/pin`, { pin: String(v.pin).trim(), roles })).user; } catch (x) { if (x.status !== 403) { toast(x.message, 'err'); return null; } } }
+    else u = app.db.find('users', (x) => x.active !== false && (x.role === 'admin' || roles.includes(x.role)) && String(x.pin) === String(v.pin).trim());
     if (!u) { toast('PIN hatalı — işlem yapılmadı', 'err'); app.db.log('Yetkili onayı reddedildi', reason); return null; }
     app.db.log('Yetkili onayı', `${reason} · onaylayan ${u.name} · isteyen ${me.name}`); return u;
   }
@@ -906,6 +912,8 @@
 
     const currentUser = () => {
       if (!opts.auth) return null;
+      // Sunucu rolü: kimlik hesaptan gelir, PIN ekranı ve rol değiştirme yok
+      if (app.db && app.db.serverRole) return { id: CLOUD.user.id, name: CLOUD.user.name, role: app.db.serverRole, dept: app.db.serverDept || '' };
       let id = null;
       try { id = sessionStorage.getItem(SESSION); } catch (e) { /* yok */ }
       // Pazar yerindeki "canlı demo" linkleri ?demo=1 ile yönetici olarak açılır
@@ -980,7 +988,7 @@
       const navHtml = groups.filter((g) => g.items.length).map((g, gi) => (!g.sec ? `<div class="nv-grp-b open">${g.items.map(link).join('')}</div>`
         : `<div class="nv-grp${closed.includes(g.sec) ? '' : ' open'}" data-grp="${esc(g.sec)}"><button class="nv-grp-h" type="button" data-grp-t aria-expanded="${!closed.includes(g.sec)}"><span>${esc(g.sec)}</span><svg class="ico nv-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></button><div class="nv-grp-b">${g.items.map(link).join('')}</div></div>`)).join('');
       document.body.innerHTML = `
-        ${app.db && app.db.cloud ? (app.db.data._meta.sample ? `<div class="ns-demo-bar">${icon('info')} <span>Örnek verilerle başladınız — ürünü tanıyınca örnekleri temizleyip kendi verilerinizi girin.${app.db.data._meta.ownerPin ? ` Yönetici PIN'iniz: <b>${esc(app.db.data._meta.ownerPin)}</b>` : ''}</span> <a href="#" data-clear>Örnek verileri temizle</a> · <a href="/#/hesabim" target="_top">Hesabım</a></div>` : '') : opts.demo !== false ? `<div class="ns-demo-bar">${icon('sparkles')} <span>Canlı demo: veriler yalnızca bu tarayıcıda saklanır.</span> <a href="#" data-reset>Demoyu sıfırla</a> · <a href="${opts.backUrl || '../../index.html'}#/urun/${opts.id}" target="_top">Satın al</a></div>` : ''}
+        ${app.db && app.db.cloud ? (app.db.data._meta.sample && !app.db.serverRole ? `<div class="ns-demo-bar">${icon('info')} <span>Örnek verilerle başladınız — ürünü tanıyınca örnekleri temizleyip kendi verilerinizi girin.${app.db.data._meta.ownerPin ? ` Yönetici PIN'iniz: <b>${esc(app.db.data._meta.ownerPin)}</b>` : ''}</span> <a href="#" data-clear>Örnek verileri temizle</a> · <a href="/#/hesabim" target="_top">Hesabım</a></div>` : '') : opts.demo !== false ? `<div class="ns-demo-bar">${icon('sparkles')} <span>Canlı demo: veriler yalnızca bu tarayıcıda saklanır.</span> <a href="#" data-reset>Demoyu sıfırla</a> · <a href="${opts.backUrl || '../../index.html'}#/urun/${opts.id}" target="_top">Satın al</a></div>` : ''}
         <div class="ns-app">
           <aside class="ns-side" id="side">
             <div class="ns-brand"><a class="nv-brand-mark" href="#/" title="${esc(opts.name)}">${logoMark(opts.accent, 30)}</a><div class="nv-brand-t"><b>${esc(opts.name)}</b><small><span class="wm"><b>NEB</b><i>SOFT</i></span>${opts.tagline ? ` · ${esc(opts.tagline)}` : ''}</small></div><button class="nv-mini-btn" type="button" data-mini title="Menüyü daralt / genişlet" aria-label="Menüyü daralt"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="M9 4v16"/></svg></button></div>
@@ -1025,7 +1033,7 @@
       on(document.body, 'click', '[data-user]', () => {
         modal({
           title: 'Oturum', body: `<div class="row nw"><div class="avatar lg">${esc(initials(u.name))}</div><div><b>${esc(u.name)}</b><div class="muted small">${esc((opts.auth.roles || {})[u.role] || u.role)}</div></div></div>`,
-          actions: [{ label: 'Kapat' }, { label: 'Çıkış yap', cls: 'danger', icon: 'logout', onClick: (c) => { c(); app.logout(); } }],
+          actions: [{ label: 'Kapat' }, ...(app.db && app.db.serverRole ? [] : [{ label: 'Çıkış yap', cls: 'danger', icon: 'logout', onClick: (c) => { c(); app.logout(); } }])],
         });
       });
       kurulumYukle(app);
@@ -1151,6 +1159,7 @@
   // Ortak ayarlar sayfası (işletme bilgileri + kullanıcılar + yedekleme)
   function settingsPage(el, app, { fields = [], defaults = {}, roles, extra = '' } = {}) {
     const s = app.db.settings(defaults);
+    const sunucuRolu = !!app.db.serverRole; if (sunucuRolu) roles = null; // rolü olan hesap kullanıcı yönetmez, veri yüklemez; sunucu bu yazmaları zaten yok sayar
     const base = [
       { name: 'bizName', label: 'İşletme adı', required: true },
       { name: 'bizPhone', label: 'Telefon' },
@@ -1175,8 +1184,8 @@
           <div class="card"><div class="card-h"><h3>Veri Yönetimi</h3></div><div class="card-b col">
             <p class="small muted">Tüm verilerinizi JSON olarak yedekleyin veya yedekten geri yükleyin.</p>
             <button class="btn" id="bk">${icon('download')} Yedek al</button>
-            <button class="btn" id="rs">${icon('upload')} Yedekten yükle</button>
-            <button class="btn danger" id="rz">${icon('refresh')} Demoyu sıfırla</button>
+            ${sunucuRolu ? '' : `<button class="btn" id="rs">${icon('upload')} Yedekten yükle</button>
+            <button class="btn danger" id="rz">${icon('refresh')} Demoyu sıfırla</button>`}
           </div></div>
           <div class="card"><div class="card-h"><h3>İşlem Geçmişi</h3></div><div class="card-b" style="max-height:360px;overflow:auto">${(app.db.all('_log').slice(0, 40).map((l) => `<div class="list-item small"><div class="grow"><b>${esc(l.action)}</b> <span class="muted">${esc(l.detail || '')}</span><div class="faint">${esc(l.user)} · ${ago(l.at)}</div></div></div>`).join('')) || '<div class="faint small">Henüz kayıt yok</div>'}</div></div>
         </div>
@@ -1188,11 +1197,11 @@
       a.href = URL.createObjectURL(new Blob([JSON.stringify(app.db.data, null, 1)], { type: 'application/json' }));
       a.download = `${app.opts.id}-yedek-${today()}.json`; a.click();
     };
-    $('#rs', el).onclick = async () => {
+    if (!sunucuRolu) $('#rs', el).onclick = async () => {
       const t = await readFile('.json'); if (!t) return;
       try { app.db.data = JSON.parse(t); app.db.save(); toast('Yedek yüklendi', 'ok'); app.refresh(); } catch (e) { toast('Geçersiz yedek dosyası', 'err'); }
     };
-    $('#rz', el).onclick = async () => { if (await confirm('Tüm veriler silinip demo verileri yüklenecek.')) { app.db.reset(); app.refresh(); } };
+    if (!sunucuRolu) $('#rz', el).onclick = async () => { if (await confirm('Tüm veriler silinip demo verileri yüklenecek.')) { app.db.reset(); app.refresh(); } };
     if (roles) {
       const drawU = () => {
         $('#ul', el).innerHTML = table({

@@ -14,6 +14,7 @@ const log = require('./log');
 const analitik = require('./analitik');
 const destek = require('./destek');
 const indirim = require('./indirim');
+const kural = require('./rol-kural');
 
 const uid = auth.uid;
 const now = () => new Date();
@@ -505,14 +506,34 @@ route('PUT', '/api/account', { auth: 'user' }, async (c) => {
   if (c.user.tenant_id && b.company) await db.q('UPDATE tenants SET name=?, address=?, city=?, tax_no=?, tax_office=? WHERE id=?', [sec.clean(b.company, 160), sec.clean(b.address, 300), sec.clean(b.city, 60), sec.clean(b.taxNo, 20), sec.clean(b.taxOffice, 80), c.user.tenant_id]);
   return { ok: true };
 });
-route('GET', '/api/team', { auth: 'user' }, async (c) => ({ ok: true, users: await db.q('SELECT id, email, name, phone, status, last_login FROM users WHERE tenant_id=? ORDER BY created', [c.user.tenant_id || '-']) }));
+// Ekip listesi. Roller yalnızca hesap sahibine döner; programlar: işletmenin lisansı olan ve sunucu rolü tanımlı programlar.
+route('GET', '/api/team', { auth: 'user' }, async (c) => {
+  const users = await db.q('SELECT id, email, name, phone, status, last_login, team_roles FROM users WHERE tenant_id=? ORDER BY created, id', [c.user.tenant_id || '-']);
+  const sahip = await isOwner(c.user); const temel = ({ team_roles, ...u }) => u;
+  if (!sahip) return { ok: true, users: users.map(temel) };
+  const L = await licenses(c.user.tenant_id); const programlar = kural.programlar().filter((p) => L.some((l) => l.product === p.app && valid(l))).map((p) => ({ ...p, ad: pnameOf(p.app) }));
+  const ik = programlar.find((p) => p.app === 'ik'); if (ik) { const r = await db.one("SELECT data FROM app_data WHERE tenant_id=? AND app='ik'", [c.user.tenant_id]); const d = r ? J(r.data, {}) : {}; ik.departmanlar = [...new Set([...String((d._settings || {}).depts || '').split(',').map((x) => x.trim()), ...(Array.isArray(d.employees) ? d.employees.map((e) => e && e.dept) : [])].filter(Boolean))]; }
+  return { ok: true, programlar, users: users.map((u, i) => ({ ...temel(u), sahip: i === 0, roller: J(u.team_roles, null) })) };
+});
 route('POST', '/api/team', { auth: 'user', limit: ['team', 20, 3600e3] }, async (c) => {
   const b = c.body; if (!c.user.tenant_id) throw err(400, 'İşletme hesabı yok'); await ownerOnly(c);
   if (!sec.V.email(b.email) || !sec.V.str(b.name, 120, 2) || !sec.V.password(b.pass)) throw err(400, 'Ad, e-posta ve en az 8 karakterli (harf+rakam) şifre gerekli');
   if (await db.one('SELECT id FROM users WHERE email=?', [b.email.toLowerCase()])) throw err(400, 'Bu e-posta başka bir hesapta kayıtlı');
   const n = await db.one('SELECT COUNT(*) AS n FROM users WHERE tenant_id=?', [c.user.tenant_id]); if (n.n >= 50) throw err(400, 'Kullanıcı sınırına ulaşıldı');
-  await db.q('INSERT INTO users (id, email, pass, name, role, tenant_id, created) VALUES (?,?,?,?,?,?,?)', [uid(), b.email.toLowerCase().trim(), await auth.hash(b.pass), sec.clean(b.name, 120), 'customer', c.user.tenant_id, now()]);
-  await audit(c, 'Ekip üyesi eklendi', b.email); return { ok: true };
+  let roller; try { roller = kural.rollerTemizle(b.roller); } catch (e) { throw err(400, e.message); }
+  await db.q('INSERT INTO users (id, email, pass, name, role, tenant_id, created, team_roles) VALUES (?,?,?,?,?,?,?,?)', [uid(), b.email.toLowerCase().trim(), await auth.hash(b.pass), sec.clean(b.name, 120), 'customer', c.user.tenant_id, now(), roller]);
+  await audit(c, 'Ekip üyesi eklendi', `${b.email}${roller ? ' · rollü' : ' · tam yetki'}`); return { ok: true };
+});
+// Program rolü: yalnızca rol-kural.js'teki rol veya boş (tam yetki). Rol her istekte veritabanından okunduğu için oturum kapatmadan sonraki istekte geçerli olur.
+route('PUT', '/api/team/:id/rol', { auth: 'user', limit: ['teamrol', 120, 3600e3] }, async (c) => {
+  await ownerOnly(c);
+  const app = String(c.body.app || ''); const rol = c.body.rol == null ? '' : c.body.rol;
+  if (!Object.hasOwn(kural.RULES, app)) throw err(400, 'Bu programda rol tanımı yok');
+  if (rol !== '' && !kural.rolVar(app, rol)) throw err(400, 'Geçersiz rol');
+  const h = await db.one('SELECT id, tenant_id, team_roles FROM users WHERE id=? AND tenant_id=?', [c.params.id, c.user.tenant_id]); if (!h) throw err(404, 'Kullanıcı bulunamadı');
+  if (await isOwner(h)) throw err(400, 'Hesap sahibinin yetkisi kısıtlanamaz');
+  await db.q('UPDATE users SET team_roles=? WHERE id=? AND tenant_id=?', [kural.rolYaz(h.team_roles, app, rol, sec.clean(c.body.dept, 80)), h.id, c.user.tenant_id]);
+  await audit(c, 'Ekip rolü değişti', `${h.id} · ${app} · ${rol || 'tam yetki'}`); return { ok: true };
 });
 route('DELETE', '/api/team/:id', { auth: 'user' }, async (c) => {
   if (c.params.id === c.user.id) throw err(400, 'Kendinizi silemezsiniz');
@@ -550,13 +571,24 @@ route('GET', '/api/referral', { auth: 'user' }, async (c) => {
 
 // Uygulama verisi (işletme bazlı; lisans kontrollü; iyimser sürüm kontrolüyle çakışma önleme)
 const HEALTH = ['klinik', 'eczane', 'veteriner']; const readLog = new Map();
+// Hesabın bu programdaki rolü her istekte veritabanından gelir (auth.current). Hesap sahibi ve yönetici kısıtlanamaz. Bozuk kayıt tam yetki sayılmaz.
+async function hesapRolu(u, app) {
+  if (!u || u.role !== 'customer' || !u.tenant_id || !u.team_roles) return null;
+  const k = kural.rolCoz(app, u.team_roles); if (!k) return null;
+  if (await isOwner(u)) return null;
+  if (k.hata) throw err(403, 'Hesap rolü geçersiz. Hesap sahibine başvurun.');
+  return k;
+}
+const gorunum = (app, k, belge) => { const m = secrets.mask(app, belge); return k ? kural.filtrele(app, k.rol, m, { dept: k.dept }) : m; };
+const rolAlani = (k) => (k && !k.ortak ? { rol: k.rol, ...(k.dept ? { rolDept: k.dept } : {}) } : {});
 route('GET', '/api/data/:app', { auth: 'user' }, async (c) => {
   const app = c.params.app; if (!sec.V.app(app)) throw err(400, 'Geçersiz uygulama');
   if (!(await canUseApp(c.user, app))) throw err(402, 'Bu uygulama için geçerli lisans veya deneme yok', { code: 'license', app });
+  const k = await hesapRolu(c.user, app);
   const r = await db.one('SELECT data, version FROM app_data WHERE tenant_id=? AND app=?', [c.user.tenant_id, app]);
   if (HEALTH.includes(app)) { const k = `${c.user.id}:${app}`; if (Date.now() - (readLog.get(k) || 0) > 3600e3) { if (readLog.size > 50000) readLog.clear(); readLog.set(k, Date.now()); await audit(c, 'Sağlık verisi okundu', app); } }
   const t = await tenantOf(c.user);
-  return { ok: true, data: r ? secrets.mask(app, J(r.data, null)) : null, version: r ? r.version : 0, tenant: { name: t.name, phone: t.phone, address: t.address, slug: t.slug }, owner: { name: c.user.name } };
+  return { ok: true, data: r ? gorunum(app, k, J(r.data, null)) : null, version: r ? r.version : 0, tenant: { name: t.name, phone: t.phone, address: t.address, slug: t.slug }, owner: { name: c.user.name }, ...rolAlani(k) };
 });
 route('GET', '/api/data/:app/v', { auth: 'user' }, async (c) => {
   const r = await db.one('SELECT version FROM app_data WHERE tenant_id=? AND app=?', [c.user.tenant_id || '-', String(c.params.app)]);
@@ -568,17 +600,28 @@ route('PUT', '/api/data/:app', { auth: 'user', bodyMax: 20e6, limit: ['data', 60
   const mt = ((await setting('platform', {})).maintenance || {})[app]; if (mt && mt.on && mt.block) throw err(503, 'Program planlı bakımda — kısa süre sonra tekrar deneyin', { code: 'maintenance', app });
   const data = c.body.data; const base = Number(c.body.base) || 0;
   if (!data || typeof data !== 'object' || Array.isArray(data)) throw err(400, 'Geçersiz veri');
+  const k = await hesapRolu(c.user, app); const prog = k && !k.ortak ? k : null;
+  // Rolü değişen hesabın sekmesi eski görünümle yazmasın: süzülmüş belge tam yetkiyle kaydedilirse gizli veri silinirdi
+  if (!(k && k.ortak) && (c.body.rol || null) !== (prog ? prog.rol : null)) throw err(409, 'Hesap yetkiniz değişti, sayfa yenileniyor', { code: 'rol', ...rolAlani(prog) });
+  const srv = k || secrets.covers(app) ? await db.one('SELECT data, version FROM app_data WHERE tenant_id=? AND app=?', [c.user.tenant_id, app]) : null;
+  const srvDoc = srv ? J(srv.data, null) : null;
+  if (k) {
+    if (srv && srv.version !== base) throw err(409, 'Sürüm çakışması', await conflict(c.user.tenant_id, app, k));
+    if (!srv && base !== 0) throw err(409, 'Sürüm çakışması', await conflict(c.user.tenant_id, app, k));
+    if (!srv && prog) throw err(403, 'Programı önce hesap sahibi açmalıdır');
+  }
+  // Rolün yazamadığı alanlar, sürümü base'e eşit olan satırdan geri konur; UPDATE aynı sürüme koşulludur. Gizli bilgi mührü bundan sonra uygulanır (şifreli değerler aynen kalır).
+  const yaz = k ? kural.geriKoy(app, k.rol, data, srvDoc, { dept: k.dept }) : data;
   // Kimlik bilgileri şifreli saklanır; programın geri gönderdiği yer tutucular mevcut şifreli değeri korur
-  const prevRow = secrets.covers(app) ? await db.one('SELECT data FROM app_data WHERE tenant_id=? AND app=?', [c.user.tenant_id, app]) : null;
-  const text = JSON.stringify(secrets.seal(app, data, prevRow ? J(prevRow.data, null) : null));
+  const text = JSON.stringify(secrets.seal(app, yaz, srvDoc));
   const cur = await db.one('SELECT version, updated FROM app_data WHERE tenant_id=? AND app=?', [c.user.tenant_id, app]);
   if (!cur) {
-    if (base !== 0) throw err(409, 'Sürüm çakışması', await conflict(c.user.tenant_id, app));
-    try { await db.q('INSERT INTO app_data (tenant_id, app, data, version, updated, updated_by) VALUES (?,?,?,?,?,?)', [c.user.tenant_id, app, text, 1, now(), c.user.id]); } catch (e) { if (e.code === 'ER_DUP_ENTRY') throw err(409, 'Sürüm çakışması', await conflict(c.user.tenant_id, app)); throw e; }
+    if (base !== 0) throw err(409, 'Sürüm çakışması', await conflict(c.user.tenant_id, app, k));
+    try { await db.q('INSERT INTO app_data (tenant_id, app, data, version, updated, updated_by) VALUES (?,?,?,?,?,?)', [c.user.tenant_id, app, text, 1, now(), c.user.id]); } catch (e) { if (e.code === 'ER_DUP_ENTRY') throw err(409, 'Sürüm çakışması', await conflict(c.user.tenant_id, app, k)); throw e; }
     return { ok: true, version: 1 };
   }
   const r = await db.q('UPDATE app_data SET data=?, version=version+1, updated=?, updated_by=? WHERE tenant_id=? AND app=? AND version=?', [text, now(), c.user.id, c.user.tenant_id, app, base]);
-  if (!r.affectedRows) throw err(409, 'Sürüm çakışması', await conflict(c.user.tenant_id, app));
+  if (!r.affectedRows) throw err(409, 'Sürüm çakışması', await conflict(c.user.tenant_id, app, k));
   // Saatlik anlık görüntü (geri dönüş için son 48 saat)
   const last = await db.one('SELECT at FROM app_data_history WHERE tenant_id=? AND app=? ORDER BY id DESC LIMIT 1', [c.user.tenant_id, app]);
   if (!last || now() - new Date(last.at) > 3600e3) {
@@ -587,7 +630,27 @@ route('PUT', '/api/data/:app', { auth: 'user', bodyMax: 20e6, limit: ['data', 60
   }
   return { ok: true, version: base + 1 };
 });
-async function conflict(tid, app) { const r = await db.one('SELECT data, version FROM app_data WHERE tenant_id=? AND app=?', [tid, app]); return { code: 'conflict', data: r ? secrets.mask(app, J(r.data, null)) : null, version: r ? r.version : 0 }; }
+async function conflict(tid, app, k) { const r = await db.one('SELECT data, version FROM app_data WHERE tenant_id=? AND app=?', [tid, app]); return { code: 'conflict', data: r ? gorunum(app, k, J(r.data, null)) : null, version: r ? r.version : 0, ...rolAlani(k) }; }
+// Yetkili onayı: PIN'ler rolü olan hesaba inmediği için karşılaştırma burada yapılır. Hesap + program başına 5 hatada 15 dakika kilit; PIN hiçbir kayda yazılmaz.
+const pinHata = new Map(); const PIN_KILIT = 15 * 60e3;
+route('POST', '/api/data/:app/pin', { auth: 'user', limit: ['pin', 10, 60e3] }, async (c) => {
+  const app = c.params.app; if (!sec.V.app(app)) throw err(400, 'Geçersiz uygulama');
+  if (!(await canUseApp(c.user, app))) throw err(402, 'Bu uygulama için geçerli lisans veya deneme yok', { code: 'license', app });
+  const key = `${c.user.id}:${app}`; const d = pinHata.get(key);
+  if (d && d.until > Date.now()) throw err(429, 'Çok fazla hatalı PIN. 15 dakika sonra tekrar deneyin.');
+  const pin = String(c.body.pin == null ? '' : c.body.pin).trim().slice(0, 32); const roles = Array.isArray(c.body.roles) ? c.body.roles.filter((x) => typeof x === 'string').slice(0, 10) : [];
+  const r = await db.one('SELECT data FROM app_data WHERE tenant_id=? AND app=?', [c.user.tenant_id, app]); const users = r ? J(r.data, {}).users : null;
+  let hit = null; const oz = auth.sha(pin); // sabit süre: tüm kullanıcılar taranır, özetler karşılaştırılır
+  for (const u of Array.isArray(users) ? users : []) { if (!u || u.pin == null || u.pin === '') continue; const es = sec.safeEq(auth.sha(String(u.pin).trim()), oz); if (es && pin && !hit && u.active !== false && (u.role === 'admin' || roles.includes(u.role))) hit = u; }
+  if (!hit) {
+    const n = (d && d.until === 0 ? d.n : 0) + 1; if (pinHata.size > 50000) pinHata.clear();
+    pinHata.set(key, { n: n >= 5 ? 0 : n, until: n >= 5 ? Date.now() + PIN_KILIT : 0 });
+    await audit(c, 'Yetkili PIN hatalı', `${app} · ${n >= 5 ? 'kilitlendi' : `${n}. deneme`}`);
+    throw err(403, 'PIN hatalı');
+  }
+  pinHata.delete(key); await audit(c, 'Yetkili PIN onaylandı', `${app} · ${hit.id}`);
+  return { ok: true, user: { id: hit.id, name: hit.name, role: hit.role } };
+});
 
 // ---------- Yönetim (admin) ----------
 const A = (m, p, fn, opt = {}) => route(m, '/api/admin' + p, { auth: 'admin', ...opt }, fn);
