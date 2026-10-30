@@ -10,6 +10,7 @@ const katalog = require('./katalog');
 const secrets = require('./secrets');
 const cfgMod = require('./config');
 const bizsite = require('../../core/bizsite');
+const odeme = () => require('./odeme'); // döngüsel bağımlılık olmasın diye çağrı anında yüklenir
 
 const uid = auth.uid;
 const now = () => new Date();
@@ -60,6 +61,9 @@ async function applyOrder(t, order) {
     await t.q('UPDATE tenants SET referral_rewarded=1 WHERE id=?', [ten.id]);
   }
 }
+
+// Ödeme onayı e-postası (havale elle onayı ve Shopier otomatik onayı aynı metni kullanır)
+async function paidMail(id) { const o = await db.one('SELECT o.*, u.email, u.name FROM orders o JOIN users u ON u.id=o.user_id WHERE o.id=?', [id]); const s = await site(); if (o) mailTo(o.email, `Ödemeniz onaylandı — ${o.no}`, { title: 'Ödemeniz onaylandı, lisansınız aktif', intro: `Teşekkürler ${String(o.name).split(' ')[0]}! ${fmtTL(o.total)} tutarındaki ödemeniz alındı.`, blocks: [{ type: 'kv', rows: J(o.items, []).map((l) => [l.name || pnameOf(l.pid), `${l.period === 'yillik' ? '12' : '1'} ay`]) }, { type: 'button', label: 'Programlarıma git', url: `${s.siteUrl || ''}/#/programlarim` }, { type: 'p', text: 'Faturanız yasal süre içinde e-Arşiv / e-Fatura olarak iletilecektir.' }] }); }
 
 async function nextOrderNo(t) {
   const r = (await t.q("SELECT v FROM settings WHERE k='order_seq' FOR UPDATE"))[0];
@@ -409,7 +413,8 @@ route('POST', '/api/orders', { auth: 'user', limit: ['order', 20, 3600e3] }, asy
   const k = await couponPct(c.body.coupon); const p = cat.price(c.body.items, k.pct);
   const b = c.body.billing || {};
   if (!sec.V.str(b.name, 120, 3) || !sec.V.str(b.taxNo, 20, 10) || !sec.V.str(b.address, 300, 5)) throw err(400, 'Fatura bilgileri (ad, VKN/TCKN, adres) eksik');
-  if (!(await banks()).length) throw err(503, 'Ödeme hesabı tanımlı değil. Lütfen destek ile iletişime geçin.');
+  const shop = c.body.method === 'shopier'; if (shop && !(await odeme().usable(c.user))) throw err(400, 'Bu ödeme yöntemi şu anda kullanılamıyor');
+  if (!shop && !(await banks()).length) throw err(503, 'Ödeme hesabı tanımlı değil. Lütfen destek ile iletişime geçin.');
   const billing = { name: sec.clean(b.name, 120), company: sec.clean(b.company, 160), taxNo: sec.clean(b.taxNo, 20), taxOffice: sec.clean(b.taxOffice, 80), address: sec.clean(b.address, 300), city: sec.clean(b.city, 60), email: c.user.email, phone: sec.clean(b.phone, 40) };
   const o = await db.tx(async (t) => {
     const no = await nextOrderNo(t); const id = uid();
@@ -418,7 +423,11 @@ route('POST', '/api/orders', { auth: 'user', limit: ['order', 20, 3600e3] }, asy
     await t.q('UPDATE tenants SET tax_no=?, tax_office=?, address=?, city=? WHERE id=?', [billing.taxNo, billing.taxOffice, billing.address, billing.city, c.user.tenant_id]);
     return (await t.q('SELECT * FROM orders WHERE id=?', [id]))[0];
   });
-  await audit(c, 'Sipariş (havale bekliyor)', `${o.no} · ${o.total} TL`);
+  await audit(c, shop ? 'Sipariş (Shopier)' : 'Sipariş (havale bekliyor)', `${o.no} · ${o.total} TL`);
+  if (shop) {
+    mailTo(c.user.email, `Siparişiniz alındı — ${o.no}`, { title: 'Siparişiniz alındı', intro: `${o.no} numaralı siparişiniz oluşturuldu. Ödemenizi Shopier güvenli ödeme sayfasında tamamladığınızda ödeme kontrol edilir, onaylanınca lisansınız aktifleşir.`, blocks: [{ type: 'kv', rows: [...p.lines.map((l) => [`${l.name} · ${l.period === 'yillik' ? 'Yıllık' : 'Aylık'}`, fmtTL(l.price)]), ...(p.discount ? [['İndirim', '-' + fmtTL(p.discount)]] : []), ['KDV', fmtTL(p.vat)], ['Ödenecek', fmtTL(p.total)]] }] });
+    return { ok: true, order: pubOrder(o), banks: await banks(), shopier: await odeme().start(o) };
+  }
   { const B = await banks(); mailTo(c.user.email, `Siparişiniz alındı — ${o.no}`, { title: 'Siparişiniz alındı', intro: `${o.no} numaralı siparişiniz oluşturuldu. Havale / EFT ödemeniz hesabımıza geçtiğinde lisansınız otomatik aktifleşir.`, blocks: [{ type: 'kv', rows: [...p.lines.map((l) => [`${l.name} · ${l.period === 'yillik' ? 'Yıllık' : 'Aylık'}`, fmtTL(l.price)]), ...(p.discount ? [['İndirim', '-' + fmtTL(p.discount)]] : []), ['KDV', fmtTL(p.vat)], ['Ödenecek', fmtTL(p.total)]] }, ...B.map((x) => ({ type: 'kv', rows: [['Banka', x.bank], ['Alıcı', x.holder], ['IBAN', String(x.iban).replace(/(.{4})/g, '$1 ').trim()]] })), { type: 'note', tone: 'warn', text: `Açıklamaya mutlaka ${o.no} yazın. Ödeme onaylanana kadar deneme süreniz devam eder.` }] }); }
   return { ok: true, order: pubOrder(o), banks: await banks() };
 });
@@ -426,7 +435,7 @@ route('GET', '/api/orders', { auth: 'user' }, async (c) => ({ ok: true, orders: 
 route('POST', '/api/orders/:id/cancel', { auth: 'user' }, async (c) => {
   const r = await db.q("UPDATE orders SET status='iptal' WHERE id=? AND tenant_id=? AND status='odeme-bekliyor'", [c.params.id, c.user.tenant_id || '-']);
   if (!r.affectedRows) throw err(400, 'Yalnızca ödeme bekleyen sipariş iptal edilebilir');
-  await audit(c, 'Sipariş iptal (müşteri)', c.params.id); return { ok: true };
+  odeme().closeLater(c.params.id); await audit(c, 'Sipariş iptal (müşteri)', c.params.id); return { ok: true };
 });
 route('PUT', '/api/account', { auth: 'user' }, async (c) => {
   const b = c.body; if (!sec.V.str(b.name, 120, 3)) throw err(400, 'Ad soyad gerekli');
@@ -522,8 +531,8 @@ A('GET', '/summary', async () => {
   return { ok: true, tenants: t.n, lic: l, pending: o, paid30: p, leads: lead.n, tickets: tk.n, daily, signups, ending, db: db.info() };
 });
 A('GET', '/orders', async (c) => {
-  const st = c.query.get('status'); const rows = await db.q(`SELECT o.*, t.name AS tenant_name, t.phone AS tenant_phone, u.email AS user_email FROM orders o JOIN tenants t ON t.id=o.tenant_id JOIN users u ON u.id=o.user_id ${st ? 'WHERE o.status=?' : ''} ORDER BY o.created DESC LIMIT 300`, st ? [st] : []);
-  return { ok: true, orders: rows.map((o) => ({ ...pubOrder(o), tenant: o.tenant_name, phone: o.tenant_phone, email: o.user_email, note: o.note })) };
+  const st = c.query.get('status'); const rows = await db.q(`SELECT o.*, t.name AS tenant_name, t.phone AS tenant_phone, u.email AS user_email, sp.status AS pay_status, sp.alert AS pay_alert FROM orders o JOIN tenants t ON t.id=o.tenant_id JOIN users u ON u.id=o.user_id LEFT JOIN shopier_payments sp ON sp.order_id=o.id ${st ? 'WHERE o.status=?' : ''} ORDER BY o.created DESC LIMIT 300`, st ? [st] : []);
+  return { ok: true, orders: rows.map((o) => ({ ...pubOrder(o), tenant: o.tenant_name, phone: o.tenant_phone, email: o.user_email, note: o.note, shopier: o.pay_status ? { status: o.pay_status, alert: o.pay_alert } : null })) };
 });
 A('POST', '/orders/:id/approve', async (c) => {
   await db.tx(async (t) => {
@@ -533,12 +542,12 @@ A('POST', '/orders/:id/approve', async (c) => {
     await applyOrder(t, o);
   });
   await audit(c, 'Havale onaylandı', c.params.id);
-  { const o = await db.one('SELECT o.*, u.email, u.name FROM orders o JOIN users u ON u.id=o.user_id WHERE o.id=?', [c.params.id]); const s = await site(); if (o) mailTo(o.email, `Ödemeniz onaylandı — ${o.no}`, { title: 'Ödemeniz onaylandı, lisansınız aktif', intro: `Teşekkürler ${String(o.name).split(' ')[0]}! ${fmtTL(o.total)} tutarındaki ödemeniz alındı.`, blocks: [{ type: 'kv', rows: J(o.items, []).map((l) => [l.name || pnameOf(l.pid), `${l.period === 'yillik' ? '12' : '1'} ay`]) }, { type: 'button', label: 'Programlarıma git', url: `${s.siteUrl || ''}/#/programlarim` }, { type: 'p', text: 'Faturanız yasal süre içinde e-Arşiv / e-Fatura olarak iletilecektir.' }] }); }
+  await paidMail(c.params.id); odeme().closeLater(c.params.id);
   return { ok: true };
 });
 A('POST', '/orders/:id/reject', async (c) => {
   const r = await db.q("UPDATE orders SET status='iptal', note=? WHERE id=? AND status='odeme-bekliyor'", [sec.clean(c.body.note, 255) || 'Ödeme alınmadı', c.params.id]);
-  if (!r.affectedRows) throw err(400, 'Sipariş ödeme beklemiyor'); await audit(c, 'Sipariş reddedildi', c.params.id); return { ok: true };
+  if (!r.affectedRows) throw err(400, 'Sipariş ödeme beklemiyor'); odeme().closeLater(c.params.id); await audit(c, 'Sipariş reddedildi', c.params.id); return { ok: true };
 });
 A('GET', '/banks', async () => ({ ok: true, banks: await db.q('SELECT * FROM bank_accounts ORDER BY created') }));
 A('POST', '/banks', async (c) => {
@@ -676,4 +685,4 @@ A('PUT', '/settings', async (c) => {
 A('GET', '/audit', async () => ({ ok: true, rows: await db.q('SELECT a.*, u.email FROM audit a LEFT JOIN users u ON u.id=a.user_id ORDER BY a.id DESC LIMIT 500') }));
 A('GET', '/db', async () => ({ ok: true, info: db.info(), tables: await db.q('SELECT table_name AS name, table_rows AS rows_est, ROUND((data_length+index_length)/1024/1024, 2) AS mb FROM information_schema.tables WHERE table_schema = DATABASE() ORDER BY name') }));
 
-module.exports = { R, valid, canUseApp, err, site, audit, J, syncCatalog };
+module.exports = { R, valid, canUseApp, err, site, audit, J, syncCatalog, route, A, setting, setSetting, applyOrder, paidMail, mailTo, fmtTL };

@@ -90,4 +90,4 @@ async function migrate(db) {
   return n;
 }
 const covers = (app) => !!GROUPS[app];
-module.exports = { seal, open, mask, resolve, migrate, covers, token, SECRET };
+module.exports = { seal, open, mask, resolve, migrate, covers, token, SECRET, enc, dec };
