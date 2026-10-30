@@ -45,9 +45,10 @@ const actions = {
     return { ok: true, data: { batches, count: items.length } };
   },
   async 'batch-durum'(c, p = {}) { const r = await c.call('batch', { vars: { id: p.batchId } }); if (!r.ok) return r; const d = r.data || {}; return { ok: true, data: { status: d.status, items: (d.items || []).map((i) => ({ barcode: (i.requestItem && (i.requestItem.barcode || (i.requestItem.product && i.requestItem.product.barcode))) || '', status: i.status, reasons: i.failureReasons || [] })) } }; },
-  // payload: { items: [{ barcode, title, productMainId, brandId, categoryId, stock, price, listPrice, vat, desc, images[], attributes[] , cargoCompanyId, desi }] }
+  // payload: { items: [{ barcode, title, productMainId, brandId, categoryId, stock, price, listPrice, vat, desc, images[], attributes[], desi }] }
+  // createProducts V2 (developers.trendyol.com/reference/createproducts, 29.10.2026): en çok 1000 kalem, 8 görsel; listPrice >= salePrice
   async 'urun-gonder'(c, p = {}) {
-    const items = (p.items || []).map((i) => ({ barcode: String(i.barcode), title: String(i.title).slice(0, 100), productMainId: String(i.productMainId || i.barcode), brandId: Number(i.brandId), categoryId: Number(i.categoryId), quantity: Math.max(0, Math.floor(Number(i.stock) || 0)), stockCode: String(i.stockCode || i.barcode), dimensionalWeight: Number(i.desi) || 1, description: String(i.desc || i.title), currencyType: 'TRY', listPrice: Number(i.listPrice || i.price), salePrice: Number(i.price), vatRate: Number(i.vat ?? 20), cargoCompanyId: Number(i.cargoCompanyId) || undefined, images: (i.images || []).map((u) => ({ url: u })), attributes: i.attributes || [] }));
+    const items = (p.items || []).map((i) => ({ barcode: String(i.barcode), title: String(i.title).slice(0, 100), productMainId: String(i.productMainId || i.barcode), brandId: Number(i.brandId), categoryId: Number(i.categoryId), quantity: Math.max(0, Math.floor(Number(i.stock) || 0)), stockCode: String(i.stockCode || i.barcode), dimensionalWeight: Number(i.desi) || 1, description: String(i.desc || i.title), listPrice: Math.max(Number(i.listPrice || i.price), Number(i.price)), salePrice: Number(i.price), vatRate: Number(i.vat ?? 20), images: (i.images || []).slice(0, 8).map((u) => ({ url: u })), attributes: i.attributes || [] }));
     const bad = items.find((i) => !i.brandId || !i.categoryId); if (bad) return { ok: false, error: `${bad.barcode}: Trendyol marka (brandId) ve kategori (categoryId) eşleştirmesi gerekli` };
     const batches = [];
     for (const part of chunk(items, 1000)) { const r = await c.call('products', { method: 'POST', body: { items: part } }); if (!r.ok) return { ...r, data: { batches } }; batches.push(r.data && r.data.batchRequestId); }
@@ -56,13 +57,20 @@ const actions = {
   // payload: { packageId, lines:[{lineId, qty}], status:'Picking'|'Invoiced', invoiceNo, tracking }
   async 'kargo-bildir'(c, p = {}) {
     if (!p.packageId) return { ok: false, error: 'Trendyol paket no (packageId) gerekli' };
-    if (p.tracking && p.ownCargo) { const r = await c.call('tracking', { method: 'PUT', vars: { id: p.packageId }, body: { trackingNumber: String(p.tracking) } }); if (!r.ok) return r; }
+    // Takip no bildirme servisinin resmî dokümanı bulunamadı (29.10.2026, DOĞRULANAMADI): takip no gönderilmez, panelden girilir
     const r = await c.call('package', { method: 'PUT', vars: { id: p.packageId }, body: { lines: (p.lines || []).map((l) => ({ lineId: Number(l.lineId), quantity: Number(l.qty) })), params: p.invoiceNo ? { invoiceNumber: String(p.invoiceNo) } : {}, status: p.status || 'Picking' } });
+    return r.ok ? { ok: true, data: { trackingNotSent: !!(p.tracking && p.ownCargo) } } : r;
+  },
+  // Tedarik edilemedi bildirimi (reference/cancelorderpackageitem): reasonId 500, 501, 502, 504, 505, 506
+  async 'tedarik-edilemedi'(c, p = {}) {
+    if (!p.packageId || !(p.lines || []).length) return { ok: false, error: 'Trendyol paket no ve kalemler gerekli' };
+    const r = await c.call('unsupplied', { method: 'PUT', vars: { id: p.packageId }, body: { lines: p.lines.map((l) => ({ lineId: Number(l.lineId), quantity: Number(l.qty) })), reasonId: Number(p.reasonId) || 500 } });
     return r.ok ? { ok: true, data: {} } : r;
   },
   async 'soru-cek'(c) { const r = await c.call('questions', { query: { status: 'WAITING_FOR_ANSWER', size: 50 } }); if (!r.ok) return r; return { ok: true, data: { questions: ((r.data && r.data.content) || []).map((q) => ({ id: String(q.id), text: q.text, product: q.productName, barcode: q.productMainId, customer: q.userName || q.customerName || '', at: q.creationDate ? new Date(Number(q.creationDate)).toISOString() : '' })) } }; },
   async 'soru-yanitla'(c, p = {}) { if (!p.question || !p.answer) return { ok: false, error: 'Soru no ve yanıt gerekli' }; const r = await c.call('answer', { method: 'POST', vars: { id: p.question }, body: { text: String(p.answer) } }); return r.ok ? { ok: true, data: {} } : r; },
-  async 'hakedis-cek'(c, p = {}) { const end = Date.now(); const start = p.since ? new Date(p.since).getTime() : end - 14 * 864e5; const r = await c.call('settlements', { query: { transactionType: p.type || 'Sale', startDate: start, endDate: end, size: 500 } }); if (!r.ok) return r; return { ok: true, data: { rows: ((r.data && r.data.content) || []).map((x) => ({ orderNo: String(x.orderNumber || ''), amount: Number(x.debt || x.credit || 0), commission: Number(x.commissionAmount || 0), commissionRate: Number(x.commissionRate || 0), sellerRevenue: Number(x.sellerRevenue || 0), paymentDate: x.paymentDate ? new Date(Number(x.paymentDate)).toISOString() : '' })) } }; },
+  // Hakediş: tarih aralığı en çok 15 gün (reference/getsettlements)
+  async 'hakedis-cek'(c, p = {}) { const end = Date.now(); const start = Math.max(p.since ? new Date(p.since).getTime() : end - 14 * 864e5, end - 15 * 864e5 + 6e4); const r = await c.call('settlements', { query: { transactionType: p.type || 'Sale', startDate: start, endDate: end, size: 500 } }); if (!r.ok) return r; return { ok: true, data: { rows: ((r.data && r.data.content) || []).map((x) => ({ orderNo: String(x.orderNumber || ''), amount: Number(x.debt || x.credit || 0), commission: Number(x.commissionAmount || 0), commissionRate: Number(x.commissionRate || 0), sellerRevenue: Number(x.sellerRevenue || 0), paymentDate: x.paymentDate ? new Date(Number(x.paymentDate)).toISOString() : '' })) } }; },
   async 'kategori-cek'(c) { const r = await c.call('categories'); return r.ok ? { ok: true, data: { categories: (r.data && r.data.categories) || [] } } : r; },
 };
 
