@@ -29,6 +29,7 @@ function decrypt(b64) {
 function load() {
   try { return fs.existsSync(FILE) ? decrypt(fs.readFileSync(FILE, 'utf8')) : null; } catch (e) { console.error('Ayar dosyası çözülemedi (NEBSOFT_SECRET değişmiş olabilir):', e.message); return null; }
 }
+const configured = () => fs.existsSync(FILE);
 function save(cfg) { ensureDir(); fs.writeFileSync(FILE, encrypt(cfg), { mode: 0o600 }); }
 // İlk kurulum belirteci: kurulum ekranını yalnızca sunucuya erişimi olan kişi kullanabilsin
 function setupToken(create) {
@@ -40,4 +41,4 @@ function setupToken(create) {
 function clearSetupToken() { try { fs.unlinkSync(TOKENFILE); } catch (e) { /* yok */ } }
 // İmza (müşteri sayfası belirteçleri için): ana anahtardan türetilen ayrı HMAC anahtarı
 const mac = (text) => crypto.createHmac('sha256', crypto.createHash('sha256').update(Buffer.concat([key(), Buffer.from('public-token')])).digest()).update(text).digest('base64url');
-module.exports = { mac, load, save, setupToken, clearSetupToken, DATA, encrypt, decrypt };
+module.exports = { mac, load, save, configured, setupToken, clearSetupToken, DATA, encrypt, decrypt };

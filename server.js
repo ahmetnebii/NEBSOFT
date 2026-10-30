@@ -19,6 +19,7 @@ const kanal = require('./server/connectors');
 const proto = require('./server/bridge-proto');
 const cloud = require('./server/cloud');
 const sec = require('./server/cloud/security');
+const cfg = require('./server/cloud/config');
 
 const ROOT = __dirname;
 const PORT = Number(process.env.PORT) || 5050;
@@ -34,8 +35,6 @@ const readBody = (req) => new Promise((resolve, reject) => {
   req.on('data', (c) => { size += c.length; if (size > 5e6) { reject(new Error('İstek çok büyük')); req.destroy(); } else chunks.push(c); });
   req.on('end', () => { try { resolve(JSON.parse(Buffer.concat(chunks).toString('utf8') || '{}')); } catch (e) { reject(new Error('Geçersiz JSON')); } });
 });
-// Köprü yalnızca bu bilgisayardan kullanılabilir
-const isLocal = (req) => ['127.0.0.1', '::1', '::ffff:127.0.0.1'].includes(req.socket.remoteAddress);
 
 async function api(req, res, p) {
   // Pazaryeri bildirimleri dışarıdan gelir; belirteçle korunur
@@ -44,7 +43,8 @@ async function api(req, res, p) {
     const r = kanal.pushIn(p.slice('/api/webhook/'.length).replace(/\/$/, ''), new URL(req.url, 'http://x').searchParams.get('token') || req.headers['x-nebsoft-token'], body);
     return json(res, r.code, r.body);
   }
-  if (!isLocal(req)) return json(res, 403, { ok: false, error: 'Köprü yalnızca yerel bilgisayardan kullanılabilir' });
+  // Köprü yalnızca bu bilgisayardan ve veritabanısız yerel kurulumda kullanılabilir (bulut sunucusunda hiç açılmaz; veritabanı geçici koptuğunda da)
+  if (sec.bridgeDenied(req, cloud.db.ready() || cfg.configured())) return json(res, 403, { ok: false, error: 'Köprü yalnızca yerel bilgisayardan kullanılabilir' });
   if (p === '/api/durum') return json(res, 200, { ok: true, version: '1.1', node: process.version, kanal: kanal.info() });
   if (p === '/api/kanal' && req.method === 'GET') return json(res, 200, { ok: true, ...kanal.info(), webhook: `/api/webhook/<kanal>?token=${kanal.token()}` });
   if (req.method !== 'POST') return json(res, 405, { ok: false, error: 'POST bekleniyor' });
@@ -107,18 +107,18 @@ async function api(req, res, p) {
   if (p === '/api/inbox') return json(res, 200, { ok: true, items: kanal.drain(String(b.channel || '')) });
 
   if (p === '/api/pos/satis') {
-    // Demo terminal: 1,5 sn sonra onaylar. 13,13 ₺ gibi ",13" ile biten tutarlar test için reddedilir.
+    // Test terminali: gerçek çekim yapmaz, sonuç her yerde TEST görünür. 1,5 sn sonra onaylar. 13,13 ₺ gibi ",13" ile biten tutarlar test için reddedilir.
     await new Promise((r) => setTimeout(r, 1500));
     const amount = Number(b.amount) || 0;
     if (Math.round(amount * 100) % 100 === 13) return json(res, 200, { ok: false, error: 'Kart reddedildi (demo: yetersiz bakiye)' });
-    return json(res, 200, { ok: true, ref: 'DEMO' + Date.now().toString().slice(-8), authCode: String(Math.floor(100000 + Math.random() * 899999)), card: '**** **** **** ' + String(Math.floor(1000 + Math.random() * 8999)) });
+    return json(res, 200, { ok: true, test: true, ref: 'TEST' + Date.now().toString().slice(-8), authCode: 'TEST', card: 'TEST kart' });
   }
   return json(res, 404, { ok: false, error: 'Bilinmeyen uç nokta' });
 }
 
 const SITES = new Set(fs.existsSync(path.join(ROOT, 'site')) ? fs.readdirSync(path.join(ROOT, 'site')).filter((d) => fs.existsSync(path.join(ROOT, 'site', d, 'index.html'))) : []);
 // Dışarıya asla sunulmayacak yollar (sunucu kodu, veriler, gizli dosyalar, araçlar)
-const DENY = /^\/(data|server|node_modules|site\/tools|site\/src|awesome-claude-design|docs|desktop|android|scripts|yayin|ic-araclar|\.[^/]*)(\/|$)|^\/(package(-lock)?\.json|skills-lock\.json|baslat\.bat|CLAUDE\.md|DESIGN\.md|README\.md|DEPLOY\.md)$|\/\.[^/]+$/i;
+const DENY = /^\/(data|server|node_modules|site\/tools|site\/src|awesome-claude-design|docs|desktop|android|scripts|yayin|ic-araclar|\.[^/]*)(\/|$)|^\/(server\.js|sunucu\.json|package(-lock)?\.json|skills-lock\.json|baslat\.bat)$|\.(md|bat|sh|test\.js)$|\/\.[^/]+$/i;
 const LONG = /\.(jpg|jpeg|png|webp|svg|ico|woff2?)$/i;
 
 function handle(req, res) {
@@ -126,6 +126,8 @@ function handle(req, res) {
   let p;
   try { p = decodeURIComponent(req.url.split('?')[0]); } catch (e) { res.writeHead(400); return res.end('Geçersiz adres'); }
   if (p.includes('\0')) { res.writeHead(400); return res.end('Geçersiz adres'); }
+  // API dışındaki adreslerde ham ".." ve ters bölü kabul edilmez; nginx de isteği ham iletir (proxy_pass URI'siz)
+  if (!p.startsWith('/api/') && !sec.safePath(p)) { res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' }); return res.end('Bulunamadı'); }
   if (p.startsWith('/api/')) {
     return cloud.handle(req, res, p).then((done) => { if (!done) return api(req, res, p); }).catch((e) => { console.error(e); json(res, 500, { ok: false, error: 'Beklenmeyen bir hata oluştu' }); });
   }
@@ -190,7 +192,7 @@ function serve(req, res, p) {
   }
   if (p.endsWith('/')) p += 'index.html';
   const file = path.normalize(path.join(ROOT, p));
-  if (!file.startsWith(ROOT + path.sep)) { res.writeHead(403); return res.end('Yasak'); }
+  if (!file.startsWith(ROOT + path.sep) || DENY.test('/' + path.relative(ROOT, file).split(path.sep).join('/'))) { res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' }); return res.end('Bulunamadı'); }
   fs.stat(file, (e, st) => {
     if (e || !st.isFile()) { res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' }); return res.end('Bulunamadı'); }
     const ext = path.extname(file).toLowerCase();

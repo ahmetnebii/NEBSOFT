@@ -86,12 +86,14 @@ function render({ brand = 'NEBSOFT', site = {}, preheader = '', title, intro, bl
 }
 
 // ---------- Gönderim + kayıt ----------
+// Doğrulama kodu konunun başındadır: kayıtta maskelenir (yöneticiler gönderim geçmişini okuyabilir, kod orada görünmemeli)
+const logSubject = (s) => String(s).replace(/^\d{6}\b/, '••••••').slice(0, 200);
 async function send(to, subject, tpl, site) {
   const c = await getConfig();
   if (!(c.enabled && c.host && c.user && c.pass)) return { ok: false, skipped: true, error: 'E-posta ayarı yapılmadı' };
   const { html, text } = render({ ...tpl, site, title: tpl.title || subject });
-  try { const r = await smtpSend(c, { to, subject, html, text }); await db.q('INSERT INTO mail_log (at, to_addr, subject, status, detail) VALUES (?,?,?,?,?)', [new Date(), to, subject.slice(0, 200), 'gönderildi', r.id]).catch(() => {}); return r; }
-  catch (e) { await db.q('INSERT INTO mail_log (at, to_addr, subject, status, detail) VALUES (?,?,?,?,?)', [new Date(), to, subject.slice(0, 200), 'hata', e.message.slice(0, 250)]).catch(() => {}); return { ok: false, error: e.message }; }
+  try { const r = await smtpSend(c, { to, subject, html, text }); await db.q('INSERT INTO mail_log (at, to_addr, subject, status, detail) VALUES (?,?,?,?,?)', [new Date(), to, logSubject(subject), 'gönderildi', r.id]).catch(() => {}); return r; }
+  catch (e) { await db.q('INSERT INTO mail_log (at, to_addr, subject, status, detail) VALUES (?,?,?,?,?)', [new Date(), to, logSubject(subject), 'hata', e.message.slice(0, 250)]).catch(() => {}); return { ok: false, error: e.message }; }
 }
 
 // ---------- Doğrulama kodları ----------
@@ -111,4 +113,4 @@ async function checkCode(ticket, code, purpose) {
   return { ok: true, email: r.email, meta: J(r.meta, {}) };
 }
 
-module.exports = { PRESETS, settings, getConfig, saveConfig, ready, send, render, issueCode, checkCode, smtpSend };
+module.exports = { logSubject, PRESETS, settings, getConfig, saveConfig, ready, send, render, issueCode, checkCode, smtpSend };

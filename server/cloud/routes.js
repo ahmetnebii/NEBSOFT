@@ -122,7 +122,8 @@ const route = (method, path, opt, fn) => R.push({ method, re: new RegExp('^' + p
 route('GET', '/api/setup/status', { auth: 'none' }, async () => {
   const conf = cfg.load(); let hasAdmin = false;
   if (db.ready()) hasAdmin = !!(await db.one("SELECT id FROM users WHERE role='superadmin' LIMIT 1"));
-  return { ok: true, configured: !!conf, db: db.ready() ? db.info() : null, hasAdmin, needsToken: !hasAdmin };
+  // Veritabanı adresi ve adı yalnızca kurulum sırasında (yönetici yokken) gösterilir; kurulumdan sonra herkese açık bu uçtan çıkmaz
+  return { ok: true, configured: !!conf, db: db.ready() && !hasAdmin ? db.info() : null, hasAdmin, needsToken: !hasAdmin };
 });
 route('POST', '/api/setup/sql', { auth: 'none', limit: ['setup', 30, 600e3] }, async (c) => {
   const pw = crypto.randomBytes(18).toString('base64url');
@@ -279,11 +280,16 @@ route('POST', '/api/auth/reset', { auth: 'none', limit: ['reset', 10, 600e3] }, 
 // Hazır ürün kataloğu (havuz + Open Food Facts); yerel demo modunda da çalışır
 route('GET', '/api/katalog/ara', { auth: 'none', db: false, limit: ['kat', 120, 60e3] }, async (c) => { try { return { ok: true, ...(await katalog.search({ q: c.query.get('q') || '', cat: c.query.get('kat') || '', page: c.query.get('sayfa') || 1 })) }; } catch (e) { throw err(502, 'Ürün kataloğuna şu an ulaşılamıyor. Biraz sonra tekrar deneyin veya ürünü elle ekleyin.'); } });
 route('GET', '/api/katalog/barkod/:code', { auth: 'none', db: false, limit: ['katb', 240, 60e3] }, async (c) => ({ ok: true, item: await katalog.barcode(c.params.code) }));
-route('POST', '/api/katalog/katki', { auth: 'none', db: false, limit: ['katk', 30, 60e3] }, async (c) => ({ ok: true, added: await katalog.contribute(c.body.items) }));
+// Ortak havuza yalnızca oturum açmış işletme yazar (herkese açıkken kim olduğu belli olmayan biri bütün işletmelerin ürün aramasını kirletebiliyordu)
+route('POST', '/api/katalog/katki', { auth: 'none', db: false, limit: ['katk', 30, 60e3] }, async (c) => { if (!db.ready()) return { ok: true, added: 0 }; const u = await auth.current(c.req); if (!u || !u.tenant_id) throw err(401, 'Oturum açmanız gerekiyor', { code: 'auth' }); return { ok: true, added: await katalog.contribute(c.body.items) }; });
 
 // İşletme web sitesi eklentisi: düzenleme, yayınlama, özel alan adı ve siparişler
 const addonOn = async (tid, pid) => !!(await db.one("SELECT id FROM licenses WHERE tenant_id=? AND product=? AND status IN ('aktif','deneme') AND end>UTC_TIMESTAMP()", [tid, pid]));
-const DOMAIN = /^(?!-)[a-z0-9-]{1,63}(\.[a-z0-9-]{1,63})+$/;
+const DOMAIN = /^(?!-)[a-z0-9-]{1,63}(\.[a-z0-9-]{1,63})*\.[a-z][a-z0-9-]{1,62}$/; // son etiket harfle başlar: IP adresi alan adı sayılmaz
+// Platformun kendi adresi veya alt alan adı işletmeye verilemez: aksi halde bir işletme ana sayfayı kendi sitesiyle değiştirebilirdi
+const bare = (h) => String(h || '').toLowerCase().replace(/:\d+$/, '').replace(/^www\./, '');
+const urlHost = (u) => { try { return new URL(u).hostname; } catch (e) { return ''; } };
+const platformDomain = (domain, ...hosts) => { const d = bare(domain); return hosts.map(bare).filter(Boolean).some((h) => d === h || d.endsWith('.' + h)); };
 route('GET', '/api/websitem', { auth: 'user' }, async (c) => {
   if (!c.user.tenant_id) throw err(400, 'İşletme hesabı gerekli');
   const t = await db.one('SELECT slug, name, phone, address, city FROM tenants WHERE id=?', [c.user.tenant_id]);
@@ -296,13 +302,16 @@ route('PUT', '/api/websitem', { auth: 'user', bodyMax: 4e6, limit: ['ws', 120, 3
   if (pub && !(await addonOn(c.user.tenant_id, 'eklenti-web'))) throw err(402, 'Sitenizi yayınlamak için Eklenti Mağazası’ndan “İşletme Web Sitesi” eklentisini etkinleştirin. Taslağınız kaydedildi.');
   let domain = String(c.body.domain || '').trim().toLowerCase().replace(/^https?:\/\//, '').replace(/\/.*$/, '') || null;
   if (domain && !DOMAIN.test(domain)) throw err(400, 'Alan adı geçersiz. Örnek: www.isletmeniz.com');
+  if (domain && platformDomain(domain, c.req.headers.host, urlHost((await site()).siteUrl))) throw err(400, 'Bu alan adı kullanılamaz');
   if (domain) { const ex = await db.one('SELECT tenant_id FROM biz_sites WHERE domain=? AND tenant_id<>?', [domain, c.user.tenant_id]); if (ex) throw err(409, 'Bu alan adı başka bir işletmede kayıtlı'); }
   await db.q('INSERT INTO biz_sites (tenant_id, data, published, domain, updated) VALUES (?,?,?,?,?) ON DUPLICATE KEY UPDATE data=VALUES(data), published=VALUES(published), domain=VALUES(domain), updated=VALUES(updated)', [c.user.tenant_id, JSON.stringify(data), pub ? 1 : 0, domain, now()]);
   await audit(c, 'Web sitesi kaydedildi', pub ? 'yayında' : 'taslak');
   return { ok: true, published: pub };
 });
 // Ziyaretçi siparişi → işletmenin gelen kutusu (POS > Online Siparişler, "Web siteniz" kanalı)
-route('POST', '/api/w/:slug/siparis', { auth: 'none', limit: ['wsip', 8, 600e3] }, async (c) => {
+// Ziyaretçinin oturumu yoktur (çerez yetkisi kullanılmaz); site sayfası özel başlık göndermez, yalnızca kaynak denetlenir
+route('POST', '/api/w/:slug/siparis', { auth: 'none', csrf: false, limit: ['wsip', 8, 600e3] }, async (c) => {
+  if (!sec.originOk(c.req)) throw err(403, 'İstek reddedildi (kaynak doğrulanamadı)');
   const t = await db.one("SELECT t.id, t.name FROM tenants t WHERE t.slug=? AND t.status='active'", [String(c.params.slug)]); if (!t) throw err(404, 'İşletme bulunamadı');
   const s = await db.one('SELECT data, published FROM biz_sites WHERE tenant_id=?', [t.id]); const d = s && bizsite.clean(J(s.data, {}));
   if (!s || !s.published || d.mode !== 'siparis' || !(await addonOn(t.id, 'eklenti-web')) || !(await addonOn(t.id, 'eklenti-siparis'))) throw err(403, 'Bu işletme şu an online sipariş almıyor');
@@ -324,7 +333,7 @@ route('POST', '/api/w/:slug/siparis', { auth: 'none', limit: ['wsip', 8, 600e3] 
 // Takvim aboneliği (iCal): Google / Outlook / Apple takvimine "URL ile abone ol" denerek eklenir, takvim uygulaması
 // adresi düzenli aralıklarla yeniden okur. Adres işletmeye (ve isteğe bağlı personele / hekime) özel imzalıdır; imza sunucu anahtarından türetilir.
 // Kaynaklar: Randevu (randevular), Klinik (hasta randevuları), CRM (son tarihli görevler, tüm gün etkinliği).
-// Gizlilik: kişi adı yalnızca ad + soyadın baş harfiyle yazılır; telefon / not eklenmez.
+// Gizlilik: kişi adı yalnızca ad + soyadın baş harfiyle yazılır; telefon / not eklenmez. Klinikte randevu nedeni (sağlık verisi) dış takvim servisine gitmez.
 const icsEsc = (s) => String(s || '').replace(/\\/g, '\\\\').replace(/;/g, '\\;').replace(/,/g, '\\,').replace(/\r?\n/g, '\\n');
 const icsTime = (date, hm, plusMin = 0) => { const [y, mo, d] = String(date).split('-').map(Number); const [h, mi] = String(hm || '00:00').split(':').map(Number); const t = new Date(Date.UTC(y, mo - 1, d, h, mi) - 3 * 3600e3 + plusMin * 60e3); return t.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, ''); }; // Türkiye UTC+3
 const icsDay = (date, plusDays = 0) => new Date(Date.parse(String(date).slice(0, 10) + 'T00:00:00Z') + plusDays * 864e5).toISOString().slice(0, 10).replace(/-/g, '');
@@ -343,7 +352,7 @@ route('GET', '/api/takvim-adres', { auth: 'user' }, async (c) => {
 route('GET', '/api/takvim/:file', { auth: 'none', limit: ['ics', 120, 60e3] }, async (c) => {
   const slug = String(c.params.file).replace(/\.ics$/, ''); const staffId = String(c.query.get('p') || ''); const k = String(c.query.get('k') || '');
   const app = CAL_APPS[c.query.get('a')] ? c.query.get('a') : 'randevu';
-  const t = await db.one("SELECT id, name FROM tenants WHERE slug=? AND status='active'", [slug]); if (!t || k !== calSig(t.id, staffId, app)) throw err(404, 'Takvim bulunamadı');
+  const t = await db.one("SELECT id, name FROM tenants WHERE slug=? AND status='active'", [slug]); if (!t || !sec.safeEq(k, calSig(t.id, staffId, app))) throw err(404, 'Takvim bulunamadı');
   const r = await db.one('SELECT data FROM app_data WHERE tenant_id=? AND app=?', [t.id, app]); const d = r ? J(r.data, {}) : {};
   const by = (arr) => Object.fromEntries((arr || []).map((x) => [x.id, x]));
   const from = new Date(Date.now() - 30 * 864e5).toISOString().slice(0, 10); const to = new Date(Date.now() + 180 * 864e5).toISOString().slice(0, 10);
@@ -356,7 +365,7 @@ route('GET', '/api/takvim/:file', { auth: 'none', limit: ['ics', 120, 60e3] }, a
   } else if (app === 'klinik') {
     const pat = by(d.patients); const doc = by(d.doctors); const slot = Number((d._settings || {}).slot) || 30; who = staffId && doc[staffId] ? doc[staffId].name : '';
     ev = (d.appts || []).filter((a) => inRange(a.date) && a.status !== 'iptal' && (!staffId || a.doctor === staffId)).slice(0, 5000).map((a) => ['BEGIN:VEVENT', `UID:${a.id}@nebsoft-${slug}-klinik`, `DTSTAMP:${stamp}`, `DTSTART:${icsTime(a.date, a.time)}`, `DTEND:${icsTime(a.date, a.time, slot)}`,
-      `SUMMARY:${icsEsc(`${a.reason || 'Muayene'} — ${shortName((pat[a.patient] || {}).name)}`)}`, `DESCRIPTION:${icsEsc(`Hekim: ${(doc[a.doctor] || {}).name || '-'}${a.status ? ' · Durum: ' + a.status : ''}`)}`, 'STATUS:CONFIRMED', 'END:VEVENT']);
+      `SUMMARY:${icsEsc(`Hasta randevusu — ${shortName((pat[a.patient] || {}).name)}`)}`, `DESCRIPTION:${icsEsc(`Hekim: ${(doc[a.doctor] || {}).name || '-'}${a.status ? ' · Durum: ' + a.status : ''}`)}`, 'STATUS:CONFIRMED', 'END:VEVENT']);
   } else {
     const deals = by(d.deals);
     ev = (d.activities || []).filter((a) => a.type === 'gorev' && a.due && inRange(String(a.due).slice(0, 10))).slice(0, 5000).map((a) => ['BEGIN:VEVENT', `UID:${a.id}@nebsoft-${slug}-crm`, `DTSTAMP:${stamp}`, `DTSTART;VALUE=DATE:${icsDay(a.due)}`, `DTEND;VALUE=DATE:${icsDay(a.due, 1)}`,
@@ -403,7 +412,7 @@ route('POST', '/api/trial', { auth: 'user', limit: ['trial', 20, 3600e3] }, asyn
   mailTo(c.user.email, `${pnameOf(pid)} denemeniz başladı`, { title: `${pnameOf(pid)} hazır`, intro: `${s.trialDays} günlük ücretsiz denemeniz başladı. Tüm özellikleri sınırsız kullanabilirsiniz.`, blocks: [{ type: 'kv', rows: [['Program', pnameOf(pid)], ['Deneme bitişi', addDays(now(), s.trialDays).toLocaleDateString('tr-TR')]] }, { type: 'button', label: 'Programı aç', url: `${s.siteUrl || ''}/#/programlarim` }] });
   return { ok: true, license: await db.one('SELECT * FROM licenses WHERE tenant_id=? AND product=?', [c.user.tenant_id, pid]) };
 });
-route('POST', '/api/orders/quote', { auth: 'none' }, async (c) => { const k = await couponPct(c.body.coupon); return { ok: true, coupon: k.code, ...cat.price(c.body.items, k.pct) }; });
+route('POST', '/api/orders/quote', { auth: 'none', limit: ['quote', 60, 600e3] }, async (c) => { const k = await couponPct(c.body.coupon); return { ok: true, coupon: k.code, ...cat.price(c.body.items, k.pct) }; });
 route('POST', '/api/orders', { auth: 'user', limit: ['order', 20, 3600e3] }, async (c) => {
   if (!c.user.tenant_id) throw err(400, 'Yönetici hesabıyla sipariş verilemez');
   const k = await couponPct(c.body.coupon); const p = cat.price(c.body.items, k.pct);
@@ -428,15 +437,19 @@ route('POST', '/api/orders/:id/cancel', { auth: 'user' }, async (c) => {
   if (!r.affectedRows) throw err(400, 'Yalnızca ödeme bekleyen sipariş iptal edilebilir');
   await audit(c, 'Sipariş iptal (müşteri)', c.params.id); return { ok: true };
 });
+// Hesabın sahibi işletmenin ilk kullanıcısıdır; ekip üyeleri işletme bilgilerini ve ekibi değiştiremez
+const isOwner = async (u) => { if (!u.tenant_id) return false; const o = await db.one('SELECT id FROM users WHERE tenant_id=? ORDER BY created, id LIMIT 1', [u.tenant_id]); return !!o && o.id === u.id; };
+const ownerOnly = async (c) => { if (!(await isOwner(c.user))) throw err(403, 'Bu işlemi yalnızca hesap sahibi yapabilir'); };
 route('PUT', '/api/account', { auth: 'user' }, async (c) => {
   const b = c.body; if (!sec.V.str(b.name, 120, 3)) throw err(400, 'Ad soyad gerekli');
+  if (b.company) await ownerOnly(c);
   await db.q('UPDATE users SET name=?, phone=? WHERE id=?', [sec.clean(b.name, 120), sec.clean(b.phone, 40), c.user.id]);
   if (c.user.tenant_id && b.company) await db.q('UPDATE tenants SET name=?, address=?, city=?, tax_no=?, tax_office=? WHERE id=?', [sec.clean(b.company, 160), sec.clean(b.address, 300), sec.clean(b.city, 60), sec.clean(b.taxNo, 20), sec.clean(b.taxOffice, 80), c.user.tenant_id]);
   return { ok: true };
 });
 route('GET', '/api/team', { auth: 'user' }, async (c) => ({ ok: true, users: await db.q('SELECT id, email, name, phone, status, last_login FROM users WHERE tenant_id=? ORDER BY created', [c.user.tenant_id || '-']) }));
 route('POST', '/api/team', { auth: 'user', limit: ['team', 20, 3600e3] }, async (c) => {
-  const b = c.body; if (!c.user.tenant_id) throw err(400, 'İşletme hesabı yok');
+  const b = c.body; if (!c.user.tenant_id) throw err(400, 'İşletme hesabı yok'); await ownerOnly(c);
   if (!sec.V.email(b.email) || !sec.V.str(b.name, 120, 2) || !sec.V.password(b.pass)) throw err(400, 'Ad, e-posta ve en az 8 karakterli (harf+rakam) şifre gerekli');
   if (await db.one('SELECT id FROM users WHERE email=?', [b.email.toLowerCase()])) throw err(400, 'Bu e-posta başka bir hesapta kayıtlı');
   const n = await db.one('SELECT COUNT(*) AS n FROM users WHERE tenant_id=?', [c.user.tenant_id]); if (n.n >= 50) throw err(400, 'Kullanıcı sınırına ulaşıldı');
@@ -445,6 +458,7 @@ route('POST', '/api/team', { auth: 'user', limit: ['team', 20, 3600e3] }, async 
 });
 route('DELETE', '/api/team/:id', { auth: 'user' }, async (c) => {
   if (c.params.id === c.user.id) throw err(400, 'Kendinizi silemezsiniz');
+  await ownerOnly(c);
   const r = await db.q('DELETE FROM users WHERE id=? AND tenant_id=?', [c.params.id, c.user.tenant_id || '-']); if (r.affectedRows) await db.q('DELETE FROM sessions WHERE user_id=?', [c.params.id]);
   await audit(c, 'Ekip üyesi silindi', c.params.id); return { ok: true };
 });

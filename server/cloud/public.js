@@ -18,7 +18,7 @@ const signToken = (p) => { const body = Buffer.from(JSON.stringify({ ...p, e: Da
 function readToken(tok, tenant, app) {
   if (typeof tok !== 'string' || tok.length > 600 || !tok.includes('.')) return null;
   const [body, sig] = tok.split('.');
-  if (cfg.mac(body) !== sig) return null;
+  if (!sec.safeEq(cfg.mac(body), sig)) return null;
   const p = J(Buffer.from(body, 'base64url').toString('utf8'), null);
   return p && p.t === tenant && p.a === app && p.e > Date.now() ? p : null;
 }

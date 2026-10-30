@@ -114,7 +114,9 @@ async function siteHtml(req, t, live, url) { const s = await settings(); return 
 const domCache = new Map();
 async function domainSite(req, p) {
   if (!db.ready()) return null; const host = String(req.headers.host || '').toLowerCase().replace(/:\d+$/, ''); if (!host || !/^[a-z0-9.-]+$/.test(host)) return null;
-  let hit = domCache.get(host); if (!hit || Date.now() - hit.at > 60e3) { const r = await db.one("SELECT t.id, t.name, t.slug, t.ref_code FROM biz_sites b JOIN tenants t ON t.id=b.tenant_id WHERE (b.domain=? OR b.domain=?) AND t.status='active'", [host, host.replace(/^www\./, '')]); hit = { at: Date.now(), t: r || null }; domCache.set(host, hit); }
+  const own = await settings(); let own0 = ''; try { own0 = new URL(own.siteUrl).hostname.toLowerCase(); } catch (e) { /* ayar yok */ }
+  if (own0 && host.replace(/^www\./, '') === own0.replace(/^www\./, '')) return null; // platformun kendi adresi hiçbir işletmeye ait olamaz
+  let hit = domCache.get(host); if (!hit || Date.now() - hit.at > 60e3) { if (domCache.size > 5000) domCache.clear(); const r = await db.one("SELECT t.id, t.name, t.slug, t.ref_code FROM biz_sites b JOIN tenants t ON t.id=b.tenant_id WHERE (b.domain=? OR b.domain=?) AND t.status='active'", [host, host.replace(/^www\./, '')]); hit = { at: Date.now(), t: r || null }; domCache.set(host, hit); }
   if (!hit.t) return null; const live = await liveSite(hit.t); if (!live) return null;
   const B = (req.headers['x-forwarded-proto'] === 'https' || req.socket.encrypted ? 'https://' : 'http://') + req.headers.host;
   if (p === '/' || p === '/index.html') return { type: 'text/html; charset=utf-8', csp: SITE_CSP, body: await siteHtml(req, hit.t, live, B + '/') };
