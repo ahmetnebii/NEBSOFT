@@ -13,6 +13,12 @@ Ortak altyapı `core/` dışında kuruldu: `apps/siparisortak/` (`hesap.js`, `to
 | Ç5 | `core/integrations.js` `USED` | Yeni programlar `USED` listesine eklenmesin ya da ürün kodundaki liste ile aynı tutulsun. | `USED` kaydı yoksa `NS.shell(integrations)` listesi geçerli olur, bugün doğru çalışıyor. | Değişiklik gerekmez | Bilgi |
 | Ç6 | Programlar arası veri | Aynı işletmede Pastane reçetesi ile Adisyon menüsü arasında okuma yolu. | "Adisyon ile ilişki" isteği otomatik karşılanamadı: Adisyon'da içe aktarma ekranı yok, `/api/data/<app>` program başına ayrı belge. | Spec'te yazılı, otomatik geçiş yok | Karar gerekli |
 
+## Kırmızı kalan test
+
+`server/test/yardim.test.js`: `npm test` zinciri burada durur, çünkü Ç1 satırları `core/` kuralı gereği eklenmedi. Ç1 uygulanınca yeniden çalıştırılmalı; yardım metnindeki kalın ifadeler program klasöründe aranır, bu sınama Ç1 olmadan yapılamadı.
+
+`core/integrations.js` ve `core/notify.js` için satır gerekmez: `USED` kaydı olmayan programda `NS.shell(integrations)` listesi geçerlidir, bildirimler `NS.notify.define` ile programdan tanımlanır. 31 sayısı geçen testler bu dalda kataloğa bağlandı.
+
 ## Ç1 satırları
 
 ```js
