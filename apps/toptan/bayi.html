@@ -48,13 +48,16 @@
     $('#go').onclick = go; $('#cd').onkeydown = (e) => { if (e.key === 'Enter') go(); };
     if ($('#hint')) $('#hint').onclick = (e) => { e.preventDefault(); const c = db.all('customers')[2]; $('#ph').value = c.phone; $('#cd').value = NS.portalCode(db, c); };
   }
-  const lines = (c) => Object.entries(cart).filter(([, v]) => v > 0).map(([pid, qty]) => { const p = db.get('products', pid); return { pid, name: p.name, qty, price: T.price(p, c.list), vat: p.vat, disc: 0 }; });
+  // Bulutta sunucu yalnızca bayinin kendi liste fiyatını gönderir (listPrice); taban fiyat tarayıcıya gelmez
+  const pr = (p, c) => (p.listPrice !== undefined ? p.listPrice : T.price(p, c.list));
+  const led = () => T.ledger(db.all('orders'), db.all('payments'), db.all('returns'));
+  const lines = (c) => Object.entries(cart).filter(([, v]) => v > 0).map(([pid, qty]) => { const p = db.get('products', pid); return { pid, name: p.name, qty, price: pr(p, c), vat: p.vat, disc: 0 }; });
   function katalog(c) {
     const cats = [...new Set(db.all('products').map((p) => p.cat))];
     const P = db.all('products', (p) => (!cat || p.cat === cat) && NS.match(q, p.name, p.code));
-    const t = T.orderTotal({ lines: lines(c) });
+    const t = T.orderTotal({ lines: lines(c) }); const L = led(); const no = (p) => T.avail(p, L) < p.pack;
     return `<div class="row mb" style="gap:8px;flex-wrap:wrap"><input class="input" id="q" placeholder="Ürün ara" value="${esc(q)}" style="max-width:260px"><select class="input" id="ct" style="max-width:200px"><option value="">Tüm kategoriler</option>${cats.map((x) => `<option ${x === cat ? 'selected' : ''}>${esc(x)}</option>`).join('')}</select></div>
-      <div class="pg">${P.map((p) => `<div class="pc"><b>${esc(p.name)}</b><span class="small muted">${esc(p.cat)} · koli ${p.pack} adet</span><span class="p">${money(T.price(p, c.list))}</span><span class="small ${p.stock < p.pack ? '' : 'muted'}" style="${p.stock < p.pack ? 'color:var(--err)' : ''}">${p.stock < p.pack ? 'Stokta yok' : 'Stokta'}</span><div class="qt"><button class="btn sm" data-k="-1" data-p="${p.id}" aria-label="Azalt">${icon('minus')}</button><input class="input" data-q="${p.id}" value="${cart[p.id] || ''}" inputmode="numeric" aria-label="Adet"><button class="btn sm primary" data-k="1" data-p="${p.id}" aria-label="1 koli ekle">${icon('plus')}</button></div></div>`).join('')}</div>
+      <div class="pg">${P.map((p) => `<div class="pc"><b>${esc(p.name)}</b><span class="small muted">${esc(p.cat)} · koli ${p.pack} adet</span><span class="p">${money(pr(p, c))}</span><span class="small ${no(p) ? '' : 'muted'}" style="${no(p) ? 'color:var(--err)' : ''}">${no(p) ? 'Stokta yok' : 'Stokta'}</span><div class="qt"><button class="btn sm" data-k="-1" data-p="${p.id}" aria-label="Azalt">${icon('minus')}</button><input class="input" data-q="${p.id}" value="${cart[p.id] || ''}" inputmode="numeric" aria-label="Adet"><button class="btn sm primary" data-k="1" data-p="${p.id}" aria-label="1 koli ekle">${icon('plus')}</button></div></div>`).join('')}</div>
       ${lines(c).length ? `<div class="cartbar"><span class="grow"><b>${lines(c).length} kalem</b> · KDV dahil <b style="font-size:18px">${money(t.total)}</b>${t.total < (Number(S().minOrder) || 0) ? `<div class="small" style="opacity:.75">En az sipariş ${money(S().minOrder)}</div>` : ''}</span><button class="btn primary" id="send" ${t.total < (Number(S().minOrder) || 0) ? 'disabled' : ''}>${icon('check')} Siparişi gönder</button></div>` : ''}`;
   }
   function siparis(c) {
@@ -70,17 +73,18 @@
     db.load(); const c = db.get('customers', sget()); if (!c) return login();
     $('#out').innerHTML = `<button class="btn ghost" id="lo">${icon('logout')} Çıkış</button>`; $('#lo').onclick = () => { sset(null); db.pubLogout(); login(); };
     const TB = { katalog: ['Sipariş ver', katalog], siparis: ['Siparişlerim', siparis], hesap: ['Hesabım', hesap] };
-    $('#root').innerHTML = `<div class="tk-head"><div class="top"><span class="tk-pill">${esc(T.LISTS[c.list][0].split(' — ')[0])} fiyat listesi</span></div><h2>${esc(c.name)}</h2><p class="muted">${esc(c.district)} · Plasiyeriniz ${esc((db.get('reps', c.rep) || {}).name || '')} · ziyaret günü ${T.DAYS[c.day]}</p></div><div class="tabs2" role="tablist">${Object.entries(TB).map(([k, [l]]) => `<button role="tab" data-tab="${k}" aria-selected="${k === tab}">${l}</button>`).join('')}</div><div id="pane">${TB[tab][1](c)}</div>`;
+    $('#root').innerHTML = `<div class="tk-head"><div class="top"><span class="tk-pill">${esc(T.listOf(c.list)[0].split(' — ')[0])} fiyat listesi</span></div><h2>${esc(c.name)}</h2><p class="muted">${esc(c.district)} · Plasiyeriniz ${esc((db.get('reps', c.rep) || {}).name || '')} · ziyaret günü ${T.DAYS[c.day]}</p></div><div class="tabs2" role="tablist">${Object.entries(TB).map(([k, [l]]) => `<button role="tab" data-tab="${k}" aria-selected="${k === tab}">${l}</button>`).join('')}</div><div id="pane">${TB[tab][1](c)}</div>`;
     $$('[data-tab]').forEach((b) => { b.onclick = () => { tab = b.dataset.tab; render(); }; });
     if ($('#q')) { $('#q').oninput = (e) => { q = e.target.value; const pos = e.target.selectionStart; render(); $('#q').focus(); $('#q').setSelectionRange(pos, pos); }; $('#ct').onchange = (e) => { cat = e.target.value; render(); }; }
     $$('[data-k]').forEach((b) => { b.onclick = () => { const p = db.get('products', b.dataset.p); cart[p.id] = Math.max(0, (cart[p.id] || 0) + Number(b.dataset.k) * p.pack); render(); }; });
     $$('[data-q]').forEach((i) => { i.onchange = () => { cart[i.dataset.q] = Math.max(0, Number(i.value) || 0); render(); }; });
     $$('[data-re]').forEach((b) => { b.onclick = () => { const o = db.get('orders', b.dataset.re); o.lines.forEach((l) => { cart[l.pid] = l.qty; }); tab = 'katalog'; render(); toast('Önceki sipariş sepete eklendi', 'ok'); }; });
     if ($('#send')) $('#send').onclick = () => {
-      const L = lines(c); const t = T.orderTotal({ lines: L }); const over = c.balance + t.total > c.limit;
-      const o = db.insert('orders', { no: 'S' + (7000 + db.all('orders').length), customer: c.id, rep: c.rep, src: 'b2b', at: new Date().toISOString(), lines: L, status: over ? 'onay' : 'yeni', note: 'Bayi portalından' });
+      const L = lines(c); const t = T.orderTotal({ lines: L }); const G = led(); const over = T.exposure(c, G, t.total) > c.limit || T.overdue(c, G) > 0;
+      const short = L.find((l) => l.qty > T.avail(db.get('products', l.pid), G)); if (short) return toast(`${short.name} için yeterli stok yok`, 'err');
+      const o = db.insert('orders', { no: T.nextNo(db.all('orders')), customer: c.id, rep: c.rep, src: 'b2b', at: new Date().toISOString(), lines: L, status: over ? 'onay' : 'yeni', note: 'Bayi portalından' });
       Object.keys(cart).forEach((k) => delete cart[k]); tab = 'siparis'; render();
-      toast(over ? `${o.no} alındı — limit aşıldığı için onaydan sonra hazırlanacak` : `${o.no} alındı, teşekkürler`, over ? '' : 'ok');
+      toast(over ? `${o.no} alındı — risk limiti veya vadesi geçen borç nedeniyle onaydan sonra hazırlanacak` : `${o.no} alındı, teşekkürler`, over ? '' : 'ok');
     };
   }
   render();

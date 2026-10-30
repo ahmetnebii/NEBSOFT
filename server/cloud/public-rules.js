@@ -587,7 +587,19 @@ RULES.fabrika = {
 
 // ---------- Toptan: bayi B2B sipariş (bayi.html) — telefon + bayi kodu ----------
 const TPT_LIST = { A: 0, B: 4, C: 8 };
+const tptPrice = (p, c) => Math.round(p.price * (1 + (TPT_LIST[c.list] ?? TPT_LIST.C) / 100) * 100) / 100; // bayiye yalnızca kendi liste fiyatı gider, taban fiyat gitmez
 const tptCode = (c) => (c.portalCode ? norm(c.portalCode) : null); // formülle türetilen yedek kod kaldırıldı (tahmin edilebilirdi)
+// Risk sunucuda da panelle aynı: bakiye + açık sipariş + tahsil olmamış çek; vadesi geçen borç varsa sipariş onaya düşer
+const tptOrderTotal = (o) => (o.lines || []).reduce((t, l) => t + l.qty * l.price * (1 - (l.disc || 0) / 100) * (1 + (l.vat ?? 10) / 100), 0);
+const tptLedger = (x, c) => {
+  const ords = x.col('orders').filter((o) => o.customer === c.id); const pays = x.col('payments').filter((p) => p.customer === c.id && p.cheque !== 'karsiliksiz'); const rets = x.col('returns').filter((r) => r.customer === c.id);
+  const open = ords.filter((o) => ['yeni', 'hazir', 'onay'].includes(o.status)).reduce((t, o) => t + tptOrderTotal(o), 0);
+  const chq = pays.filter((p) => p.cheque === 'portfoy' || (p.cheque === 'bankada' && p.due >= x.today)).reduce((t, p) => t + p.amount, 0);
+  let paid = Math.max(0, pays.reduce((t, p) => t + p.amount, 0) + rets.reduce((t, r) => t + r.total, 0) - Math.max(0, Number(c.opening) || 0)); let od = 0;
+  ords.filter((o) => ['sevk', 'teslim'].includes(o.status)).sort((a, b) => String(a.at).localeCompare(String(b.at))).forEach((o) => { const v = tptOrderTotal(o); const use = Math.min(paid, v); paid -= use; if (v - use > 0.01 && Date.parse(o.at) + (Number(c.term) || 30) * 864e5 < Date.now()) od += v - use; });
+  return { open, chq, overdue: od };
+};
+const tptReserved = (x, pid) => x.col('orders').filter((o) => ['yeni', 'hazir', 'onay'].includes(o.status)).reduce((t, o) => t + (o.lines || []).filter((l) => l.pid === pid).reduce((a, l) => a + l.qty, 0), 0);
 RULES.toptan = {
   pub: {},
   login: (x, q) => { const code = norm(q.code); const c = code && x.col('customers').find((c) => samePhone(c.phone, q.phone) && tptCode(c) === code); return c ? { k: 'c', i: c.id } : null; },
@@ -595,17 +607,18 @@ RULES.toptan = {
   view: (x) => {
     const c = x.get('customers', me(x, 'c')); if (!c) return {};
     const rep = x.get('reps', c.rep);
-    return { customers: [strip(c, ['note', 'risk', 'internal'])], products: x.col('products').filter((p) => p.active !== false).map((p) => strip(p, ['cost', 'supplier', 'buyPrice'])), reps: rep ? [x.pick(rep, ['id', 'name', 'phone'])] : [], orders: x.col('orders').filter((o) => o.customer === c.id), payments: x.col('payments').filter((p) => p.customer === c.id) };
+    return { customers: [strip(c, ['note', 'risk', 'internal'])], products: x.col('products').filter((p) => p.active !== false).map((p) => ({ ...strip(p, ['cost', 'supplier', 'buyPrice', 'price']), listPrice: tptPrice(p, c) })), reps: rep ? [x.pick(rep, ['id', 'name', 'phone'])] : [], orders: x.col('orders').filter((o) => o.customer === c.id), payments: x.col('payments').filter((p) => p.customer === c.id), returns: x.col('returns').filter((r) => r.customer === c.id) };
   },
   write: {
     orders: {
       ins: I({ lines: 'json:30000' }, (r, x) => { const c = x.get('customers', me(x, 'c')) || {}; return { customer: c.id, rep: c.rep, src: 'b2b', at: nowIso(), note: 'Bayi portalından' }; }, (r, x) => {
         const c = x.get('customers', me(x, 'c')); if (!c) deny();
         if (!Array.isArray(r.lines) || !r.lines.length || r.lines.length > 200) bad('Sipariş boş');
-        r.lines = r.lines.map((l) => { const p = x.get('products', l && l.pid); const q = Number(l && l.qty); if (!p || !Number.isInteger(q) || q < 1 || q > 1e6) bad('Geçersiz ürün'); return { pid: p.id, name: p.name, qty: q, price: Math.round(p.price * (1 + (TPT_LIST[c.list || 'C'] || 0) / 100) * 100) / 100, vat: p.vat, disc: 0 }; });
-        const total = r.lines.reduce((t, l) => t + l.qty * l.price * (1 + (l.vat ?? 10) / 100), 0);
-        r.status = (Number(c.balance) || 0) + total > (Number(c.limit) || 0) ? 'onay' : 'yeni';
-        r.no = 'S' + (7000 + x.col('orders').length);
+        r.lines = r.lines.map((l) => { const p = x.get('products', l && l.pid); const q = Number(l && l.qty); if (!p || !Number.isInteger(q) || q < 1 || q > 1e6) bad('Geçersiz ürün'); return { pid: p.id, name: p.name, qty: q, price: tptPrice(p, c), vat: p.vat, disc: 0 }; });
+        r.lines.forEach((l) => { const p = x.get('products', l.pid); if (Number.isFinite(p.stock) && l.qty > p.stock - tptReserved(x, p.id)) bad(`${p.name} için yeterli stok yok`); });
+        const total = tptOrderTotal(r); const min = Number((x.doc._settings || {}).minOrder) || 0; if (total < min) bad(`En az sipariş tutarı ${min} TL`);
+        const L = tptLedger(x, c); r.status = (Number(c.balance) || 0) + L.open + L.chq + total > (Number(c.limit) || 0) || L.overdue > 0 ? 'onay' : 'yeni';
+        r.no = 'S' + (x.col('orders').reduce((m, o) => Math.max(m, Number(String(o.no).slice(1)) || 0), 6999) + 1);
       }),
     },
   },

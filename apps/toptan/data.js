@@ -5,7 +5,22 @@ window.TPT = {
   LISTS: { A: ['A — Zincir / büyük market', 0], B: ['B — Market', 4], C: ['C — Bakkal / büfe', 8] },
   DAYS: ['Pazar', 'Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi'],
   // Fiyat listesi farkı: A taban fiyat, B %4, C %8 üstü
-  price: (p, list) => Math.round(p.price * (1 + (TPT.LISTS[list || 'C'][1]) / 100) * 100) / 100,
+  price: (p, list) => Math.round(p.price * (1 + (TPT.listOf(list)[1]) / 100) * 100) / 100,
+  listOf: (list) => TPT.LISTS[list] || TPT.LISTS.C,
+  OPEN: ['yeni', 'hazir', 'onay'],
+  RET: ['Hasarlı ürün', 'Son kullanma tarihi', 'Yanlış ürün', 'Müşteri vazgeçti', 'Diğer'],
+  nextNo: (orders) => 'S' + (orders.reduce((m, o) => Math.max(m, Number(String(o.no).slice(1)) || 0), 6999) + 1),
+  // Cari özeti: sevk/teslim borçları, ödenenler, açık sipariş, tahsil olmamış çek, stok ayrımı. Karşılıksız çek ödeme sayılmaz, iade ödeme gibi düşer.
+  ledger(orders, payments, returns) {
+    const L = { ord: {}, paid: {}, open: {}, chq: {}, res: {} }; const t = new Date().toISOString().slice(0, 10); const add = (m, k, v) => { m[k] = (m[k] || 0) + v; };
+    orders.forEach((o) => { if (['sevk', 'teslim'].includes(o.status)) (L.ord[o.customer] = L.ord[o.customer] || []).push({ at: o.at, v: TPT.orderTotal(o).total }); else if (TPT.OPEN.includes(o.status)) { add(L.open, o.customer, TPT.orderTotal(o).total); o.lines.forEach((l) => add(L.res, l.pid, l.qty)); } });
+    payments.forEach((x) => { if (x.cheque === 'karsiliksiz') return; add(L.paid, x.customer, x.amount); if (x.cheque === 'portfoy' || (x.cheque === 'bankada' && x.due >= t)) add(L.chq, x.customer, x.amount); });
+    (returns || []).forEach((r) => add(L.paid, r.customer, r.total)); Object.values(L.ord).forEach((a) => a.sort((x, y) => x.at.localeCompare(y.at))); return L;
+  },
+  // Risk: bakiye + açık siparişler + henüz paraya dönmemiş çekler
+  exposure: (c, L, extra = 0) => (c.balance || 0) + (L.open[c.id] || 0) + (L.chq[c.id] || 0) + extra,
+  overdue(c, L) { let paid = Math.max(0, (L.paid[c.id] || 0) - Math.max(0, c.opening || 0)); let od = 0; const now = new Date(); (L.ord[c.id] || []).forEach((o) => { const use = Math.min(paid, o.v); paid -= use; if (o.v - use > 0.01 && NS.addDays(new Date(o.at), c.term || 30) < now) od += o.v - use; }); return Math.round(od * 100) / 100; },
+  avail: (p, L) => (p.stock || 0) - (L.res[p.id] || 0),
   orderTotal: (o) => { const net = o.lines.reduce((s, l) => s + l.qty * l.price * (1 - (l.disc || 0) / 100), 0); const vat = o.lines.reduce((s, l) => s + l.qty * l.price * (1 - (l.disc || 0) / 100) * (l.vat ?? 10) / 100, 0); return { net: Math.round(net * 100) / 100, vat: Math.round(vat * 100) / 100, total: Math.round((net + vat) * 100) / 100 }; },
   // Portal giriş kodu: işletme 'portal bilgisini gönder' dediğinde rastgele kod üretilir (NS.portalCode); yoksa eski formül
   code: (c) => c.portalCode || '' /* yalnızca rastgele kod (NS.portalCode); formül kaldırıldı */,
@@ -41,6 +56,6 @@ window.TPT = {
       c.balance = Math.round(c.balance * 100) / 100;
     });
     db.data.orders = orders; db.data.payments = payments;
-    db.data.visits = [];
+    db.data.visits = []; db.data.returns = [];
   },
 };
