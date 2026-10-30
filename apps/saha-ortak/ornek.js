@@ -11,7 +11,7 @@ window.SAHA_ORNEK = {
     const ilce = ['Kadıköy', 'Ataşehir', 'Üsküdar', 'Maltepe', 'Kartal', 'Beşiktaş', 'Şişli', 'Bakırköy'];
     db.data.customers = NS.NAMES.slice(0, 22).map((n, i) => ({ id: 'c' + i, name: i % 5 === 4 ? `${n.split(' ')[1] || n} Apartmanı` : n, phone: NS.phone(), email: '', kind: i % 5 === 4 ? 'Kurumsal' : 'Bireysel', taxNo: '', address: `${ilce[i % ilce.length]} ${10 + i}. Sokak No:${i + 1}` }));
     db.data.jobs = []; db.data.contracts = []; db.data.invoices = []; db.data.sms = [];
-    const bu = new Date().toISOString().slice(0, 10);
+    const bu = NS.today(); // UTC değil: gece yarısından sonra bugünkü işler dün sayılmasın
     return { bu, H, NS, ek: (n) => H.ekle(bu, n), is: (r) => { const sira = db.data.jobs.length; const c = db.data.customers[r.c !== undefined ? r.c : sira % db.data.customers.length]; const at = `${r.date || bu}T08:00:00.000Z`; const st = r.status || 'planli'; delete r.c; const j = { id: 'j' + sira, no: db.nextNo('jobs', o.on || 'IS'), code: H.kod(), customer: c.id, addr: c.address, duration: 120, team: 't' + (sira % o.ekipler.length), lines: [], payments: [], checks: [], date: bu, created: at, status: st, log: [{ at, status: st, note: 'Kayıt açıldı' }], ...r }; db.data.jobs.push(j); return j; } };
   },
 };

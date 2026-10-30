@@ -36,10 +36,15 @@
 
   // ---------- Tutar ----------
   const satir = (l) => r2(num(l.price) * num(l.qty || 1));
-  const toplam = (j) => r2((j.lines || []).reduce((t, l) => t + satir(l), 0));
+  // Müşteri bir teklifi onayladıysa yalnız onaylı kalemler borç sayılır: bekleyen ek kalem onaylanana kadar toplama, tahsilata ve belgeye girmez.
+  const gecerli = (j) => (j.lines || []).filter((l) => !num(j.accepted) || l.ok);
+  const toplam = (j) => r2(gecerli(j).reduce((t, l) => t + satir(l), 0));
+  const hepsi = (j) => r2((j.lines || []).reduce((t, l) => t + satir(l), 0));
   const onayli = (j) => r2((j.lines || []).filter((l) => l.ok).reduce((t, l) => t + satir(l), 0));
   const onaysiz = (j) => (j.lines || []).filter((l) => !l.ok);
   const odenen = (j) => r2((j.payments || []).reduce((t, p) => t + (p.kind === 'iade' ? -num(p.amount) : num(p.amount)), 0));
+  // İşin tutarı müşteriye KDV dahil söylenir; e-Belge satırı KDV hariç fiyat ister. Dört hane: satır toplamı kuruşa yuvarlanınca söylenen tutarla aynı kalır.
+  const kdvsiz = (fiyat, oran) => Math.round((num(fiyat) / (1 + num(oran) / 100)) * 10000) / 10000;
   const kalan = (j) => r2(toplam(j) - odenen(j));
   const kapora = (j) => (j.payments || []).filter((p) => p.kind === 'kapora').reduce((t, p) => t + num(p.amount), 0);
   const iade = (j) => (j.payments || []).filter((p) => p.kind === 'iade').reduce((t, p) => t + num(p.amount), 0);
@@ -52,12 +57,14 @@
     const at = an || new Date().toISOString(); const lines = karar === 'onay' ? (j.lines || []).map((l) => ({ ...l, ok: true })) : (j.lines || []).filter((l) => l.ok);
     const offer = { ...j.offer, status: karar, answeredAt: at, by: kim, note: String(not || '').slice(0, 300) }; const accepted = r2(lines.reduce((t, l) => t + satir(l), 0));
     const p = { lines, offer, accepted, log: [...(j.log || []), { at, status: j.status, note: `${karar === 'onay' ? 'Teklif onaylandı' : 'Teklif reddedildi'} · ${r2(j.offer.total)} ₺${not ? ' · ' + String(not).slice(0, 200) : ''}`, user: kim }] };
-    if (j.status === 'teklif') p.status = karar === 'onay' ? 'onay' : 'red';
+    if (['teklif', 'kesif'].includes(j.status)) p.status = karar === 'onay' ? 'onay' : 'red'; // keşifte açılmış eski teklif kayıtları da ilerler
     return p;
   }
   function teklifAc(j, kim, an) { const l = onaysiz(j); if (!l.length) return null; const at = an || new Date().toISOString(); const total = r2(l.reduce((t, x) => t + satir(x), 0)); return { offer: { status: 'bekliyor', total, at, ek: (j.lines || []).some((x) => x.ok), by: kim }, log: [...(j.log || []), { at, status: j.status, note: `Teklif hazırlandı: ${total} ₺`, user: kim }] }; }
 
   // ---------- Dönem faturası ----------
+  // Sözleşme bu dönemde yürürlükte mi: başlamadan önceki ve bittikten sonraki aya kayıt açılmaz
+  const donemKapsar = (c, donem) => (!c.start || String(c.start).slice(0, 7) <= donem) && (!c.end || String(c.end).slice(0, 7) >= donem);
   // Dönem: 'YYYY-AA'. Sabit ücrette aylık bedel, ziyaret başında tamamlanan ziyaret sayılır. Gelinmeyen ziyaret her zaman görünür; missedCut açıksa sabit ücretten oransal düşülür.
   // Yalnız aylık planlanmış ziyaretler sayılır; ek kalemler (j.lines) her iki modelde ayrı satır olur. KDV hariç birim fiyat, oran sözleşmeden.
   function donemFatura(c, isler, donem) {
@@ -66,7 +73,7 @@
     if (c.billing !== 'ziyaret' && c.missedCut && gelinmeyen.length && planli > 0) dusum = r2((num(c.fee) * gelinmeyen.length) / planli);
     // Düşüm ayrı eksi satır olmaz: e-Belge eksi satır ve belge geneli indirim almaz, tutar ücret satırına işlenir
     if (c.billing === 'ziyaret') { if (yapilan.length) lines.push({ name: `${ad} (${yapilan.length} ziyaret)`, qty: yapilan.length, price: num(c.visitFee) }); } else if (num(c.fee) - dusum > 0) lines.push({ name: `${ad} (${donem})${dusum ? ` · ${gelinmeyen.length} gelinmeyen ziyaret düşüldü` : ''}`, qty: 1, price: r2(num(c.fee) - dusum) });
-    yapilan.forEach((j) => (j.lines || []).forEach((l) => lines.push({ name: `${l.name} (${j.no})`, qty: num(l.qty || 1), price: num(l.price) })));
+    yapilan.forEach((j) => gecerli(j).forEach((l) => lines.push({ name: `${l.name} (${j.no})`, qty: num(l.qty || 1), price: num(l.price) })));
     const net = r2(lines.reduce((t, l) => t + satir(l), 0)); const oran = num(c.vat); const vat = r2((net * oran) / 100);
     return { period: donem, lines, net, vatRate: oran, vat, total: r2(net + vat), done: yapilan.length, missed: gelinmeyen.length, planned: planli, dusum };
   }
@@ -82,11 +89,12 @@
   }
 
   // ---------- Nakliyat teklifi ----------
+  const sayi = (n) => String(n).replace('.', ','); // kullanıcıya görünen ondalık Türkçe virgülle yazılır
   const hacim = (eslar) => r2((eslar || []).reduce((t, e) => t + num(e.m3) * num(e.qty || 1), 0));
   // Asansörsüz katta kat ücreti yazılır, asansör varsa veya zemin katta yazılmaz. Birim ücretler işletme ayarıdır.
   function nakliyatTeklif(i, a) {
     const kat = (n, asansor) => (asansor ? 0 : Math.max(0, num(n))); const v = hacim(i.items); const L = [];
-    if (v) L.push({ name: `Taşıma (${v} m³)`, qty: v, price: num(a.rateM3) }); if (num(i.km)) L.push({ name: `Mesafe (${num(i.km)} km)`, qty: num(i.km), price: num(a.rateKm) });
+    if (v) L.push({ name: `Taşıma (${sayi(v)} m³)`, qty: v, price: num(a.rateM3) }); if (num(i.km)) L.push({ name: `Mesafe (${num(i.km)} km)`, qty: num(i.km), price: num(a.rateKm) });
     const kk = kat(i.floorFrom, i.liftFrom) + kat(i.floorTo, i.liftTo); if (kk) L.push({ name: `Asansörsüz kat (${kk} kat)`, qty: kk, price: num(a.rateFloor) });
     if (i.packing) L.push({ name: 'Paketleme', qty: 1, price: num(a.ratePacking) }); return L.filter((l) => num(l.price));
   }
@@ -97,5 +105,5 @@
   function bakimDurum(c, bugun, esik = 30) { const n = bakimSonraki(c); if (!n) return { next: '', gun: null, durum: 'plansiz' }; const g = gunFarki(n, bugun); return { next: n, gun: g, durum: g < 0 ? 'gecikti' : g <= esik ? 'yaklasti' : 'iyi' }; }
   const kod = (n = 6, rnd = Math.random) => { const A = '23456789ABCDEFGHJKMNPQRSTVWXYZ'; let s = ''; for (let i = 0; i < n; i++) s += A[Math.floor(rnd() * A.length)]; return s; };
 
-  return { r2, num, ekle, ayEkle, haftaBas, haftaGunu, ayBas, gunFarki, FREQ, GUNLER, AYLIK, tarihler, ziyaretId, ziyaretUret, satir, toplam, onayli, onaysiz, odenen, kalan, kapora, iade, faturaOdenen, faturaKalan, teklifCevap, teklifAc, donemFatura, dk, KAPALI, cakisma, hacim, nakliyatTeklif, bakimSonraki, bakimDurum, kod };
+  return { sayi, gecerli, hepsi, kdvsiz, donemKapsar, r2, num, ekle, ayEkle, haftaBas, haftaGunu, ayBas, gunFarki, FREQ, GUNLER, AYLIK, tarihler, ziyaretId, ziyaretUret, satir, toplam, onayli, onaysiz, odenen, kalan, kapora, iade, faturaOdenen, faturaKalan, teklifCevap, teklifAc, donemFatura, dk, KAPALI, cakisma, hacim, nakliyatTeklif, bakimSonraki, bakimDurum, kod };
 }));
