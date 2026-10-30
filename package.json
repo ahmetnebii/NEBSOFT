@@ -10,8 +10,10 @@
     "build:sites": "node site/tools/build-sites.js",
     "build:araclar": "node site/tools/build-araclar.js"
   },
-  "engines": { "node": ">=18" },
+  "engines": {
+    "node": ">=18"
+  },
   "dependencies": {
-    "mysql2": "3.11.5"
+    "mysql2": "3.24.6"
   }
 }
