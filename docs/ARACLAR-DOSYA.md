@@ -76,6 +76,6 @@ Tuzaklar:
 
 Eski alan adı metinleri `DEPLOY.md`, `docs/IDDIA-LISTESI.md`, `docs/pazarlama/ICERIK-TAKVIMI.md` içinde tarihsel kayıt olarak duruyor. `server/cloud/seo.js` içindeki yer tutucu eski derlemeler içindir. E-posta `destek@nebsoft.com.tr` değiştirilmedi; alan adıyla uyumsuz ve gerçekliği doğrulanmadı.
 
-## Bilinen eski sorun
+## Başlık ve açıklama sınırı
 
-Önceki araçlardan 20 tanesinin açıklaması 165, 7 tanesinin başlığı 70 karakter sınırını aşıyor. Bu işte değiştirilmedi, sınır testi yalnız yeni araçlarda çalışıyor. Sonuç sayfasında kesilme dışında zararı yok.
+Eski araçlardaki 20 uzun açıklama ve 7 uzun başlık 31.10.2026 denetiminde kısaltıldı. Sınır testi artık tüm araçlarda çalışır. Rapor: `docs/SEO-DENETIM.md`.

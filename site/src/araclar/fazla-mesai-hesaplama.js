@@ -3,7 +3,7 @@ module.exports = {
   slug: 'fazla-mesai-hesaplama', kategori: 'calisma', sira: 3, mevzuat: true, renk: '#0f766e', guncelleme: GUNCELLEME, kaynaklar: [IS('madde 41', 'fazla çalışma ücreti, 270 saat sınırı'), IS('madde 47', 'genel tatil ücreti'), IS('madde 63', 'haftalık 45 saat')], ilgili: ['satis-primi-hesaplama', 'kidem-tazminati-hesaplama'],
   ad: 'Fazla Mesai Hesaplama', kisa: 'Yüzde 50 ve yüzde 25 zamlı saat ücreti ile genel tatil ücretini hesaplayın',
   baslik: 'Fazla Mesai Hesaplama — Yüzde 50 Zamlı Saat Ücreti, 270 Saat | NEBSOFT',
-  ozet: 'Brüt ücret ve fazla çalışma saatinden mesai ücretini İş Kanunu md. 41’e göre hesaplayın: yüzde 50 ve yüzde 25 zamlı saatler, genel tatil günü ve yıllık 270 saat sınırı uyarısı.',
+  ozet: 'Brüt ücret ve saatten fazla mesai ücretini İş Kanunu md. 41’e göre hesaplayın: yüzde 50 ve 25 zamlı saatler, genel tatil günü, yıllık 270 saat uyarısı.',
   uyari: 'Sonuç brüt tutardır, net ücret için bordrodaki kesintiler gerekir. Toplu sözleşmeniz veya iş sözleşmeniz daha yüksek zam öngörebilir. Hafta tatili çalışması ve vardiya özel durumları bu araçta yoktur.',
   program: { slug: 'personeltakipprogrami', metin: 'Personel programında puantajdaki fazla mesai saatleri bordroya kendiliğinden işlenir, her ay aynı hesabı elle yapmanız gerekmez.' },
   alanlar: [

@@ -2,7 +2,7 @@ const { GUNCELLEME } = require('./_kaynak');
 module.exports = {
   slug: 'qr-menu-olusturucu', kategori: 'kod', sira: 1, qr: true, tek: true, renk: '#c2410c', guncelleme: GUNCELLEME,
   ad: 'QR Menü Oluşturucu', kisa: 'Menünüzü yazın; basılı menü, tek dosyalık web menüsü ve masa kartları alın',
-  baslik: 'Ücretsiz QR Menü Oluşturucu — Masa Kartı ve Web Menüsü Hazırlama | NEBSOFT',
+  baslik: 'Ücretsiz QR Menü Oluşturucu — Masa Kartı ve Web Menüsü | NEBSOFT',
   ozet: 'Kafe ve restoranlar için ücretsiz QR menü: ürünleri ve fiyatları girin, yazdırılabilir menüyü, tek dosyalık web menüsünü ve masa numaralı QR kartlarını hemen alın.',
   sonucBaslik: 'Menü ve masa kartları',
   program: { slug: 'adisyonprogrami', metin: 'Fiyat her değiştiğinde dosya yüklemek istemiyorsanız Adisyon programında QR menü kayıtlı ürünlerden gelir; masadan sipariş, mutfak ekranı ve hesap kapama aynı yerdedir.' },

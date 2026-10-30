@@ -3,7 +3,7 @@ module.exports = {
   slug: 'yillik-izin-hesaplama', kategori: 'calisma', sira: 5, mevzuat: true, renk: '#2563eb', guncelleme: GUNCELLEME, kaynaklar: [IS('madde 53', 'yıllık ücretli izin süreleri')], ilgili: ['kidem-tazminati-hesaplama', 'ihbar-tazminati-hesaplama'],
   ad: 'Yıllık İzin Hesaplama ve İzin Formu', kisa: 'Kıdeme göre izin hakkını bulun, izin talep formunu yazdırın',
   baslik: 'Yıllık İzin Hesaplama — 14, 20, 26 Gün ve İzin Formu | NEBSOFT',
-  ozet: 'İşe giriş tarihinden yıllık izin hakkınızı İş Kanunu md. 53’e göre hesaplayın: 14, 20 veya 26 gün, yaşa bağlı en az 20 gün, kalan izin ve yazdırılabilir yıllık izin talep formu.',
+  ozet: 'İşe giriş tarihinden yıllık izin hakkını İş Kanunu md. 53’e göre hesaplayın: 14, 20 veya 26 gün, yaşa bağlı en az 20 gün, kalan izin ve talep formu.',
   uyari: 'Araç en az kanuni süreleri gösterir; iş sözleşmeniz veya toplu sözleşmeniz daha uzun izin verebilir. Aynı işverende geçen süreler ve kesintiler için kayıtlarınızı kontrol edin.',
   program: { slug: 'personeltakipprogrami', metin: 'Personel programı her çalışanın izin bakiyesini giriş tarihinden hesaplar, izin talebini onaya sunar ve puantaja kendisi işler.' },
   alanlar: [

@@ -8,7 +8,7 @@ module.exports = {
   slug: 'kdv-tevkifat-hesaplama', kategori: 'vergi', sira: 2, mevzuat: true, renk: '#4338ca', guncelleme: GUNCELLEME, kaynaklar: [KOD, TEBLIG, GIB_KDV], ilgili: ['kdv-hesaplama', 'teklif-olusturucu'],
   ad: 'KDV Tevkifat Hesaplama', kisa: 'GİB işlem koduna göre tevkif edilen KDV’yi ve satıcıya ödenecek tutarı bulun',
   baslik: 'KDV Tevkifat Hesaplama — GİB Kod Listesi ve Oranlar | NEBSOFT',
-  ozet: 'İşlem türünü GİB kod listesinden seçin, matrahı girin; toplam KDV’yi, alıcının beyan edeceği tevkifat tutarını ve satıcıya ödenecek net tutarı hemen görün. Elle oran da girebilirsiniz.',
+  ozet: 'İşlem türünü GİB kod listesinden seçin, matrahı girin; toplam KDV’yi, alıcının beyan edeceği tevkifatı ve satıcıya ödenecek net tutarı görün.',
   uyari: 'Tevkifat her işlemde ve her alıcıda uygulanmaz. Alıcınızın tebliğde sayılan gruplardan olup olmadığını, işlemin kapsama girip girmediğini ve tutar sınırlarını güncel tebliğ metninden veya mali müşavirinizden doğrulayın.',
   program: { slug: 'onmuhasebeprogrami', metin: 'Ön Muhasebe programında faturanın satırına tevkifat kodunu seçersiniz; tutar faturaya işlenir ve e-Fatura doğru tipte oluşturulur.' },
   alanlar: [

@@ -3,7 +3,7 @@ module.exports = {
   slug: 'kdv-hesaplama', kategori: 'vergi', sira: 1, mevzuat: true, renk: '#1d4ed8', guncelleme: GUNCELLEME, kaynaklar: [GIB_KDV], ilgili: ['kdv-tevkifat-hesaplama', 'teklif-olusturucu'],
   ad: 'KDV Hesaplama', kisa: 'KDV dahil ve hariç tutarı yüzde 1, 10 ve 20 oranlarıyla ayrıştırın',
   baslik: 'KDV Hesaplama — KDV Dahil ve Hariç Tutar, %1 %10 %20 | NEBSOFT',
-  ozet: 'KDV hariç tutardan toplamı, KDV dahil tutardan matrahı bulun. GİB güncel oranları olan yüzde 1, 10 ve 20 hazır gelir; farklı oran için elle yazabilirsiniz. Sonuç kuruşuna kadar görünür.',
+  ozet: 'KDV hariç tutardan toplamı, KDV dahil tutardan matrahı bulun. Yüzde 1, 10 ve 20 oranları hazır gelir, farklı oranı elle yazabilirsiniz.',
   program: { slug: 'onmuhasebeprogrami', metin: 'Her faturada elle hesaplamak yerine Ön Muhasebe programında e-Fatura kesebilir, KDV dökümünü beyan dönemine göre tek ekranda görebilirsiniz.' },
   alanlar: [
     { ad: 'tutar', etiket: 'Tutar (₺)', tip: 'para', deger: '1000', gerekli: true },

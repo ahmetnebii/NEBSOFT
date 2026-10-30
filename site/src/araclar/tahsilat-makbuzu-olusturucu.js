@@ -3,7 +3,7 @@ module.exports = {
   slug: 'tahsilat-makbuzu-olusturucu', kategori: 'belge', sira: 4, renk: '#0369a1', guncelleme: GUNCELLEME,
   ad: 'Tahsilat Makbuzu Oluşturucu', kisa: 'Cari tahsilat, kapora ve avans için numaralı makbuz hazırlayın',
   baslik: 'Tahsilat Makbuzu Örneği — Ücretsiz Makbuz Hazırlama | NEBSOFT',
-  ozet: 'Müşteriden alınan cari ödeme, kapora veya avans için numaralı tahsilat makbuzu hazırlayın, kalan bakiyeyi de gösterin ve yazdırın. Fatura yerine geçmez, iç kayıt içindir.',
+  ozet: 'Cari ödeme, kapora veya avans için numaralı tahsilat makbuzu hazırlayın, kalan bakiyeyi gösterin ve yazdırın. Fatura yerine geçmez, iç kayıt içindir.',
   sonucBaslik: 'Makbuz',
   uyari: 'Bu belge işletme içi ödeme kaydıdır; fatura, e-Arşiv veya yazar kasa fişi yerine geçmez. Satış belgesi düzenleme yükümlülüğünüzü ayrıca yerine getirin.',
   program: { slug: 'onmuhasebeprogrami', metin: 'Tahsilatı cari hesaba işlemek, ekstre çıkarmak ve açık faturayı kapatmak için Ön Muhasebe programı aynı makbuzu kayıtlı müşteriden üretir.' },

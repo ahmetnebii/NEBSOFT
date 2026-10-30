@@ -1016,7 +1016,7 @@
     fn(fresh, p ? decodeURIComponent(p) : null);
     $$('[data-l]').forEach((a) => a.classList.toggle('active', a.dataset.l === r));
     const pr = r === 'urun' && prod(p);
-    document.title = pr ? `${pr.name} · ${S().siteName}` : `${TITLES[r] ? TITLES[r] + ' · ' : ''}${S().siteName} — İşletme Yazılımları Pazarı`;
+    document.title = pr ? `${pr.name} · ${S().siteName}` : (TITLES[r] ? `${TITLES[r]} · ${S().siteName}` : `${S().siteName} — İşletme Yazılımları | Ücretsiz Hesap Açın`);
     window.scrollTo(0, 0);
   }
   window.addEventListener('hashchange', route);

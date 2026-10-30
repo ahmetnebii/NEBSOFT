@@ -3,7 +3,7 @@ module.exports = {
   slug: 'ihbar-tazminati-hesaplama', kategori: 'calisma', sira: 2, mevzuat: true, renk: '#c2410c', guncelleme: GUNCELLEME, kaynaklar: [IS('madde 17', 'bildirim süreleri'), DAMGA], ilgili: ['kidem-tazminati-hesaplama', 'yillik-izin-hesaplama'],
   ad: 'İhbar Tazminatı Hesaplama', kisa: 'Çalışma süresine göre bildirim süresini ve ihbar tazminatını bulun',
   baslik: 'İhbar Tazminatı Hesaplama — 2, 4, 6, 8 Hafta Bildirim Süresi | NEBSOFT',
-  ozet: 'İş Kanunu md. 17’ye göre çalışma sürenizden bildirim süresini bulun, brüt ücretten ihbar tazminatını hesaplayın. Gelir vergisi diliminizi girerek net tutarı da görün.',
+  ozet: 'İş Kanunu md. 17’ye göre çalışma sürenizden bildirim süresini bulun, brüt ücretten ihbar tazminatını hesaplayın. Gelir vergisi dilimiyle net tutarı görün.',
   uyari: 'Araç, tarafın ihbar süresine uymadığı varsayımıyla tutarı hesaplar; tazminat hakkının doğup doğmadığını değerlendirmez. Sözleşmeniz daha uzun süre öngörüyorsa hesap değişir. Kesin sonuç için avukat veya bordro uzmanına danışın.',
   program: { slug: 'personeltakipprogrami', metin: 'Personel programında çıkış işlemi yaparken ihbar süresi ve tutarı çalışanın kaydından gelir, kıdem ve izin alacağıyla birlikte görünür.' },
   alanlar: [

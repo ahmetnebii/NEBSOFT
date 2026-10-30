@@ -3,7 +3,7 @@ module.exports = {
   slug: 'recete-maliyeti-hesaplama', kategori: 'ticaret', sira: 4, tek: true, renk: '#c2410c', guncelleme: GUNCELLEME, kaynaklar: [GIB_KDV], ilgili: ['kar-marji-hesaplama', 'qr-menu-olusturucu'],
   ad: 'Reçete Maliyeti Hesaplama', kisa: 'Malzeme, fire ve porsiyondan yemek maliyetini ve menü fiyatını çıkarın',
   baslik: 'Reçete Maliyeti Hesaplama — Porsiyon Maliyeti ve Menü Fiyatı | NEBSOFT',
-  ozet: 'Restoran ve kafeler için reçete maliyeti: malzeme miktarı, birim fiyat ve fireyi girin; porsiyon maliyetini, kendi yiyecek maliyeti hedefinize göre menü fiyatını hesaplayın.',
+  ozet: 'Malzeme miktarı, birim fiyat ve fireyi girin; porsiyon maliyetini ve yiyecek maliyeti hedefinize göre menü fiyatını hesaplayın. Restoran ve kafeler için.',
   program: { slug: 'adisyonprogrami', metin: 'Reçeteyi satışa bağlayıp stoktan otomatik düşmek ve ürün başına kârı görmek için Adisyon programındaki reçete ve maliyet raporlarına bakın.' },
   alanlar: [
     { ad: 'kalemler', tip: 'satirlar', etiket: 'Malzemeler', ekle: 'Malzeme ekle', kolon: '2fr 90px 90px 110px 80px', ipucu: 'Fiyatı hangi birimde giriyorsanız miktarı da o birimde yazın. Örneğin kilogram fiyatı için 0,2 kg.', sutunlar: [{ ad: 'ad', etiket: 'Malzeme' }, { ad: 'miktar', etiket: 'Miktar', tip: 'sayi' }, { ad: 'birim', etiket: 'Birim', deger: 'kg' }, { ad: 'fiyat', etiket: 'Birim fiyat', tip: 'para' }, { ad: 'fire', etiket: 'Fire %', tip: 'yuzde' }], satir: [{ ad: 'Tavuk göğsü', miktar: '2', fiyat: '180', fire: '10' }, { ad: 'Pirinç', miktar: '1', fiyat: '75' }, { ad: 'Tereyağı', miktar: '0,2', fiyat: '420' }] },

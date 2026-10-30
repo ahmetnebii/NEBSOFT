@@ -162,7 +162,7 @@ body.mk { background: var(--bg); }
   .mk-only-m a { display: flex; align-items: center; gap: 8px; }
   .mk-only-m .btn.block { justify-content: center; color: #fff; margin-top: 4px; }
 }
-@media (max-width: 520px) { .mk-hide-s { display: none !important; } .mk-login { padding: 0 10px; } }
+@media (max-width: 520px) { .mk-hide-s { display: none !important; } .mk-login { padding: 0 10px; } .mk-nav .mk-wrap { gap: 6px; padding: 0 12px; } .mk-logo { min-width: 0; flex: 0 1 auto; overflow: hidden; } .mk-nav .btn.icon, .mk-burger { flex: none; } }
 
 /* Programlarım (program seçici) */
 .apps-sec { padding-top: 48px; min-height: calc(100vh - 66px); }

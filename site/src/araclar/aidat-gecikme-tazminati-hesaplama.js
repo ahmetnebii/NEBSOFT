@@ -3,7 +3,7 @@ module.exports = {
   slug: 'aidat-gecikme-tazminati-hesaplama', kategori: 'emlak', sira: 2, mevzuat: true, tek: true, renk: '#b91c1c', guncelleme: GUNCELLEME, kaynaklar: [KMK], ilgili: ['aidat-paylasimi-hesaplama', 'tahsilat-makbuzu-olusturucu'],
   ad: 'Aidat Gecikme Tazminatı Hesaplama', kisa: 'Kat Mülkiyeti Kanunu md. 20’ye göre geciken aidatın tazminatını gün gün bulun',
   baslik: 'Aidat Gecikme Tazminatı Hesaplama — KMK md. 20 Aylık Yüzde 5 | NEBSOFT',
-  ozet: 'Ödenmeyen aidat ve ortak gider paylarınızı vade tarihleriyle girin; Kat Mülkiyeti Kanunu md. 20’deki aylık yüzde 5 oranıyla gün bazında gecikme tazminatını ve toplam borcu görün.',
+  ozet: 'Ödenmeyen aidat ve ortak gider paylarını vade tarihleriyle girin; KMK md. 20’deki aylık yüzde 5 oranıyla gün bazında tazminatı ve toplam borcu görün.',
   uyari: 'Hesap bileşik değildir ve bir ayı 30 gün sayar. Yönetim planınızı, kesinleşmiş işletme projenizi ve varsa icra takibindeki hesabı ayrıca kontrol edin; hukuki uyuşmazlıkta avukata danışın.',
   program: { slug: 'siteyonetimprogrami', metin: 'Site Yönetim programı her dairenin borcunu ve gecikme tazminatını kendisi izler, sakin portalından gösterir, tahsilatı kasaya işler.' },
   alanlar: [

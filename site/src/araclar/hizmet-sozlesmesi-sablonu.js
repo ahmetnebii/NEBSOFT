@@ -3,7 +3,7 @@ module.exports = {
   slug: 'hizmet-sozlesmesi-sablonu', kategori: 'belge', sira: 2, renk: '#334155', guncelleme: GUNCELLEME,
   ad: 'Hizmet Sözleşmesi İskeleti', kisa: 'Taraflar, bedel, süre ve fesih maddeleri doldurulmuş sözleşme taslağı çıkarın',
   baslik: 'Hizmet Sözleşmesi Örneği Oluşturucu — Ücretsiz Taslak | NEBSOFT',
-  ozet: 'Taraf, iş tanımı, bedel, ödeme, süre ve fesih bilgilerini girin; gözden geçirmeye hazır hizmet sözleşmesi taslağını yazdırın. Taslak olduğu için imzadan önce hukukçuya gösterin.',
+  ozet: 'Taraf, iş tanımı, bedel, ödeme, süre ve fesih bilgilerini girin; hizmet sözleşmesi taslağını yazdırın. Taslak olduğu için imzadan önce hukukçuya gösterin.',
   sonucBaslik: 'Sözleşme taslağı',
   uyari: 'Bu metin genel bir iskelettir, hukuki danışmanlık değildir. İşinize özgü riskleri kapsamayabilir; imzalamadan önce bir avukata inceletin.',
   program: { slug: 'hukukburosuprogrami', metin: 'Sözleşme, dava ve müvekkil dosyalarını süreleriyle birlikte tutan bürolar için Hukuk Bürosu programı takip ve hatırlatmayı tek yerde toplar.' },

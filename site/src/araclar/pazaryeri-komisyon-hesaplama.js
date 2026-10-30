@@ -2,8 +2,8 @@ const { GUNCELLEME, GIB_KDV } = require('./_kaynak');
 module.exports = {
   slug: 'pazaryeri-komisyon-hesaplama', kategori: 'ticaret', sira: 1, renk: '#7c3aed', guncelleme: GUNCELLEME, kaynaklar: [GIB_KDV], ilgili: ['kargo-desi-hesaplama', 'kar-marji-hesaplama', 'kdv-hesaplama'],
   ad: 'Pazaryeri Komisyon ve Kâr Hesaplama', kisa: 'Komisyon, kargo ve hizmet bedeli sonrası gerçek kârı ve hedef fiyatı görün',
-  baslik: 'Pazaryeri Komisyon Hesaplama — Trendyol, Hepsiburada, n11 Net Kâr | NEBSOFT',
-  ozet: 'Satış fiyatınızı, kendi komisyon oranınızı, kargo ve hizmet bedelinizi girin; KDV sonrası net kârı, marjı ve hedef marj için gereken fiyatı görün. Oranlar sizin panelinizden gelir.',
+  baslik: 'Pazaryeri Komisyon Hesaplama — Satış Başına Net Kâr | NEBSOFT',
+  ozet: 'Satış fiyatını, kendi komisyon oranınızı, kargo ve hizmet bedelini girin; KDV sonrası net kârı, marjı ve hedef marj için fiyatı görün.',
   program: { slug: 'pazaryerikarhesaplama', metin: 'Tek ürün için hesap burada yeterli. Yüzlerce listelemede zarar edenleri bulmak ve fiyatı marjınıza göre korumak için Pazaryeri Kâr Hesaplama programını deneyin.' },
   alanlar: [
     { ad: 'fiyat', etiket: 'Satış fiyatı (KDV dahil)', tip: 'para', deger: '599,90', gerekli: true },

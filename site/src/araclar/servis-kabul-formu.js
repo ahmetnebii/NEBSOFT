@@ -3,7 +3,7 @@ module.exports = {
   slug: 'servis-kabul-formu', kategori: 'belge', sira: 6, renk: '#b45309', guncelleme: GUNCELLEME,
   ad: 'Servis Kabul Formu', kisa: 'Teknik serviste cihaz teslim alırken durumu ve onayı kayda geçirin',
   baslik: 'Teknik Servis Kabul Formu Örneği — Ücretsiz Yazdır | NEBSOFT',
-  ozet: 'Tamire gelen cihaz için servis kabul formu hazırlayın: müşteri, seri no, arıza, aksesuar, fiziksel durum ve tahmini ücret tek sayfada, imzalı ve iki nüsha yazdırılır.',
+  ozet: 'Tamire gelen cihaz için servis kabul formu hazırlayın: müşteri, seri no, arıza, aksesuar, durum ve tahmini ücret tek sayfada, imzalı iki nüsha yazdırılır.',
   sonucBaslik: 'Form önizlemesi',
   program: { slug: 'teknikservisprogrami', metin: 'Teknik Servis programında aynı form müşteriye durum takip linkiyle gider, parça ve işçilik kaydı forma bağlanır, tamir bitince haber verilir.' },
   alanlar: [

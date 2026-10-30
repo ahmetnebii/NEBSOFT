@@ -2,8 +2,8 @@ const { GUNCELLEME, KMK } = require('./_kaynak');
 module.exports = {
   slug: 'aidat-paylasimi-hesaplama', kategori: 'emlak', sira: 3, mevzuat: true, tek: true, renk: '#0369a1', guncelleme: GUNCELLEME, kaynaklar: [KMK], ilgili: ['aidat-gecikme-tazminati-hesaplama', 'kira-artis-hesaplama'],
   ad: 'Aidat Paylaşımı Hesaplama', kisa: 'Ortak giderleri eşit ve arsa payına göre dairelere kuruşu kuruşuna bölün',
-  baslik: 'Aidat Hesaplama — Arsa Payına Göre Gider Paylaşımı, KMK md. 20 | NEBSOFT',
-  ozet: 'Apartman ve site giderlerini KMK md. 20’deki ayrıma göre dağıtın: görevli giderleri eşit, diğer giderler arsa payı oranında. Daire başına yıllık ve aylık aidatı kuruş farkı olmadan görün.',
+  baslik: 'Aidat Hesaplama — Arsa Payına Göre Gider Paylaşımı | NEBSOFT',
+  ozet: 'Apartman ve site giderlerini KMK md. 20’ye göre dağıtın: görevli giderleri eşit, diğerleri arsa payı oranında. Daire başına aylık aidatı kuruş farksız görün.',
   uyari: 'Bu ayrım yönetim planında veya kat malikleri arasında aksi kararlaştırılmamışsa geçerlidir. Önce kendi yönetim planınızı okuyun; plan farklıysa o uygulanır.',
   program: { slug: 'siteyonetimprogrami', metin: 'Bu dağıtımı her dönem elle yapmak yerine Site Yönetim programında işletme projesi hazırlayın; aidatlar dairelere kendiliğinden yansısın, tahsilat izlensin.' },
   alanlar: [
