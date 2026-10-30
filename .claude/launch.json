@@ -53,6 +53,15 @@
         "process.env.PORT='5065';require('./server.js')"
       ],
       "port": 5065
+    },
+    {
+      "name": "profesyonel",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "-e",
+        "process.env.PORT='5066';require('./server.js')"
+      ],
+      "port": 5066
     }
   ]
 }
