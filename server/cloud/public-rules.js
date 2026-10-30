@@ -815,9 +815,15 @@ function evCodeCheck(x, code, e) {
   if (Number(k.maxUses) && (k.uses || 0) + 1 > Number(k.maxUses)) bad('Bu kodun kullanım hakkı doldu');
   return k;
 }
+// Fiyat, program tarafıyla (apps/bilet/data.js unitPrice) aynı: erken kuş basamağı, sonra bilet türü
+const evTypes = (e) => [{ id: 'Tam', pct: 0 }, ...String(e.ttypes || '').split(',').map((v) => v.trim()).filter(Boolean).map((v) => { const [id, p] = v.split(':'); return { id: id.trim(), pct: Math.min(100, Math.max(0, Number(p) || 0)) }; })];
+const evTier = (e, day) => { const t = [[e.tier1Until, e.tier1Pct], [e.tier2Until, e.tier2Pct]].filter(([u, p]) => u && Number(p) > 0 && day <= u).sort((a, b) => a[0].localeCompare(b[0]))[0]; return t ? Math.min(100, Number(t[1])) : 0; };
+const evUnit = (e, cat, ttype, day) => { const ty = evTypes(e).find((t) => t.id === ttype); if (ttype && !ty) bad('Geçersiz bilet türü'); return Math.round(Number(e.prices[cat]) * (1 - evTier(e, day) / 100) * (1 - ((ty || {}).pct || 0) / 100)); };
+// Koltuğun kategorisi salondan gelir: istemcinin söylediği kategoriye güvenilmez (VIP koltuk ucuz kategoriden alınamaz); kapalı ve kontenjanlı koltuk satılmaz
+const evSeatCat = (v, e, seat) => { const m = /^([A-Za-z]+)(\d+)$/.exec(String(seat || '')); const row = m && (v.rows || []).find((r) => r.r === m[1]); const n = m ? Number(m[2]) : 0; if (!row || n < 1 || n > Number(v.seatsPerRow) || (v.closed || []).includes(seat) || (e.blocks || {})[seat]) bad('Bu koltuk satışta değil'); return row.cat; };
 RULES.bilet = {
   pub: {
-    events: { where: (e) => e.status !== 'taslak', omit: ['cost', 'internal'] },
+    events: { where: (e) => e.status !== 'taslak', omit: ['cost', 'internal', 'share', 'orgName'] },
     venues: true,
     tickets: { where: (t) => t.status !== 'refunded', fields: ['id', 'event', 'seat', 'cat', 'status'] }, // doluluk (alıcı bilgisi olmadan)
     holds: { where: (h) => h.until > Date.now() },
@@ -834,6 +840,7 @@ RULES.bilet = {
     holds: {
       ins: I({ event: 'id', seat: 'str:12', owner: 'str:40', until: 'num:0:1e14' }, {}, (r, x) => {
         const e = x.get('events', r.event); if (!e) bad('Etkinlik bulunamadı');
+        const hv = x.get('venues', e.venue); if (hv && hv.type === 'seated') evSeatCat(hv, e, r.seat);
         r.until = Math.min(r.until, Date.now() + 9 * 60000);
         if (x.col('tickets').some((t) => t.event === r.event && t.seat === r.seat && t.status !== 'refunded')) throw Object.assign(new Error('Bu koltuk az önce satıldı'), { status: 409 });
         if (x.col('holds').filter((h) => h.owner === r.owner && h.until > Date.now()).length > 8) bad('En fazla 8 bilet');
@@ -841,12 +848,14 @@ RULES.bilet = {
       del: () => true, // geçici koltuk kilidi; süre dolunca zaten düşer
     },
     tickets: {
-      ins: I({ event: 'id', seat: 'str:12?', cat: 'str:20', buyer: 'json:400' }, () => ({ channel: 'online', pay: 'gise', status: 'reserved', at: nowIso() }), (r, x) => {
+      ins: I({ event: 'id', seat: 'str:12?', cat: 'str:20', ttype: 'str:30?', buyer: 'json:400' }, () => ({ channel: 'online', pay: 'gise', status: 'reserved', at: nowIso() }), (r, x) => {
         const e = x.get('events', r.event); const v = e && x.get('venues', e.venue);
         if (!e || !v || e.status === 'iptal' || e.status === 'taslak' || e.date < x.today) bad('Etkinlik satışta değil');
         // Online satış penceresi: başlangıç–bitiş (boşsa etkinlik saatine kadar)
         const now = Date.now(), st = evStart(e); if (e.salesStart && now < trTime(e.salesStart)) bad('Online satış henüz başlamadı'); if (now > (e.salesEnd ? trTime(e.salesEnd) : st)) bad('Online satış kapandı');
+        if (v.type === 'seated') r.cat = evSeatCat(v, e, r.seat);
         const price = Number((e.prices || {})[r.cat]); if (!(price >= 0) || !(r.cat in (v.cats || {}))) bad('Geçersiz kategori');
+        const unit = evUnit(e, r.cat, r.ttype, x.today);
         r.buyer = clean({ name: 'str:80', phone: 'phone', email: 'email?' }, r.buyer || {});
         const live = x.col('tickets').filter((t) => t.event === e.id && t.status !== 'refunded');
         if (v.type === 'seated') { if (!r.seat || live.some((t) => t.seat === r.seat)) throw Object.assign(new Error('Koltuklardan biri satıldı, lütfen yeniden seçin'), { status: 409 }); }
@@ -856,7 +865,15 @@ RULES.bilet = {
         const k = evCodeCheck(x, x.q.code, e); if (k) k.uses = (k.uses || 0) + 1;
         // Hizmet bedeli ve ödeme son anı sunucuda yazılır (ayar: serviceFee, resHours — en geç etkinlikten 2 saat önce)
         const set = { serviceFee: 15, ...(x.doc._settings || {}) }; const hold = Math.max(now + 15 * 60000, Math.min(now + (Number(set.resHours) || 48) * 3600000, st - 2 * 3600000));
-        Object.assign(r, { code: tixCode(), price, paid: k ? Math.round(price * (1 - k.pct / 100)) : price, discount: k ? k.code : null, order: x._order, fee: Number(set.serviceFee) || 0, holdUntil: hold });
+        Object.assign(r, { code: tixCode(), price: unit, paid: k ? Math.round(unit * (1 - k.pct / 100)) : unit, ttype: r.ttype || 'Tam', discount: k ? k.code : null, order: x._order, fee: Number(set.serviceFee) || 0, holdUntil: hold });
+      }),
+    },
+    // Bekleme listesi: tükenen etkinlik için ad + telefon; liste herkese açık değildir (pub'da yok)
+    waitlist: {
+      ins: I({ event: 'id', cat: 'str:20?', name: 'str:80', phone: 'phone', qty: 'int:1:8' }, () => ({ status: 'bekliyor', at: nowIso() }), (r, x) => {
+        const e = x.get('events', r.event); if (!e || e.status === 'iptal' || e.status === 'taslak' || e.date < x.today) bad('Etkinlik satışta değil');
+        const l = x.col('waitlist').filter((w) => w.event === r.event); if (l.length >= 2000) bad('Bekleme listesi dolu');
+        if (l.some((w) => digits(w.phone) === digits(r.phone) && w.status === 'bekliyor')) bad('Bu telefon zaten bekleme listesinde');
       }),
     },
     codes: 'ignore',
