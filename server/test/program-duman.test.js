@@ -107,7 +107,7 @@ function kvkk(id, ctx, data) {
 
 // ---------- 5. Canlı metin denetimi ----------
 // Bu dosyalar yalnızca tarayıcı içi demo mağazadır veya işletme verisini anlatan sabit metindir
-const TEXT_ALLOW = [[/eticaret[\/]app\.js$/, /c\.reminded === 'sms'/], 
+const TEXT_ALLOW = [[/emlak[\/]app\.js$/, /data-of=/], [/eticaret[\/]app\.js$/, /c\.reminded === 'sms'/], 
   [/apps\/adisyon\/platform\.js/, /Sos eksik gönderildi/], // örnek yorum tohumu
   [/./, /Yanlış ürün gönderildi/], // iade nedeni seçeneği
   [/./, /gönderildikçe/], // açıklama cümlesi, başarı bildirimi değil
