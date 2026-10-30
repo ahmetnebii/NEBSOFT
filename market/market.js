@@ -206,10 +206,10 @@
     const days = (a) => Math.ceil((new Date(a.end) - Date.now()) / 864e5);
     const card = (a, i) => { const p = prod(a.pid); const d = days(a);
       return `<div class="appcard${a.valid ? '' : ' off'}" style="--pc:${p.accent}">
-        <button class="appcard-main" ${a.status === 'talep' ? 'data-wait' : a.valid ? `data-open="${a.pid}"` : `data-buy="${a.pid}"`} aria-label="${esc(p.name)} ${a.valid ? 'aç' : 'süre uzat'}">
+        <button class="appcard-main" ${a.status === 'talep' ? `data-wait="${a.pid}"` : a.valid ? `data-open="${a.pid}"` : `data-buy="${a.pid}"`} aria-label="${esc(p.name)} ${a.valid ? 'aç' : 'süre uzat'}">
           <span class="appcard-ic">${icon(p.icon, 'ico-lg')}</span>
           <span class="appcard-t"><b>${esc(p.name)}</b><span>${esc(p.tagline || '')}</span></span>
-          <span class="appcard-m">${a.status === 'talep' ? badge('Deneme talebi · onay bekliyor', 'warn') : a.valid ? (a.status === 'deneme' ? badge(`Deneme · ${d} gün`, d <= 2 ? 'warn' : 'info') : badge(d <= 14 ? `${d} gün kaldı` : 'Aktif', d <= 14 ? 'warn' : 'ok')) : badge('Süresi doldu', 'err')}
+          <span class="appcard-m">${a.status === 'talep' ? badge('Denemeyi başlatmak için dokunun', 'warn') : a.valid ? (a.status === 'deneme' ? badge(`Deneme · ${d} gün`, d <= 2 ? 'warn' : 'info') : badge(d <= 14 ? `${d} gün kaldı` : 'Aktif', d <= 14 ? 'warn' : 'ok')) : badge('Süresi doldu', 'err')}
             ${last[a.pid] ? `<span class="small faint">Son kullanım ${NS.dt(last[a.pid])}</span>` : ''}</span>
           <span class="appcard-go">${a.status === 'talep' ? `${icon('clock')} Onaylanınca açılır` : a.valid ? `${i < 9 ? `<kbd>${i + 1}</kbd>` : ''} Aç ${icon('right')}` : `${icon('cart')} Satın al`}</span>
         </button>
@@ -228,7 +228,7 @@
     on(el, 'click', '[data-open]', (e, b) => openApp(b.dataset.open));
     on(el, 'click', '[data-buy]', (e, b) => { addCart(b.dataset.buy, 1, 'aylik'); location.hash = '#/sepet'; });
     on(el, 'click', '[data-trial]', (e, b) => startTrial(b.dataset.trial));
-    on(el, 'click', '[data-wait]', () => toast(`Deneme talebiniz inceleniyor. Onaylandığında ${TRIAL()} gün ücretsiz açılır; dilerseniz hemen satın alabilirsiniz.`, 'ok'));
+    on(el, 'click', '[data-wait]', async (e, b) => { try { await NS.api('POST', '/api/trial', { product: b.dataset.wait }); await refreshMe(); toast(`${TRIAL()} günlük denemeniz başladı`, 'ok'); drawNav(); route(); } catch (x) { toast(x.message, 'err'); } });
     on(el, 'click', '[data-def]', (e, b) => { const v = b.dataset.def; lsSet(DKEY, lsGet(DKEY, null) === v ? null : v); toast(lsGet(DKEY, null) ? `${prod(v).name} girişte doğrudan açılacak` : 'Varsayılan program kaldırıldı', 'ok'); appsPage(el); });
   }
   function reveal(root) {
@@ -579,7 +579,7 @@
     const n = products().filter((p) => p.ready).length; const rot = `<span class="ax-rot" data-ax-rotate='${JSON.stringify(ROT)}'>${ROT[0]}</span>`;
     const h = kind === 'kayit' ? `Ücretsiz hesap açın,<br>${rot} dakikalar içinde hazır.` : kind === 'sifre' ? 'Endişelenmeyin,<br>hesabınız güvende.' : `${rot}<br>tek girişte.`;
     return `<section class="ax-story"><span class="ax-chip"><b>v3</b> ${n} sektörel program · web, masaüstü ve mobil</span><h1>${h}</h1>
-      <p>${kind === 'kayit' ? `Hesabınız süresiz ve ücretsizdir. Seçtiğiniz program için deneme talebiniz onaylandığında ${TRIAL()} gün ücretsiz kullanırsınız; kredi kartı istemiyoruz.` : 'Giriş yapın; tek programınız varsa doğrudan açılır, birden fazlaysa seçmeniz yeter.'}</p>
+      <p>${kind === 'kayit' ? `Hesabınız süresiz ve ücretsizdir. Seçtiğiniz programın ${TRIAL()} günlük denemesi hemen başlar; kredi kartı istemiyoruz.` : 'Giriş yapın; tek programınız varsa doğrudan açılır, birden fazlaysa seçmeniz yeter.'}</p>
       <div class="ax-stack" data-ax-tilt>
         <div class="ax-tile t1"><div class="row1"><span class="i" style="--c:#34d399">${icon('trend')}</span><div><small>Bugünkü ciro</small><div class="num">₺48.320</div></div><span class="badge ok" style="margin-left:auto">+%12</span></div>${spark([6, 9, 7, 13, 12, 17, 15, 21, 19, 26])}</div>
         <div class="ax-tile t2"><span class="i" style="--c:#f87171">${icon('bell')}</span><div><b>Masa 7 garson çağırıyor</b><small>Adisyon · şimdi</small></div></div>
@@ -658,7 +658,7 @@
     const draw = () => {
       const v = st.v;
       const card = st.step === 1
-        ? `${axTabs(true)}<div class="ax-steps"><i class="on"></i><i></i></div><h2>İşletmenizi tanıyalım</h2><p class="ax-sub">Hesabınız süresiz ve ücretsizdir. Seçtiğiniz program için ${TRIAL()} günlük deneme talebi oluşturulur; onaylandığında e-postayla haber veririz.</p>
+        ? `${axTabs(true)}<div class="ax-steps"><i class="on"></i><i></i></div><h2>İşletmenizi tanıyalım</h2><p class="ax-sub">Hesabınız süresiz ve ücretsizdir. Seçtiğiniz programın ${TRIAL()} günlük denemesi hemen başlar; kredi kartı istemiyoruz.</p>
           <form class="ax-form" id="af" novalidate><div class="ax-err" hidden></div>${A.field('company', 'İşletme adı', { value: v.company || '', ac: 'organization', extra: 'autofocus' })}${A.select('sector', 'Sektör', ['', ...secs].map((x) => ({ value: x, label: x || 'Seçin (isteğe bağlı)' })), v.sector || '')}
             <div><div class="ax-row" style="margin-bottom:8px"><span>Hangi programı denemek istersiniz? (deneme talebi)</span></div><div class="ax-pick">${ps.map((p) => `<button type="button" data-pp="${p.id}" class="${v.product === p.id ? 'on' : ''}" style="--pc:${p.accent}">${icon(p.icon)} ${esc(p.name)}</button>`).join('')}</div></div>
             ${A.button('go', 'Devam et')}</form>`
@@ -689,8 +689,8 @@
       let ref = null; try { ref = sessionStorage.getItem('nebsoft:ref'); } catch (x) { /* yok */ }
       try {
         const r = await NS.api('POST', '/api/auth/register', { ...v, kvkk: true, ref });
-        if (r.needCode) { A.busy(b, false); let ticket = r.ticket; return codeStep(el, { title: 'E-postanızı doğrulayın', to: r.to, btn: 'Hesabımı oluştur', onSubmit: async (code) => { await NS.api('POST', '/api/auth/register', { ...v, kvkk: true, ref, ticket, code }); await refreshMe(); drawNav(); toast('Hesabınız oluşturuldu. Deneme talebiniz alındı; onaylandığında e-postayla haber vereceğiz.', 'ok'); setTimeout(() => { location.hash = '#/programlarim'; }, 500); }, onResend: async () => { ticket = (await NS.api('POST', '/api/auth/register', { ...v, kvkk: true, ref })).ticket; } }); }
-        await refreshMe(); await A.done(b); drawNav(); toast('Hesabınız oluşturuldu. Deneme talebiniz alındı; onaylandığında e-postayla haber vereceğiz.', 'ok'); location.hash = '#/programlarim';
+        if (r.needCode) { A.busy(b, false); let ticket = r.ticket; return codeStep(el, { title: 'E-postanızı doğrulayın', to: r.to, btn: 'Hesabımı oluştur', onSubmit: async (code) => { await NS.api('POST', '/api/auth/register', { ...v, kvkk: true, ref, ticket, code }); await refreshMe(); drawNav(); toast(`Hesabınız oluşturuldu. ${TRIAL()} günlük denemeniz başladı.`, 'ok'); setTimeout(() => { location.hash = '#/programlarim'; }, 500); }, onResend: async () => { ticket = (await NS.api('POST', '/api/auth/register', { ...v, kvkk: true, ref })).ticket; } }); }
+        await refreshMe(); await A.done(b); drawNav(); toast(`Hesabınız oluşturuldu. ${TRIAL()} günlük denemeniz başladı.`, 'ok'); location.hash = '#/programlarim';
       }
       catch (x) { A.busy(b, false); A.err(el, x.message); }
     }
@@ -868,7 +868,7 @@
   const TRIAL = () => (CL && CL.trialDays) || 7;
   const appUrl = (pid) => `apps/${pid}/index.html`;
   const OST = { 'odeme-bekliyor': ['Ödeme bekleniyor', 'warn'], odendi: ['Ödendi', 'ok'], iptal: ['İptal', ''] };
-  const LST2 = { talep: ['Onay bekliyor', 'warn'], deneme: ['Deneme', 'info'], aktif: ['Aktif', 'ok'], askida: ['Askıda', 'err'], iptal: ['İptal', ''] };
+  const LST2 = { talep: ['Başlatılmadı', 'warn'], deneme: ['Deneme', 'info'], aktif: ['Aktif', 'ok'], askida: ['Askıda', 'err'], iptal: ['İptal', ''] };
   let SRV_MODE = ''; // setup: veritabanı kurulmadı · offline: bağlanılamıyor · cloud: hazır
   async function refreshMe() { try { const r = await NS.api('GET', '/api/auth/me'); SRV_MODE = r.mode || ''; if (r.mode === 'cloud') CL = r; } catch (e) { /* çevrimdışı */ } drawNav(); }
   try { const ref = new URLSearchParams(location.search).get('ref'); if (ref) sessionStorage.setItem('nebsoft:ref', ref.slice(0, 16)); } catch (e) { /* yok */ }
@@ -880,7 +880,7 @@
   async function startTrial(pid) {
     if (!CL) { window.open(`apps/${pid}/index.html?demo=1`, '_blank'); return; }
     if (!CL.user) { location.hash = '#/kayit/' + pid; return; }
-    try { const r = await NS.api('POST', '/api/trial', { product: pid }); await refreshMe(); if (r.pending) { toast(`${prod(pid) ? prod(pid).name : 'Program'} için deneme talebiniz alındı. Onaylandığında ${TRIAL()} gün ücretsiz kullanabilirsiniz; e-postayla haber vereceğiz.`, 'ok'); location.hash = '#/programlarim'; return; } toast(r.existing ? 'Bu ürün hesabınızda zaten tanımlı' : 'Program hazır', 'ok'); location.href = appUrl(pid); } catch (e) { toast(e.message, 'err'); }
+    try { const r = await NS.api('POST', '/api/trial', { product: pid }); await refreshMe(); toast(r.existing ? 'Bu ürün hesabınızda zaten tanımlı' : 'Program hazır', 'ok'); location.href = appUrl(pid); } catch (e) { toast(e.message, 'err'); }
   }
   function authPage(el, mode, pid) {
     if (CL && CL.user) { if (pid) startTrial(pid); else location.hash = '#/programlarim'; return; }

@@ -105,9 +105,10 @@ setInterval(() => licenseReminders().catch(() => {}), 6 * 3600e3).unref();
 setTimeout(() => licenseReminders().catch(() => {}), 60e3).unref();
 
 // Yeni deneme talebi → yöneticiye e-posta (e-posta ayarındaki ana adres)
+const trialLen = (s) => Math.min(90, Math.max(1, Number(s.trialDays) || 7));
 async function notifyTrialRequest(biz, u, pid) {
   try { const m = await mail.settings(); const s = await site(); if (!m.user) return;
-    mailTo(m.replyTo || m.user, `Yeni deneme talebi: ${biz || u.name} · ${pnameOf(pid)}`, { title: 'Yeni deneme talebi', intro: `${biz || u.name} ${pnameOf(pid)} için ${s.trialDays} günlük deneme istiyor.`, blocks: [{ type: 'kv', rows: [['İşletme', biz || '-'], ['Yetkili', u.name || '-'], ['E-posta', u.email || '-'], ['Telefon', u.phone || '-'], ['Program', pnameOf(pid)]] }, { type: 'button', label: 'Talebi onayla', url: `${s.siteUrl || ''}/admin/#/denemeler` }] });
+    mailTo(m.replyTo || m.user, `Yeni deneme başladı: ${biz || u.name} · ${pnameOf(pid)}`, { title: 'Yeni deneme başladı', intro: `${biz || u.name} ${pnameOf(pid)} için ${trialLen(s)} günlük denemeye başladı.`, blocks: [{ type: 'kv', rows: [['İşletme', biz || '-'], ['Yetkili', u.name || '-'], ['E-posta', u.email || '-'], ['Telefon', u.phone || '-'], ['Program', pnameOf(pid)]] }, { type: 'button', label: 'Talebi onayla', url: `${s.siteUrl || ''}/admin/#/denemeler` }] });
   } catch (e) { /* yok */ }
 }
 
@@ -190,13 +191,13 @@ route('POST', '/api/auth/register', { auth: 'none', limit: ['reg', 5, 3600e3] },
   await db.tx(async (t) => {
     await t.q('INSERT INTO tenants (id, name, slug, phone, sector, ref_code, referred_by, webhook_token, created) VALUES (?,?,?,?,?,?,?,?,?)', [tid, sec.clean(b.company, 160), slug, u.phone, sec.clean(b.sector, 60), crypto.randomBytes(4).toString('hex').toUpperCase(), ref ? ref.id : null, crypto.randomBytes(16).toString('hex'), now()]);
     await t.q('INSERT INTO users (id, email, pass, name, phone, role, tenant_id, kvkk_at, created) VALUES (?,?,?,?,?,?,?,?,?)', [u.id, email, pass, u.name, u.phone, 'customer', tid, now(), now()]);
-    // Hesap ücretsiz açılır ama lisanssızdır; seçilen program için deneme talebi oluşur, yönetici onaylayınca 7 gün aktif olur
-    if (b.product && cat.product(b.product) && b.product !== 'bundle') await t.q('INSERT INTO licenses (id, tenant_id, product, plan, period, status, start, end, lic_key) VALUES (?,?,?,?,?,?,?,?,?)', [uid(), tid, b.product, 1, 'aylik', 'talep', now(), now(), licKey(b.product)]);
+    // Hesap ücretsiz açılır; seçilen programın deneme lisansı hemen başlar (yönetici onayı yok)
+    if (b.product && cat.product(b.product) && b.product !== 'bundle') await t.q('INSERT INTO licenses (id, tenant_id, product, plan, period, status, start, end, lic_key) VALUES (?,?,?,?,?,?,?,?,?)', [uid(), tid, b.product, 1, 'aylik', 'deneme', now(), addDays(now(), trialLen(s)), licKey(b.product)]);
   });
   await auth.createSession(c.req, c.res, u, true);
   await audit({ ...c, user: u }, 'Kayıt', `${u.email} · ${b.company}${ref ? ' · davet' : ''}`, tid);
   if (b.product && cat.product(b.product)) notifyTrialRequest(sec.clean(b.company, 160), u, b.product);
-  mailTo(email, `${s.siteName} hesabınız hazır`, { title: 'Hoş geldiniz! Hesabınız hazır', intro: `Merhaba ${u.name.split(' ')[0]}, ${sec.clean(b.company, 160)} için hesabınız oluşturuldu.`, blocks: [...(b.product && cat.product(b.product) ? [{ type: 'kv', rows: [['Program', pnameOf(b.product)], ['Deneme talebi', `Alındı — onaylanınca ${s.trialDays} gün ücretsiz`], ['Hesap', 'Süresiz ve ücretsiz']] }] : []), { type: 'list', items: ['Ürün ve müşterilerinizi Excel ile aktarın', 'Ekibinizi davet edin, her birine yetki verin', 'Telefonunuza uygulama olarak ekleyin'] }, { type: 'button', label: 'Programımı aç', url: `${s.siteUrl || ''}/#/programlarim` }, { type: 'p', text: 'Kurulum ve veri aktarımında ücretsiz destek veriyoruz; bu e-postayı yanıtlamanız yeterli.' }] });
+  mailTo(email, `${s.siteName} hesabınız hazır`, { title: 'Hoş geldiniz! Hesabınız hazır', intro: `Merhaba ${u.name.split(' ')[0]}, ${sec.clean(b.company, 160)} için hesabınız oluşturuldu.`, blocks: [...(b.product && cat.product(b.product) ? [{ type: 'kv', rows: [['Program', pnameOf(b.product)], ['Deneme', `${trialLen(s)} gün ücretsiz, hemen başladı`], ['Hesap', 'Süresiz ve ücretsiz']] }] : []), { type: 'list', items: ['Ürün ve müşterilerinizi Excel ile aktarın', 'Ekibinizi davet edin, her birine yetki verin', 'Telefonunuza uygulama olarak ekleyin'] }, { type: 'button', label: 'Programımı aç', url: `${s.siteUrl || ''}/#/programlarim` }, { type: 'p', text: 'Kurulum ve veri aktarımında ücretsiz destek veriyoruz; bu e-postayı yanıtlamanız yeterli.' }] });
   return { ok: true };
 });
 route('POST', '/api/auth/login', { auth: 'none', limit: ['login', 10, 600e3] }, async (c) => {
@@ -391,14 +392,15 @@ route('POST', '/api/trial', { auth: 'user', limit: ['trial', 20, 3600e3] }, asyn
   const pid = String(c.body.product || ''); if (!cat.product(pid) || pid === 'bundle') throw err(400, 'Geçersiz ürün');
   if (!c.user.tenant_id) throw err(400, 'Yönetici hesabıyla deneme başlatılamaz');
   const ex = await db.one('SELECT * FROM licenses WHERE tenant_id=? AND product=?', [c.user.tenant_id, pid]);
-  if (ex) return { ok: true, license: ex, existing: true, pending: ex.status === 'talep' };
   const s = await site();
-  // Deneme talebi: yönetici panelinden onaylanınca 7 gün aktifleşir
-  await db.q('INSERT INTO licenses (id, tenant_id, product, plan, period, status, start, end, lic_key) VALUES (?,?,?,?,?,?,?,?,?)', [uid(), c.user.tenant_id, pid, 1, 'aylik', 'talep', now(), now(), licKey(pid)]);
-  await audit(c, 'Deneme talebi', pid);
+  // Eski düzenden kalan onay bekleyen talep: deneme şimdi başlar
+  if (ex && ex.status === 'talep') { await db.q("UPDATE licenses SET status='deneme', start=?, end=? WHERE id=?", [now(), addDays(now(), trialLen(s)), ex.id]); await audit(c, 'Deneme başladı', pid); return { ok: true, license: await db.one('SELECT * FROM licenses WHERE id=?', [ex.id]) }; }
+  if (ex) return { ok: true, license: ex, existing: true };
+  // Deneme hemen başlar (yönetici onayı yok); ürün başına bir kez
+  await db.q('INSERT INTO licenses (id, tenant_id, product, plan, period, status, start, end, lic_key) VALUES (?,?,?,?,?,?,?,?,?)', [uid(), c.user.tenant_id, pid, 1, 'aylik', 'deneme', now(), addDays(now(), trialLen(s)), licKey(pid)]);
+  await audit(c, 'Deneme başladı', pid);
   { const t = await tenantOf(c.user); notifyTrialRequest(t ? t.name : '', c.user, pid); }
-  return { ok: true, pending: true, license: await db.one('SELECT * FROM licenses WHERE tenant_id=? AND product=?', [c.user.tenant_id, pid]) };
-  if (false) mailTo(c.user.email, `${pnameOf(pid)} denemeniz başladı`, { title: `${pnameOf(pid)} hazır`, intro: `${s.trialDays} günlük ücretsiz denemeniz başladı. Tüm özellikleri sınırsız kullanabilirsiniz.`, blocks: [{ type: 'kv', rows: [['Program', pnameOf(pid)], ['Deneme bitişi', addDays(now(), s.trialDays).toLocaleDateString('tr-TR')]] }, { type: 'button', label: 'Programı aç', url: `${s.siteUrl || ''}/#/programlarim` }] });
+  mailTo(c.user.email, `${pnameOf(pid)} denemeniz başladı`, { title: `${pnameOf(pid)} hazır`, intro: `${s.trialDays} günlük ücretsiz denemeniz başladı. Tüm özellikleri sınırsız kullanabilirsiniz.`, blocks: [{ type: 'kv', rows: [['Program', pnameOf(pid)], ['Deneme bitişi', addDays(now(), s.trialDays).toLocaleDateString('tr-TR')]] }, { type: 'button', label: 'Programı aç', url: `${s.siteUrl || ''}/#/programlarim` }] });
   return { ok: true, license: await db.one('SELECT * FROM licenses WHERE tenant_id=? AND product=?', [c.user.tenant_id, pid]) };
 });
 route('POST', '/api/orders/quote', { auth: 'none' }, async (c) => { const k = await couponPct(c.body.coupon); return { ok: true, coupon: k.code, ...cat.price(c.body.items, k.pct) }; });
