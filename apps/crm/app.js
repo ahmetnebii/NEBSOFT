@@ -82,7 +82,7 @@
       // Arayan numara: kişi ve firması bulunur, açık fırsatlar listelenir, görüşme notu tek tıkla eklenir
       $('#cid', el).onclick = async () => {
         let phone = '';
-        if (NS.integ && NS.integ.isOn('callerid')) { const r = await NS.integ.call('callerid', 'son-arama', {}, { silent: true }); phone = r && r.data && r.data.phone ? r.data.phone : r && r.simulated ? (db.all('contacts')[0] || {}).phone || '' : ''; }
+        if (NS.integ && NS.integ.isOn('callerid')) { const r = await NS.integ.call('callerid', 'son-arama', {}, { silent: true }); phone = r && !r.simulated && r.data && r.data.phone ? r.data.phone : ''; if (r && r.simulated) toast('Arayan numara TEST — santral bağlı değil (simülasyon)', 'warn'); }
         if (!phone) phone = await NS.prompt('Arayan numara', '05', { title: 'Gelen çağrı', type: 'tel' }); if (!phone) return;
         const dg = String(phone).replace(/\D/g, '').slice(-10);
         const k = db.find('contacts', (x) => String(x.phone || '').replace(/\D/g, '').slice(-10) === dg); const c = k ? comp(k.company) : db.find('companies', (x) => String(x.phone || '').replace(/\D/g, '').slice(-10) === dg);

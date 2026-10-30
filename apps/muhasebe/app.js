@@ -485,7 +485,8 @@
       const accId = accF && acc(accF).type === 'banka' ? accF : banks[0].id;
       const r = await NS.integ.call('banka', 'hareketler', { iban: acc(accId).iban, since: S().bankSince || iso(addDays(new Date(), -7)) }); if (!r || !r.ok) return;
       let txs = r.data && Array.isArray(r.data.transactions) ? r.data.transactions : [];
-      if (r.simulated) { const open = db.all('invoices', (i) => ['acik', 'gecikti', 'kismi'].includes(invStatus(i))).slice(0, 3); txs = [...open.map((i, k) => ({ id: 'B' + Date.now() + k, date: today(), amount: (i.kind === 'satis' ? 1 : -1) * r2(invTotals(i).tl - paidOf(i)), desc: `${cari(i.cari).name.toLocaleUpperCase('tr-TR')} ${i.no}` })), { id: 'B' + Date.now() + 9, date: today(), amount: -385.5, desc: 'HESAP İŞLETİM ÜCRETİ' }]; }
+      // Simülasyonda banka hareketi uydurulmaz (uydurma tahsilat açık faturaları kapatıyordu)
+      if (r.simulated) return toast('Banka TEST — hareket çekilmedi (simülasyon); ekstreyi “Ekstre yükle” ile içe aktarın', 'warn');
       bankReview(app, accId, txs);
     };
     on(el, 'click', '[data-act=del]', async (e, b) => { if (await confirm('Hareket silinsin mi?')) { db.remove('txns', b.dataset.id); app.refresh(); } });

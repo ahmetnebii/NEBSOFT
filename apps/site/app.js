@@ -41,7 +41,8 @@
     if (!NS.integ) return;
     const r = await NS.integ.call('banka', 'hareketler', { iban: S().iban, since: S().bankSince || iso(addDays(new Date(), -7)) }); if (!r || !r.ok) return;
     let txs = r.data && Array.isArray(r.data.transactions) ? r.data.transactions : [];
-    if (r.simulated) txs = db.all('flats').filter((f) => debt(f.id) > 0).slice(0, 4).map((f, i) => ({ id: 'SIM' + Date.now() + i, date: today(), amount: i === 3 ? 777 : debt(f.id), desc: i === 2 ? `${resident(f).toLocaleUpperCase('tr-TR')} AIDAT` : i === 3 ? 'EFT BILINMEYEN GONDEREN' : `${f.block}${f.no} NOLU DAIRE AIDAT` }));
+    // Simülasyonda banka hareketi uydurulmaz (uydurma tahsilat aidat borcunu kapatıyordu)
+    if (r.simulated) return toast('Banka TEST — hareket çekilmedi (simülasyon); tahsilatları elle girin', 'warn');
     const seen = new Set(db.all('receipts').map((x) => x.ref).filter(Boolean));
     const res = txs.filter((t) => t.amount > 0 && !seen.has(t.id)).map((t) => { const d = String(t.desc).toLocaleUpperCase('tr-TR').replace(/\s+/g, ''); const f = db.all('flats').find((x) => d.includes(`${x.block}${x.no}`.toLocaleUpperCase('tr-TR'))) || db.all('flats').find((x) => d.includes(resident(x).toLocaleUpperCase('tr-TR').replace(/\s+/g, ''))); return { ...t, flat: f ? f.id : '' }; });
     if (!res.length) return toast('Yeni banka hareketi yok', '');
