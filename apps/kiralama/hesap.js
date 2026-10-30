@@ -56,5 +56,17 @@
     return { cut: c, refund: r2(h - c) };
   }
   const yearsBetween = (a, b) => (Date.parse(b) - Date.parse(a)) / (365.25 * 864e5);
-  return { EXTRAS, DEF, r2, addDay, nights, rentable, extraDaily, seasonPct, quote, endOf, overlaps, lateDays, bill, depositClose, yearsBetween };
+  // Teslim/iade fotoğrafı kayda gömülür ve belge bütün olarak gider: taraf başına (sözleşme başına en çok 8) ve tüm sözleşmeler için toplam sınır
+  const PHOTO = { perSide: 4, perPhoto: 300e3, total: 10e6, local: 3e6, doc: 18e6 };
+  const rentChars = (r) => [...(r.outPhotos || []), ...(r.inPhotos || [])].reduce((t, u) => t + String(u).length, 0);
+  // Boş dönerse sığar; list: forma eklenmiş taslak, other: sözleşmenin diğer taraf fotoğrafları
+  function photoCheck(rents, r, list, chars, { other = [], docChars = 0, local = false } = {}) {
+    if (list.length >= PHOTO.perSide) return `Teslim ve iade için ayrı ayrı en fazla ${PHOTO.perSide} fotoğraf eklenebilir. Yeni fotoğraf için önce birini silin.`;
+    const size = (a) => a.reduce((t, u) => t + String(u).length, 0); const max = local ? PHOTO.local : PHOTO.total;
+    const used = (rents || []).filter((x) => x.id !== r.id).reduce((t, x) => t + rentChars(x), 0) + size(list) + size(other);
+    if (used + chars > max) return `Toplam fotoğraf alanı doldu (${Math.round(max / 1e6)} MB). Yeni fotoğraf için eski sözleşmelerden fotoğraf silin.`;
+    if (docChars + chars > PHOTO.doc) return 'Kayıt büyüdüğü için yeni fotoğraf eklenemiyor. Önce eski sözleşmelerden fotoğraf silin.';
+    return '';
+  }
+  return { PHOTO, photoCheck, rentChars, EXTRAS, DEF, r2, addDay, nights, rentable, extraDaily, seasonPct, quote, endOf, overlaps, lateDays, bill, depositClose, yearsBetween };
 }));

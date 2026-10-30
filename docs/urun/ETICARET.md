@@ -198,6 +198,8 @@ Tarih: 29.10.2026 · Dal: `claude/urun-eticaret-uretim-38c2a2` · Yöntem: `CLAU
 | Hepsiburada (kimlik, listeleme, envanter, sipariş) | **DOĞRULANAMADI** (developers.hepsiburada.com HTTP 403) → canlı mod seçilemez | — |
 | n11 sipariş paketleri, fiyat-stok, görev sonucu, ürün sorgu | DOĞRULANDI → canlı mod açıldı | developer.n11.com/documentation/… (siparis-listeleme-servisi, urun-fiyat-stok-guncelleme, task-detail-sorgulama, satici-urun-sorgulama) |
 
+| Trendyol webhook modeli (`content[]`, `shipmentPackageId`, `packageTotalPrice`, `lineUnitPrice`) — 30.10.2026 | DOĞRULANDI (doküman), canlı denenmedi; ayrıntı docs/urun/PAZARYERI.md | developers.trendyol.com/docs/webhook-model.md |
+
 **Dokümanla uyum ≠ canlı test:** Trendyol ve n11 canlıya çıkmadan satıcının test (stage) hesabıyla denenmelidir.
 
 ---

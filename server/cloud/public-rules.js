@@ -503,7 +503,7 @@ RULES.kiralama = {
   view: (x) => {
     const r = x.get('rents', me(x, 'r')); if (!r) return {};
     const c = x.get('customers', r.customer);
-    return { rents: [...x.col('rents').filter((o) => o.id !== r.id && (o.to >= x.today || o.status === 'kirada') && o.status !== 'iptal').map((o) => x.pick(o, ['id', 'car', 'from', 'to', 'status'])), strip(r, ['internal', 'damage', 'kabis', 'emniyet'])], customers: c ? [x.pick(c, ['id', 'name', 'phone'])] : [] };
+    return { rents: [...x.col('rents').filter((o) => o.id !== r.id && (o.to >= x.today || o.status === 'kirada') && o.status !== 'iptal').map((o) => x.pick(o, ['id', 'car', 'from', 'to', 'status'])), strip(r, ['internal', 'damage', 'kabis', 'emniyet', 'outPhotos', 'inPhotos'])], customers: c ? [x.pick(c, ['id', 'name', 'phone'])] : [] };
   },
   write: {
     customers: { ins: I({ name: 'str:80', phone: 'phone', tc: 'str:20?', birth: 'date', licenseDate: 'date' }, { license: '' }) },

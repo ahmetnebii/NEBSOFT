@@ -19,6 +19,9 @@
 
 Kalite kapısı: 13 ekran açıldı, konsol hatası yok.
 
+## Teslim/iade fotoğrafı (dal `urun/temel-eksikler`, 30.10.2026)
+Teslim ve iade formunda fotoğraf alanı: 1280 px JPEG, taraf başına 4 (sözleşme başına en çok 8), tüm sözleşmeler için bulutta 10 MB, yerelde 3 MB toplam sınır. Sözleşme detayında görünür, "Fotoğraflar" ile eklenir/silinir. Müşteri sayfasına gitmez. Tutanak baskısına eklenmedi.
+
 ## 1. Pazar araştırması (30.10.2026)
 Satıcı tanıtımlarıdır; iddialar bağımsız doğrulanmadı.
 - [Filorapor / Odak Yazılım](https://odakyazilim.com/en/blog/rent-a-car-software) (sayfada tarih yok, © 2025): şablondan sözleşme, TRY/EUR/USD, fotoğraflı hasar kaydı, KABİS bildirimi, kara liste, sigorta-muayene hatırlatması, çok şube, mobil uygulama. Depozito, HGS, trafik cezası: sayfada belirtilmiyor.

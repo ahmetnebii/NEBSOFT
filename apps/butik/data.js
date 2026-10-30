@@ -3,6 +3,20 @@ window.BTK = {
   SIZES: { harf: ['XS', 'S', 'M', 'L', 'XL', 'XXL'], numara: ['36', '37', '38', '39', '40', '41'], beden: ['34', '36', '38', '40', '42', '44'], tek: ['STD'] },
   SEASONS: ['2026 İlkbahar-Yaz', '2026 Sonbahar-Kış', 'Sezonsuz (basic)'],
   PAY: { nakit: 'Nakit', kart: 'Kredi kartı', havale: 'Havale/EFT', puan: 'Puan', parcali: 'Parçalı', cek: 'Çek (iade/hediye)' },
+  // Online kanal durumu (Entegrasyonlar > Pazaryerleri). Canlı yol /api/kanal; yalnızca resmî dokümanla doğrulanan adaptörler (docs/urun/ETICARET.md §6).
+  // Yalnız "canli", "stage" ve "ozel" gerçekten istek atar; "yok" ve "test" hiçbir yere gönderim yapmaz.
+  KANAL: { trendyol: 'Trendyol', n11: 'n11' },
+  kanalDurum(c) {
+    const x = c || {}; const off = (text) => ({ mode: 'yok', label: 'Bağlı kanal yok', text });
+    if (!x.enabled) return off('Bağlı kanal yok: değişiklik yalnızca bu programda kalır, online kanala gönderilmez.');
+    if (x.provider === 'custom') return x.url ? { mode: 'ozel', label: 'Özel servis', text: 'Değişiklik tanımladığınız özel servise gönderilir.' } : off('Bağlı kanal yok: özel servisin adresi tanımlı değil.');
+    const name = this.KANAL[x.provider];
+    if (!name) return { mode: 'test', label: 'TEST', text: 'TEST: bu kanalda canlı bağlantı yok, değişiklik online kanala gönderilmez.' };
+    if (!x.user || !x.pass || (x.provider === 'trendyol' && !x.sellerId)) return off(`Bağlı kanal yok: ${name} API bilgileri eksik.`);
+    if (x.test && x.provider === 'n11') return { mode: 'test', label: 'TEST', text: 'TEST: n11 için test ortamı yok, "Test ortamı" işaretliyken gönderim yapılmaz.' };
+    if (x.test) return { mode: 'stage', channel: x.provider, label: 'TEST ortamı', text: `TEST ortamı: değişiklik ${name} test ortamına gönderilir, canlı mağazanız değişmez.` };
+    return { mode: 'canli', channel: x.provider, label: name, text: `Değişiklik ${name} mağazanıza gönderilir.` };
+  },
   // Varyant barkodu: model kodu + beden + renk sırası
   vcode: (m, size, ci) => `${m.code}-${size}-${String(ci + 1).padStart(2, '0')}`,
   ean: (n) => { const b = String(n).padStart(12, '0').slice(0, 12); const s = b.split('').reduce((a, d, i) => a + Number(d) * (i % 2 ? 3 : 1), 0); return b + ((10 - (s % 10)) % 10); },
