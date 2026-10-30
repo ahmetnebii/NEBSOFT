@@ -1,5 +1,4 @@
 /* NEBSOFT ürün tanıtım siteleri — ortak tasarım. Ürün rengi --c ile gelir. */
-@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&family=Inter:wght@400;500;600&family=Michroma&display=swap');
 :root { --c: #4f46e5; --ink: #0f172a; --ink2: #475569; --ink3: #94a3b8; --bg: #ffffff; --bg2: #f6f7fb; --line: #e5e7ef; --card: #ffffff; --soft: color-mix(in srgb, var(--c) 9%, #fff); --r: 18px; --dis: 'Plus Jakarta Sans', 'Inter', system-ui, sans-serif; --txt: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif; color-scheme: light; }
 @media (prefers-color-scheme: dark) { :root { --ink: #eef0f6; --ink2: #aab1c5; --ink3: #6b7390; --bg: #0c0f17; --bg2: #121624; --line: #232a3d; --card: #141a29; --soft: color-mix(in srgb, var(--c) 18%, #0c0f17); color-scheme: dark; } }
 * { box-sizing: border-box; }
@@ -152,10 +151,33 @@ section.alt { background: var(--bg2); }
 .subnav b { font: 700 15px var(--dis); color: var(--c); white-space: nowrap; } .subnav nav { display: flex; gap: 4px; flex: 1; }
 .subnav nav a { padding: 6px 11px; border-radius: 8px; font-size: 14px; font-weight: 600; color: var(--ink2); text-decoration: none; white-space: nowrap; } .subnav nav a:hover { color: var(--ink); background: var(--bg2); }
 .btn.sm { padding: 7px 14px; font-size: 13.5px; }
-@media (max-width: 960px) { .hd.mk .nav { display: none; } .hd.mk .logo .sub { display: none; } }
+.hd.mk .nav a, .hd.mk .btn { white-space: nowrap; }
+@media (max-width: 1120px) { .hd.mk .nav { display: none; } .hd.mk .logo .sub { display: none; } }
 @media (max-width: 520px) { .hd.mk .btn.g { display: none; } .hd.mk > .w { height: 64px; gap: 10px; } .wm { font-size: 14px; } .hd.mk .btn.p { padding: 9px 14px; font-size: 14px; } }
 .hubgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 18px; margin: 18px 0 44px; }
 .hubcard { display: flex; flex-direction: column; border: 1px solid var(--line); border-radius: 18px; overflow: hidden; background: var(--card); text-decoration: none; color: var(--ink); transition: transform .25s, box-shadow .25s, border-color .25s; }
 .hubcard:hover { transform: translateY(-4px); border-color: color-mix(in srgb, var(--c) 45%, var(--line)); box-shadow: 0 22px 44px -24px color-mix(in srgb, var(--c) 60%, transparent); }
 .hubimg { aspect-ratio: 16 / 10; overflow: hidden; background: var(--bg2); display: block; } .hubimg img { width: 100%; height: 100%; object-fit: cover; object-position: top left; transition: transform .5s; } .hubcard:hover .hubimg img { transform: scale(1.04); }
 .hubtx { display: flex; flex-direction: column; gap: 6px; padding: 14px 16px 16px; } .hubtx b { font: 700 17px var(--dis); } .hubtx span { color: var(--ink2); font-size: 14px; line-height: 1.5; } .hubtx em { font-style: normal; font-weight: 700; font-size: 13.5px; color: var(--c); margin-top: 4px; }
+/* Metin sayfaları: yasal metinler, fiyatlar, rehber */
+.doc-w { max-width: 800px; }
+.doc-h1 { font-size: clamp(30px, 4.4vw, 46px); margin: 18px 0 14px; }
+.doc { margin-top: 22px; overflow-wrap: anywhere; }
+.doc h2 { font-size: clamp(22px, 2.6vw, 28px); margin: 38px 0 12px; }
+.doc h3 { margin: 26px 0 10px; }
+.doc h4 { font: 700 16px var(--dis); margin: 20px 0 8px; }
+.doc p, .doc li { color: var(--ink2); }
+.doc ul, .doc ol { padding-left: 22px; }
+.doc a:not(.btn) { color: var(--c); }
+.doc blockquote { margin: 18px 0; padding: 4px 18px; border-left: 3px solid var(--c); background: var(--bg2); border-radius: 0 10px 10px 0; }
+.doc code { font-size: .92em; background: var(--bg2); padding: 1px 5px; border-radius: 5px; }
+.doc pre { background: var(--bg2); padding: 14px; border-radius: 10px; overflow-x: auto; }
+.doc hr { border: 0; border-top: 1px solid var(--line); margin: 28px 0; }
+.tablo { overflow-x: auto; margin: 16px 0; border: 1px solid var(--line); border-radius: 12px; }
+.tablo table { border-collapse: collapse; width: 100%; font-size: 15px; }
+.tablo th, .tablo td { padding: 10px 14px; text-align: left; border-bottom: 1px solid var(--line); }
+.tablo thead th { background: var(--bg2); font-family: var(--dis); white-space: nowrap; }
+.tablo tr:last-child td { border-bottom: 0; }
+.tablo .r { text-align: right; white-space: nowrap; }
+.tablo .grup th { background: var(--bg2); font-size: 13px; color: var(--ink3); }
+.rehber-l small { display: block; color: var(--ink3); margin-top: 8px; font-size: 13px; }
