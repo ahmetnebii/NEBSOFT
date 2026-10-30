@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Çalışan Portalı</title>
+<link rel="stylesheet" href="../../core/core.css">
+<link rel="stylesheet" href="../../core/track.css">
+<style>
+  :root { --app-accent: #475569; --app-accent-soft: #e2e8f0; --app-accent-soft-dark: #1e293b; }
+  .tabs2 { display: flex; gap: 6px; margin-bottom: 16px; overflow-x: auto; }
+  .tabs2 button { flex: none; border: 1px solid var(--border); background: var(--surface); color: var(--text-2); border-radius: 99px; padding: 8px 14px; font: 600 13px var(--font); cursor: pointer; }
+  .tabs2 button[aria-selected="true"] { background: var(--text); color: var(--surface); border-color: var(--text); }
+  .stat3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 16px; }
+  .stat3 div { border: 1px solid var(--border); border-radius: 12px; background: var(--surface); padding: 12px 14px; }
+  .stat3 b { display: block; font-size: 22px; font-variant-numeric: tabular-nums; }
+  .stat3 span { font-size: 12px; color: var(--text-3); }
+  .ln { display: grid; grid-template-columns: 1fr auto; gap: 10px; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--border); font-size: 14px; }
+  .ln:last-child { border-bottom: 0; }
+</style>
+</head>
+<body>
+<header class="tk-bar"><div class="in" id="bar"></div></header>
+<main class="tk-wrap" id="root" style="max-width:760px"></main>
+<script src="../../core/core.js"></script>
+<script src="bordro.js"></script>
+<script>
+(function () {
+  const { esc, $, on, icon, money, toast, iso, today, addDays, badge } = NS;
+  const db = new NS.DB('ik');
+  const S = () => db.settings({});
+  const KEY = 'nebsoft:ik:calisan';
+  const sget = () => { try { return sessionStorage.getItem(KEY); } catch (e) { return null; } };
+  const sset = (v) => { try { v ? sessionStorage.setItem(KEY, v) : sessionStorage.removeItem(KEY); } catch (e) { /* yok */ } };
+  const digits = (x) => String(x || '').replace(/\D/g, '').slice(-10);
+  const LT = { I: 'Yıllık izin', U: 'Ücretsiz izin', R: 'Rapor' };
+  const ST = { bekliyor: ['Onay bekliyor', 'warn'], onay: ['Onaylandı', 'ok'], red: ['Reddedildi', 'err'], iptal: ['İptal edildi', ''] };
+  const monthName = (m) => `${NS.MONTHS[Number(m.slice(5)) - 1]} ${m.slice(0, 4)}`;
+  let tab = 'ozet';
+
+  $('#bar').innerHTML = `<div class="tk-mark">${icon('users')}</div><div class="grow"><b>${esc(S().bizName || 'Çalışan portalı')}</b><span>Çalışan portalı</span></div><span id="out"></span><button class="btn ghost icon" id="th" data-theme-ico aria-label="Tema">${icon(NS.getTheme() === 'dark' ? 'sun' : 'moon')}</button>`;
+  $('#th').onclick = NS.toggleTheme;
+
+  const person = () => { const k = sget(); return k ? db.find('employees', (e) => e.id === k || digits(e.phone) === k) : null; };
+  // Bulutta bakiye sunucudan gelir; yerelde aynı hesap burada yapılır
+  const leaveOf = (e) => { if (e.leave) return e.leave; const ts = db.data.ts || {}; const p = e.id + '|'; let used = 0, first = null; Object.keys(ts).forEach((k) => { const d = k.slice(k.indexOf('|') + 1); if (!first || d < first) first = d; if (k.startsWith(p) && ts[k].s === 'I') used++; }); return BORDRO.leaveBalance(e, { asOf: today(), used, trackFrom: first || today() }); };
+  const rosterOf = (e) => (NS.pub ? db.all('myRoster') : Object.entries(db.data.roster || {}).filter(([k]) => k.startsWith(e.id + '|')).map(([k, v]) => ({ date: k.slice(e.id.length + 1), shift: v })));
+  const slips = (e) => db.all('payClosed').map((c) => { const r = (c.rows || []).find((x) => x.emp === e.id); return r ? { ...r, ym: c.ym, paidAt: c.paidAt } : null; }).filter(Boolean).sort((a, b) => b.ym.localeCompare(a.ym));
+
+  function login() {
+    $('#out').innerHTML = '';
+    $('#root').innerHTML = `<div class="tk-view"><div class="tk-intro"><h1>İzin ve vardiyanız tek yerde</h1><p>İşyerinizde kayıtlı telefon numaranız ve İK'dan aldığınız giriş koduyla girin.</p></div>
+      <div class="tk-find"><input class="input" id="ph" type="tel" inputmode="tel" placeholder="05xx xxx xx xx" aria-label="Telefon" autocomplete="tel" style="text-transform:none;letter-spacing:.02em"><input class="input" id="cd" placeholder="Giriş kodu" aria-label="Giriş kodu" autocomplete="one-time-code" style="max-width:140px;text-transform:uppercase"><button class="btn primary lg" id="go">Giriş</button></div></div>`;
+    const go = () => {
+      const d = digits($('#ph').value); const code = $('#cd').value.trim().toUpperCase(); if (!code) return toast('İK\'dan aldığınız giriş kodunu yazın', 'err'); if (d.length !== 10) return toast('Telefon veya giriş kodu hatalı', 'err');
+      const res = db.lookup({ phone: d, code }); if (res === null) db.load(); else if (!res) return;
+      const e = db.find('employees', (x) => digits(x.phone) === d && x.active !== false && (NS.pub || (x.portalCode && x.portalCode === code))); if (!e) return toast('Telefon veya giriş kodu hatalı', 'err'); sset(e.id); render();
+    };
+    $('#go').onclick = go; $('#ph').onkeydown = (ev) => { if (ev.key === 'Enter') go(); };
+  }
+  const ozet = (e) => { const b = leaveOf(e); return `<div class="stat3"><div><b>${b.left}</b><span>Kalan izin (gün)</span></div><div><b>${b.yearly}</b><span>Yıllık hak</span></div><div><b>${b.used}</b><span>Kullanılan</span></div></div>
+    <section class="tk-panel"><h3>${icon('user')} Bilgilerim</h3><div class="b"><div class="ln"><span>Bölüm / görev</span><b>${esc([e.dept, e.title].filter(Boolean).join(' / ') || '-')}</b></div><div class="ln"><span>İşe giriş</span><b>${NS.date(e.start)}</b></div><div class="ln"><span>Sonraki izin hakkı</span><b>${NS.date(b.next)}</b></div></div></section>`; };
+  const izin = (e) => { const list = db.all('leaves', (l) => l.emp === e.id).sort((a, b) => b.from.localeCompare(a.from)); return `<section class="tk-panel"><h3>${icon('calendar')} İzin talebi</h3><div class="b"><form id="lf" novalidate>${NS.fieldsHtml([{ name: 'type', label: 'Tür', type: 'select', options: [{ value: 'I', label: 'Yıllık izin' }, { value: 'U', label: 'Ücretsiz izin' }] }, { name: 'from', label: 'Başlangıç', type: 'date', required: true, value: iso(addDays(new Date(), 1)) }, { name: 'to', label: 'Bitiş', type: 'date', required: true, value: iso(addDays(new Date(), 1)) }, { name: 'note', label: 'Açıklama', full: true }])}<button class="btn primary lg block mt" type="submit">${icon('send')} Talebi gönder</button></form></div></section>
+    <section class="tk-panel"><h3>${icon('list')} Taleplerim</h3><div class="b">${list.map((l) => `<div class="ln"><div><b>${NS.date(l.from)} – ${NS.date(l.to)}</b><div class="small muted">${esc(LT[l.type] || 'İzin')}</div></div>${badge(...(ST[l.status] || ST.bekliyor))}</div>`).join('') || '<div class="small muted">Henüz talep yok</div>'}</div></section>`; };
+  const vardiya = (e) => { const list = rosterOf(e).filter((r) => r.date >= today()).sort((a, b) => a.date.localeCompare(b.date)).slice(0, 14); return `<section class="tk-panel"><h3>${icon('clock')} Vardiyam</h3><div class="b">${list.map((r) => { const s = db.get('shifts', r.shift); return `<div class="ln"><b>${NS.dateLong(r.date)}</b><span>${r.shift === 'off' ? 'Hafta tatili' : s ? `${esc(s.name)} ${esc(s.start)}–${esc(s.end)}` : '-'}</span></div>`; }).join('') || '<div class="small muted">Yayınlanmış vardiya yok</div>'}</div></section>`; };
+  const bordro = (e) => { const list = slips(e); return `<section class="tk-panel"><h3>${icon('wallet')} Bordrolarım</h3><div class="b">${list.map((r) => `<div class="ln"><div><b>${monthName(r.ym)}</b><div class="small muted">${r.days} gün · brüt ${money(r.gross)} · kesinti ${money((r.sgk || 0) + (r.unemp || 0) + (r.incomeTax || 0) + (r.stamp || 0))}${r.adv ? ` · avans ${money(r.adv)}` : ''}</div></div><div style="text-align:right"><b>${money(r.net)}</b><div class="small muted">${r.paidAt ? 'Ödendi ' + NS.date(r.paidAt) : 'Ödeme bekliyor'}</div></div></div>`).join('') || '<div class="small muted">Kapatılmış bordro yok</div>'}</div></section>`; };
+  function render() {
+    const e = person(); if (!e) { sset(null); return login(); }
+    $('#out').innerHTML = `<button class="btn ghost sm" id="lo">Çıkış</button>`; $('#lo').onclick = () => { sset(null); login(); };
+    $('#root').innerHTML = `<div class="tk-view"><h2 style="margin:0 0 12px">${esc(e.name)}</h2><div class="tabs2" role="tablist">${[['ozet', 'Özet'], ['izin', 'İzin'], ['vardiya', 'Vardiya'], ['bordro', 'Bordro']].map(([k, l]) => `<button role="tab" data-tab="${k}" aria-selected="${tab === k}">${l}</button>`).join('')}</div>${{ ozet, izin, vardiya, bordro }[tab](e)}</div>`;
+  }
+  const root = $('#root');
+  on(root, 'click', '[data-tab]', (ev, b) => { tab = b.dataset.tab; render(); });
+  on(root, 'submit', '#lf', (ev) => {
+    ev.preventDefault(); const f = $('#lf'); if (!NS.validate(f)) return; const v = NS.readForm(f); if (v.to < v.from) return toast('Bitiş tarihi başlangıçtan önce olamaz', 'err'); if (v.from < today()) return toast('Geçmiş tarihe izin istenemez', 'err');
+    const e = person(); db.load(); db.insert('leaves', { emp: e.id, type: v.type, from: v.from, to: v.to, note: v.note, status: 'bekliyor', source: 'portal' }); toast('Talebiniz İK\'ya iletildi', 'ok'); render();
+  });
+  render();
+})();
+</script>
+</body>
+</html>

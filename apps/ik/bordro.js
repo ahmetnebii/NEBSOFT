@@ -22,9 +22,12 @@
     severanceAt: '2026-07-01',
   };
 
+  // Aynı parametre nesnesi yeniden çözümlenmez (binlerce personelde her ay yüzlerce kez çağrılır)
+  const parsed = new WeakMap();
   const parse = (p) => {
+    if (parsed.has(p)) return parsed.get(p);
     const b = String(p.brackets || DEFAULTS.brackets).split(',').map((x) => x.split(':').map(Number)).map(([lim, rate]) => [lim || Infinity, rate]);
-    return { ...DEFAULTS, ...p, B: b.sort((a, c) => a[0] - c[0]) };
+    const r = { ...DEFAULTS, ...p, B: b.sort((a, c) => a[0] - c[0]) }; parsed.set(p, r); return r;
   };
   // Kümülatif matraha göre toplam gelir vergisi
   const tax = (P, base) => {
@@ -67,16 +70,42 @@
     return r2(hi);
   }
 
-  // Kıdem ve ihbar tazminatı (iş kanunu 4857, 1475/14)
+  // Takvimle süre: yıldönümü günü yıl dolmuş sayılır (365,25'e bölmek tam 1. yıl gününde kıdemi sıfırlıyordu)
+  const ymd = (s) => String(s).slice(0, 10).split('-').map(Number);
+  const pad = (n) => String(n).padStart(2, '0');
+  const fullMonths = (a, b) => { const [y1, m1, d1] = ymd(a), [y2, m2, d2] = ymd(b); return Math.max(0, (y2 - y1) * 12 + m2 - m1 - (d2 < d1 ? 1 : 0)); };
+  const fullYears = (a, b) => Math.floor(fullMonths(a, b) / 12);
+  const addYears = (s, n) => { const [y, m, d] = ymd(s); return `${y + n}-${pad(m)}-${pad(d)}`; };
+
+  // Yıllık izin hakkı — 4857 md. 53 (mevzuat.gov.tr/mevzuatmetin/1.5.4857.htm, okundu 30.10.2026 — DOĞRULANDI):
+  // en az 1 yıl; 1–5 yıl (5 dahil) 14, 5'ten fazla 15'ten az 20, 15 ve üstü 26 gün; 18 yaş ve altı ile 50 yaş ve üstü en az 20 gün;
+  // yer altı işlerinde +4 gün. Sözleşmeyle artırılabilir (e.leaveExtra). Hak, her yıldönümünde o tarihteki kıdem ve yaşla doğar.
+  function entitlementAt(e, date) {
+    const y = fullYears(e.start, date); if (y < 1) return 0;
+    let d = y <= 5 ? 14 : y < 15 ? 20 : 26;
+    if (e.birth) { const a = fullYears(e.birth, date); if (a <= 18 || a >= 50) d = Math.max(d, 20); }
+    if (e.underground) d += 4;
+    return d + (Number(e.leaveExtra) || 0);
+  }
+  // İzin bakiyesi: kullanılmayan izin yanmaz (md. 54, 59). Geçmişi programda olmayan yıllar sayılmaz: takip başlangıcından
+  // (trackFrom: ilk puantaj günü) önceki yıldönümleri yerine son yıldönümü hakkı + elle girilen devir (e.leaveCarry) esas alınır.
+  function leaveBalance(e, { asOf, used = 0, trackFrom } = {}) {
+    const end = e.end && e.end < asOf ? e.end : asOf; const y = fullYears(e.start, end); let earned = 0;
+    for (let k = 1; k <= y; k++) { const d = addYears(e.start, k); if (k === y || !trackFrom || d >= trackFrom) earned += entitlementAt(e, d); }
+    const carry = Number(e.leaveCarry) || 0;
+    return { earned, carry, used, left: earned + carry - used, yearly: entitlementAt(e, end), next: addYears(e.start, y + 1), years: y };
+  }
+
+  // Kıdem ve ihbar tazminatı (4857 md. 17: 6 ay / 1,5 yıl / 3 yıl — 2, 4, 6, 8 hafta; 1475 md. 14: her tam yıl 30 günlük, artan süre orantılı)
   function severance(params, o) {
     const P = parse(params);
-    const ms = new Date(o.end) - new Date(o.start);
-    const years = Math.max(0, ms / (365.25 * 864e5));
+    const full = fullYears(o.start, o.end);
+    const years = full + Math.max(0, (Date.parse(String(o.end).slice(0, 10)) - Date.parse(addYears(o.start, full))) / 864e5) / 365;
     const dailyGross = o.gross / 30;
     const kidemBase = Math.min(o.gross, P.severanceCap);
     const kidem = years >= 1 ? r2(kidemBase * years) : 0;
     const kidemStamp = r2(kidem * P.stampPermille / 1000);
-    const weeks = years < 0.5 ? 2 : years < 1.5 ? 4 : years < 3 ? 6 : 8;
+    const mo = fullMonths(o.start, o.end); const weeks = mo < 6 ? 2 : mo < 18 ? 4 : mo < 36 ? 6 : 8;
     const ihbar = o.notice ? r2(dailyGross * weeks * 7) : 0;
     const ihbarTax = r2(tax(P, (o.cum || 0) + ihbar) - tax(P, o.cum || 0));
     const ihbarStamp = r2(ihbar * P.stampPermille / 1000);
@@ -87,5 +116,9 @@
     return { years: r2(years), kidemBase: r2(kidemBase), capped: o.gross > P.severanceCap, kidem, kidemStamp, kidemNet: r2(kidem - kidemStamp), weeks, ihbar, ihbarTax, ihbarStamp, ihbarNet: r2(ihbar - ihbarTax - ihbarStamp), leaveDays, leavePay, leaveNet: r2(Math.max(0, leaveNet)) };
   }
 
-  root.BORDRO = { DEFAULTS, month, grossFromNet, severance, tax: (p, b) => tax(parse(p), b) };
+  // Kimlik ve IBAN biçim denetimi: yanlış yazımı yakalar, kaydın gerçekliğini göstermez
+  const tcOk = (v) => { const s = String(v || '').trim(); if (!/^[1-9]\d{10}$/.test(s)) return false; const d = [...s].map(Number); const odd = d[0] + d[2] + d[4] + d[6] + d[8], even = d[1] + d[3] + d[5] + d[7]; return ((odd * 7 - even) % 10 + 10) % 10 === d[9] && d.slice(0, 10).reduce((a, b) => a + b, 0) % 10 === d[10]; };
+  const ibanOk = (v) => { const s = String(v || '').replace(/\s/g, '').toUpperCase(); if (!/^TR\d{24}$/.test(s)) return false; const t = (s.slice(4) + s.slice(0, 4)).replace(/[A-Z]/g, (c) => c.charCodeAt(0) - 55); let m = 0; for (const ch of t) m = (m * 10 + Number(ch)) % 97; return m === 1; };
+  root.BORDRO = { DEFAULTS, month, grossFromNet, severance, fullYears, fullMonths, addYears, entitlementAt, leaveBalance, tcOk, ibanOk, tax: (p, b) => tax(parse(p), b) };
+  if (typeof module !== 'undefined' && module.exports) module.exports = root.BORDRO;
 })(typeof window !== 'undefined' ? window : globalThis);
