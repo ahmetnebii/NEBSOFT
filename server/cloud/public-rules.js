@@ -987,5 +987,29 @@ RULES.adisyon = {
   },
 };
 
+// ---------- Saha hizmetleri (nakliyat, temizlik, usta, peyzaj): takip.html?kod= ----------
+// İş kodu tek işi, sözleşme kodu o sözleşmenin ziyaretlerini açar. Rastgele kod gerekir: iş numarası sıralıdır. Beyaz liste: iç not, fotoğraf (gizli sınıf) ve müşteri telefonu gitmez.
+// Teklif kararı apps/saha-ortak/hesap.js teklifCevap ile sunucuda hesaplanır; müşteri tutar veya satır yazamaz, yalnız karar verir.
+const SAHA = require('../../apps/saha-ortak/hesap.js');
+const SAHA_ALAN = ['id', 'no', 'code', 'title', 'date', 'dateTo', 'time', 'timeTo', 'status', 'report', 'checks', 'offer', 'accepted', 'warrantyUntil', 'retryUntil', 'onWay', 'startedAt', 'finishedAt', 'review', 'issue', 'team', 'plan'];
+function sahaKural(ek = []) {
+  const gor = (j) => { const o = {}; [...SAHA_ALAN, ...ek].forEach((k) => { if (j[k] !== undefined) o[k] = j[k]; }); o.lines = (j.lines || []).map((l) => ({ name: l.name, qty: l.qty, price: l.price, ok: !!l.ok })); o.payments = (j.payments || []).map((p) => ({ kind: p.kind, amount: p.amount, at: p.at })); o.log = (j.log || []).map((l) => ({ at: l.at, status: l.status })); return o; };
+  const sahip = (j, x) => !!x.ident && ((x.ident.k === 'j' && j.id === x.ident.i) || (x.ident.k === 'c' && !!j.plan && j.plan === x.ident.i));
+  return { settings: ['bizName', 'bizPhone', 'bizAddress'], pub: {}, loginError: 'Bu koda ait kayıt bulunamadı',
+    login: (x, q) => { const k = norm(q.kod); if (!k) return null; const j = x.col('jobs').find((t) => t.code && norm(t.code) === k); if (j) return { k: 'j', i: j.id }; const c = x.col('contracts').find((t) => t.code && norm(t.code) === k); return c ? { k: 'c', i: c.id } : null; },
+    view: (x) => { if (!x.ident) return { jobs: [], contracts: [], teams: [] }; const takim = (id) => { const t = x.get('teams', id); return t ? [{ id: t.id, name: t.name }] : []; };
+      if (x.ident.k === 'j') { const j = x.get('jobs', x.ident.i); return j ? { jobs: [gor(j)], contracts: [], teams: takim(j.team) } : { jobs: [], contracts: [], teams: [] }; }
+      const c = x.get('contracts', x.ident.i); if (!c) return { jobs: [], contracts: [], teams: [] }; return { contracts: [{ id: c.id, no: c.no, code: c.code, title: c.title, freq: c.freq }], jobs: x.col('jobs').filter((j) => j.plan === c.id).sort((a, b) => String(b.date).localeCompare(String(a.date))).slice(0, 40).map(gor), teams: takim(c.team) }; },
+    write: { jobs: { upd: (cur, set, x) => { if (!sahip(cur, x)) deny(); const keys = Object.keys(set).filter((k) => k !== 'updated'); if (keys.length !== 1) deny(); const k = keys[0];
+      if (k === 'offerAnswer') { const a = clean({ decision: 'enum:onay|red', note: 'str:300?' }, set.offerAnswer || {}); const p = SAHA.teklifCevap(cur, a.decision, 'Müşteri (online)', a.note); if (!p) deny(); return { ...p, updated: nowIso() }; }
+      if (k === 'review' && cur.status === 'tamam' && !cur.review) return { review: { ...clean({ stars: 'int:1:5', text: 'str:500?' }, set.review || {}), at: nowIso() }, updated: nowIso() };
+      if (k === 'issue' && cur.status === 'tamam' && !cur.issue) return { issue: { ...clean({ note: 'str:500' }, set.issue || {}), at: nowIso() }, updated: nowIso() };
+      return deny(); } } } };
+}
+RULES.nakliyat = sahaKural(['inventory', 'damages']);
+RULES.temizlik = sahaKural();
+RULES.usta = sahaKural();
+RULES.peyzaj = sahaKural(['uses', 'target', 'safety']);
+
 module.exports = RULES;
 module.exports._lib = { appendOnly, strip, bad, deny, val, clean, I, U, me, mergeByPhone, samePhone, digits, norm, overlap, toMin, nowIso };

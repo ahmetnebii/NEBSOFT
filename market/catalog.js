@@ -269,6 +269,42 @@ window.CATALOG = {
       modules: ['Etkinlikler', 'Gişe', 'Online Satış', 'Kapı Kontrol', 'Salonlar', 'İndirim Kodları', 'Raporlar'],
       faq: [['Koltuksuz (ayakta) etkinlik yapabilir miyim?', 'Evet, kontenjanlı genel giriş etkinlikleri de desteklenir.'], ['Aynı koltuk iki kez satılabilir mi?', 'Hayır, satılan veya sepette bekleyen koltuk kilitlenir.'], ['Online kartla ödeme alınıyor mu?', 'Henüz hayır. Sanal POS bağlantısı doğrulanmadığı için online satış rezervasyon olarak çalışır: bilet ödeme bekliyor durumunda kalır, ödeme gişede veya kapıda alınır, süresi dolan rezervasyon koltuğu bırakır.']],
     },
+    {
+      id: 'nakliyat', ready: true, extraDemos: [{ label: 'Müşteri takip sayfasını aç', url: 'apps/nakliyat/takip.html' }], cat: 'randevu', name: 'Evden Eve Nakliyat', tagline: 'Keşif, kilitli teklif, sözleşme, araç ve ekip planı', icon: 'truck', accent: '#c2410c',
+      prices: [799, 1490, 2790], // ÖRNEK fiyat: kullanıcı onayı bekliyor
+      sectors: ['Evden eve nakliyat', 'Ofis taşıma', 'Şehirler arası nakliyat'],
+      desc: 'Talepten teslime taşıma takibi: oda oda eşya listesi, hacimden teklif, onaylanan fiyatın kilitlenmesi, örnek sözleşme, taşıma senedi, araç ve ekip takvimi, kapora ve hasar tutanağı.',
+      features: ['Oda bazlı eşya listesi ve hacim hesabı', 'Hacim, mesafe ve kattan teklif hesabı', 'Onaylanan fiyat kilidi, fark için ek teklif ve müşteri onayı', 'Örnek taşıma sözleşmesi ve taşıma senedi', 'Araç ve ekip takvimi, çakışma uyarısı', 'Kapora, tahsilat ve iade kaydı', 'Hasar kaydı, fotoğraf ve imzalı tutanak', 'Müşteri takip sayfası', 'Muayene ve sigorta bitiş uyarısı'],
+      modules: ['Taşımalar', 'Takvim', 'Araçlar', 'Ekipler', 'Müşteriler'],
+      faq: [['Müşteri teklifi nasıl onaylar?', 'Takip bağlantısından teklifi görür ve onaylar veya reddeder. İsterseniz onayı panelden de işlersiniz.'], ['Sözleşme metni hazır mı?', 'Örnek bir şablon vardır, hukuki danışmanlık değildir. Kullanmadan önce avukatınıza gösterin.']],
+    },
+    {
+      id: 'temizlik', ready: true, extraDemos: [{ label: 'Müşteri takip sayfasını aç', url: 'apps/temizlik/takip.html' }], cat: 'randevu', name: 'Temizlik & Tesis', tagline: 'Periyodik iş, ekip takvimi ve aylık faturalama', icon: 'sparkles', accent: '#0d9488',
+      prices: [799, 1490, 2790], // ÖRNEK fiyat: kullanıcı onayı bekliyor
+      sectors: ['Temizlik şirketi', 'Bina ve site temizliği', 'Ofis temizliği', 'Tesis yönetimi'],
+      desc: 'Sözleşmeli müşteriler için periyodik ziyaret planı, ekip takvimi, yere özel kontrol listesi, müşteri raporu ve aylık faturalama. Gelinmeyen ziyaret dönem kaydında görünür.',
+      features: ['Haftalık, aylık ve özel günlü periyodik plan', 'Planlardan otomatik ziyaret üretimi', 'Sürükle bırak ekip takvimi', 'Yere özel kontrol listesi', 'Başladı ve bitti saati, fotoğraf', 'Sabit ücret veya ziyaret başı aylık faturalama', 'Gelinmeyen ziyaretin ücretten düşülmesi', 'Müşteriye ziyaret geçmişi ve puanlama sayfası', 'Malzeme stoğu'],
+      modules: ['Ziyaretler', 'Takvim', 'Sözleşmeler', 'Aylık Faturalama', 'Müşteriler'],
+      faq: [['Saha ekibi ücretleri görür mü?', 'Hayır. Saha hesabı yalnız kendi ziyaretlerini görür, ücret bilgisi sunucudan gitmez.'], ['e-Fatura kesebilir miyim?', 'e-Belge sağlayıcınızı Entegrasyonlar sayfasından bağladığınızda dönem kaydından belge oluşturabilirsiniz.']],
+    },
+    {
+      id: 'usta', ready: true, extraDemos: [{ label: 'Müşteri takip sayfasını aç', url: 'apps/usta/takip.html' }], cat: 'randevu', name: 'Mobil Usta & Tesisat', tagline: 'Randevu, saha iş emri ve periyodik bakım', icon: 'wrench', accent: '#2563eb',
+      prices: [799, 1490, 2790], // ÖRNEK fiyat: kullanıcı onayı bekliyor
+      sectors: ['Kombi servisi', 'Klima servisi', 'Tesisatçı', 'Elektrikçi'],
+      desc: 'Elektrik, klima ve kombi ustaları için randevu, telefondan saha iş emri, yerinde teklif ve müşteri onayı, cihaz kartı, periyodik bakım hatırlatma ve imzalı servis formu.',
+      features: ['Varış saat aralığıyla randevu', 'Telefona uygun saha iş emri', 'Yerinde teklif ve müşteri onayı', 'Müşteri bazında cihaz kartı ve geçmiş', 'Periyodik bakım listesi ve SMS hatırlatma', 'Garanti bitişi uyarısı', 'Parça stoğu', 'İmzalı servis formu', 'Müşteri takip sayfası'],
+      modules: ['İş Emirleri', 'Takvim', 'Cihazlar', 'Periyodik Bakım', 'Parça Stoğu'],
+      faq: [['Bakım aralığını kim belirler?', 'Siz belirlersiniz. Program üreticiye göre bir aralık önermez.'], ['Usta kendi işini görür mü?', 'Evet. Usta hesabı yalnız kendisine atanan işleri görür.']],
+    },
+    {
+      id: 'peyzaj', ready: true, extraDemos: [{ label: 'Müşteri takip sayfasını aç', url: 'apps/peyzaj/takip.html' }], cat: 'randevu', name: 'Peyzaj & İlaçlama', tagline: 'Periyodik iş, sözleşmeli müşteri ve uygulama raporu', icon: 'flower', accent: '#65a30d',
+      prices: [799, 1490, 2790], // ÖRNEK fiyat: kullanıcı onayı bekliyor
+      sectors: ['İlaçlama firması', 'Peyzaj bakım firması', 'Bahçe bakımı'],
+      desc: 'Peyzaj ve haşere kontrol firmaları için periyodik plan, sözleşmeli müşteri, uygulama kaydı, ürün kartı, biyosidal uygulama işlem formu çıktısı, uygulama defteri ve müşteri raporu.',
+      features: ['Periyodik plan ve ekip takvimi', 'Uygulama kaydı: ürün, hedef, saat, önlem', 'Biyosidal ürün uygulama işlem formu çıktısı', 'Ürün kartı: ruhsat, aktif madde, antidot', 'Uygulama defteri ve CSV', 'Personel belge bitiş takibi', 'Ücretsiz tekrar süresi takibi', 'Müşteri rapor sayfası', 'Aylık faturalama'],
+      modules: ['Ziyaretler', 'Takvim', 'Sözleşmeler', 'Uygulama Defteri', 'Ürün Stoğu'],
+      faq: [['Bakanlığa bildirim yapar mı?', 'Hayır. Program bildirim yapmaz. İşletme bildirimini kendisi yapar, programda yalnız işaretler.'], ['Form yasal olarak yeterli mi?', 'Form yönetmeliğin ekindeki alanlarla basılır. Uygunluk ve izin sorumluluğu işletmenindir.']],
+    },
   ],
   faq: [
     ['Kurulum gerekiyor mu?', 'Hayır. Tüm ürünler web tabanlıdır; bilgisayar, tablet ve telefondan tarayıcıyla çalışır. Satın aldıktan hemen sonra kullanmaya başlarsınız.'],

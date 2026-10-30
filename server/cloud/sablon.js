@@ -6,6 +6,7 @@ const log = require('./log');
 
 const KOK = path.join(__dirname, '..', '..', 'content', 'sablonlar');
 const PROGRAMLAR = 'adisyon anaokulu bilet butik crm eczane emlak eticaret fabrika fiyatrobotu galeri hukuk ik kargo kiralama klinik kurs kuyumcu muhasebe musavir otel oto otoservis pazaryeri pos randevu servis site spor toptan veteriner'.split(' ');
+PROGRAMLAR.push('nakliyat', 'temizlik', 'usta', 'peyzaj');
 const TURLER = ['menu', 'hizmet', 'urun', 'kategori', 'duyuru', 'form', 'tema'];
 const AD = /^[a-z0-9-]{2,60}$/;
 // Bu alanlarda sıfırdan büyük değer bulunamaz (fiyat yasağı)

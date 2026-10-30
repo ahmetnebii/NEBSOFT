@@ -57,6 +57,9 @@ const emlakYabanci = (r, b) => !eslesir(r, 'agent', b);
 // Reddedilen POS iadesi kayda geçmez: iadenin artırdığı stok geri düşer
 const posIadeGeri = (o, r) => { if (!Array.isArray(o.products)) return; const m = new Map(); dizi(r.items).forEach((i) => { if (nesne(i) && i.pid) m.set(i.pid, (m.get(i.pid) || 0) + (Number(i.qty) || 0)); }); o.products = o.products.map((p) => (nesne(p) && m.has(p.id) ? { ...p, stock: (Number(p.stock) || 0) - m.get(p.id) } : p)); };
 const bordro = () => { try { return require('../../apps/ik/bordro.js'); } catch (e) { return null; } };
+// apps/saha-ortak/saha.js: saha ekibi yalnız kendi ekibinin işini ve o işlerin müşterisini görür (benim). Sözleşme, dönem kaydı ve alış fiyatı yöneticide. İşte kullanılan stok düşümü yazılır (izinli).
+const sahaEkip = (ek = {}) => ({ ad: ek.ad || 'Saha ekibi', kisi: { kol: 'teams', alan: 'team', kayitAdi: false, baslik: 'Ekip', yok: 'Ekip seçin (seçilmezse iş görünmez)' }, kapat: ['contracts', 'invoices', ...(ek.kapat || [])], ekle: ['sms'], gizle: { items: ['cost'], customers: ['taxNo'], ...(ek.gizle || {}) }, saltOkunur: ['teams', 'services', 'customers', 'items', ...(ek.saltOkunur || [])], izinli: { items: ['stock'], ...(ek.izinli || {}) }, silemez: ['jobs'], satir: { jobs: (j, b) => eslesir(j, 'team', b), customers: (c, b) => b.alanlar('jobs', 'customer').has(c.id), ...(ek.satir || {}) }, numara: { jobs: 'no' } });
+const SAHA_FIYAT = { jobs: ['lines', 'payments', 'offer', 'accepted', 'invoice'] }; // nakliyat, temizlik, peyzaj: ücret ekipte kapalı (ekipFiyat)
 const RULES = {
   // apps/klinik/app.js: clinical() sekreterde kapalı (anamnez, muayene notu, tanı, reçete, e-Nabız). Yönetim menüsü (hakediş, tedavi listesi, hekimler, raporlar) yöneticide.
   // Hasta silme yöneticide (canDelete). Telefon, TC, kan grubu, Not alanı, tedavi planı, ödeme, randevu nedeni sekreterin ekranlarında kullanılır, açık kalır.
@@ -232,6 +235,10 @@ const RULES = {
   oto: { yikama: { ad: 'Yıkamacı', kapat: ['subPays'], ekle: ['sms'], gizle: { subs: ['name', 'phone', 'price'] }, saltOkunur: ['subs', 'packages', 'workers'], izinli: { subs: ['washesLeft'] } } },
   // apps/fiyatrobotu: izleyici tüm ekranları görür, hiçbir şeyi değiştiremez (canEdit). Gizlenecek alan yoktur, yazma kapalıdır. Fiyat uzmanında yalnız menü farkı vardır, kural eklenmedi.
   fiyatrobotu: { izleyici: { ad: 'İzleyici', saltOkunur: ['products', 'listings', 'history', 'runs', 'channels', 'cargoOverride', 'comOverride', 'feeOverride', 'ratesOwn'] } },
+  nakliyat: { ekip: sahaEkip({ gizle: SAHA_FIYAT, saltOkunur: ['vehicles'] }) },
+  temizlik: { ekip: sahaEkip({ gizle: SAHA_FIYAT }) },
+  usta: { ekip: sahaEkip({ ad: 'Usta', saltOkunur: ['devices'], izinli: { devices: ['lastCare'] }, satir: { devices: (d, b) => b.alanlar('jobs', 'customer').has(d.customer) } }) }, // usta işi fiyatlar ve tahsil eder, cihaz son bakım tarihi işten yazılır
+  peyzaj: { ekip: sahaEkip({ gizle: SAHA_FIYAT, kapat: ['certs'] }) },
   // apps/servis: ROLES var, ekranlarda rol denetimi yok. Teknisyen ve kabul Özet, Teknisyenler, Ayarlar menüsünü görmez; parça alış fiyatı Parça Stoku ekranında herkese açık. Yalnız menü farkı: kural eklenmedi.
 };
 // Pazaryeri kanal kaydı: bağlantı alanları gerekir, komisyon ve hizmet bedeli kâr hesabıdır

@@ -7,6 +7,7 @@ Yeni oturum için hızlı giriş. Bu dosyayı okuyan oturum projeyi baştan tara
 Türkiye'deki işletmeler için 31 sektörel web programı, ortak çekirdek, pazar yeri sitesi, bulut sunucusu, masaüstü (Electron) ve Android kabuğu. Arayüz dili Türkçe. Ana dal: `devir/hepsi`. Depo: `ahmetnebii/NEBSOFT`.
 
 Programlar (`apps/<id>/`): adisyon, anaokulu, bilet, butik, crm, eczane (yeni satışa kapalı), emlak, eticaret, fabrika, fiyatrobotu, galeri, hukuk, ik, kargo, kiralama, klinik, kurs, kuyumcu, muhasebe, musavir, otel, oto, otoservis, pazaryeri, pos, randevu, servis, site, spor, toptan, veteriner.
+Saha hizmeti programları (nakliyat, temizlik, usta, peyzaj) ortak motoru kullanır: `apps/saha-ortak/` (`hesap.js`, `saha.js`, `portal.js`), yeni kural `sahaKural` ve `sahaEkip`.
 
 ## Teknoloji
 

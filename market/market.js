@@ -239,6 +239,7 @@
   }
   // Programların gerçek ekran görüntüleri (site/<tanıtım>/img)
   const SLUG = { randevu: 'randevusistemi', adisyon: 'adisyonprogrami', pos: 'marketprogrami', eticaret: 'eticaretpaketi', pazaryeri: 'pazaryeriprogrami', otel: 'otelprogrami', servis: 'teknikservisprogrami', spor: 'sporsalonuprogrami', muhasebe: 'onmuhasebeprogrami', klinik: 'klinikprogrami', emlak: 'emlakprogrami', kurs: 'kursprogrami', oto: 'otoyikamaprogrami', kiralama: 'arackiralamaprogrami', site: 'siteyonetimprogrami', crm: 'crmprogrami', ik: 'personeltakipprogrami', veteriner: 'veterinerprogrami', eczane: 'eczaneprogrami', kargo: 'kargotakipprogrami', bilet: 'biletsatisprogrami', fabrika: 'fabrikaerp', butik: 'butikprogrami', otoservis: 'otoservisprogrami', musavir: 'malimusavirprogrami', toptan: 'toptanciprogrami', fiyatrobotu: 'pazaryerikarhesaplama', kuyumcu: 'kuyumcuprogrami', galeri: 'otogaleriprogrami', hukuk: 'hukukburosuprogrami', anaokulu: 'anaokuluprogrami' };
+  Object.assign(SLUG, { nakliyat: 'nakliyatprogrami', temizlik: 'temizlikprogrami', usta: 'mobilustaprogrami', peyzaj: 'peyzajilaclamaprogrami' });
   // Ürün bağlantısı: tanıtım sayfası varsa gerçek adres (arama motoru izler), yoksa uygulama içi sayfa
   const urunHref = (p) => (SLUG[p.id] ? '/' + SLUG[p.id] : '#/urun/' + p.id);
   const shot = (id, n = 1, kind = 'pc') => (SLUG[id] ? `site/${SLUG[id]}/img/${kind}-${n}.jpg` : '');
