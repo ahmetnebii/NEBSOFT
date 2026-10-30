@@ -1,0 +1,42 @@
+{
+  "sablon": "peyzaj/hizmet-listesi",
+  "surum": 1,
+  "program": "peyzaj",
+  "kaynak": "sablon",
+  "tur": "hizmet",
+  "ad": "Peyzaj ve ilaçlama hizmetleri",
+  "aciklama": "Sık kullanılan işler. Fiyatı siz girin.",
+  "hedef": "services",
+  "fiyatAlan": "price",
+  "varsayilan": {
+    "price": 0,
+    "checks": ""
+  },
+  "kayitlar": [
+    {
+      "anahtar": "hasere",
+      "name": "Haşere ilaçlama",
+      "cat": "İlaçlama"
+    },
+    {
+      "anahtar": "kemirgen",
+      "name": "Kemirgen istasyon kontrolü",
+      "cat": "İlaçlama"
+    },
+    {
+      "anahtar": "cim",
+      "name": "Çim biçme",
+      "cat": "Peyzaj"
+    },
+    {
+      "anahtar": "budama",
+      "name": "Budama",
+      "cat": "Peyzaj"
+    },
+    {
+      "anahtar": "sulama",
+      "name": "Sulama sistemi kontrolü",
+      "cat": "Peyzaj"
+    }
+  ]
+}

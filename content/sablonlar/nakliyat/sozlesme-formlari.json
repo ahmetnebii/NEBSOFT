@@ -1,0 +1,28 @@
+{
+  "sablon": "nakliyat/sozlesme-formlari",
+  "surum": 1,
+  "program": "nakliyat",
+  "kaynak": "sablon",
+  "tur": "form",
+  "ad": "Nakliyat formları",
+  "aciklama": "Örnek ek hizmet ve eşya beyanı formları.",
+  "uyari": "Bu metin örnektir, hukuki danışmanlık değildir. Kullanmadan önce avukatınıza gösterin ve işinize göre düzenleyin.",
+  "kayitlar": [
+    {
+      "anahtar": "kiymetli",
+      "label": "Kıymetli eşya beyanı",
+      "sign": [
+        "İşletme",
+        "Müşteri"
+      ],
+      "fields": [
+        {
+          "name": "esya",
+          "label": "Eşya",
+          "type": "textarea"
+        }
+      ],
+      "body": "Müşteri, {{esya}} eşyasını kıymetli eşya olarak beyan etmiştir."
+    }
+  ]
+}

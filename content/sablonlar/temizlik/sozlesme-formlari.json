@@ -1,0 +1,33 @@
+{
+  "sablon": "temizlik/sozlesme-formlari",
+  "surum": 1,
+  "program": "temizlik",
+  "kaynak": "sablon",
+  "tur": "form",
+  "ad": "Temizlik formları",
+  "aciklama": "Örnek kabul formu.",
+  "uyari": "Bu metin örnektir, hukuki danışmanlık değildir. Kullanmadan önce avukatınıza gösterin ve işinize göre düzenleyin.",
+  "kayitlar": [
+    {
+      "anahtar": "kabul",
+      "label": "Hizmet kabul tutanağı",
+      "sign": [
+        "İşletme",
+        "Müşteri"
+      ],
+      "fields": [
+        {
+          "name": "yer",
+          "label": "Yer",
+          "type": "text"
+        },
+        {
+          "name": "not",
+          "label": "Not",
+          "type": "textarea"
+        }
+      ],
+      "body": "{{yer}} adresindeki hizmet teslim alınmıştır. Not: {{not}}"
+    }
+  ]
+}

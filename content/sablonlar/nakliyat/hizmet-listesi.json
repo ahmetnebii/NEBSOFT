@@ -1,0 +1,37 @@
+{
+  "sablon": "nakliyat/hizmet-listesi",
+  "surum": 1,
+  "program": "nakliyat",
+  "kaynak": "sablon",
+  "tur": "hizmet",
+  "ad": "Nakliyat hizmetleri",
+  "aciklama": "Ek hizmet listesi. Fiyatı siz girin.",
+  "hedef": "services",
+  "fiyatAlan": "price",
+  "varsayilan": {
+    "price": 0,
+    "checks": ""
+  },
+  "kayitlar": [
+    {
+      "anahtar": "asansor",
+      "name": "Asansörlü taşıma",
+      "cat": "Ek"
+    },
+    {
+      "anahtar": "paketleme",
+      "name": "Paketleme",
+      "cat": "Ek"
+    },
+    {
+      "anahtar": "montaj",
+      "name": "Mobilya söküm ve kurulum",
+      "cat": "Ek"
+    },
+    {
+      "anahtar": "depolama",
+      "name": "Eşya depolama",
+      "cat": "Ek"
+    }
+  ]
+}

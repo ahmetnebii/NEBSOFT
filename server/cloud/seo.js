@@ -20,6 +20,7 @@ const PLACEHOLDER = 'https://www.domain.com'; // eski derlemeler için; site.con
 const ROOT = path.join(__dirname, '..', '..');
 // Müşteriye açık sayfalar (sorgu/kod gerektirmeyenler)
 const PAGES = {
+  nakliyat: ['takip.html', 'Taşınma takibi', 'truck'], temizlik: ['takip.html', 'Ziyaret ve rapor sorgula', 'sparkles'], usta: ['takip.html', 'İş emri takibi', 'wrench'], peyzaj: ['takip.html', 'Ziyaret ve rapor sorgula', 'flower'],
   randevu: ['book.html', 'Online randevu al', 'calendar'], servis: ['takip.html', 'Cihaz durumu sorgula', 'wrench'], kargo: ['takip.html', 'Kargo takip', 'truck'],
   veteriner: ['karne.html', 'Pati karnesi', 'paw'], otel: ['rezervasyon.html', 'Online rezervasyon', 'bed'], spor: ['uye.html', 'Üye girişi', 'dumbbell'],
   kurs: ['veli.html', 'Kurs veli portalı', 'book'], site: ['sakin.html', 'Sakin portalı', 'building'], kiralama: ['kirala.html', 'Araç kirala', 'car'],
