@@ -1010,5 +1010,32 @@ RULES.dugun = {
   },
 };
 
+// ---------- Yurt: veli ve öğrenci portalı (veli.html) ----------
+// Veli kodu ile öğrenci kodu ayrıdır. Reşit öğrencinin velisi yalnızca kayıtlı izinle girer. Sağlık, kimlik ve iç not hiçbir görünüme gitmez. Belge şifrelidir (belge.js).
+const YH = require('../../apps/yurt/hesap.js');
+const yurtOgr = (x) => { const k = x.ident && x.ident.k; const s = x.ident ? x.get('students', x.ident.i) : null; return s && (k === 's' || (k === 'v' && YH.veliPaylasir(s, x.today))) ? s : null; };
+const ykod = (o) => (o && o.portalCode ? norm(o.portalCode) : null);
+RULES.yurt = {
+  settings: ['bizName', 'bizPhone', 'bizAddress', 'iban'],
+  pub: {},
+  login: (x, q) => {
+    const code = norm(q.code); const d = digits(q.phone); if (!code || d.length !== 10) return null;
+    const s = x.col('students').find((r) => digits(r.phone) === d && ykod(r) === code); if (s) return { k: 's', i: s.id };
+    const v = x.col('students').find((r) => r.guardian && digits(r.guardian.phone) === d && ykod(r.guardian) === code && YH.veliPaylasir(r, x.today)); return v ? { k: 'v', i: v.id } : null;
+  },
+  loginError: 'Bilgiler eşleşmedi veya öğrenci veli paylaşımına izin vermedi',
+  view: (x) => {
+    const s = yurtOgr(x); if (!s) return {}; const stays = x.col('stays').filter((k) => k.student === s.id); const ids = new Set(stays.map((k) => k.id)); const kalan = stays.find((k) => !k.left); const sinir = addDay(x.today, -30);
+    return { students: [{ id: s.id, name: s.name, phone: s.phone, birth: s.birth, guardian: { phone: (s.guardian || {}).phone }, veliIzni: s.veliIzni ? { at: s.veliIzni.at } : undefined }], stays: stays.map((k) => strip(k, ['leftInfo', 'depoOut', 'sign', 'roomLog', 'idIn', 'idOut'])), rooms: kalan ? x.col('rooms').filter((r) => r.id === kalan.room).map((r) => ({ id: r.id, no: r.no })) : [], payments: x.col('payments').filter((p) => ids.has(p.stay)).map((p) => ({ id: p.id, stay: p.stay, amount: p.amount, kind: p.kind, at: p.at })), moves: x.col('moves').filter((m) => m.student === s.id && String(m.at).slice(0, 10) >= sinir).map((m) => ({ id: m.id, student: m.student, type: m.type, at: m.at })), leaves: x.col('leaves').filter((l) => l.student === s.id), tickets: x.ident.k === 's' ? x.col('tickets').filter((t) => t.student === s.id) : [] };
+  },
+  write: {
+    leaves: {
+      ins: I({ student: 'id', from: 'date', to: 'date', dest: 'str:200' }, (r, x) => ({ status: 'bekliyor', src: x.ident && x.ident.k === 'v' ? 'veli' : 'ogrenci', guardianOk: !!x.ident && x.ident.k === 'v' }), (r, x) => { const s = yurtOgr(x); if (!s || s.id !== r.student) deny(); if (!r.dest) bad('Kalacağı yeri yazın'); if (r.to < r.from || r.from < x.today) bad('Tarihleri kontrol edin'); if (x.col('leaves').filter((l) => l.student === s.id && l.status === 'bekliyor').length >= 5) bad('Bekleyen izin talebiniz var'); }),
+      upd: U({ guardianOk: 'bool' }, (cur, x, set) => { const s = yurtOgr(x); return !!s && x.ident.k === 'v' && cur.student === s.id && cur.status === 'bekliyor' && set.guardianOk === true; }, () => ({ guardianAt: nowIso() })),
+    },
+    tickets: { ins: I({ student: 'id', room: 'id?', text: 'str:500' }, (r, x) => ({ status: 'acik', src: 'ogrenci', at: nowIso() }), (r, x) => { const s = yurtOgr(x); if (!s || s.id !== r.student || x.ident.k !== 's') deny(); if (!r.text) bad('Açıklama yazın'); const k = x.col('stays').find((q) => q.student === s.id && !q.left); r.room = k ? k.room : ''; if (x.col('tickets').filter((t) => t.student === s.id && t.status === 'acik').length >= 10) bad('Açık bildiriminiz çok'); }) },
+  },
+};
+
 module.exports = RULES;
 module.exports._lib = { appendOnly, strip, bad, deny, val, clean, I, U, me, mergeByPhone, samePhone, digits, norm, overlap, toMin, nowIso };

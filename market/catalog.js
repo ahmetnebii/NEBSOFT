@@ -72,6 +72,14 @@ window.CATALOG = {
       faq: [['Aynı tarih iki müşteriye verilebilir mi?', 'Hayır. Aynı salon ve seansta açık opsiyon veya kesin kayıt varsa ikinci kayıt alınmaz.'], ['Sözleşme metni hazır mı?', 'Program örnek bir şablonla gelir. Bağlayıcı metin değildir, kullanmadan önce avukatınıza gösterin.'], ['Kapora iadesini program mı belirler?', 'Hayır. Ayarlara işletmenizin yazdığı iptal kademeleri öneri olarak hesaplanır, tutarı siz belirlersiniz.']],
     },
     {
+      id: 'yurt', ready: true, ornekFiyat: true, extraDemos: [{ label: 'Veli portalını aç', url: 'apps/yurt/veli.html' }], cat: 'konaklama', name: 'Öğrenci Yurdu & Apart', tagline: 'Oda, dönemlik ücret, giriş-çıkış ve veli portalı', icon: 'bed', accent: '#4f46e5',
+      prices: [799, 1490, 2790], sectors: ['Özel öğrenci yurdu', 'Pansiyon', 'Apart', 'Kız öğrenci yurdu', 'Erkek öğrenci yurdu'],
+      desc: 'Kat, oda ve yatak planı, dönemlik ücret ve taksit, depozito dökümü, ayrılış hesabı, giriş-çıkış, yoklama, izin, ziyaretçi ve arıza kaydı. Veli ve öğrenci portalı.',
+      features: ['Kat, oda ve yatak planı, cinsiyet ve kapasite denetimi', 'Dönem ücreti, taksit ve gecikme takibi', 'Depozito ve gerekçeli kesinti dökümü, iade son günü takibi', 'Yükseköğrenim ve lise rejimine göre ayrılış önerisi', 'Giriş-çıkış, son giriş saati, geç kalan listesi', 'Yoklama, izin, ziyaretçi defteri', 'Oda değişikliği kaydı, arıza ve talep takibi', 'Kimlik bildirimi için yapılacaklar listesi (bildirim göndermez)', 'Personel belge tarihi takibi', 'Veli ve öğrenci portalı, reşit öğrencide izne bağlı paylaşım', 'Sağlık ve kimlik bilgisi rolle sınırlı, belge şifreli'],
+      modules: ['Oda Planı', 'Öğrenciler', 'Giriş & Çıkış', 'Yoklama', 'İzinler', 'Arıza & Talep', 'Tahsilatlar', 'Veli Portalı'],
+      faq: [['KBS bildirimi otomatik mi?', 'Hayır. KBS için resmî bir yazılım bağlantısı doğrulanamadı. Program yapılacakları listeler, bildirimi yetkili sistemden yaparsınız.'], ['Veli her şeyi görür mü?', 'Reşit olmayan öğrencide veli hareket ve ödeme bilgisini görür. Reşit öğrencide yalnızca öğrencinin kayıtlı izniyle görür.'], ['Ayrılış hesabı yasal hesap mı?', 'Bağlı olduğunuz yönetmeliğe göre öneri üretir. Oranı kendi taahhütnamenize göre değiştirirsiniz, son karar sizindir.']],
+    },
+    {
       id: 'otel', ready: true, extraDemos: [{ label: 'Web rezervasyon motorunu aç', url: 'apps/otel/rezervasyon.html' }], cat: 'konaklama', name: 'Otel & Pansiyon', tagline: 'Rezervasyon takvimi, oda durumu ve folyo', icon: 'bed', accent: '#0891b2',
       prices: [990, 1890, 3490], sectors: ['Butik otel', 'Pansiyon', 'Apart', 'Bungalov', 'Hostel'],
       desc: 'Oda/tarih ızgarasında sürükle-bırak rezervasyon, check-in/check-out, oda temizlik durumu, misafir folyosu ve ekstra harcamalar, doluluk ve ADR raporları.',

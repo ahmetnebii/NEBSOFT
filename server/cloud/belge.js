@@ -11,7 +11,7 @@ const log = require('./log');
 const gzip = promisify(zlib.gzip); const gunzip = promisify(zlib.gunzip);
 const PFX = 'nsdoc1:';
 // Sağlık (klinik, eczane, veteriner), çocuk sağlığı ve izin raporları (anaokulu, ik), e-Nabız deneme yükleri (entegrasyon)
-const SIFRELI = new Set(['klinik', 'eczane', 'veteriner', 'ik', 'anaokulu', 'entegrasyon']);
+const SIFRELI = new Set(['klinik', 'eczane', 'veteriner', 'ik', 'anaokulu', 'yurt', 'entegrasyon']);
 const sifreli = (app) => SIFRELI.has(app);
 const acik = (raw) => typeof raw === 'string' && !raw.startsWith(PFX);
 const turet = (ana, tid, app) => Buffer.from(crypto.hkdfSync('sha256', ana, String(tid), `nebsoft-belge:${app}`, 32));

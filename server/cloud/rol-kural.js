@@ -242,6 +242,13 @@ const RULES = {
     operasyon: { ad: 'Operasyon', kapat: ['payments', 'leads', 'signedDocs', 'sms'], gizle: { events: ['pkgPrice', 'discount', 'plan', 'contract', 'cancel', 'log', 'addenda', 'note'], packages: ['price', 'weekendPct'], customers: ['note', 'portalCode'] }, saltOkunur: ['events', 'halls', 'packages', 'extras', 'seasons', 'customers'], izinli: { events: ['tasks', 'opsNote'] },
       suz: (o) => { if (Array.isArray(o.events)) o.events = o.events.map((e) => (nesne(e) ? { ...e, extras: dizi(e.extras).map((x) => (nesne(x) ? { id: x.id, name: x.name, qty: x.qty } : x)) } : e)); if (Array.isArray(o.extras)) o.extras = o.extras.map((x) => (nesne(x) ? { id: x.id, name: x.name } : x)); } },
   },
+  // apps/yurt: reşit olmayan öğrenci verisi sunucuda sınırlıdır. Nöbetçi oda, ad, veli telefonu ve kısa acil notu görür; kimlik, sağlık, doğum tarihi, ücret, portal kodu gitmez, doğum tarihi yerine yalnız "reşit değil" bilgisi gider. Kayıt/muhasebe sağlık bilgisini, hareketleri ve yoklamayı görmez, yeni kayıtta sağlık alanı korunur. Ayrılış yönetici PIN'i ister.
+  yurt: {
+    kayit: { ad: 'Kayıt / Muhasebe', kapat: ['moves', 'rolls', 'leaves', 'visitors', 'staff'], gizle: { students: ['health'] }, yeniYazar: ['students'], saltOkunur: ['rooms', 'terms'], silemez: ['students', 'stays', 'payments'], onayTurleri: ['ayrilis'], onayGeri: { ayrilis: ['payments'] },
+      onayAdim: (o, s, onayla) => { if (!Array.isArray(o.stays)) return; const m = idHarita(s.stays); o.stays = o.stays.map((k) => { const e = nesne(k) ? m.get(k.id) : null; return !e || !k.left || e.left || onayla('ayrilis', 'stays') ? k : e; }); } },
+    gorevli: { ad: 'Belletmen / Nöbetçi', kapat: ['payments', 'staff', 'signedDocs'], ekle: ['sms'], gizle: { stays: ['plan', 'charges', 'deposit', 'monthly', 'leftInfo', 'depoOut', 'sign', 'signedAt', 'idIn', 'idOut'], terms: ['monthly'] }, saltOkunur: ['students', 'stays', 'rooms', 'terms'],
+      suz: (o) => { if (Array.isArray(o.students)) { const YH = require('../../apps/yurt/hesap.js'); const bugun = new Date(Date.now() + 3 * 3600e3).toISOString().slice(0, 10); o.students = o.students.map((s) => { if (!nesne(s)) return s; const g = nesne(s.guardian) ? s.guardian : {}; const { tc, health, address, birth, portalCode, veliIzni, ...r } = s; return { ...r, minor: YH.resitDegil(s, bugun), veliAcik: YH.veliPaylasir(s, bugun), guardian: { name: g.name, rel: g.rel, phone: g.phone } }; }); } } },
+  },
   // apps/servis: ROLES var, ekranlarda rol denetimi yok. Teknisyen ve kabul Özet, Teknisyenler, Ayarlar menüsünü görmez; parça alış fiyatı Parça Stoku ekranında herkese açık. Yalnız menü farkı: kural eklenmedi.
 };
 // Pazaryeri kanal kaydı: bağlantı alanları gerekir, komisyon ve hizmet bedeli kâr hesabıdır

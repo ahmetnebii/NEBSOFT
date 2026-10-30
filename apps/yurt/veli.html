@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Veli ve Öğrenci Portalı</title>
+<link rel="stylesheet" href="../../core/core.css">
+<link rel="stylesheet" href="../../core/track.css">
+<style>
+  :root { --app-accent: #4f46e5; --app-accent-soft: #e0e7ff; --app-accent-soft-dark: #1e1b4b; }
+  .tabs2 { display: flex; gap: 6px; margin-bottom: 16px; overflow-x: auto; }
+  .tabs2 button { flex: none; border: 1px solid var(--border); background: var(--surface); color: var(--text-2); border-radius: 99px; padding: 8px 14px; font: 600 13px var(--font); cursor: pointer; }
+  .tabs2 button[aria-selected="true"] { background: var(--text); color: var(--surface); border-color: var(--text); }
+  .ln { display: grid; grid-template-columns: 1fr auto; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--border); }
+  .ln:last-child { border-bottom: 0; }
+</style>
+</head>
+<body>
+<header class="tk-bar"><div class="in" id="bar"></div></header>
+<main class="tk-wrap" id="root" style="max-width:720px"></main>
+<script src="../../core/core.js"></script>
+<script src="hesap.js"></script>
+<script src="data.js"></script>
+<script>
+(function () {
+  const { esc, $, icon, money, toast, today, on, badge } = NS; const H = window.YURT_HESAP;
+  const db = new NS.DB('yurt', window.YURT.seed); const S = () => db.settings({});
+  let oturum = null, tab = 'durum'; // oturum: { kim: 'v' | 's', id }
+  const digits = (x) => String(x || '').replace(/\D/g, '').slice(-10);
+  $('#bar').innerHTML = `<div class="tk-mark">${icon('bed')}</div><div class="grow"><b>${esc(S().bizName || 'Yurt')}</b><span>Veli ve öğrenci portalı</span></div><span id="out"></span>`;
+  function login() {
+    $('#out').innerHTML = '';
+    $('#root').innerHTML = `<div class="tk-intro"><h1>Yurt bilgileri, cebinizde</h1><p>Yurdun verdiği kodla girin. Veli kodu ve öğrenci kodu ayrıdır.</p></div><div class="tk-find" style="flex-wrap:wrap"><input class="input" id="ph" type="tel" placeholder="05xx xxx xx xx" aria-label="Telefon"><input class="input" id="cd" placeholder="Kod" aria-label="Kod" style="max-width:140px"><button class="btn primary" id="go">Giriş</button></div>${db.pub ? '' : '<p class="small muted">Demo: <a href="#" data-h="v">örnek veli</a> · <a href="#" data-h="s">örnek öğrenci</a></p>'}
+      <div class="tk-how"><div>${icon('check')}<b>Giriş-çıkış</b>Son hareketi görün.</div><div>${icon('calendar')}<b>İzin</b>Gideceği yeri ve tarihi yazılı bildirin.</div><div>${icon('wallet')}<b>Ödeme</b>Taksit ve depozito durumu.</div></div>
+      <p class="small muted mt">Reşit öğrencinin bilgileri veliyle yalnızca öğrencinin izniyle paylaşılır.</p>`;
+    const go = () => {
+      const ph = $('#ph').value, cd = $('#cd').value.trim().toUpperCase();
+      if (db.pub) { if (!db.lookup({ phone: ph, code: cd })) return; const s = db.all('students')[0]; if (!s) return toast('Bilgiler eşleşmedi', 'err'); oturum = { kim: digits(s.phone) === digits(ph) ? 's' : 'v', id: s.id }; return panel(); }
+      const s = db.all('students').find((x) => digits(x.phone) === digits(ph) && String(x.portalCode || '').toUpperCase() === cd); if (s) { oturum = { kim: 's', id: s.id }; return panel(); }
+      const v = db.all('students').find((x) => digits(x.guardian.phone) === digits(ph) && String(x.guardian.portalCode || '').toUpperCase() === cd && H.veliPaylasir(x, today())); if (v) { oturum = { kim: 'v', id: v.id }; return panel(); } toast('Bilgiler eşleşmedi veya öğrenci veli paylaşımına izin vermedi', 'err');
+    };
+    $('#go').onclick = go; $('#cd').onkeydown = (e) => { if (e.key === 'Enter') go(); };
+  }
+  on(document.body, 'click', '[data-h]', (e, b) => { e.preventDefault(); if (b.dataset.h === 'v') { const s = db.all('students', (x) => H.resitDegil(x, today()))[0]; $('#ph').value = s.guardian.phone; $('#cd').value = NS.portalCode(db, s.guardian); } else { const s = db.all('students')[1]; $('#ph').value = s.phone; $('#cd').value = NS.portalCode(db, s); } });
+  const durum = (s, k) => { const m = H.sonHareket(db.all('moves'), s.id); const iz = H.izinli(db.all('leaves'), s.id, today()); return `<section class="tk-panel"><h3>${icon('check')} Şu an</h3><div class="b">${!k ? 'Kayıtlı barınma yok.' : `<div class="ln"><span>Oda</span><b>${esc((db.get('rooms', k.room) || {}).no || '-')} / yatak ${k.bed}</b></div>`}<div class="ln"><span>Durum</span><b>${iz ? `İzinli, ${NS.date(iz.to)} tarihine kadar` : m ? (m.type === 'giris' ? 'Yurtta' : 'Yurt dışında') : 'Hareket yok'}</b></div>${m ? `<div class="ln"><span>Son hareket</span><span>${m.type === 'giris' ? 'Giriş' : 'Çıkış'} · ${NS.dt(m.at)}</span></div>` : ''}</div></section>
+    <section class="tk-panel"><h3>${icon('clock')} Son hareketler</h3><div class="b">${db.all('moves', (x) => x.student === s.id).sort((a, b) => b.at.localeCompare(a.at)).slice(0, 12).map((x) => `<div class="ln"><span>${x.type === 'giris' ? 'Giriş' : 'Çıkış'}</span><span class="small muted">${NS.dt(x.at)}</span></div>`).join('') || '<p class="muted">Hareket yok.</p>'}</div></section>`; };
+  const izin = (s) => { const L = db.all('leaves', (l) => l.student === s.id).sort((a, b) => String(b.from).localeCompare(String(a.from))); const onayla = oturum.kim === 'v'; return `<section class="tk-panel"><h3>${icon('calendar')} İzin bildir</h3><div class="b"><div class="form-grid"><div class="field"><label>Başlangıç</label><input class="input" type="date" id="f" min="${today()}" value="${today()}"></div><div class="field"><label>Bitiş</label><input class="input" type="date" id="t" min="${today()}" value="${today()}"></div><div class="field full"><label>Kalacağı yer</label><input class="input" id="d" maxlength="200"></div></div><div class="mt"><button class="btn primary" id="iz">${icon('send')} İzin iste</button></div></div></section>
+    <section class="tk-panel"><h3>${icon('list')} İzinler</h3><div class="b">${L.map((l) => `<div class="ln"><span><b>${NS.date(l.from)} - ${NS.date(l.to)}</b><div class="small muted">${esc(l.dest)}</div></span><span>${badge(l.status === 'onay' ? 'Onaylı' : l.status === 'red' ? 'Reddedildi' : 'Bekliyor', l.status === 'onay' ? 'ok' : l.status === 'red' ? 'err' : 'warn')}${onayla && l.status === 'bekliyor' && !l.guardianOk ? ` <button class="btn sm" data-ok="${l.id}">Teyit ediyorum</button>` : ''}</span></div>`).join('') || '<p class="muted">İzin yok.</p>'}</div></section>`; };
+  const odeme = (s, k) => { if (!k) return '<p class="muted">Kayıt yok.</p>'; const o = H.odeme(k, db.all('payments'), today()); return `${o.kalan > 0 ? `<div class="tk-call"><h3>${icon('alert')} Kalan: ${money(o.kalan)}</h3>${S().iban ? `<p>IBAN: <span class="mono">${esc(S().iban)}</span></p>` : ''}</div>` : ''}<section class="tk-panel"><h3>${icon('wallet')} Taksitler</h3><div class="b">${o.satir.map((t) => `<div class="ln"><span><b>${esc(t.label)}</b><div class="small muted">${NS.date(t.due)}</div></div></span><span>${money(t.amount)} ${t.kalan <= 0 ? badge('Ödendi', 'ok') : t.gecikti ? badge('Gecikti', 'err') : ''}</span></div>`).join('')}</div></section><section class="tk-panel"><h3>${icon('shield')} Depozito</h3><div class="b"><div class="ln"><span>Alınan</span><b>${money(H.depoAlinan(k, db.all('payments')))}</b></div></div></section>`; };
+  const ariza = (s, k) => `<section class="tk-panel"><h3>${icon('wrench')} Arıza veya talep bildir</h3><div class="b"><textarea class="input" id="ar" maxlength="500" aria-label="Açıklama"></textarea><div class="mt"><button class="btn primary" id="ag">${icon('send')} Gönder</button></div></div></section><section class="tk-panel"><h3>${icon('list')} Bildirimlerim</h3><div class="b">${db.all('tickets', (t) => t.student === s.id).map((t) => `<div class="ln"><span>${esc(t.text)}</span>${t.status === 'acik' ? badge('Açık', 'warn') : badge('Kapandı', 'ok')}</div>`).join('') || '<p class="muted">Bildirim yok.</p>'}</div></section>`;
+  function panel() {
+    const s = db.get('students', oturum.id); if (!s) return login(); const k = db.all('stays', (x) => x.student === s.id && H.aktif(x))[0];
+    $('#out').innerHTML = `<button class="btn sm" id="cik">Çıkış</button>`; const T = [['durum', 'Durum'], ['izin', 'İzin'], ['odeme', 'Ödeme'], ...(oturum.kim === 's' ? [['ariza', 'Arıza']] : [])];
+    $('#root').innerHTML = `<div class="tk-head"><h2>${esc(s.name)}</h2><div class="muted">${oturum.kim === 'v' ? 'Veli girişi' : 'Öğrenci girişi'}</div></div><div class="tabs2" role="tablist">${T.map(([v, l]) => `<button role="tab" aria-selected="${v === tab}" data-t="${v}">${l}</button>`).join('')}</div>` + ({ durum, izin, odeme, ariza }[tab] || durum)(s, k);
+  }
+  on(document.body, 'click', '[data-t]', (e, b) => { tab = b.dataset.t; panel(); });
+  on(document.body, 'click', '#cik', () => { oturum = null; tab = 'durum'; if (db.pub) db.pubLogout(); login(); });
+  on(document.body, 'click', '#iz', () => { const from = $('#f').value, to = $('#t').value, dest = $('#d').value.trim(); if (!from || !to || to < from) return toast('Tarihleri kontrol edin', 'err'); if (!dest) return toast('Kalacağı yeri yazın', 'err'); const r = { id: NS.uid(), student: oturum.id, from, to, dest }; if (!db.pub) Object.assign(r, { status: 'bekliyor', src: oturum.kim === 'v' ? 'veli' : 'ogrenci', guardianOk: oturum.kim === 'v', created: new Date().toISOString() }); (db.data.leaves = db.data.leaves || []).push(r); db.save(); toast('İzin talebiniz yurda iletildi', 'ok'); panel(); });
+  on(document.body, 'click', '[data-ok]', (e, b) => { const l = db.get('leaves', b.dataset.ok); l.guardianOk = true; db.save(); toast('Teyidiniz kaydedildi', 'ok'); panel(); });
+  on(document.body, 'click', '#ag', () => { const text = $('#ar').value.trim(); if (!text) return toast('Açıklama yazın', 'err'); const k = db.all('stays', (x) => x.student === oturum.id && H.aktif(x))[0]; const r = { id: NS.uid(), student: oturum.id, room: k && k.room, text }; if (!db.pub) Object.assign(r, { status: 'acik', src: 'ogrenci', at: new Date().toISOString() }); (db.data.tickets = db.data.tickets || []).push(r); db.save(); toast('Bildiriminiz yurda iletildi', 'ok'); panel(); });
+  login();
+})();
+</script>
+</body>
+</html>
