@@ -1,6 +1,57 @@
 # E-ticaret — Ürün Spesifikasyonu
 
-> **Durum (29.10.2026):** Kullanıcı tüm programlar için dalgaları önceden onayladı ("atlama yok"). **1. dalga tamamlandı.** 2. ve 3. dalga sırada.
+> **Durum (30.10.2026):** Kullanıcı tüm programlar için dalgaları önceden onayladı ("atlama yok"). 1., 2. ve 3. dalga yapıldı; ilk bölümdeki engeller kaldırılmadan canlıya çıkılamaz.
+
+## CANLIYA ÇIKMAYI ENGELLEYENLER
+- **Vitrinde kartla ödeme:** ödeme sağlayıcısı yok; kart seçeneği TEST, sipariş ciroya girmez.
+- **Trendyol iade çekme, durum çekme:** resmî dokümana göre yazıldı (aşağıda §6), satıcı test hesabıyla denenmedi. Dokümanda tarih aralığı sınırı yazmıyor, 14 gün istenir.
+- **Trendyol "tedarik edilemedi":** `reasonId` 500–506 değerlerinin anlamı resmî sayfada yok — DOĞRULANAMADI. Panelden çağrı yapılmaz; iptalde kullanıcıya pazaryeri panelini kullanması söylenir. Bağdaki kod silinmedi.
+- **Hepsiburada:** doküman doğrulanamadı, canlı seçilemez. **Amazon, Pazarama, Çiçeksepeti:** adaptör yok, yalnızca TEST.
+- **Kargo firması gönderi API'leri:** DOĞRULANAMADI; takip no elle girilir.
+- **Vitrindeki taksit oranları** (`instTable`): sabit örnek değerler, gerçek banka oranı değil. Kart ödemesi açılmadan önce sağlayıcıdan alınmalı.
+- **Kargo ve kapıda ödeme bedeli KDV oranı %20** (hafızadan, doğrulanmadı): mali müşavire sorulmalı.
+- **e-Arşiv ve iade faturası:** gerçek sağlayıcıyla denenmedi. Gerçek satış faturası olmayan siparişte iade faturası düğmesi çıkmaz; bu yüzden düğme tarayıcıda görülmedi.
+
+## 2-3. dalga — yapılanlar (30.10.2026)
+Kanıt: **Tarayıcı** = başsız Chrome'da sayfa gerçekten çalıştırıldı (`?demo=1`); **Test** = otomatik test; **Kod incelendi** = çalıştırılmadı.
+
+### Kırık temel (kod incelemesinde bulunanlar)
+| # | Sorun | Sonuç | Kanıt |
+|---|---|---|---|
+| E1 | İade tutarı kuponu saymıyor ve sipariş toplamını aşabiliyordu | Kupon sonrası birim fiyatla önerilir, üst sınır sipariş − önceki iadeler | Tarayıcı: 99.999.999 ₺ reddedildi, 849 ₺ önerildi; 3 üründen 2'si iade → 2.118 ₺, "Kısmi iade" |
+| E2 | Hazırlanan (kargoya verilmemiş) sipariş iade edilebiliyordu; kargodaki sipariş iptal edilebiliyordu | Elle iade yalnızca kargoda/teslim; iptal yalnızca kargo öncesi | Tarayıcı (iade), Kod incelendi (iptal) |
+| E3 | İptalde pazaryerine stok gitmiyor, kupon hakkı dönmüyordu | Stok gönderilir, kupon sayacı düşer | Kod incelendi |
+| E4 | Stok yetmeyen pazaryeri siparişi sessizce 0'a düşüyor, iptalde olmayan stok ekleniyordu | `taken` / `short`: yalnızca düşülen adet döner; "Stok yetmedi" uyarısı | Kod incelendi |
+| E5 | Aynı siparişin ikinci paketi "zaten var" sayılıyordu | Tekrar denetimi paket numarasıyla | Kod incelendi |
+| E6 | TEST ödemeli sipariş ciroda, iadeler özetteki ciroda düşmüyordu | Özet ve raporlar net ciro, TEST hariç | Tarayıcı (ekran açıldı), Kod incelendi (hesap) |
+| E7 | Hareketli ürün, müşteri, kategori silinebiliyordu; açık siparişli varyant kaldırılabiliyordu | Silme kısıtları; ürün "Yayından kaldırın" uyarısı | Tarayıcı: ürün ve müşteri silinmedi. Varyant ve kategori: Kod incelendi |
+| E8 | Depo personeli iptal, ödeme ve iade kararı verebiliyordu | Bunlar ve ürün silme, Excel, maliyet yalnızca mağaza sahibinde | Kod incelendi (depo girişiyle denenmedi) |
+| E9 | Sahte metinler: "Havale bilgileri e-posta adresinize gönderildi", "Kargo kodunuz SMS ile gönderilecek", sepet "Hatırlatıldı", var olmayabilecek sabit `HOSGELDIN` kuponu, demo verisinde yapılmamış senkron günlüğü | Metinler düzeltildi; WhatsApp "açıldı" yazar; kupon yalnızca geçerliyse eklenir; günlük boş başlar | Tarayıcı: SMS TEST'te sepet hatırlatılmış sayılmadı. Vitrin metinleri: Kod incelendi |
+| E10 | Müşteri ekranı her satırda tüm siparişleri tarıyordu; listeleme ürün × kanal başına dizi tarıyordu | Tek geçiş ve dizin | Tarayıcı: 4.000 sipariş, 900 ürün, 2.500 müşteri: müşteriler 504 ms, listeleme 313 ms, ürünler 93 ms, raporlar 50 ms |
+| E11 | Bulut sipariş görünümü iç alanları da verecekti | İç not, etiket, geçmiş, kesinti süzülür | `eticaret-kural.test.js` |
+
+### 2. dalga — beklenenler
+| # | Özellik | Sonuç | Kanıt |
+|---|---|---|---|
+| B1 | Toplu işlem | Çoklu seçim: hazırlanıyor, paket fişi, etiket, kargo listesi, fatura | Tarayıcı: fiş, toplama, hazırlama. Etiket ve fatura: Kod incelendi |
+| B2 | Toplama listesi | Aynı ürünler birleşik, `NS.docs` | Tarayıcı |
+| B3 | Elle sipariş | Telefon/WhatsApp/Instagram; stok düşer, ödeme durumu seçilir | Tarayıcı: stok 4 → 3 |
+| B4 | İç not, etiket | Müşteriye gitmez; aranabilir; işlem geçmişine yazılır | `eticaret-kural.test.js`; ekran: Kod incelendi |
+| B5 | Geciken sipariş | Ayarlı saat (48), "Geciken" filtresi, özet bağlantısı | Tarayıcı (ekran) |
+| B6 | Kupon | Başlangıç, son tarih, kullanım sınırı, tekrar kod ve yüzde denetimi; sunucuda da uygulanır | `eticaret-kural.test.js`, Tarayıcı (`SHOP.totals`) |
+| B7 | Excel aktarımı | Stok kodu/barkodla güncelleme, yeni varyant, özet onayı, hatalı satır atlanır; yeni ürün yayında başlamaz | Tarayıcı (`NS.readSheet` taklit edilerek); gerçek dosyayla denenmedi |
+| B8 | Kritik stok, kaç günde biter | Ayarlı sınır, 45 günlük satış hızı | Tarayıcı (sütun) |
+| B9 | Belgeler | Paket fişi ve toplama listesi `NS.docs`. Kargo etiketi `NS.printHtml` (barkod düzeni şablona uymuyor) | Tarayıcı; kâğıtta denenmedi |
+
+### 3. dalga — fark yaratanlar
+| # | Özellik | Sonuç | Kanıt |
+|---|---|---|---|
+| F1 | Barkodla paket doğrulama | Okutma/kamera, yanlış ürün ve fazla adet uyarısı, "Elle onayla" kaydı ayrı; ayarla zorunlu | Tarayıcı: elle onay, yanlış barkod. Kamera denenmedi |
+| F2 | Ürün/kanal kâr | KDV hariç ciro − kesinti − kargo − maliyet, "tahmini"; maliyetsiz ürün ayrıca uyarılır | Tarayıcı (tablo); rakamlar elle sağlanmadı |
+| F3 | Müşteri segmenti | Sadık, Yeni, Kaybedilmek üzere, Kayıp (sabit eşikler) | Tarayıcı |
+| F4 | Trendyol iade ve durum çekme | `iade-cek` adaptörü; iptal ve teslim durum çekme; durum geri kaymaz | `kanal.test.js` (taklit sunucu); canlı denenmedi |
+
+Kalite kapısı: 16 ekran konsol hatasız; 375 px koyu temada 8 ekran taşmasız, boş liste görüldü. Elle sipariş penceresi telefonda taşmıyor. Yapılmadı: ürün fotoğrafı yükleme (dosya deposu gerekir, Ç7).
 
 Tarih: 29.10.2026 · Dal: `claude/urun-eticaret-uretim-38c2a2` · Yöntem: `CLAUDE.md` §2 · Program: `apps/eticaret` (yönetim paneli `index.html`, vitrin `magaza.html`, pazaryeri merkezi `pazaryeri.js`)
 
@@ -141,6 +192,9 @@ Tarih: 29.10.2026 · Dal: `claude/urun-eticaret-uretim-38c2a2` · Yöntem: `CLAU
 | Trendyol ürün oluşturma | **UYUMSUZ → düzeltildi:** yol `/integration/product/sellers/{id}/v2/products`; `currencyType`, `cargoCompanyId` şemada yok | …/reference/createproducts |
 | Trendyol batch sonucu, kategori ağacı, soru-cevap (yanıt 10–2000 karakter), hakediş (≤15 gün, size 500/1000), iadeler `/claims` | DOĞRULANDI | …/reference/getbatchrequestresult, getcategorytree, getquestionfilter, answerquestion, getsettlements, getclaims |
 | Trendyol takip no bildirme `…/update-tracking-number` | **DOĞRULANAMADI** (resmî dizinde sayfa yok) → çağrı kapatıldı | developers.trendyol.com/llms.txt |
+| Trendyol iade `GET /order/sellers/{id}/claims` (size ≤200; `items[].orderLine`, `claimItems[].claimItemStatus.name`, `customerClaimItemReason`) — 30.10.2026 | DOĞRULANDI (alanlar), canlı denenmedi | developers.trendyol.com/reference/getclaims |
+| Trendyol paket durum filtresi (Cancelled, Delivered…) — 30.10.2026 | DOĞRULANDI, canlı denenmedi | …/reference/getshipmentpackages |
+| Trendyol tedarik edilemedi `reasonId` anlamları — 30.10.2026 | **DOĞRULANAMADI** (değerler var, anlamları yazmıyor) → panelden çağrılmaz | …/reference/cancelorderpackageitem |
 | Hepsiburada (kimlik, listeleme, envanter, sipariş) | **DOĞRULANAMADI** (developers.hepsiburada.com HTTP 403) → canlı mod seçilemez | — |
 | n11 sipariş paketleri, fiyat-stok, görev sonucu, ürün sorgu | DOĞRULANDI → canlı mod açıldı | developer.n11.com/documentation/… (siparis-listeleme-servisi, urun-fiyat-stok-guncelleme, task-detail-sorgulama, satici-urun-sorgulama) |
 

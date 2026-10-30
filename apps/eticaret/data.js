@@ -19,7 +19,7 @@ window.SHOP = {
     db.data.products = P.map(([cat, name, price, sale, colors], i) => {
       const sizes = cat === 'ayakkabi' ? ['36', '37', '38', '39', '40'] : cat === 'aksesuar' ? ['Standart'] : ['XS', 'S', 'M', 'L', 'XL'];
       const variants = colors.flatMap((c) => sizes.map((s) => ({ id: NS.uid(), color: c, size: s, stock: Math.random() < 0.12 ? 0 : rand(0, 14), sku: `LB${String(100 + i)}-${c.slice(0, 3).toUpperCase()}-${s}` })));
-      return { id: 'p' + i, name, slug: NS.slug(name), cat, price, sale, desc: `${name}. Rahat kesim, günlük ve özel günlerde kullanıma uygun. Model ${pick(['S', 'M'])} beden giymektedir. %${rand(60, 100)} pamuk.`, colors, variants, tags: [i % 7 === 0 ? 'Yeni' : '', i % 5 === 2 ? 'Çok satan' : ''].filter(Boolean), active: true, views: rand(120, 4200), created: addDays(new Date(), -rand(1, 120)).toISOString() };
+      return { id: 'p' + i, name, slug: NS.slug(name), cat, price, sale, cost: Math.round(price * 0.42), desc: `${name}. Rahat kesim, günlük ve özel günlerde kullanıma uygun. Model ${pick(['S', 'M'])} beden giymektedir. %${rand(60, 100)} pamuk.`, colors, variants, tags: [i % 7 === 0 ? 'Yeni' : '', i % 5 === 2 ? 'Çok satan' : ''].filter(Boolean), active: true, views: rand(120, 4200), created: addDays(new Date(), -rand(1, 120)).toISOString() };
     });
     db.data.coupons = [{ id: 'k1', code: 'HOSGELDIN', type: 'pct', value: 10, min: 500, active: true, uses: 48 }, { id: 'k2', code: 'KARGO0', type: 'ship', value: 0, min: 300, active: true, uses: 21 }, { id: 'k3', code: 'SONBAHAR150', type: 'tl', value: 150, min: 1500, active: true, uses: 9 }];
     const cities = ['İstanbul', 'İstanbul', 'Ankara', 'İzmir', 'Bursa', 'Antalya', 'Eskişehir', 'Kocaeli'];
@@ -83,13 +83,15 @@ window.SHOP = {
   rating(db, pid) { const r = (db.data.reviews || []).filter((x) => x.pid === pid); return { n: r.length, avg: r.length ? Math.round((r.reduce((t, x) => t + x.rating, 0) / r.length) * 10) / 10 : 0 }; },
   price: (p) => p.sale || p.price,
   stock: (p) => p.variants.reduce((t, v) => t + v.stock, 0),
+  // Kupon geçerli mi: boş dönerse geçerli (sunucu tarafı: server/cloud/public-rules.js shopCoupon)
+  couponCheck(k, day = NS.today()) { if (k.start && day < k.start) return `Bu kupon ${NS.date(k.start)} tarihinde başlıyor`; if (k.end && day > k.end) return 'Bu kuponun süresi doldu'; if (Number(k.maxUses) && (k.uses || 0) >= Number(k.maxUses)) return 'Bu kuponun kullanım hakkı doldu'; return ''; },
   // Sepet toplamı: ara toplam, kupon, kargo
   totals(db, items, couponCode, pay) {
     const s = db.settings({ freeShip: 750, shipFee: 79, codFee: 30 });
     const sub = items.reduce((t, i) => t + i.price * i.qty, 0);
     const k = couponCode && db.find('coupons', (c) => c.code === couponCode && c.active);
-    let discount = 0, freeByCoupon = false, msg = '';
-    if (k) { if (sub < (k.min || 0)) msg = `Bu kupon ${NS.money(k.min)} ve üzeri alışverişte geçerli`; else if (k.type === 'pct') discount = Math.round(sub * k.value) / 100; else if (k.type === 'tl') discount = k.value; else if (k.type === 'ship') freeByCoupon = true; }
+    let discount = 0, freeByCoupon = false, msg = k ? SHOP.couponCheck(k) : '';
+    if (k && !msg) { if (sub < (k.min || 0)) msg = `Bu kupon ${NS.money(k.min)} ve üzeri alışverişte geçerli`; else if (k.type === 'pct') discount = Math.round(sub * k.value) / 100; else if (k.type === 'tl') discount = Math.min(sub, Number(k.value) || 0); else if (k.type === 'ship') freeByCoupon = true; }
     const shipping = sub - discount >= s.freeShip || freeByCoupon || !items.length ? 0 : s.shipFee;
     const cod = pay === 'kapida' ? s.codFee : 0;
     return { sub, discount, shipping, cod, total: Math.max(0, sub - discount + shipping + cod), coupon: k && !msg ? k : null, msg, toFree: Math.max(0, s.freeShip - (sub - discount)) };

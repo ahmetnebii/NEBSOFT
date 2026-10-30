@@ -172,6 +172,7 @@ RULES.servis = {
 
 // ---------- Kargo: gönderi takip (takip.html?no=) ----------
 const maskName = (n) => { const [name, rel] = String(n || '').split(' ('); return name.split(' ').filter(Boolean).map((w) => w[0] + '*'.repeat(Math.max(1, w.length - 1))).join(' ') + (rel ? ' (' + rel : ''); };
+const publicNote = (h) => (h.status === 'teslim' ? 'Teslim edildi' : h.status === 'edilemedi' ? String(h.note || '').split(' — ')[0].split(' · konum')[0] : h.status === 'dagitimda' ? 'Kurye dağıtıma çıkardı' : String(h.note || ''));
 RULES.kargo = {
   pub: {},
   // Takip numarası gönderiyi gösterir; değişiklik için alıcı telefonunun son 4 hanesi gerekir
@@ -184,8 +185,10 @@ RULES.kargo = {
   view: (x) => {
     const sh = x.ident && x.get('ships', x.ident.i); if (!sh) return { ships: [], couriers: [] };
     const r = sh.receiver || {}, sd = sh.sender || {}; const cr = sh.courier && x.get('couriers', sh.courier);
+    // Hareket notlarında teslim alanın adı, teslim konumu ve personel adı var: takip numarasını bilen herkese gitmez
+    const history = (sh.history || []).map((h) => ({ at: h.at, status: h.status, note: publicNote(h) }));
     return {
-      ships: [{ ...x.pick(sh, ['id', 'no', 'at', 'status', 'retryDate', 'pref', 'service', 'cod', 'rating', 'courier', 'region', 'history', 'pieces', 'desi', 'failReason', 'attempts']), receiver: { name: maskName(r.name), district: r.district, city: r.city }, sender: { name: sd.name, district: sd.district }, deliveredTo: sh.deliveredTo ? maskName(sh.deliveredTo) : undefined }],
+      ships: [{ ...x.pick(sh, ['id', 'no', 'at', 'status', 'retryDate', 'pref', 'service', 'cod', 'rating', 'courier', 'region', 'pieces', 'desi', 'failReason', 'attempts']), history, proof: !!(sh.signature || sh.geo || sh.photo), receiver: { name: maskName(r.name), district: r.district, city: r.city }, sender: { name: sd.name, district: sd.district }, deliveredTo: sh.deliveredTo ? maskName(sh.deliveredTo) : undefined }],
       couriers: cr ? [{ id: cr.id, name: String(cr.name || '').split(' ')[0], vehicle: cr.vehicle }] : [],
     };
   },
@@ -199,7 +202,8 @@ RULES.kargo = {
         else if (x.ident.k === 'v' && keys.every((k) => ['pref', 'history', 'retryDate'].includes(k)) && !['teslim', 'iade'].includes(cur.status)) {
           if ('pref' in set) out.pref = set.pref ? { ...clean({ type: 'enum:komsu|gorevli|sube|gun', note: 'str:200?', date: 'str:10?' }, set.pref), at: nowIso() } : null;
           if ('retryDate' in set) { if (cur.status !== 'edilemedi') deny(); const d = val('date', set.retryDate, 'retryDate'); if (d <= x.today || d > new Date(Date.now() + 10 * 864e5).toISOString().slice(0, 10)) bad('Geçersiz tarih'); out.retryDate = d; }
-          if ('history' in set) out.history = appendOnly(cur.history, set.history, 1, H, { status: 'retryDate' in set ? 'edilemedi' : cur.status, by: 'Alıcı (online)' });
+          // Sayfa geçmişin süzülmüş halini gördüğü için eski öğeler karşılaştırılmaz: sunucudaki kayıt korunur, yalnızca son eklenen alınır
+          if ('history' in set) { const old = cur.history || []; if (!Array.isArray(set.history) || set.history.length !== old.length + 1) deny(); out.history = [...old, { ...clean(H, set.history[old.length] || {}), status: 'retryDate' in set ? 'edilemedi' : cur.status, by: 'Alıcı (online)' }]; }
         } else deny();
         return { ...out, updated: nowIso() };
       },
@@ -751,19 +755,21 @@ RULES.emlak = {
 // ---------- E-ticaret: mağaza vitrini (magaza.html) ----------
 // Fiyat, indirim, kargo ve stok sunucuda hesaplanır; kartla ödeme bulutta kapalıdır (kapıda ödeme / havale)
 const shopSet = (x) => ({ freeShip: 750, shipFee: 79, codFee: 30, ...(x.doc._settings || {}) });
-const shopCoupon = (x, code) => code && x.col('coupons').find((c) => c.code === String(code).toUpperCase() && c.active);
+// Kupon: etkin, tarih aralığında ve kullanım sınırı dolmamış olmalı (apps/eticaret/data.js couponCheck ile aynı)
+const shopCoupon = (x, code) => { const k = code && x.col('coupons').find((c) => c.code === String(code).toUpperCase() && c.active); if (!k || (k.start && x.today < k.start) || (k.end && x.today > k.end) || (Number(k.maxUses) && (k.uses || 0) >= Number(k.maxUses))) return null; return k; };
 RULES.eticaret = {
   pub: {
     cats: true,
     products: { where: (p) => p.active !== false, omit: ['cost', 'supplier', 'buyPrice'] },
     reviews: { where: (r) => !r.pending },
   },
-  query: (x, q) => { const k = shopCoupon(x, q.coupon); return k ? { coupons: [x.pick(k, ['id', 'code', 'type', 'value', 'min', 'active'])] } : null; },
+  query: (x, q) => { const k = shopCoupon(x, q.coupon); return k ? { coupons: [x.pick(k, ['id', 'code', 'type', 'value', 'min', 'active', 'start', 'end', 'maxUses', 'uses'])] } : null; },
   login: (x, q) => { const no = norm(q.no); const o = no && x.col('orders').find((o) => o.no === no); const l4 = String(q.last4 || '').replace(/\D/g, ''); return o && l4.length === 4 && digits((o.ship || {}).phone).endsWith(l4) ? { k: 'o', i: o.id } : null; },
   loginError: 'Sipariş numarası ve telefon eşleşmedi',
   view: (x) => {
     const o = x.get('orders', me(x, 'o')); if (!o) return {};
-    return { orders: [o], returns: x.col('returns').filter((r) => r.order === o.id) };
+    // İç not, etiket, işlem geçmişi ve kanal kesintileri müşteriye gitmez
+    return { orders: [strip(o, ['memo', 'tags', 'history', 'payout', 'channelShip', 'packCheck', 'source'])], returns: x.col('returns').filter((r) => r.order === o.id).map((r) => strip(r, ['by', 'restocked', 'lines'])) };
   },
   write: {
     customers: { ins: I({ name: 'str:80', phone: 'phone', email: 'email?', city: 'str:40?', address: 'str:300?' }, {}) },
@@ -782,7 +788,7 @@ RULES.eticaret = {
         r.items.forEach((i) => { const v = x.get('products', i.pid).variants.find((z) => z.id === i.vid); v.stock -= i.qty; });
         const S = shopSet(x); const sub = r.items.reduce((t, i) => t + i.price * i.qty, 0);
         const k = shopCoupon(x, x.q.coupon); let discount = 0, freeBy = false;
-        if (k && sub >= (k.min || 0)) { if (k.type === 'pct') discount = Math.round(sub * k.value) / 100; else if (k.type === 'tl') discount = Number(k.value); else if (k.type === 'ship') freeBy = true; k.uses = (k.uses || 0) + 1; r.coupon = k.code; } else r.coupon = null;
+        if (k && sub >= (k.min || 0)) { if (k.type === 'pct') discount = Math.round(sub * k.value) / 100; else if (k.type === 'tl') discount = Math.min(sub, Number(k.value)); else if (k.type === 'ship') freeBy = true; k.uses = (k.uses || 0) + 1; r.coupon = k.code; } else r.coupon = null;
         const shipping = sub - discount >= S.freeShip || freeBy ? 0 : Number(S.shipFee); const cod = r.pay === 'kapida' ? Number(S.codFee) : 0;
         Object.assign(r, { subtotal: sub, discount, shipping, cod, total: Math.max(0, sub - discount + shipping + cod), no: x.seq('orders', 'LB') });
       }),
