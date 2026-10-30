@@ -7,13 +7,19 @@
   const db = new NS.DB('fabrika', F.seed);
   const S = () => db.settings({ lotPrefix: 'L', sktWarn: 30, shiftHours: 8, shifts: 2 });
   const me = () => (NS.currentUser || {}).name || 'Sistem';
-  const mat = (id) => db.get('materials', id) || { name: '-', unit: '', type: 'hammadde', code: '' };
+  // Binlerce kayıtta her satırda diziyi taramamak için id → kayıt haritası; dizi değişince (yeni kayıt, silme, eşitleme) yenilenir
+  const IDX = {};
+  const byId = (col, id) => { const a = db.col(col); let c = IDX[col]; if (!c || c.a !== a || c.n !== a.length) { const m = new Map(); a.forEach((x) => m.set(x.id, x)); c = IDX[col] = { a, n: a.length, m }; } return c.m.get(id); };
+  // Aynı ekran çizimi içinde tekrar hesaplanmasın (kayıt her değiştiğinde sıfırlanır)
+  let TICK = null; const tick = () => { if (!TICK) { TICK = {}; setTimeout(() => { TICK = null; }, 0); } return TICK; };
+  const dbSave = db.save.bind(db); db.save = (...a) => { TICK = null; return dbSave(...a); };
+  const mat = (id) => byId('materials', id) || { name: '-', unit: '', type: 'hammadde', code: '' };
   const whs = () => db.all('warehouses');
-  const wh = (id) => db.get('warehouses', id) || { name: '-', type: '', locs: [] };
-  const sup = (id) => db.get('suppliers', id) || { name: '-' };
-  const cus = (id) => db.get('customers', id) || { name: '-' };
-  const stn = (id) => db.get('stations', id) || { name: '-', cap: 1, cph: 0 };
-  const lotRec = (no) => db.get('lots', no) || {};
+  const wh = (id) => byId('warehouses', id) || { name: '-', type: '', locs: [] };
+  const sup = (id) => byId('suppliers', id) || { name: '-' };
+  const cus = (id) => byId('customers', id) || { name: '-' };
+  const stn = (id) => byId('stations', id) || { name: '-', cap: 1, cph: 0 };
+  const lotRec = (no) => byId('lots', no) || {};
   const qu = (q, m) => `${num(q)} ${esc((m || {}).unit || '')}`;
   const matOpts = (filter) => db.all('materials', filter).sort((a, b) => a.code.localeCompare(b.code)).map((m) => ({ value: m.id, label: `${m.code} · ${m.name}` }));
   const whType = (id) => wh(id).type;
@@ -22,33 +28,35 @@
   const typeBadge = (t) => badge((TYPES[t] || ['-'])[0], (TYPES[t] || [])[1]);
 
   // ---------- Stok endeksi: malzeme → [{wh, loc, lot, qty}] ----------
-  let IX = null;
+  let IX = null; let IXA = null; let IXN = 0;
   function ix() {
-    if (IX) return IX;
+    const mv = db.col('moves'); if (IX && IXA === mv && IXN === mv.length) return IX; // bulut eşitlemesi hareketleri değiştirdiyse yeniden hesaplanır
+    IXA = mv; IXN = mv.length;
     const k = {}; const m = {};
-    db.col('moves').forEach((x) => { const key = [x.mat, x.wh, x.loc || '', x.lot || ''].join('|'); k[key] = r3((k[key] || 0) + x.qty); });
+    mv.forEach((x) => { const key = [x.mat, x.wh, x.loc || '', x.lot || ''].join('|'); k[key] = r3((k[key] || 0) + x.qty); });
     Object.entries(k).forEach(([key, q]) => { if (Math.abs(q) < 1e-9) return; const [mt, w, loc, lot] = key.split('|'); (m[mt] = m[mt] || []).push({ mat: mt, wh: w, loc, lot, qty: q }); });
     return (IX = m);
   }
-  const dirty = () => { IX = null; };
+  const dirty = () => { IX = null; TICK = null; };
   const rowsOf = (matId) => ix()[matId] || [];
   const stock = (matId, whId) => r3(sum(rowsOf(matId).filter((r) => (whId ? r.wh === whId : isUsable(r.wh))), (r) => r.qty));
   const stockByType = (matId, type) => r3(sum(rowsOf(matId).filter((r) => whType(r.wh) === type), (r) => r.qty));
   const fefo = (matId, whFilter) => rowsOf(matId).filter((r) => r.qty > 0 && (whFilter ? whFilter(r.wh) : isUsable(r.wh)) && lotRec(r.lot).status !== 'bloke')
     .sort((a, b) => (lotRec(a.lot).skt || '9999').localeCompare(lotRec(b.lot).skt || '9999') || String(a.lot).localeCompare(String(b.lot)));
   function move(o) { db.col('moves').push({ id: NS.uid(), at: new Date().toISOString(), date: today(), user: me(), ...o, qty: r3(o.qty) }); dirty(); }
-  // FEFO toplama planı
+  // FEFO toplama planı: son kullanma tarihi geçmiş lot üretime ve sevkiyata çıkmaz (expired: bu yüzden kullanılamayan miktar)
+  const isExpired = (lot) => { const s = lotRec(lot).skt; return !!s && s < today(); };
   function pickPlan(matId, qty, whFilter) {
-    let need = r3(qty); const lines = [];
-    for (const r of fefo(matId, whFilter)) { if (need <= 0) break; const t = r3(Math.min(need, r.qty)); lines.push({ ...r, qty: t }); need = r3(need - t); }
-    return { lines, short: need > 0 ? need : 0 };
+    let need = r3(qty); const lines = []; let expired = 0;
+    for (const r of fefo(matId, whFilter)) { if (isExpired(r.lot)) { expired = r3(expired + r.qty); continue; } if (need <= 0) continue; const t = r3(Math.min(need, r.qty)); lines.push({ ...r, qty: t }); need = r3(need - t); }
+    return { lines, short: need > 0 ? need : 0, expired };
   }
   const newLotNo = () => `${S().lotPrefix || 'L'}${today().replace(/-/g, '').slice(2)}-${db.nextNo('lot')}`;
   function createLot(m, extra = {}) { const no = newLotNo(); db.col('lots').push({ id: no, no, mat: m.id, prod: today(), skt: m.shelf ? iso(addDays(new Date(), m.shelf)) : '', ...extra }); return no; }
   const openPO = () => db.all('po', (p) => ['acik', 'kismi'].includes(p.status));
-  const onOrder = (matId) => r3(sum(openPO().flatMap((p) => p.lines.filter((l) => l.mat === matId)), (l) => Math.max(0, l.qty - (l.received || 0))));
-  const inProd = (matId) => r3(sum(db.all('wo', (w) => w.mat === matId && !['tamam', 'iptal'].includes(w.status)), (w) => Math.max(0, w.qty - (w.produced || 0))));
-  const bomOf = (matId) => db.find('boms', (b) => b.mat === matId && b.active);
+  const onOrder = (matId) => { const t = tick(); if (!t.ord) { t.ord = {}; openPO().forEach((p) => p.lines.forEach((l) => { t.ord[l.mat] = (t.ord[l.mat] || 0) + Math.max(0, l.qty - (l.received || 0)); })); } return r3(t.ord[matId] || 0); };
+  const inProd = (matId) => { const t = tick(); if (!t.prod) { t.prod = {}; db.col('wo').forEach((w) => { if (!['tamam', 'iptal'].includes(w.status)) t.prod[w.mat] = (t.prod[w.mat] || 0) + Math.max(0, w.qty - (w.produced || 0)); }); db.col('fason').forEach((f) => { if (!['tamam', 'iptal'].includes(f.status)) t.prod[f.mat] = (t.prod[f.mat] || 0) + Math.max(0, f.qty - (f.good || 0)); }); } return r3(t.prod[matId] || 0); };
+  const bomOf = (matId) => { const t = tick(); if (!t.bom) { t.bom = {}; db.col('boms').forEach((b) => { if (b.active && !t.bom[b.mat]) t.bom[b.mat] = b; }); } return t.bom[matId]; };
   function unitCost(matId, depth = 0) {
     const m = mat(matId); const b = bomOf(matId);
     if (!b || depth > 6) return m.cost || 0;
@@ -61,6 +69,15 @@
   const curFmt = (v, cur) => (cur && cur !== 'TRY' ? new Intl.NumberFormat('tr-TR', { style: 'currency', currency: cur }).format(v) : money(v));
   const qcParams = (m) => String(m.qcp || '').split('\n').map((x) => x.trim()).filter(Boolean).map((x) => { const [name, min, max] = x.split(';').map((y) => (y || '').trim()); return { name, min: min === '' || min === undefined ? null : Number(min), max: max === '' || max === undefined ? null : Number(max) }; });
 
+  // ---------- Belgeler: hepsi işletmenin şablonuyla (NS.docs) yazdırılır ----------
+  const DOC = { terms: '', hide: ['qr'] }; // varsayılan garanti metni bu belgelerde yanlış olur
+  const DOCS = { satinalma: 'Satınalma siparişi', malkabul: 'Mal kabul fişi', kalite: 'Giriş kalite kontrol raporu', 'iade-fis': 'Tedarikçi iade fişi', 'is-emri': 'İş emri föyü', toplama: 'Toplama listesi', sayim: 'Sayım listesi', sevk: 'Sevk fişi', 'fason-sevk': 'Fason sevk fişi', 'geri-cagirma': 'Geri çağırma listesi' };
+  const docLine = (l) => ({ name: `${mat(l.mat).code} · ${mat(l.mat).name}`, qty: num(l.qty), unit: mat(l.mat).unit, note: l.note || '', total: 0 });
+  const noPrice = { money: () => '' }; // fiyatsız belgelerde Tutar sütunu boş kalır
+  const noInvoice = 'Bu fiş irsaliye yerine geçmez.';
+  const poDoc = (p) => { const su = sup(p.sup); const net = r2(sum(p.lines, (l) => l.qty * l.price)); const tot = poTotal(p); return { title: DOCS.satinalma, no: p.no, date: p.date, money: (v) => curFmt(v, p.currency), party: { title: 'Tedarikçi', name: su.name, lines: [su.contact, su.phone, su.email] }, info: [['Teslim tarihi', NS.date(p.due)], ['Ödeme vadesi', `${su.term || 30} gün`], ['Teslim adresi', S().bizAddress || '']], lines: p.lines.map((l) => ({ name: `${mat(l.mat).code} · ${mat(l.mat).name}`, note: `KDV %${l.vat}`, qty: num(l.qty), unit: mat(l.mat).unit, price: l.price, total: r2(l.qty * l.price) })), totals: [['KDV hariç', net], ['KDV', r2(tot - net)], ['KDV dahil toplam', tot, true]], note: p.note }; };
+  const receiptDoc = (r) => ({ title: DOCS.malkabul, no: r.no, date: r.date, party: { title: 'Tedarikçi', name: sup(r.sup).name, lines: [`Sipariş: ${(db.get('po', r.po) || {}).no || 'Siparişsiz'}`, `İrsaliye: ${r.waybill || '-'} (${NS.date(r.waybillDate || r.date)})`] }, info: [['Plaka', r.plate || '-'], ['Şoför', r.driver || '-'], ['Sıcaklık', r.temp !== '' && r.temp !== undefined ? r.temp + ' °C' : '-'], ['Kantar net', r.gross ? num(r.gross - r.tare) + ' kg' : ''], ...Object.entries({ arac: 'Araç', isi: 'Sıcaklık kontrolü', ambalaj: 'Ambalaj', belge: 'Belgeler' }).map(([k, l]) => [l, (r.checks || {})[k] ? 'Uygun' : 'UYGUNSUZ'])], lines: r.lines.map((l) => docLine({ mat: l.mat, qty: l.qty, note: [`Lot ${l.lot}`, l.supLot && `Ted. lot ${l.supLot}`, l.skt && `SKT ${NS.date(l.skt)}`, l.loc, `Kalite: ${{ bekliyor: 'Bekliyor', kabul: 'Kabul', sartli: 'Şartlı kabul', red: 'Red', kismi: 'Kısmi red', yok: 'Gerekmiyor' }[l.qc] || l.qc}`].filter(Boolean).join(' · ') })), ...noPrice });
+  const returnDoc = (t) => { const su = sup(t.sup); return { title: DOCS['iade-fis'], no: t.no, date: t.shipDate || t.date, party: { title: 'Tedarikçi', name: su.name }, info: [['Kabul fişi', (db.get('receipts', t.receipt) || {}).no || '-'], ['Plaka', t.plate || '-'], ['e-İrsaliye', t.ebelge || (t.ebelgeTest ? 'TEST — gönderilmedi' : '')]], lines: t.lines.map((l) => ({ name: `${mat(l.mat).code} · ${mat(l.mat).name}`, note: [`Lot ${l.lot}`, l.reason].filter(Boolean).join(' · '), qty: num(l.qty), unit: mat(l.mat).unit, price: l.price || 0, total: r2(l.qty * (l.price || 0)) })), note: t.ebelge ? '' : noInvoice }; };
   // Etiket: lot barkodu + QR
   function lotLabelHtml(i) {
     const m = mat(i.mat), l = lotRec(i.lot);
@@ -112,8 +129,11 @@
       actions: [{ label: 'Lot etiketleri', icon: 'tag', onClick: () => printLotLabels(rows.map((r) => ({ mat: m.id, lot: r.lot, qty: r.qty }))) }, { label: 'Kapat', cls: 'primary' }],
     });
   }
+  // Hareket, reçete veya belgede geçen malzeme silinmez: geçmiş kayıtlar ve izlenebilirlik bozulur
+  const matUsed = (id) => (db.col('moves').some((x) => x.mat === id) ? 'Bu malzemenin stok hareketi var, silinemez' : db.col('boms').some((b) => b.mat === id || b.lines.some((l) => l.mat === id)) ? 'Bu malzeme bir reçetede kullanılıyor, silinemez' : db.col('wo').some((w) => w.mat === id) || db.col('fason').some((f) => f.mat === id) ? 'Bu malzemenin iş emri var, silinemez' : db.col('so').some((s) => s.lines.some((l) => l.mat === id)) || db.col('po').some((s) => s.lines.some((l) => l.mat === id)) ? 'Bu malzeme bir siparişte geçiyor, silinemez' : true);
   function materialsPage(el, p, app) {
     NS.crud(el, app, {
+      readonly: !app.can('satinalma', 'depo', 'uretim'), canDelete: (m) => (!app.can() ? 'Malzeme kartını yalnızca yönetici silebilir' : matUsed(m.id)),
       col: 'materials', title: 'Malzeme Kartları', sub: 'Hammadde, ambalaj, yarı mamul, mamul ve sarf malzemeleri', single: 'Malzeme', addLabel: 'Yeni malzeme', emptyIcon: 'box',
       fields: [{ name: 'code', label: 'Malzeme kodu', required: true }, { name: 'name', label: 'Ad', required: true }, { name: 'type', label: 'Tür', type: 'select', options: Object.entries(TYPES).map(([value, v]) => ({ value, label: v[0] })) }, { name: 'unit', label: 'Stok birimi', type: 'select', options: ['kg', 'g', 'lt', 'm', 'm²', 'adet', 'koli', 'paket', 'rulo', 'palet', 'ton'] },
         { name: 'group', label: 'Grup' }, { name: 'barcode', label: 'Barkod' }, { name: 'min', label: 'Minimum (emniyet) stok', type: 'number' }, { name: 'max', label: 'Maksimum stok', type: 'number' }, { name: 'moq', label: 'Min. sipariş miktarı', type: 'number' }, { name: 'lead', label: 'Tedarik süresi (gün)', type: 'number' },
@@ -164,7 +184,7 @@
   }
   async function manualIn(app) {
     const v = await formModal({ title: 'Stok girişi (açılış / manuel)', fields: [{ name: 'mat', label: 'Malzeme', type: 'select', options: matOpts(), full: true }, { name: 'wh', label: 'Depo', type: 'select', options: whs().filter((w) => USABLE.includes(w.type)).map((w) => ({ value: w.id, label: w.name })) }, { name: 'loc', label: 'Lokasyon' }, { name: 'qty', label: 'Miktar', type: 'number', required: true, step: 'any' }, { name: 'cost', label: 'Birim maliyet (boşsa kart maliyeti)', type: 'number', step: 'any' }, { name: 'skt', label: 'SKT (boşsa raf ömrüne göre)', type: 'date' }, { name: 'supLot', label: 'Tedarikçi lot no' }, { name: 'note', label: 'Açıklama', full: true }] });
-    if (!v) return; const m = mat(v.mat); const lot = createLot(m, { supLot: v.supLot, ...(v.skt ? { skt: v.skt } : {}) });
+    if (!v) return; if (!(Number(v.qty) > 0)) return toast('Miktar sıfırdan büyük olmalı (azaltmak için Fire veya Sayım kullanın)', 'err'); const m = mat(v.mat); const lot = createLot(m, { supLot: v.supLot, ...(v.skt ? { skt: v.skt } : {}) });
     move({ mat: m.id, wh: v.wh, loc: v.loc || m.loc || (wh(v.wh).locs || [])[0] || '', lot, qty: v.qty, cost: v.cost || m.cost, type: 'acilis', refNo: 'Manuel giriş', note: v.note });
     db.save(); toast(`${lot} lotu ile giriş yapıldı`, 'ok'); if (await confirm('Lot etiketi yazdırılsın mı?', { ok: 'Yazdır', danger: false })) printLotLabels([{ mat: m.id, lot, qty: v.qty }]); app.refresh();
   }
@@ -174,7 +194,7 @@
     modal({
       title: `Sayım — ${wh(w.w).name}`, size: 'xl',
       body: `<p class="small muted mb">Sayılan miktarları girin. Boş bırakılan satırlar değişmez; farklar “Sayım farkı” hareketi olarak işlenir.</p>` + table({ rows: rows.map((r, i) => ({ ...r, id: i })), empty: 'Bu depoda stok yok', columns: [{ label: 'Lokasyon', render: (r) => esc(r.loc) }, { label: 'Malzeme', render: (r) => `<b>${esc(mat(r.mat).name)}</b><div class="small faint">${esc(mat(r.mat).code)}</div>` }, { label: 'Lot', render: (r) => `<span class="mono small">${esc(r.lot)}</span>` }, { label: 'Sistem', cls: 'right', render: (r) => (w.blind ? '***' : qu(r.qty, mat(r.mat))) }, { label: 'Sayılan', cls: 'right', render: (r) => `<input class="input" type="number" step="any" style="width:110px;text-align:right" data-c="${r.id}">` }] }),
-      actions: [{ label: 'Sayım listesi yazdır', icon: 'print', onClick: () => NS.printHtml(`<h2>Sayım listesi — ${esc(wh(w.w).name)}</h2><div>${NS.dt(new Date())} · Sayan: __________</div><table><tr><th>Lokasyon</th><th>Kod</th><th>Malzeme</th><th>Lot</th>${w.blind ? '' : '<th>Sistem</th>'}<th>Sayılan</th></tr>${rows.map((r) => `<tr><td>${esc(r.loc)}</td><td>${esc(mat(r.mat).code)}</td><td>${esc(mat(r.mat).name)}</td><td>${esc(r.lot)}</td>${w.blind ? '' : `<td>${num(r.qty)} ${esc(mat(r.mat).unit)}</td>`}<td>__________</td></tr>`).join('')}</table>`, { title: 'Sayım' }) }, { label: 'Vazgeç' },
+      actions: [{ label: 'Sayım listesi yazdır', icon: 'print', onClick: () => NS.docs.print('sayim', { title: DOCS.sayim, info: [['Depo', wh(w.w).name], ['Sayım türü', w.blind ? 'Kör sayım' : 'Sistem miktarlı'], ['Sayan', '______________']], lines: rows.map((r) => ({ name: `${r.loc} · ${mat(r.mat).code} · ${mat(r.mat).name}`, note: `Lot ${r.lot} · Sayılan: ____________`, qty: w.blind ? '' : num(r.qty), unit: w.blind ? '' : mat(r.mat).unit, total: 0 })), ...noPrice }) }, { label: 'Vazgeç' },
         { label: 'Sayımı işle', cls: 'primary', onClick: (close, b) => { const no = 'SY' + db.nextNo('sy'); let n = 0; $$('[data-c]', b).forEach((x) => { if (x.value === '') return; const r = rows[Number(x.dataset.c)]; const diff = r3(Number(x.value) - r.qty); if (!diff) return; n++; move({ mat: r.mat, wh: r.wh, loc: r.loc, lot: r.lot, qty: diff, cost: unitCost(r.mat), type: 'sayim', refNo: no }); }); db.log('Sayım', `${wh(w.w).name} · ${n} fark`); db.save(); close(); toast(`${n} satırda fark işlendi`, 'ok'); app.refresh(); } }],
     });
   }
@@ -183,7 +203,7 @@
     const mats = db.all('materials');
     const val = sum(mats, (m) => Math.max(0, stock(m.id)) * unitCost(m.id));
     const lots = mats.flatMap((m) => rowsOf(m.id).filter((r) => r.qty > 0));
-    el.innerHTML = pageHead('Stok & Depo', 'Lot bazlı stok, SKT takibi, transfer, fire ve sayım', `<button class="btn" id="b-tr">${icon('refresh')} Transfer</button><button class="btn" id="b-fr">${icon('minus')} Fire / sarf</button><button class="btn" id="b-sy">${icon('list')} Sayım</button><button class="btn primary" id="b-in">${icon('plus')} Stok girişi</button>`) + `
+    el.innerHTML = pageHead('Stok & Depo', 'Lot bazlı stok, SKT takibi, transfer, fire ve sayım', app.can('depo') ? `<button class="btn" id="b-tr">${icon('refresh')} Transfer</button><button class="btn" id="b-fr">${icon('minus')} Fire / sarf</button><button class="btn" id="b-sy">${icon('list')} Sayım</button><button class="btn primary" id="b-in">${icon('plus')} Stok girişi</button>` : '') + `
       <div class="grid g4 mb">${kpi('Stok değeri', money(val), 'wallet', 'info')}${kpi('Aktif lot', lots.length, 'layers')}${kpi('Kritik malzeme', mats.filter((m) => m.min > 0 && stock(m.id) < m.min).length, 'alert', 'err')}${kpi('SKT yaklaşan lot', lots.filter((r) => { const s = lotRec(r.lot).skt; return s && daysBetween(new Date(), s) <= (S().sktWarn || 30); }).length, 'clock', 'warn')}</div>
       <div class="tabs">${[['durum', 'Stok durumu'], ['lot', 'Lot & SKT'], ['hareket', 'Hareketler'], ['depo', 'Depolar & lokasyonlar']].map(([k, l]) => `<a href="#/stok/${k}"><button class="${k === tab ? 'active' : ''}">${l}</button></a>`).join('')}</div>
       <div class="card"><div class="card-h">${NS.searchBox('q', 'Malzeme, lot, lokasyon...')}${tab !== 'depo' ? `<select class="input" id="tf" style="max-width:200px"><option value="">Tüm türler</option>${(tab === 'hareket' ? Object.entries(MOVE) : Object.entries(TYPES)).map(([k, v]) => `<option value="${k}">${v[0]}</option>`).join('')}</select>` : ''}<span class="grow"></span><button class="btn sm" id="ex">${icon('download')}</button></div><div id="t"></div></div>`;
@@ -191,12 +211,12 @@
     const draw = () => {
       if (tab === 'durum') {
         lastRows = mats.filter((m) => (!tf || m.type === tf) && NS.match(q, m.code, m.name, m.group)).sort((a, b) => a.code.localeCompare(b.code));
-        lastCols = [{ label: 'Malzeme', render: (m) => `<b>${esc(m.name)}</b><div class="small faint mono">${esc(m.code)}</div>`, value: (m) => m.name }, { label: 'Tür', render: (m) => typeBadge(m.type), value: (m) => TYPES[m.type][0] }, ...['hammadde', 'uretim', 'mamul', 'karantina', 'red'].map((t) => ({ label: WHT[t].split(' (')[0], cls: 'right', render: (m) => { const v = stockByType(m.id, t); return v ? num(v) : '<span class="faint">-</span>'; }, value: (m) => stockByType(m.id, t) })), { label: 'Min', cls: 'right', render: (m) => num(m.min), value: (m) => m.min }, { label: 'Durum', render: (m) => (m.min > 0 && stock(m.id) < m.min ? badge('Kritik', 'err') : m.max && stock(m.id) > m.max ? badge('Fazla', 'warn') : badge('Normal', 'ok')), value: (m) => (m.min > 0 && stock(m.id) < m.min ? 'Kritik' : 'Normal') }, { label: 'Değer', cls: 'right', render: (m) => money(Math.max(0, stock(m.id)) * unitCost(m.id)), value: (m) => r2(Math.max(0, stock(m.id)) * unitCost(m.id)) }];
-        $('#t', el).innerHTML = table({ rows: lastRows, columns: lastCols, actions: [{ icon: 'eye', act: 'md' }] });
+        lastCols = [{ label: 'Malzeme', render: (m) => `<b>${esc(m.name)}</b><div class="small faint mono">${esc(m.code)}</div>`, value: (m) => m.name }, { label: 'Tür', render: (m) => typeBadge(m.type), value: (m) => TYPES[m.type][0] }, ...['hammadde', 'uretim', 'mamul', 'karantina', 'red', 'fason'].map((t) => ({ label: WHT[t].split(' (')[0], cls: 'right', render: (m) => { const v = stockByType(m.id, t); return v ? num(v) : '<span class="faint">-</span>'; }, value: (m) => stockByType(m.id, t) })), { label: 'Min', cls: 'right', render: (m) => num(m.min), value: (m) => m.min }, { label: 'Durum', render: (m) => (m.min > 0 && stock(m.id) < m.min ? badge('Kritik', 'err') : m.max && stock(m.id) > m.max ? badge('Fazla', 'warn') : badge('Normal', 'ok')), value: (m) => (m.min > 0 && stock(m.id) < m.min ? 'Kritik' : 'Normal') }, { label: 'Değer', cls: 'right', render: (m) => money(Math.max(0, stock(m.id)) * unitCost(m.id)), value: (m) => r2(Math.max(0, stock(m.id)) * unitCost(m.id)) }];
+        $('#t', el).innerHTML = table({ rows: lastRows.slice(0, 400), columns: lastCols, actions: [{ icon: 'eye', act: 'md' }], foot: lastRows.length > 400 ? `${lastRows.length} malzeme (ilk 400 gösteriliyor; aramayı daraltın, dışa aktarımda tümü gelir)` : '' });
       } else if (tab === 'lot') {
         lastRows = lots.filter((r) => (!tf || mat(r.mat).type === tf) && NS.match(q, r.lot, mat(r.mat).name, r.loc, mat(r.mat).code)).sort((a, b) => (lotRec(a.lot).skt || '9').localeCompare(lotRec(b.lot).skt || '9')).map((r, i) => ({ ...r, id: r.lot + '|' + r.wh + '|' + r.loc }));
         lastCols = [{ label: 'Lot', render: (r) => `<b class="mono">${esc(r.lot)}</b>${lotRec(r.lot).status === 'bloke' ? ' ' + badge('Bloke', 'err') : ''}`, value: (r) => r.lot }, { label: 'Malzeme', render: (r) => esc(mat(r.mat).name), value: (r) => mat(r.mat).name }, { label: 'Depo / lokasyon', render: (r) => `${esc(wh(r.wh).name)} <span class="faint">${esc(r.loc)}</span>`, value: (r) => wh(r.wh).name + ' ' + r.loc }, { label: 'Üretim / giriş', render: (r) => NS.date(lotRec(r.lot).prod), value: (r) => lotRec(r.lot).prod }, { label: 'SKT', render: (r) => sktBadge(lotRec(r.lot).skt), value: (r) => lotRec(r.lot).skt }, { label: 'Miktar', cls: 'right', render: (r) => `<b>${qu(r.qty, mat(r.mat))}</b>`, value: (r) => r.qty }];
-        $('#t', el).innerHTML = table({ rows: lastRows.slice(0, 400), columns: lastCols, actions: [{ icon: 'tag', act: 'lb', title: 'Etiket' }, { icon: 'refresh', act: 'lt', title: 'Transfer' }, { icon: 'lock', act: 'bk', title: 'Bloke / serbest' }, { icon: 'search', act: 'iz', title: 'İzlenebilirlik' }] });
+        $('#t', el).innerHTML = table({ rows: lastRows.slice(0, 400), columns: lastCols, actions: [{ icon: 'tag', act: 'lb', title: 'Etiket' }, { icon: 'refresh', act: 'lt', title: 'Transfer', show: () => app.can('depo') }, { icon: 'lock', act: 'bk', title: 'Bloke / serbest', show: () => app.can('depo', 'kalite') }, { icon: 'search', act: 'iz', title: 'İzlenebilirlik' }] });
       } else if (tab === 'hareket') {
         lastRows = db.all('moves', (x) => (!tf || x.type === tf) && NS.match(q, mat(x.mat).name, x.lot, x.refNo, x.loc, x.note)).sort((a, b) => b.at.localeCompare(a.at));
         lastCols = [{ label: 'Zaman', render: (x) => NS.dt(x.at), value: (x) => x.at }, { label: 'Tür', render: (x) => badge((MOVE[x.type] || [x.type])[0], (MOVE[x.type] || [])[1]), value: (x) => (MOVE[x.type] || [x.type])[0] }, { label: 'Malzeme', render: (x) => esc(mat(x.mat).name), value: (x) => mat(x.mat).name }, { label: 'Lot', render: (x) => `<span class="mono small">${esc(x.lot || '')}</span>`, value: (x) => x.lot }, { label: 'Depo', render: (x) => `${esc(wh(x.wh).name)} <span class="faint">${esc(x.loc || '')}</span>`, value: (x) => wh(x.wh).name }, { label: 'Belge / not', render: (x) => `${esc(x.refNo || '')}<div class="small faint">${esc(x.note || '')}</div>`, value: (x) => x.refNo }, { label: 'Miktar', cls: 'right', render: (x) => `<b style="color:${x.qty > 0 ? 'var(--ok)' : 'var(--err)'}">${x.qty > 0 ? '+' : ''}${num(x.qty)}</b> ${esc(mat(x.mat).unit)}`, value: (x) => x.qty }, { label: 'Kullanıcı', render: (x) => `<span class="small">${esc(x.user || '')}</span>`, value: (x) => x.user }];
@@ -212,7 +232,7 @@
     $('#q', el).oninput = (e) => { q = e.target.value; draw(); };
     if ($('#tf', el)) $('#tf', el).onchange = (e) => { tf = e.target.value; draw(); };
     $('#ex', el).onclick = () => NS.csv('stok-' + tab, lastRows, lastCols.map((c) => ({ label: c.label, value: c.value })));
-    $('#b-tr', el).onclick = () => transferModal(app); $('#b-fr', el).onclick = () => scrapModal(app); $('#b-sy', el).onclick = () => countModal(app); $('#b-in', el).onclick = () => manualIn(app);
+    if ($('#b-tr', el)) { $('#b-tr', el).onclick = () => transferModal(app); $('#b-fr', el).onclick = () => scrapModal(app); $('#b-sy', el).onclick = () => countModal(app); $('#b-in', el).onclick = () => manualIn(app); }
     on(el, 'click', '[data-act]', async (e, b) => {
       const a = b.dataset.act;
       if (a === 'md') return matDetail(app, mat(b.dataset.id));
@@ -221,7 +241,7 @@
       if (a === 'lb') printLotLabels([{ mat: r.mat, lot, qty: r.qty }]);
       else if (a === 'lt') transferModal(app, { mat: r.mat, lot, wh: w });
       else if (a === 'iz') app.go('izlenebilirlik', lot);
-      else if (a === 'bk') { const l = db.get('lots', lot); if (!l) return; const blk = l.status !== 'bloke'; const reason = blk ? await NS.prompt('Bloke nedeni', 'Kalite şüphesi', { title: 'Lot bloke' }) : ''; if (blk && reason === null) return; l.status = blk ? 'bloke' : ''; l.blockReason = reason; db.log(blk ? 'Lot bloke' : 'Lot serbest', lot); db.save(); draw(); toast(blk ? 'Lot bloke edildi — üretim ve sevkiyatta kullanılmaz' : 'Lot serbest bırakıldı', 'ok'); }
+      else if (a === 'bk') { const l = db.get('lots', lot); if (!l) return; const blk = l.status !== 'bloke'; if (!blk && !app.can('kalite')) return toast('Bloke lotu yalnızca kalite serbest bırakabilir', 'err'); const reason = blk ? await NS.prompt('Bloke nedeni', 'Kalite şüphesi', { title: 'Lot bloke' }) : ''; if (blk && reason === null) return; l.status = blk ? 'bloke' : ''; l.blockReason = reason; db.log(blk ? 'Lot bloke' : 'Lot serbest', lot); db.save(); draw(); toast(blk ? 'Lot bloke edildi — üretim ve sevkiyatta kullanılmaz' : 'Lot serbest bırakıldı', 'ok'); }
     });
     draw();
   }
@@ -233,11 +253,11 @@
       if (!lot || seen.has(lot + dir) || depth > 6) return ''; seen.add(lot + dir);
       const l = lotRec(lot); const m = mat(l.mat);
       const mv = db.all('moves', (x) => x.lot === lot);
-      const head = `<div class="list-item" style="margin-left:${depth * 22}px;border-left:3px solid ${dir === 'geri' ? 'var(--warn)' : 'var(--ok)'}"><div class="grow"><b class="mono">${esc(lot)}</b> · ${esc(m.name)} ${typeBadge(m.type)}<div class="small muted">${l.supplier ? 'Tedarikçi: ' + esc(sup(l.supplier).name) + (l.supLot ? ' (lot ' + esc(l.supLot) + ')' : '') + ' · ' : ''}${l.wo ? 'İş emri: ' + esc((db.get('wo', l.wo) || {}).no || '') + ' · ' : ''}Giriş ${NS.date(l.prod)} ${l.skt ? '· SKT ' + NS.date(l.skt) : ''} · Kalan ${num(r3(sum(mv, (x) => x.qty)) || 0)} ${esc(m.unit)}</div></div></div>`;
+      const head = `<div class="list-item" style="margin-left:${depth * 22}px;border-left:3px solid ${dir === 'geri' ? 'var(--warn)' : 'var(--ok)'}"><div class="grow"><b class="mono">${esc(lot)}</b> · ${esc(m.name)} ${typeBadge(m.type)}<div class="small muted">${l.supplier ? 'Tedarikçi: ' + esc(sup(l.supplier).name) + (l.supLot ? ' (lot ' + esc(l.supLot) + ')' : '') + ' · ' : ''}${l.wo ? 'İş emri: ' + esc((db.get('wo', l.wo) || {}).no || '') + ' · ' : ''}${l.fason ? 'Fason: ' + esc((db.get('fason', l.fason) || {}).no || '') + ' · ' : ''}Giriş ${NS.date(l.prod)} ${l.skt ? '· SKT ' + NS.date(l.skt) : ''} · Kalan ${num(r3(sum(mv, (x) => x.qty)) || 0)} ${esc(m.unit)}</div></div></div>`;
       let kids = '';
-      if (dir === 'geri' && l.wo) { const w = db.get('wo', l.wo); if (w) kids = (w.issued || []).map((i) => node(i.lot, depth + 1, 'geri', seen)).join(''); }
+      if (dir === 'geri' && (l.wo || l.fason)) { const w = l.wo ? db.get('wo', l.wo) : db.get('fason', l.fason); if (w) kids = (w.issued || []).map((i) => node(i.lot, depth + 1, 'geri', seen)).join(''); }
       if (dir === 'ileri') {
-        const cons = mv.filter((x) => x.type === 'tuketim' && x.ref); kids += [...new Set(cons.map((x) => x.ref))].map((wid) => { const w = db.get('wo', wid); return w ? (w.outLots || []).map((o) => node(o, depth + 1, 'ileri', seen)).join('') || `<div class="small muted" style="margin-left:${(depth + 1) * 22}px">${esc(w.no)} (${esc(mat(w.mat).name)}) — henüz çıktı yok</div>` : ''; }).join('');
+        const cons = mv.filter((x) => x.type === 'tuketim' && x.ref); kids += [...new Set(cons.map((x) => x.ref))].map((wid) => { const w = db.get('wo', wid) || db.get('fason', wid); return w ? (w.outLots || []).map((o) => node(o, depth + 1, 'ileri', seen)).join('') || `<div class="small muted" style="margin-left:${(depth + 1) * 22}px">${esc(w.no)} (${esc(mat(w.mat).name)}) — henüz çıktı yok</div>` : ''; }).join('');
         kids += mv.filter((x) => x.type === 'sevk').map((x) => { const sh = db.get('shipments', x.ref) || {}; return `<div class="list-item" style="margin-left:${(depth + 1) * 22}px;border-left:3px solid var(--accent)"><div class="grow">${icon('truck')} <b>${esc(cus(sh.cust).name)}</b> · ${esc(x.refNo)} · ${NS.date(x.date)} · ${num(-x.qty)} ${esc(m.unit)}</div></div>`; }).join('');
       }
       return head + kids;
@@ -248,7 +268,7 @@
       const fwd = node(lot, 0, 'ileri', new Set());
       const custs = new Set(); db.all('moves', (x) => x.type === 'sevk').forEach((x) => { if (fwd.includes(esc(x.refNo))) custs.add((db.get('shipments', x.ref) || {}).cust); });
       $('#tr', el).innerHTML = `<div class="grid g2"><div class="card"><div class="card-h"><h3>${icon('back')} Geriye izleme (kaynaklar)</h3></div><div class="pad">${node(lot, 0, 'geri', new Set())}</div></div><div class="card"><div class="card-h"><h3>İleriye izleme (kullanım & sevkiyat)</h3><button class="btn sm" id="rc">${icon('alert')} Geri çağırma listesi</button></div><div class="pad">${fwd}</div></div></div>`;
-      $('#rc', el).onclick = () => NS.printHtml(`<h2>Geri çağırma (recall) listesi</h2><p>Kaynak lot: <b>${esc(lot)}</b> — ${esc(mat(lotRec(lot).mat).name)} · ${NS.dt(new Date())}</p><table><tr><th>Müşteri</th><th>Telefon</th><th>E-posta</th></tr>${[...custs].map((c) => `<tr><td>${esc(cus(c).name)}</td><td>${esc(cus(c).phone || '')}</td><td>${esc(cus(c).email || '')}</td></tr>`).join('') || '<tr><td colspan="3">Sevk edilmiş ürün yok</td></tr>'}</table><h3>Akış</h3>${fwd}`, { title: 'Geri çağırma' });
+      $('#rc', el).onclick = () => NS.docs.print('geri-cagirma', { title: DOCS['geri-cagirma'], no: lot, info: [['Kaynak lot', lot], ['Malzeme', mat(lotRec(lot).mat).name]], lines: [...custs].map((c) => ({ name: cus(c).name, note: [cus(c).phone, cus(c).email].filter(Boolean).join(' · '), qty: '', total: 0 })), note: custs.size ? '' : 'Sevk edilmiş ürün yok', ...noPrice });
     };
     $('#go', el).onclick = go; $('#ln', el).onkeydown = (e) => { if (e.key === 'Enter') go(); };
     if (lotNo) go();
@@ -276,10 +296,7 @@
     });
   }
   function printPO(p) {
-    const s = S(), su = sup(p.sup);
-    NS.printHtml(`<div class="doc"><table><tr><td><h2 style="margin:0">${esc(s.bizName)}</h2><div>${esc(s.bizAddress)}</div><div>VD: ${esc(s.taxOffice)} ${esc(s.taxNo)}</div></td><td style="text-align:right"><h2 style="margin:0">SATINALMA SİPARİŞİ</h2><div>No: <b>${esc(p.no)}</b></div><div>Tarih: ${NS.date(p.date)}</div><div>Teslim: <b>${NS.date(p.due)}</b></div></td></tr></table><hr><div><b>${esc(su.name)}</b><br>${esc(su.contact || '')} · ${esc(su.phone || '')} · ${esc(su.email || '')}</div><br>
-      <table><tr><th>#</th><th>Kod</th><th>Malzeme</th><th style="text-align:right">Miktar</th><th style="text-align:right">Birim fiyat</th><th>KDV</th><th style="text-align:right">Tutar</th></tr>${p.lines.map((l, i) => `<tr><td>${i + 1}</td><td>${esc(mat(l.mat).code)}</td><td>${esc(mat(l.mat).name)}</td><td style="text-align:right">${num(l.qty)} ${esc(mat(l.mat).unit)}</td><td style="text-align:right">${curFmt(l.price, p.currency)}</td><td>%${l.vat}</td><td style="text-align:right">${curFmt(l.qty * l.price, p.currency)}</td></tr>`).join('')}</table>
-      <p style="text-align:right"><b>KDV dahil toplam: ${curFmt(poTotal(p), p.currency)}</b></p>${p.note ? `<p><i>${esc(p.note)}</i></p>` : ''}<p style="font-size:11px">Ödeme vadesi: ${su.term || 30} gün · Teslim adresi: ${esc(s.bizAddress)}</p><table style="margin-top:40px"><tr><td>Hazırlayan<br><br>__________</td><td style="text-align:right">Onaylayan<br><br>__________</td></tr></table></div>`, { title: p.no });
+    NS.docs.print('satinalma', poDoc(p));
   }
   function offerModal(app, pr) {
     const d = { sup: '', lead: 5, term: 30, currency: 'TRY', lines: pr.lines.map((l) => ({ mat: l.mat, price: mat(l.mat).cost })) };
@@ -333,6 +350,7 @@
   function suppliersPage(el, p, app) {
     const perf = (s) => { const rc = db.all('receipts', (r) => r.sup === s.id); const ontime = rc.filter((r) => { const po = db.get('po', r.po); return !po || r.date <= po.due; }).length; const q = sum(rc.flatMap((r) => r.lines), (l) => l.qty); const rej = sum(rc.flatMap((r) => r.lines), (l) => l.rejected || 0); return { n: rc.length, ontime: rc.length ? Math.round((ontime / rc.length) * 100) : null, rej: q ? r2((rej / q) * 100) : 0, total: sum(db.all('po', (x) => x.sup === s.id && x.status !== 'iptal'), (x) => poTotal(x) * (x.rate || 1)) }; };
     NS.crud(el, app, {
+      canDelete: (s) => (db.col('po').some((x) => x.sup === s.id) || db.col('receipts').some((x) => x.sup === s.id) || db.col('fason').some((x) => x.sup === s.id) ? 'Bu tedarikçinin sipariş veya mal kabul kaydı var, silinemez' : db.col('materials').some((m) => m.supplier === s.id) ? 'Bu tedarikçi malzeme kartında tercihli tedarikçi, önce kartı değiştirin' : true),
       col: 'suppliers', title: 'Tedarikçiler', sub: 'Onaylı tedarikçi listesi, sertifikalar ve performans', single: 'Tedarikçi', addLabel: 'Yeni tedarikçi', emptyIcon: 'building',
       fields: [{ name: 'name', label: 'Ünvan', required: true, full: true }, { name: 'contact', label: 'Yetkili' }, { name: 'phone', label: 'Telefon' }, { name: 'email', label: 'E-posta', type: 'email' }, { name: 'city', label: 'Şehir' }, { name: 'taxNo', label: 'VKN' }, { name: 'lead', label: 'Ortalama teslim süresi (gün)', type: 'number' }, { name: 'term', label: 'Ödeme vadesi (gün)', type: 'number' }, { name: 'cert', label: 'Sertifikalar (ISO, Helal, BRC...)', full: true }, { name: 'rating', label: 'Değerlendirme (1-5)', type: 'number' }, { name: 'approved', label: 'Onaylı tedarikçi listesinde', type: 'checkbox' }, { name: 'farmer', label: 'Çiftçi / üretici (e-Müstahsil makbuzu kesilir)', type: 'checkbox' }],
       defaults: { lead: 5, term: 30, rating: 4, approved: true }, sort: (a, b) => a.name.localeCompare(b.name, 'tr'), searchFields: (s) => [s.name, s.contact, s.city, s.cert],
@@ -396,12 +414,7 @@
     });
   }
   function printReceipt(r) {
-    const s = S();
-    NS.printHtml(`<div class="doc"><table><tr><td><h2 style="margin:0">${esc(s.bizName)}</h2><div>${esc(s.bizAddress)}</div></td><td style="text-align:right"><h2 style="margin:0">MAL KABUL FİŞİ</h2><div>No: <b>${esc(r.no)}</b></div><div>${NS.date(r.date)}</div></td></tr></table><hr>
-      <table><tr><td>Tedarikçi: <b>${esc(sup(r.sup).name)}</b><br>Sipariş: ${esc((db.get('po', r.po) || {}).no || 'Siparişsiz')}<br>İrsaliye: ${esc(r.waybill)} (${NS.date(r.waybillDate || r.date)})</td><td>Plaka: ${esc(r.plate || '-')}<br>Şoför: ${esc(r.driver || '-')}<br>Sıcaklık: ${r.temp !== '' && r.temp !== undefined ? esc(r.temp) + ' °C' : '-'}${r.gross ? `<br>Kantar net: ${num(r.gross - r.tare)} kg` : ''}</td></tr></table>
-      <p>Giriş kontrolü: ${Object.entries({ arac: 'Araç', isi: 'Sıcaklık', ambalaj: 'Ambalaj', belge: 'Belgeler' }).map(([k, l]) => `${l}: <b>${(r.checks || {})[k] ? 'Uygun' : 'UYGUNSUZ'}</b>`).join(' · ')}</p>
-      <table><tr><th>Kod</th><th>Malzeme</th><th>Lot</th><th>Ted. lot</th><th>SKT</th><th>Lokasyon</th><th style="text-align:right">Miktar</th><th>Kalite</th></tr>${r.lines.map((l) => `<tr><td>${esc(mat(l.mat).code)}</td><td>${esc(mat(l.mat).name)}</td><td>${esc(l.lot)}</td><td>${esc(l.supLot || '')}</td><td>${l.skt ? NS.date(l.skt) : ''}</td><td>${esc(l.loc || '')}</td><td style="text-align:right">${num(l.qty)} ${esc(mat(l.mat).unit)}</td><td>${{ bekliyor: 'Bekliyor', kabul: 'Kabul', sartli: 'Şartlı kabul', red: 'Red', kismi: 'Kısmi red', yok: 'Gerekmiyor' }[l.qc] || l.qc}</td></tr>`).join('')}</table>
-      <table style="margin-top:40px"><tr><td>Teslim eden<br><br>__________</td><td>Depo (${esc(r.by || '')})<br><br>__________</td><td style="text-align:right">Kalite<br><br>__________</td></tr></table></div>`, { title: r.no });
+    NS.docs.print('malkabul', receiptDoc(r));
   }
   function receivingPage(el, p, app) {
     let f = 'all', q = '';
@@ -463,7 +476,7 @@
   }
   function printCoA(rec, l) {
     const m = mat(l.mat);
-    NS.printHtml(`<div class="doc"><h2>${esc(S().bizName)}</h2><h3>GİRİŞ KALİTE KONTROL RAPORU</h3><table><tr><td>Malzeme: <b>${esc(m.code)} · ${esc(m.name)}</b><br>Lot: <b>${esc(l.lot)}</b> · Tedarikçi lot: ${esc(l.supLot || '-')}<br>Tedarikçi: ${esc(sup(rec.sup).name)}</td><td>Kabul fişi: ${esc(rec.no)} (${NS.date(rec.date)})<br>Miktar: ${num(l.qty)} ${esc(m.unit)} · Numune: ${num(l.sample || 0)}<br>Kontrol eden: ${esc(l.qcBy || '')} · ${l.qcAt ? NS.dt(l.qcAt) : ''}</td></tr></table><br><table><tr><th>Parametre</th><th>Sonuç</th><th>Değerlendirme</th></tr>${(l.results || []).map((x) => `<tr><td>${esc(x.name)}</td><td>${esc(x.value === '1' ? 'Uygun' : x.value === '0' ? 'Uygun değil' : x.value)}</td><td>${x.ok ? 'UYGUN' : 'UYGUN DEĞİL'}</td></tr>`).join('') || '<tr><td colspan="3">Görsel kontrol</td></tr>'}</table><p><b>KARAR: ${QCD[l.qc] ? QCD[l.qc][0].toUpperCase() : '-'}</b> · Kabul: ${num(l.accepted)} · Red: ${num(l.rejected)}</p>${l.qcReason ? `<p>Neden: ${esc(l.qcReason)}</p>` : ''}${l.qcNote ? `<p>Not: ${esc(l.qcNote)}</p>` : ''}<table style="margin-top:40px"><tr><td>Kalite Kontrol<br><br>__________</td><td style="text-align:right">Kalite Müdürü<br><br>__________</td></tr></table></div>`, { title: 'KK ' + l.lot });
+    NS.docs.print('kalite', { title: DOCS.kalite, no: l.lot, date: l.qcAt || rec.date, party: { title: 'Tedarikçi', name: sup(rec.sup).name, lines: [`Tedarikçi lot: ${l.supLot || '-'}`] }, info: [['Malzeme', `${m.code} · ${m.name}`], ['Kabul fişi', `${rec.no} (${NS.date(rec.date)})`], ['Miktar', `${num(l.qty)} ${m.unit}`], ['Numune', num(l.sample || 0)], ['Kontrol eden', l.qcBy || ''], ['Karar', QCD[l.qc] ? QCD[l.qc][0] : '-'], ['Kabul', num(l.accepted)], ['Red', num(l.rejected)]], lines: (l.results || []).map((x) => ({ name: x.name, note: x.ok ? 'UYGUN' : 'UYGUN DEĞİL', qty: x.value === '1' ? 'Uygun' : x.value === '0' ? 'Uygun değil' : x.value, total: 0 })), note: [l.qcReason && `Neden: ${l.qcReason}`, l.qcNote && `Not: ${l.qcNote}`].filter(Boolean).join('\n'), ...noPrice });
   }
   function qualityPage(el, p, app) {
     const tab = p || 'bekleyen';
@@ -488,8 +501,7 @@
   // ---------- Tedarikçi iadeleri ----------
   const RTS = { taslak: ['Taslak', 'warn'], gonderildi: ['Gönderildi', 'info'], kapandi: ['Kapandı', 'ok'] };
   function printReturn(t) {
-    const s = S(), su = sup(t.sup);
-    NS.printHtml(`<div class="doc"><table><tr><td><h2 style="margin:0">${esc(s.bizName)}</h2><div>${esc(s.bizAddress)}</div></td><td style="text-align:right"><h2 style="margin:0">İADE İRSALİYESİ</h2><div>No: <b>${esc(t.no)}</b></div><div>${NS.date(t.shipDate || t.date)}</div></td></tr></table><hr><b>${esc(su.name)}</b><br>Kabul fişi: ${esc((db.get('receipts', t.receipt) || {}).no || '-')} · Plaka: ${esc(t.plate || '-')}<br><br><table><tr><th>Kod</th><th>Malzeme</th><th>Lot</th><th style="text-align:right">Miktar</th><th>İade nedeni</th></tr>${t.lines.map((l) => `<tr><td>${esc(mat(l.mat).code)}</td><td>${esc(mat(l.mat).name)}</td><td>${esc(l.lot)}</td><td style="text-align:right">${num(l.qty)} ${esc(mat(l.mat).unit)}</td><td>${esc(l.reason || '')}</td></tr>`).join('')}</table>${t.ebelge ? `<p style="font-size:11px">e-İrsaliye: ${esc(t.ebelge)}</p>` : t.ebelgeTest ? '<p style="font-size:11px">e-İrsaliye: TEST — gönderilmedi</p>' : ''}<table style="margin-top:40px"><tr><td>Teslim eden<br><br>__________</td><td style="text-align:right">Teslim alan<br><br>__________</td></tr></table></div>`, { title: t.no });
+    NS.docs.print('iade-fis', returnDoc(t));
   }
   function returnsPage(el, p, app) {
     el.innerHTML = pageHead('Tedarikçi İadeleri', 'Kalite reddi sonrası iade, iade irsaliyesi ve alacak takibi') + `<div class="card" id="t"></div>`;
@@ -503,6 +515,7 @@
     });
   }
 
-  Object.assign(F, { db, S, me, mat, whs, wh, sup, cus, stn, lotRec, qu, matOpts, typeBadge, sktBadge, curFmt, r2, ix, dirty, rowsOf, stock, stockByType, fefo, move, pickPlan, createLot, openPO, onOrder, inProd, bomOf, unitCost, needOf, poTotal, printLotLabels, readWeight, gridEditor, matDetail, prqEditor, poEditor, isUsable,
+  if (NS.docs) Object.entries(DOCS).forEach(([k, label]) => NS.docs.define('fabrika', k, { label, defaults: { ...DOC, ...(k === 'is-emri' ? { hide: [] } : {}), ...(k === 'satinalma' ? { signLabels: 'Hazırlayan|Onaylayan' } : {}), ...(['sevk', 'iade-fis', 'fason-sevk'].includes(k) ? { signLabels: 'Teslim eden|Teslim alan' } : {}), ...(k === 'kalite' ? { signLabels: 'Kalite kontrol|Kalite müdürü' } : {}), ...(k === 'malkabul' ? { signLabels: 'Teslim eden|Depo' } : {}) }, sample: () => { if (k === 'satinalma') { const p = db.all('po')[0]; return p ? poDoc(p) : {}; } if (k === 'malkabul') { const r = db.all('receipts')[0]; return r ? receiptDoc(r) : {}; } return {}; } }));
+  Object.assign(F, { byId, isExpired, DOCS, docLine, noPrice, noInvoice, db, S, me, mat, whs, wh, sup, cus, stn, lotRec, qu, matOpts, typeBadge, sktBadge, curFmt, r2, ix, dirty, rowsOf, stock, stockByType, fefo, move, pickPlan, createLot, openPO, onOrder, inProd, bomOf, unitCost, needOf, poTotal, printLotLabels, readWeight, gridEditor, matDetail, prqEditor, poEditor, isUsable,
     pages: { malzemeler: materialsPage, stok: stockPage, izlenebilirlik: tracePage, satinalma: purchasingPage, tedarikciler: suppliersPage, malkabul: receivingPage, kalite: qualityPage, iadeler: returnsPage } });
 })();

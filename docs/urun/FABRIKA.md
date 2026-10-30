@@ -1,6 +1,48 @@
 # Fabrika ERP — Ürün Spesifikasyonu
 
-> **Durum (30.10.2026):** Kullanıcı dalgaları önceden onayladı. **1. dalga tamamlandı** (devir oturumu; "YARIM" commit `d43908d` tamamlandı). Sırada 2. dalga.
+> **Durum (30.10.2026):** Kullanıcı dalgaları önceden onayladı. **1., 2. ve 3. dalga tamamlandı.** Yeni dosya: `apps/fabrika/uretim.js` (operatör, fason, maliyet analizi).
+
+## CANLIYA ÇIKMAYI ENGELLEYENLER
+- **e-İrsaliye / e-Fatura / e-Müstahsil:** gerçek gönderim sağlayıcı test hesabıyla denenmedi; simülasyonda TEST görünür. **Fason sevkinde e-İrsaliye** (fiyatsız satır, "fason işçilik" açıklaması) GİB dokümanına göre denetlenmedi — DOĞRULANAMADI; seçenek varsayılan kapalı, canlıdan önce mali müşavire ve sağlayıcıya sorulmalı.
+- **Satış faturası KDV'si:** ayar boşsa %1 kullanılıyor; bisküvi gibi ürünlerde doğru oranın ne olduğu resmî kaynaktan doğrulanmadı — DOĞRULANAMADI. Canlıdan önce ayardan seçilmeli.
+- **Kantar / PLC:** gerçek cihazla denenmedi.
+- **Maliyet yöntemi:** genel gider stok değerine katılmıyor; malzeme çıkışı standart maliyetle yazılıyor (lotun alış maliyetiyle değil). Bu yüzden maliyet farkında malzeme fiyat farkı ayrı görünmez. Karar mali müşavirin.
+
+## 2. ve 3. dalga — yapılanlar
+Kanıt sütununda "Tarayıcı": `?demo=1` ile gerçekten denendi (DOM üzerinden tıklama). "Kod incelendi": tarayıcıda denenmedi.
+
+### Kırık ve eksik temel
+| # | Sorun | Sonuç | Kanıt |
+|---|---|---|---|
+| K1 | Kısmi üretim bildiriminde lot maliyeti şişiyordu (tüm çıkış ilk bildirilen miktara bölünüyordu) | Payda, çıkılan malzemenin karşıladığı üretim | Tarayıcı: 1000 kg için tam çıkış, 300 kg bildirim → lot 37,76 ₺ (eski hesap 124,83 ₺) |
+| K2 | Hedefin altında kalan iş emri kapatılamıyordu; üretimdeki iş iptal edilemiyordu | "İş emrini bitir": neden zorunlu, kullanılmayan malzeme depoya döner (iş emrine eksi satır, izlenebilirlik korunur). Bildirimsiz üretimdeki iş iptal edilince malzeme döner | Tarayıcı: IE26037 300/1000 kapandı, un 410,06 kg depoya döndü; iptalde 5,858 kg döndü, net malzeme 0 |
+| K3 | Sevkte bir kalem yetmezse önceki kalemlerin stok hareketi yazılı kalıyordu; aynı ürün iki satırdaysa sevk ilk satıra yazılıyordu | Önce tüm kalemler denetlenir; satır bazında sevk | Tarayıcı: yetersizde hareket sayısı 320 → 320; iki satır 2 ve 3 sevk edildi, sipariş tamam |
+| K4 | SKT'si geçmiş lot üretime ve sevkiyata çıkabiliyordu | Toplama planı geçmiş lotu atlar, ekranda "SKT geçmiş" yazar | Tarayıcı: `pickPlan` ile lot atlandı; pencere rozeti görsel olarak denenmedi |
+| K5 | Eksi miktarla bildirim, eksi stok girişi mümkündü | Reddedilir | Tarayıcı (bildirim); stok girişi Kod incelendi |
+| K6 | Hareketli malzeme, müşteri, tedarikçi, istasyon, açık işi olan reçete silinebiliyordu | Sebebini söyleyerek reddeder | Tarayıcı: malzeme, tedarikçi, istasyon. Müşteri ve reçete: Kod incelendi |
+| K7 | Belgeler sabit HTML'di ve iş emri föyü dışındakiler şablon kullanmıyordu; "Sevk irsaliyesi / İade irsaliyesi" başlığı gerçek irsaliye sanılabilirdi; palet sayısı uyduruluyordu | Satınalma, mal kabul, kalite, iade, iş emri, toplama, sayım, sevk, fason sevk, geri çağırma `NS.docs` ile; "Sevk fişi", "irsaliye yerine geçmez"; palet kaldırıldı | Tarayıcı: föy, sevk fişi, fason fişi metni. Diğerleri Kod incelendi; kâğıtta denenmedi |
+| K8 | Sevk SMS'inin sonucu gösterilmiyordu | Gerçek sonuç bildirilir | Tarayıcı: "Müşteri SMS'i TEST — gönderilmedi" |
+| K9 | Depo dışı kullanıcılar stok girişi/sayım yapabiliyor, bloke lotu herkes açabiliyordu; depo fiyat değiştirebiliyordu | Stok işlemleri depo + yönetici; bloke açma kalite; sipariş düzenleme/onay yönetici; kalite salt okunur malzeme kartı | Yalnızca operatör rolü Tarayıcı; diğer roller Kod incelendi |
+| K10 | Binlerce kayıtta iç içe döngüler | id haritası, tek geçişli raporlar, liste sınırı (300–400 satır, sayı yazar) | Tarayıcı: 5.024 malzeme, 30.319 hareket, 5.037 iş emri: malzemeler 888 ms, MRP 834 ms, hareketler 285 ms, kalanı 230 ms altı |
+| K11 | Örnek veride yarı mamul çıkışı 0 ₺ idi | Reçete maliyetiyle yazılır | Tarayıcı |
+
+Bayi siparişini reddetme: `bekliyor` siparişe iptal düğmesi eklendi (Kod incelendi).
+
+### 2. dalga — beklenenler
+| # | Özellik | Sonuç | Kanıt |
+|---|---|---|---|
+| B1 | Geri bildirimli tüketim | Ayar (varsayılan kapalı): bildirimde (sağlam + fire) reçete ihtiyacı, çıkılan düşülerek FEFO ile çıkılır; stok yetmezse uyarı ve standart maliyet | Tarayıcı: 4 + 1 kg bildirim → un 2,929 kg, şeker 0,909 kg çıktı |
+| B2 | Genel üretim gideri | Maliyet Analizi > aylık gider girişi, kapanan iş emirlerine süreye göre dağılım, giderli birim maliyet, Excel. Yalnızca bilgi; stok değerini değiştirmez | Tarayıcı: 460.000 ₺ / 4.800 dk = 95,83 ₺/dk; gider ekleme penceresi Kod incelendi |
+| B3 | Operatör ekranı | Yeni rol "Operatör" (ofis ekranlarına girmez, maliyet görmez); istasyon seç, iş emri okut, Başla / Bitir / Üretim bildir / Arıza; seçim cihazda hatırlanır | Tarayıcı: kodla bulma, başlat, bitir, 375 px, yetki. Kamerayla okutma ve Arıza penceresi denenmedi |
+| B4 | Fason iş | Malzeme "Fasoncuda" deposuna geçer (kullanılabilir stoktan düşer, toplam stok korunur); teslimde reçete kadar tüketilir, lot maliyeti malzeme + fason bedeli; kapanışta kalan döner; izlenebilirlik zinciri korunur | Tarayıcı: 20 kg gönderildi, 10 kg alındı, lot 42,31 ₺ (37,31 + 5), kapanışta 5,858 kg döndü, stok tuttu, geriye izleme kaynağa ulaştı. e-İrsaliye seçeneği denenmedi |
+
+### 3. dalga — fark yaratanlar
+| # | Özellik | Sonuç | Kanıt |
+|---|---|---|---|
+| F1 | Maliyet farkı analizi | Ay bazında iş emri: standart / gerçek, malzeme, işçilik, fire farkı; süresi ölçülmeyen "Kısmen standart"; malzeme çıkışı olmayan iş hesap dışı ve sayısı yazar; Excel | Tarayıcı: demo ayı toplam +17.922 ₺ |
+| F2 | Alternatif istasyon önerisi | Kapasite aşan günde başlamamış operasyon için aynı türde çalışan ve boş istasyon, yük ve saatlik maliyet farkı; "Taşı" | Tarayıcı: öneri listesi ve "yok" durumu göründü; "Taşı" düğmesi tıklanmadı |
+
+Kalite kapısı: 375 px'te 7 ekranda taşma yok, konsol hatası yok, boş liste (Fason, Maliyet) görüldü. Koyu tema denenmedi (yalnızca çekirdek sınıfları). `sw.js` sürümü bu görevde değiştirilmedi; birleştirmede artırılmalı.
 
 Tarih: 29.10.2026 · Dal: `claude/urun-eticaret-uretim-38c2a2` · Yöntem: `CLAUDE.md` §2 · Program: `apps/fabrika` (`app.js` stok/lot, satınalma, mal kabul, kalite; `app2.js` reçete, iş emri, plan, MRP, satış/sevkiyat, bakım/OEE; `bayi.html` bayi portalı)
 
@@ -58,14 +100,14 @@ Mikro ve DİA'nın üretim modülü özellik sayfası bu turda bulunamadı → k
 | MRP, üretim planı, satış siparişi → sevkiyat → e-İrsaliye / e-Fatura | ✅ | L M | O |
 | Doğru iş emri maliyeti (F3, F4, F6) | 🟡 | L (safha bazlı maliyet) | O |
 | Uydurma veri olmaması (F1, F2, F5) | ❌ | — | O |
-| Geri bildirimli tüketim (üretim bildirince reçeteden otomatik malzeme çıkışı) | ❌ | L M | E |
-| Genel üretim gideri (elektrik, kira) dağıtımı | ❌ | L | E |
-| Alternatif istasyon / kapasite çizelgeleme | 🟡 (plan ekranı) | L | E |
-| Fason üretim (malzeme gönder, mamul al) | ❌ | L | E |
-| Operatör ekranı (tablet: başla / bitir / fire, barkodla iş emri) | 🟡 (iş emri detayında) | M | E |
+| Geri bildirimli tüketim (üretim bildirince reçeteden otomatik malzeme çıkışı) | ✅ B1 | L M | E |
+| Genel üretim gideri (elektrik, kira) dağıtımı | ✅ B2 (bilgi amaçlı) | L | E |
+| Alternatif istasyon / kapasite çizelgeleme | ✅ F2 | L | E |
+| Fason üretim (malzeme gönder, mamul al) | ✅ B4 | L | E |
+| Operatör ekranı (tablet: başla / bitir / fire, barkodla iş emri) | ✅ B3 | M | E |
 | Bakım planı + OEE + PLC sayaç | ✅ | M | E |
 | Bayi portalı (sipariş, bakiye) | ✅ | — | F |
-| Maliyet farkı analizi (standart vs gerçek, malzeme/işçilik/fire ayrımı) | ❌ | L | F |
+| Maliyet farkı analizi (standart vs gerçek, malzeme/işçilik/fire ayrımı) | ✅ F1 | L | F |
 
 ---
 

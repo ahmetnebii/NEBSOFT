@@ -5,8 +5,8 @@ window.FAB = (function () {
   const r3 = (n) => Math.round(n * 1000) / 1000;
 
   const TYPES = { hammadde: ['Hammadde', 'info'], ambalaj: ['Ambalaj', 'acc'], yarimamul: ['Yarı mamul', 'warn'], mamul: ['Mamul', 'ok'], sarf: ['Sarf / yedek parça', ''] };
-  const WHT = { hammadde: 'Hammadde', karantina: 'Karantina (kalite bekliyor)', uretim: 'Üretim / ara stok', mamul: 'Mamul', red: 'Red / iade alanı' };
-  const MOVE = { acilis: ['Açılış', ''], kabul: ['Mal kabul', 'info'], 'kk-kabul': ['Kalite onayı', 'ok'], 'kk-red': ['Kalite red', 'err'], tuketim: ['Üretime çıkış', 'warn'], uretim: ['Üretimden giriş', 'ok'], fire: ['Fire / sarf', 'err'], transfer: ['Transfer', 'acc'], sayim: ['Sayım farkı', ''], sevk: ['Sevkiyat', 'warn'], iade: ['Tedarikçiye iade', 'err'], musteri_iade: ['Müşteri iadesi', 'info'] };
+  const WHT = { hammadde: 'Hammadde', karantina: 'Karantina (kalite bekliyor)', uretim: 'Üretim / ara stok', mamul: 'Mamul', red: 'Red / iade alanı', fason: 'Fasoncuda' };
+  const MOVE = { acilis: ['Açılış', ''], kabul: ['Mal kabul', 'info'], 'kk-kabul': ['Kalite onayı', 'ok'], 'kk-red': ['Kalite red', 'err'], tuketim: ['Üretime çıkış', 'warn'], uretim: ['Üretimden giriş', 'ok'], fire: ['Fire / sarf', 'err'], transfer: ['Transfer', 'acc'], sayim: ['Sayım farkı', ''], sevk: ['Sevkiyat', 'warn'], iade: ['Tedarikçiye iade', 'err'], musteri_iade: ['Müşteri iadesi', 'info'], fason: ['Fason sevk / iade', 'acc'] };
   const USABLE = ['hammadde', 'uretim', 'mamul'];
 
   function seed(db) {
@@ -19,6 +19,7 @@ window.FAB = (function () {
       { id: 'u3', name: 'Zeynep Kalkan', role: 'kalite', pin: '1234', active: true },
       { id: 'u4', name: 'Okan Yıldırım', role: 'uretim', pin: '1234', active: true },
       { id: 'u5', name: 'Derya Aksoy', role: 'satinalma', pin: '1234', active: true },
+      { id: 'u6', name: 'Ali Korkmaz', role: 'operator', pin: '1234', active: true },
     ];
     d.warehouses = [
       { id: 'w1', name: 'Hammadde Deposu', type: 'hammadde', locs: ['A-01', 'A-02', 'A-03', 'A-04', 'B-01', 'B-02', 'SİLO-1', 'SİLO-2', 'SOĞUK-1'] },
@@ -79,7 +80,8 @@ window.FAB = (function () {
       { id: 'b5', mat: mid('MM-003'), version: 'v1', base: 1, active: true, note: '', lines: [['YM-001', 1.8, 2], ['HM-010', 0.35, 1], ['HM-012', 0.25, 1], ['AM-001', 2.6, 3], ['AM-002', 1, 0], ['AM-003', 1, 0]].map(([c, q, s]) => ({ mat: mid(c), qty: q, scrap: s })), ops: [{ name: 'Kalıplama', station: sid('RK-01'), setup: 25, run: 0.07 }, { name: 'Pişirme', station: sid('TF-01'), setup: 30, run: 0.08 }, { name: 'Paketleme', station: sid('FP-01'), setup: 10, run: 0.3 }, { name: 'Kolileme', station: sid('KL-01'), setup: 5, run: 0.19 }] },
     ];
 
-    d.moves = []; d.lots = []; d.po = []; d.receipts = []; d.wo = []; d.so = []; d.shipments = []; d.prq = []; d.offers = []; d.returns = []; d.maint = []; d.downtime = []; d.plans = [];
+    d.moves = []; d.lots = []; d.po = []; d.receipts = []; d.wo = []; d.so = []; d.shipments = []; d.prq = []; d.offers = []; d.returns = []; d.maint = []; d.downtime = []; d.plans = []; d.fason = [];
+    d.overheads = [['Elektrik', 184000], ['Doğalgaz', 96000], ['Kira', 120000], ['Amortisman', 60000]].map(([name, amount], i) => ({ id: 'oh' + i, month: D(0).slice(0, 7), name, amount }));
     let lotSeq = 100;
     const rem = {}; // lotNo -> {mat, wh, loc, qty, skt}
     const mat = (id) => d.materials.find((m) => m.id === id);
@@ -99,7 +101,9 @@ window.FAB = (function () {
     const produce = (matId, qty, date, done) => {
       const m = mat(matId), b = bomOf(matId); const no = 'IE' + String(26000 + ++woSeq); const id = 'wo' + woSeq;
       const issued = [];
-      if (done) b.lines.forEach((l) => { const c = mat(l.mat); const need = r3((l.qty * qty) / b.base * (1 + (l.scrap || 0) / 100)); if (c.type === 'yarimamul' && bomOf(c.id)) produce(c.id, need, date, true); issued.push(...consume(l.mat, need, date, id, no).map((u) => ({ ...u, mat: l.mat, cost: mat(l.mat).cost }))); });
+      // Yarı mamul kartında maliyet yok: panelle aynı, reçeteden gelen standart maliyet yazılır
+      const stdCost = (id, dp = 0) => { const bm = bomOf(id); if (!bm || dp > 6) return mat(id).cost || 0; const mc = bm.lines.reduce((t, x) => t + x.qty * (1 + (x.scrap || 0) / 100) * stdCost(x.mat, dp + 1), 0) / bm.base; const oc = (bm.ops || []).reduce((t, o) => t + ((o.run || 0) / bm.base) * (((d.stations.find((s) => s.id === o.station) || {}).cph || 0) / 60), 0); return Math.round((mc + oc) * 100) / 100; };
+      if (done) b.lines.forEach((l) => { const c = mat(l.mat); const need = r3((l.qty * qty) / b.base * (1 + (l.scrap || 0) / 100)); if (c.type === 'yarimamul' && bomOf(c.id)) produce(c.id, need, date, true); issued.push(...consume(l.mat, need, date, id, no).map((u) => ({ ...u, mat: l.mat, cost: stdCost(l.mat) }))); });
       const scrap = done ? (m.unit === 'koli' ? Math.round((qty * rand(5, 25)) / 1000) : r3((qty * rand(5, 25)) / 1000)) : 0;
       const good = r3(qty - scrap);
       const ops = b.ops.map((o) => { const st = d.stations.find((s) => s.id === o.station); const runMin = Math.round(o.setup + (o.run * qty) / b.base * (1 + rand(3, 18) / 100)); return { ...o, status: done ? 'tamam' : 'bekliyor', good: done ? good : 0, scrap: done ? scrap : 0, min: done ? runMin : 0, ideal: Math.round((qty / st.cap) * 60), date }; });
