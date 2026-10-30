@@ -74,7 +74,7 @@
       const rows = list();
       $('#t', el).innerHTML = table({ rows: clip(rows), emptyIcon: 'percent', empty: 'Bu görünümde listeleme yok', columns: [
         { label: 'Ürün', render: (y) => `${chB(y.x.ch)} <b>${esc(prod(y.x.pid).name)}</b><div class="small faint">${esc(prod(y.x.pid).sku)} · ${esc(prod(y.x.pid).cat)} · ${prod(y.x.pid).desi} desi</div>` },
-        { label: 'Satış', cls: 'right', render: (y) => { const mc = minComp(y.x); return `<b>${money(y.x.price)}</b>${y.x.notSynced ? '<div>' + badge('Kanala gönderilmedi', 'warn') + '</div>' : y.x.pending ? '<div>' + badge('Sonuç bekleniyor', 'info') + '</div>' : y.x.buybox ? '<div>' + badge(y.x.buyboxOrder != null ? 'Buybox' : 'Buybox (demo)', y.x.buyboxOrder != null ? 'ok' : '') + '</div>' : mc != null ? `<div class="small faint">rakip ${money(mc)}${realComps(y.x) ? '' : ' (demo/eski)'}</div>` : ''}`; } },
+        { label: 'Satış', cls: 'right', render: (y) => { const mc = minComp(y.x); return `<b>${money(y.x.price)}</b>${y.x.notSynced ? '<div>' + badge('Kanala gönderilmedi', 'warn') + '</div>' : y.x.pending ? '<div>' + badge('Sonuç bekleniyor', 'info') + '</div>' : y.x.buybox ? '<div>' + badge(y.x.buyboxOrder != null ? 'Buybox' : 'Buybox (TEST)', y.x.buyboxOrder != null ? 'ok' : '') + '</div>' : mc != null ? `<div class="small faint">rakip ${money(mc)}${realComps(y.x) ? '' : ' (TEST/eski)'}</div>` : ''}`; } },
         { label: 'Maliyet', cls: 'right', render: (y) => money(prod(y.x.pid).cost) },
         { label: 'Komisyon', cls: 'right', render: (y) => `${money(y.r.comAmt)}<div class="small faint">%${comOf(prod(y.x.pid), y.x.ch)}</div>` },
         { label: 'Kargo + bedel', cls: 'right', render: (y) => money(y.r.cargo + y.r.fee) },
