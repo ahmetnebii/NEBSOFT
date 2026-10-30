@@ -111,7 +111,7 @@
         if (v.type === 'kart' && NS.integ) { const r = await NS.integ.cardPayment(v.amount, { installment: v.inst === 'Tek çekim' ? 1 : Number(v.inst) }); if (!r.ok) return toast('Kart ödemesi alınamadı: ' + (r.error || ''), 'err'); }
         const pay = db.insert('payments', { patient: id, amount: v.amount, type: v.type + (v.inst !== 'Tek çekim' ? ` (${v.inst} taksit)` : ''), at: new Date().toISOString() });
         applyInst(id, v.amount);
-        if (v.doc === 'esmm' && NS.integ) { const r = await NS.integ.call('esmm', 'makbuz', { name: p.name, tc: p.tc, amount: v.amount, desc: 'Muayene / tedavi bedeli' }); if (realOk(r, 'e-SMM')) { pay.ebelge = 'e-SMM ' + r.ref; db.save(); } }
+        if (v.doc === 'esmm' && NS.integ) { const r = await NS.integ.call('esmm', 'makbuz', { name: p.name, tc: p.tc, amount: v.amount, desc: 'Muayene / tedavi bedeli', withholding: false }); if (realOk(r, 'e-SMM')) { pay.ebelge = 'e-SMM ' + r.ref; db.save(); } }
         else if (v.doc === 'efatura' && NS.integ) { const r = await NS.integ.sendEInvoice({ buyer: p.name, buyerVkn: p.tc, no: 'TH' + pay.id.slice(-6), total: v.amount, lines: [{ name: 'Sağlık hizmeti', total: v.amount }] }); if (realOk(r, 'e-Arşiv')) { pay.ebelge = `${r.type} ${r.no}`; db.save(); } }
         if (v.print) NS.printHtml(`<div class="doc" style="max-width:600px"><h2>${esc(S().bizName)}</h2><h3>TAHSİLAT MAKBUZU</h3><p>${NS.dt(pay.at)}</p><p>Sayın <b>${esc(p.name)}</b>, ${money(v.amount)} (${esc(pay.type)}) tahsil edilmiştir.</p>${pay.ebelge ? `<p>${esc(pay.ebelge)}</p>` : ''}<p>Kalan bakiye: ${money(balance(id))}</p><p style="margin-top:40px;text-align:right">Kaşe / imza</p></div>`, { title: 'Makbuz' });
         re();

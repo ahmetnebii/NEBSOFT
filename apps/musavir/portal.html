@@ -47,7 +47,7 @@
       <div class="tk-how"><div>${icon('calendar')}<b>Ödenecek vergiler</b>Verilen beyannamelerin tutarı ve son ödeme günü.</div><div>${icon('upload')}<b>Evrak gönderin</b>${NS.pub ? 'Fatura, ekstre ve Z raporlarının durumunu takip edin.' : 'Fatura, ekstre ve Z raporlarını telefondan yükleyin.'}</div><div>${icon('message')}<b>Müşavirinize yazın</b>Sorularınız kayıt altında, cevabı burada.</div></div>`;
     const go = () => { if (db.lookup({ vkn: $('#vk').value.trim(), code: $('#cd').value.trim().toUpperCase() }) === null) db.load(); const c = db.find('clients', (x) => x.vkn === $('#vk').value.trim() && M.code(x) === $('#cd').value.trim().toUpperCase()); if (!c) return toast('VKN veya giriş kodu hatalı', 'err'); sset(c.id); render(); };
     $('#go').onclick = go; $('#cd').onkeydown = (e) => { if (e.key === 'Enter') go(); };
-    if ($('#hint')) $('#hint').onclick = (e) => { e.preventDefault(); const c = db.all('clients')[1]; $('#vk').value = c.vkn; $('#cd').value = M.code(c); };
+    if ($('#hint')) $('#hint').onclick = (e) => { e.preventDefault(); const c = db.all('clients')[1]; $('#vk').value = c.vkn; $('#cd').value = NS.portalCode(db, c); };
   }
   function vergi(c) {
     const F = db.all('filings', (f) => f.client === c.id).sort((a, b) => b.due.localeCompare(a.due));

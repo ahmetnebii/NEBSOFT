@@ -52,8 +52,8 @@
     const list = db.all('flats').filter((f) => debt(f.id) > 0);
     if (!list.length) return toast('Borçlu daire yok');
     if (!(await confirm(`${list.length} borçlu daireye SMS ile hatırlatma gönderilsin mi?`, { ok: 'Gönder', danger: false }))) return;
-    const s = S(); list.forEach((f) => NS.smsLog(db, { to: f.tenantPhone || f.ownerPhone, name: resident(f), text: `Sayın ${resident(f)}, ${f.block} Blok ${f.no} nolu dairenizin ${money(debt(f.id))} aidat borcu bulunmaktadır. ${s.bank || ''} ${s.iban || ''} — ${s.bizName}` }, true));
-    db.save(); toast(`${list.length} sakine hatırlatma gönderildi`, 'ok');
+    const s = S(); NS.smsBatch(db, list.map((f) => ({ to: f.tenantPhone || f.ownerPhone, name: resident(f), text: `Sayın ${resident(f)}, ${f.block} Blok ${f.no} nolu dairenizin ${money(debt(f.id))} aidat borcu bulunmaktadır. ${s.bank || ''} ${s.iban || ''} — ${s.bizName}` })), 'aidat hatırlatması');
+    db.save();
   }
   function printReceipt(f, amount, type) {
     const s = S();

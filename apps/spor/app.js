@@ -117,7 +117,7 @@
     const st = status(m);
     const ent = db.all('entries', (e) => e.member === m.id && e.ok);
     const ms = m.measurements.slice().sort((a, b) => a.date.localeCompare(b.date));
-    el.innerHTML = `<div class="row mb"><a class="btn" href="#/uyeler">${icon('back')} Üyeler</a></div>
+    el.innerHTML = `<div class="row mb"><a class="btn" href="#/uyeler">${icon('back')} Üyeler</a><span class="grow"></span><button class="btn" id="ptl">${icon('globe')} Üye portalı kodu</button></div>
       <div class="card pad mb row"><div class="avatar lg" style="width:64px;height:64px;font-size:22px">${esc(NS.initials(m.name))}</div><div class="grow"><h1>${esc(m.name)}</h1><div class="muted">#${m.no} · ${esc(m.phone)} · ${m.gender === 'K' ? 'Kadın' : 'Erkek'}${m.birth ? ' · ' + (new Date().getFullYear() - Number(m.birth.slice(0, 4))) + ' yaş' : ''}</div>${m.note ? `<div class="mt">${badge(m.note, 'warn')}</div>` : ''}</div>
         <div class="col center">${NS.qrSvg('MEMBER:' + m.no, 90)}<span class="small faint">Giriş kartı</span></div></div>
       <div class="grid g4 mb">${kpi('Durum', STS[st][0], 'shield', STS[st][1])}${kpi('Kalan gün', Math.max(0, daysLeft(m)), 'calendar', 'info')}${kpi('Bu ay giriş', ent.filter((e) => e.at.slice(0, 7) === today().slice(0, 7)).length, 'zap')}${kpi('Borç', money(totalDebt(m)), 'wallet', totalDebt(m) ? 'err' : 'ok')}</div>
@@ -135,6 +135,7 @@
         <a class="btn" target="_blank" rel="noopener" href="https://wa.me/90${String(m.phone).replace(/\D/g, '').replace(/^0/, '')}?text=${encodeURIComponent(`Merhaba ${m.name}, ${S().bizName} üyeliğiniz ${NS.date(m.end)} tarihinde sona eriyor. Yenileme için bize ulaşabilirsiniz.`)}">${icon('message')} WhatsApp hatırlatma</a>
       </div></div>`;
     const re = () => app.refresh();
+    $('#ptl', el).onclick = () => NS.portalShare(db, m, { title: 'Üye portalı', url: location.href.replace(/index\.html.*$/, '').replace(/#.*$/, '') + 'uye.html', phone: m.phone, name: m.name, login: 'Telefon numaran', loginValue: m.phone });
     on(el, 'click', '[data-act=pay]', async (e, b) => {
       const i = m.installments.find((x) => x.id === b.dataset.id);
       const v = await formModal({ title: `Tahsilat — ${money(i.amount)}`, fields: [{ name: 'type', label: 'Ödeme', type: 'select', options: [{ value: 'kart', label: 'Kart' }, { value: 'nakit', label: 'Nakit' }, { value: 'havale', label: 'Havale' }] }] });

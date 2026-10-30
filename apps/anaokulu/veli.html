@@ -45,7 +45,7 @@
       <div class="tk-how"><div>${icon('coffee')}<b>Yemek ve uyku</b>Öğretmenin işaretlediği gün raporu.</div><div>${icon('check')}<b>Giriş-çıkış</b>Geliş saati ve teslim alan kişi.</div><div>${icon('message')}<b>İzin bildirin</b>Gelmeyecekse veya erken alacaksanız tek dokunuşla.</div></div>`;
     const go = () => { if (db.lookup({ phone: $('#ph').value, code: $('#cd').value.trim().toUpperCase() }) === null) db.load(); const L = db.all('students', (s) => s.parents.some((p) => digits(p.phone) === digits($('#ph').value)) && A.code(s) === $('#cd').value.trim().toUpperCase()); if (!L.length) return toast('Telefon veya kod hatalı', 'err'); sset(digits($('#ph').value)); kid = L[0].id; render(); };
     $('#go').onclick = go; $('#cd').onkeydown = (e) => { if (e.key === 'Enter') go(); };
-    if ($('#hint')) $('#hint').onclick = (e) => { e.preventDefault(); const s = db.all('students').find((x) => db.data.reports[`${x.id}|${today()}`]) || db.all('students')[0]; $('#ph').value = s.parents[0].phone; $('#cd').value = A.code(s); };
+    if ($('#hint')) $('#hint').onclick = (e) => { e.preventDefault(); const s = db.all('students').find((x) => db.data.reports[`${x.id}|${today()}`]) || db.all('students')[0]; $('#ph').value = s.parents[0].phone; $('#cd').value = NS.portalCode(db, s); };
   }
   function bugun(s) {
     const a = db.data.att[`${s.id}|${today()}`]; const r = db.data.reports[`${s.id}|${today()}`] || {}; const c = db.get('classes', s.cls);

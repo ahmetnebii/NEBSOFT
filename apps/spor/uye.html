@@ -69,13 +69,13 @@
 
   function login() {
     $('#out').innerHTML = '';
-    $('#root').innerHTML = `<div class="tk-view"><div class="tk-intro"><h1>Antrenmanın cebinde</h1><p>Telefon numaranla giriş yap; dijital üye kartın, ders rezervasyonların, ölçümlerin ve ödemelerin tek ekranda.</p></div>
-      <div class="tk-find"><input class="input" id="ph" type="tel" inputmode="tel" placeholder="05xx xxx xx xx" aria-label="Telefon" autocomplete="tel" style="text-transform:none;letter-spacing:.02em"><button class="btn primary lg" id="go">Giriş</button></div>
+    $('#root').innerHTML = `<div class="tk-view"><div class="tk-intro"><h1>Antrenmanın cebinde</h1><p>Telefon numaran ve salondan aldığın giriş koduyla gir; dijital üye kartın, ders rezervasyonların, ölçümlerin ve ödemelerin tek ekranda.</p></div>
+      <div class="tk-find"><input class="input" id="ph" type="tel" inputmode="tel" placeholder="05xx xxx xx xx" aria-label="Telefon" autocomplete="tel" style="text-transform:none;letter-spacing:.02em"><input class="input" id="cd" placeholder="Giriş kodu" aria-label="Giriş kodu" autocomplete="one-time-code" style="max-width:140px;text-transform:uppercase"><button class="btn primary lg" id="go">Giriş</button></div>
       ${NS.pub ? '' : '<p class="small muted">Demo için <a href="#" id="hint">örnek üye numarası kullan</a>.</p>'}
       <div class="tk-how"><div>${icon('qr')}<b>Turnikede QR</b>Kartını unutsan da telefonunla gir.</div><div>${icon('calendar')}<b>Ders rezervasyonu</b>Kontenjanı gör, yerini ayırt, 2 saat öncesine kadar iptal et.</div><div>${icon('trend')}<b>İlerlemen</b>Kilo, yağ ve kas ölçümlerinin grafiği.</div></div></div>`;
-    const go = () => { const d = digits($('#ph').value); if (d.length !== 10 || db.lookup({ phone: d }) === null) db.load(); const m = d.length === 10 && db.find('members', (x) => digits(x.phone) === d); if (!m) return toast('Bu numarayla kayıtlı üye bulunamadı', 'err'); sset(m.id); render(); };
+    const go = () => { const d = digits($('#ph').value); const code = $('#cd').value.trim().toUpperCase(); if (!code) return toast('Salondan aldığın giriş kodunu yaz', 'err'); if (d.length !== 10 || db.lookup({ phone: d, code }) === null) db.load(); const m = d.length === 10 && db.find('members', (x) => digits(x.phone) === d && (NS.pub || (x.portalCode && x.portalCode === code))); if (!m) return toast('Telefon veya giriş kodu hatalı', 'err'); sset(m.id); render(); };
     $('#go').onclick = go; $('#ph').onkeydown = (e) => { if (e.key === 'Enter') go(); };
-    if ($('#hint')) $('#hint').onclick = (e) => { e.preventDefault(); const m = db.all('members').find((x) => x.end >= today() && !(x.freezeUntil >= today())); if (m) $('#ph').value = m.phone; };
+    if ($('#hint')) $('#hint').onclick = (e) => { e.preventDefault(); const m = db.all('members').find((x) => x.end >= today() && !(x.freezeUntil >= today())); if (m) { $('#ph').value = m.phone; $('#cd').value = NS.portalCode(db, m); } };
   }
 
   const myBookings = (m) => db.all('bookings', (b) => b.member === m.id);

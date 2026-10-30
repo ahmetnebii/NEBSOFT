@@ -256,10 +256,11 @@ RULES.otoservis = {
 };
 
 // ---------- Veteriner: pati karnesi (karne.html) — telefonla giriş ----------
-const ownerOf = (col, field = 'phone') => (x, q) => { const o = q.phone && x.col(col).find((r) => samePhone(r[field], q.phone)); return o ? { k: 'o', i: o.id } : null; };
+// Telefon + işletmenin verdiği rastgele portalCode birlikte eşleşmeli (yalnızca telefonla giriş, numarayı bilen herkese kaydı açıyordu)
+const ownerOf = (col, field = 'phone') => (x, q) => { const code = norm(q.code); const o = code && q.phone && x.col(col).find((r) => r.portalCode && norm(r.portalCode) === code && samePhone(r[field], q.phone)); return o ? { k: 'o', i: o.id } : null; };
 RULES.veteriner = {
   pub: {},
-  login: ownerOf('owners'), loginError: 'Bu numarayla kayıtlı hayvan sahibi bulunamadı',
+  login: ownerOf('owners'), loginError: 'Telefon veya giriş kodu hatalı',
   view: (x) => {
     const o = x.get('owners', me(x, 'o')); if (!o) return {};
     const pets = x.col('pets').filter((p) => p.owner === o.id); const ids = new Set(pets.map((p) => p.id));
@@ -328,7 +329,7 @@ RULES.spor = {
     trainers: { fields: ['id', 'name', 'color', 'title', 'photo', 'branch'] },
     bookings: { where: (r, x) => r.date >= x.today, fields: ['id', 'cls', 'date'] }, // doluluk için (üye bilgisi olmadan)
   },
-  login: ownerOf('members'), loginError: 'Bu numarayla kayıtlı üye bulunamadı',
+  login: ownerOf('members'), loginError: 'Telefon veya giriş kodu hatalı',
   view: (x) => {
     const m = x.get('members', me(x, 'o')); if (!m) return {};
     const mine = x.col('bookings').filter((b) => b.member === m.id); const ids = new Set(mine.map((b) => b.id));
@@ -371,7 +372,7 @@ RULES.spor = {
 const anonScores = (e, own) => { let n = 0; const sc = {}; Object.entries(e.scores || {}).forEach(([k, v]) => { sc[own.has(k) ? k : 'x' + (++n)] = v; }); return { ...e, scores: sc }; };
 RULES.kurs = {
   pub: { classes: true, lessons: true, teachers: { fields: ['id', 'name', 'color', 'branch', 'title'] } },
-  login: (x, q) => { const d = digits(q.phone); return d.length === 10 && x.col('students').some((s) => digits(s.parentPhone) === d) ? { k: 'p', i: d } : null; },
+  login: (x, q) => { const d = digits(q.phone); const code = norm(q.code); return code && d.length === 10 && x.col('students').some((s) => digits(s.parentPhone) === d && s.portalCode && norm(s.portalCode) === code) ? { k: 'p', i: d } : null; },
   loginError: 'Bu numarayla kayıtlı öğrenci bulunamadı',
   view: (x) => {
     const ph = me(x, 'p'); if (!ph) return {};
@@ -558,7 +559,7 @@ RULES.fabrika = {
 
 // ---------- Toptan: bayi B2B sipariş (bayi.html) — telefon + bayi kodu ----------
 const TPT_LIST = { A: 0, B: 4, C: 8 };
-const tptCode = (c) => c.portalCode || digits(c.phone).slice(-4) + String(c.id).replace(/\W/g, '').slice(-2).toUpperCase();
+const tptCode = (c) => (c.portalCode ? norm(c.portalCode) : null); // formülle türetilen yedek kod kaldırıldı (tahmin edilebilirdi)
 RULES.toptan = {
   pub: {},
   login: (x, q) => { const code = norm(q.code); const c = code && x.col('customers').find((c) => samePhone(c.phone, q.phone) && tptCode(c) === code); return c ? { k: 'c', i: c.id } : null; },
@@ -583,7 +584,7 @@ RULES.toptan = {
 };
 
 // ---------- Mali müşavir: mükellef portalı (portal.html) — VKN + giriş kodu ----------
-const msvCode = (c) => c.portalCode || String(c.vkn).slice(-4) + String(c.id).replace(/\W/g, '').slice(-2).toUpperCase();
+const msvCode = (c) => (c.portalCode ? norm(c.portalCode) : null);
 const prevMonth = () => { const d = new Date(Date.now() + 3 * 3600e3); d.setUTCDate(1); d.setUTCMonth(d.getUTCMonth() - 1); return d.toISOString().slice(0, 7); };
 RULES.musavir = {
   pub: {},
@@ -633,7 +634,7 @@ RULES.muhasebe = {
 };
 
 // ---------- Hukuk: müvekkil portalı (muvekkil.html) — TCKN/VKN + giriş kodu ----------
-const hkkCode = (c) => c.portalCode || String(c.idNo || '').slice(-4) + String(c.id).replace(/\W/g, '').slice(-2).toUpperCase();
+const hkkCode = (c) => (c.portalCode ? norm(c.portalCode) : null);
 RULES.hukuk = {
   pub: {},
   login: (x, q) => { const code = norm(q.code); const c = code && x.col('clients').find((c) => c.idNo && String(c.idNo) === String(q.idNo || '').trim() && hkkCode(c) === code); return c ? { k: 'c', i: c.id } : null; },
@@ -647,7 +648,7 @@ RULES.hukuk = {
 };
 
 // ---------- Anaokulu: veli portalı (veli.html) — veli telefonu + kod ----------
-const ankCode = (s) => s.portalCode || digits(((s.parents || [])[0] || {}).phone).slice(-4) + String(s.id).replace(/\W/g, '').slice(-2).toUpperCase();
+const ankCode = (s) => (s.portalCode ? norm(s.portalCode) : null);
 const keysOf = (obj, ids) => { const o = {}; Object.entries(obj || {}).forEach(([k, v]) => { if (ids.has(k.split('|')[0])) o[k] = v; }); return o; };
 RULES.anaokulu = {
   pub: { menu: true, classes: { fields: ['id', 'name', 'age', 'teacher', 'color'] } },

@@ -92,8 +92,8 @@
     $('#rem', el).onclick = async () => {
       const L = db.all('clients').filter((c) => missing(c, m).length); if (!L.length) return toast('Eksik evrak yok', 'ok');
       if (!(await confirm(`${L.length} mükellefe eksik evrak hatırlatması (SMS) gönderilsin mi?`))) return;
-      L.forEach((c) => { NS.smsLog(db, { to: c.phone, name: c.name, text: `${S().bizName}: ${perTxt(m)} dönemi için eksik evraklarınız: ${missing(c, m).join(', ')}. Mükellef portalından yükleyebilirsiniz.` }, true); db.all('filings', (f) => f.client === c.id && f.period === m && f.status === 'bekliyor').forEach((f) => { f.status = 'evrak'; }); });
-      db.save(); toast(`${L.length} hatırlatma gönderildi`, 'ok'); draw();
+      NS.smsBatch(db, L.map((c) => ({ to: c.phone, name: c.name, text: `${S().bizName}: ${perTxt(m)} dönemi için eksik evraklarınız: ${missing(c, m).join(', ')}. Mükellef portalından yükleyebilirsiniz.` })), 'evrak hatırlatması'); L.forEach((c) => { db.all('filings', (f) => f.client === c.id && f.period === m && f.status === 'bekliyor').forEach((f) => { f.status = 'evrak'; }); });
+      db.save(); draw();
     };
     draw();
   }
@@ -108,7 +108,7 @@
       filters: [{ value: 'all', label: 'Tümü' }, { value: 'sirket', label: 'Şirketler', test: (c) => ['ltd', 'as'].includes(c.type) }, { value: 'sahis', label: 'Şahıs / serbest', test: (c) => ['sahis', 'serbest'].includes(c.type) }, { value: 'borc', label: 'Ücret borcu olan', test: (c) => balance(c) > 0 }],
       columns: [{ key: 'name', label: 'Mükellef', render: (c) => `<b>${esc(c.name)}</b><div class="small faint">${esc(M.TYPES[c.type])} · VKN ${esc(c.vkn)} · ${esc(c.taxOffice || '')}</div>` }, { label: 'Defter', render: (c) => `${c.defter === 'bilanco' ? 'Bilanço' : c.defter === 'serbest' ? 'Serbest meslek' : 'İşletme'}${c.edefter ? ' ' + badge('e-Defter', 'info') : ''}` }, { key: 'staff', label: 'Personel', cls: 'right' }, { key: 'fee', label: 'Ücret', cls: 'right', render: (c) => money(c.fee || 0) }, { label: 'Bakiye', cls: 'right', render: (c) => { const b = balance(c); return b > 0 ? `<b style="color:var(--err)">${money(b)}</b>` : '<span class="faint">0</span>'; } }, { label: 'Portal', render: (c) => `<span class="mono small">${esc(M.code(c))}</span>` }],
       extraActions: [{ icon: 'globe', act: 'portal', title: 'Portal bilgisini gönder' }],
-      onAction: (a, c) => { NS.portalCode(db, c); const url = location.href.replace(/index\.html.*$/, '').replace(/#.*$/, '') + 'portal.html'; NS.smsLog(db, { to: c.phone, name: c.name, text: `${S().bizName} mükellef portalı: ${url} — VKN: ${c.vkn}, giriş kodu: ${M.code(c)}` }, true); toast('Portal bilgileri SMS ile gönderildi', 'ok'); } });
+      onAction: (a, c) => { NS.portalCode(db, c); const url = location.href.replace(/index\.html.*$/, '').replace(/#.*$/, '') + 'portal.html'; NS.smsLog(db, { to: c.phone, name: c.name, text: `${S().bizName} mükellef portalı: ${url} — VKN: ${c.vkn}, giriş kodu: ${M.code(c)}` }, true).result.then((res) => toast(NS.smsText(res, 'Portal bilgisi SMS'), NS.smsTone(res))); } });
   }
 
   // ---------- Ücret & tahsilat ----------
@@ -121,7 +121,7 @@
       $('#t', el).innerHTML = table({ rows: C.map((c) => ({ id: c.id, c, b: balance(c), last: db.all('payments', (x) => x.client === c.id).sort((a, b) => b.at.localeCompare(a.at))[0] })).sort((a, b) => b.b - a.b), columns: [{ label: 'Mükellef', render: (r) => `<b>${esc(r.c.name)}</b>` }, { label: 'Aylık', cls: 'right', render: (r) => money(r.c.fee || 0) }, { label: 'Son ödeme', render: (r) => (r.last ? `${NS.date(r.last.at)} · ${money(r.last.amount)}` : '-') }, { label: 'Bakiye', cls: 'right', render: (r) => (r.b > 0 ? `<b style="color:var(--err)">${money(r.b)}</b><div class="small faint">${Math.round(r.b / (r.c.fee || 1))} aylık</div>` : badge('Güncel', 'ok')) }], actions: [{ icon: 'cash', act: 'pay', title: 'Tahsilat' }, { icon: 'message', act: 'rem', title: 'Hatırlat', show: (r) => r.b > 0 }] });
     };
     on(el, 'click', '[data-act=pay]', async (e, b) => { const c = cli(b.dataset.id); const v = await formModal({ title: `Tahsilat — ${c.name}`, fields: [{ name: 'amount', label: 'Tutar', type: 'number', required: true }, { name: 'method', label: 'Yöntem', type: 'select', options: ['Havale', 'Nakit', 'Kredi kartı'] }], values: { amount: Math.max(0, balance(c)) } }); if (!v) return; db.insert('payments', { client: c.id, amount: Number(v.amount), method: v.method, at: today() }); draw(); toast('Tahsilat kaydedildi', 'ok'); });
-    on(el, 'click', '[data-act=rem]', (e, b) => { const c = cli(b.dataset.id); NS.smsLog(db, { to: c.phone, name: c.name, text: `${S().bizName}: Müşavirlik ücreti bakiyeniz ${money(balance(c))}. IBAN: ${S().iban || ''}` }, true); toast('Hatırlatma gönderildi', 'ok'); });
+    on(el, 'click', '[data-act=rem]', (e, b) => { const c = cli(b.dataset.id); NS.smsLog(db, { to: c.phone, name: c.name, text: `${S().bizName}: Müşavirlik ücreti bakiyeniz ${money(balance(c))}. IBAN: ${S().iban || ''}` }, true).result.then((res) => toast(NS.smsText(res, 'Hatırlatma SMS'), NS.smsTone(res))); });
     $('#acc', el).onclick = async () => {
       const C = db.all('clients', (c) => !db.find('fees', (f) => f.client === c.id && f.period === m)); if (!C.length) return toast('Bu ayın ücretleri zaten tahakkuk etti', 'ok');
       if (!(await confirm(`${C.length} mükellef için ${money(sum(C, (c) => c.fee || 0))} ücret tahakkuk edilsin ve serbest meslek makbuzu kesilsin mi?`))) return;

@@ -576,6 +576,17 @@
     if (!rec.portalCode) { const A = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; const b = new Uint8Array(6); crypto.getRandomValues(b); rec.portalCode = [...b].map((x) => A[x % A.length]).join(''); db.save(); }
     return rec.portalCode;
   }
+  // Portal giriş bilgisi penceresi: bağlantı + giriş bilgisi + rastgele kod; kopyala, SMS (gerçek sonuçla), WhatsApp, yeni kod.
+  //   NS.portalShare(db, rec, { title, url, phone, name, login: 'Telefon numaranız', loginValue: '05..' })
+  function portalShare(db, rec, o = {}) {
+    const code = portalCode(db, rec); const biz = (db.settings ? db.settings({}).bizName : '') || '';
+    const text = `${biz ? biz + ' — ' : ''}${o.title || 'portal'}: ${o.url} · ${o.login || 'Telefon numaranız'}${o.loginValue ? ' (' + o.loginValue + ')' : ''} ve giriş kodu: ${code}`;
+    const wa = o.phone ? 'https://wa.me/' + ('90' + String(o.phone).replace(/\D/g, '').slice(-10)) + '?text=' + encodeURIComponent(text) : '';
+    modal({ title: o.title || 'Portal giriş bilgisi', body: `<p class="muted small">Giriş için ${esc((o.login || 'telefon numarası').replace(/^./, (ch) => ch.toLocaleLowerCase('tr-TR')))} ve aşağıdaki kod birlikte gerekir. Kodu yalnızca kişinin kendisine verin; şüphe varsa yeni kod üretin (eski kod geçersiz olur).</p><div class="card pad mt"><div class="small faint">Bağlantı</div><div class="mono" style="word-break:break-all">${esc(o.url)}</div><div class="small faint mt">Giriş kodu</div><div class="mono" style="font-size:26px;font-weight:800;letter-spacing:.15em">${esc(code)}</div></div>`,
+      actions: [{ label: 'Yeni kod', onClick: (c) => { delete rec.portalCode; db.save(); c(); portalShare(db, rec, o); } }, { label: 'Kopyala', onClick: () => { try { navigator.clipboard.writeText(text).then(() => toast('Kopyalandı', 'ok'), () => toast('Kopyalanamadı', 'err')); } catch (e) { toast('Kopyalanamadı', 'err'); } } },
+        ...(wa ? [{ label: 'WhatsApp', onClick: () => window.open(wa, '_blank', 'noopener') }] : []),
+        ...(o.phone ? [{ label: 'SMS gönder', cls: 'primary', onClick: (c) => { smsLog(db, { to: o.phone, name: o.name || '', text, kind: 'portal' }, true).result.then((res) => toast(smsText(res, 'Portal bilgisi SMS'), smsTone(res))); c(); } }] : [{ label: 'Kapat', cls: 'primary' }])] });
+  }
   // Bulutta müşteri sayfaları kart çekmez: ödeme işletmeye yapılır (elden / havale). Ayarlarda IBAN varsa gösterilir.
   function payInfo({ amount, title, s = {}, note } = {}) {
     const tel = String(s.bizPhone || '').replace(/[^\d+]/g, '');
@@ -1025,11 +1036,25 @@
   }
 
   // Ürün içi SMS kaydı + entegrasyon merkezinden gerçek gönderim (sağlayıcı Entegrasyonlar > SMS'ten seçilir)
+  // SMS kaydı + gönderim. Kaydı hemen döndürür (eski kullanım); gerçek sonuç r.result sözündedir:
+  //   const r = NS.smsLog(db, {...}); const res = await r.result; toast(NS.smsText(res), NS.smsTone(res));
+  // Simülasyon kaydı "TEST — gönderilmedi" yazar (sahte başarı yok). result kayda yazılmaz (enumerable değil).
+  const SMS_TEST = 'TEST — gönderilmedi';
   function smsLog(db, rec, silent) {
     const r = db.insert('sms', { ...rec, status: 'gönderiliyor' }, silent);
-    if (!NS.integ) { r.status = 'simülasyon'; db.save(); return r; }
-    NS.integ.sms(rec.to, rec.text, { silent: true }).then((res) => { r.status = res.simulated ? 'simülasyon' : res.ok ? 'gönderildi' : 'hata: ' + String(res.error || '').slice(0, 60); db.save(); });
+    const go = NS.integ && NS.integ.sms ? Promise.resolve().then(() => NS.integ.sms(rec.to, rec.text, { silent: true })).catch((e) => ({ ok: false, error: e.message })) : Promise.resolve({ ok: false, simulated: true });
+    const result = go.then((res) => { r.status = res.simulated ? SMS_TEST : res.ok ? 'gönderildi' : 'hata: ' + String(res.error || '').slice(0, 60); db.save(); return { ...res, ok: !!res.ok && !res.simulated, rec: r }; });
+    Object.defineProperty(r, 'result', { value: result, enumerable: false, configurable: true });
     return r;
+  }
+  // Sonuç metni / tonu: gönderildi (ok) · TEST (uyarı) · hata
+  const smsText = (res, what = 'SMS') => (!res ? `${what} sonucu alınamadı` : res.simulated ? `${what} TEST — gönderilmedi (Entegrasyonlar > SMS’ten sağlayıcı bağlayın)` : res.ok ? `${what} gönderildi` : `${what} gönderilemedi${res.error ? ': ' + String(res.error).slice(0, 80) : ''}`);
+  const smsTone = (res) => (res && res.ok && !res.simulated ? 'ok' : res && res.simulated ? 'warn' : 'err');
+  // Toplu SMS: hepsi gönderilir, sonuçlar beklenip tek özet bildirim gösterilir ("3 gönderildi · 2 TEST — gönderilmedi · 1 hata")
+  function smsBatch(db, recs, what = 'mesaj') {
+    const rs = recs.filter((r) => r && r.to).map((r) => smsLog(db, r, true));
+    return Promise.all(rs.map((r) => r.result)).then((list) => { const n = { ok: 0, test: 0, err: 0 }; list.forEach((x) => { if (x.simulated) n.test++; else if (x.ok) n.ok++; else n.err++; });
+      toast([n.ok && `${n.ok} ${what} gönderildi`, n.test && `${n.test} ${what} TEST — gönderilmedi (SMS sağlayıcısı bağlı değil)`, n.err && `${n.err} ${what} gönderilemedi`].filter(Boolean).join(' · ') || 'Gönderilecek mesaj yok (telefon yok)', n.err ? 'err' : n.test ? 'warn' : n.ok ? 'ok' : ''); return n; });
   }
 
   // Sayfa başlığı yardımcısı
@@ -1170,7 +1195,7 @@
     api, esc, $, $$, on, uid, rand, pick, sum, groupBy, clamp, money, num, iso, today, addDays, daysBetween, date, dateLong, time, dt, ago, pad,
     MONTHS, DAYS, NAMES, phone, sampleGender, initials, logoMark, shade, setFavicon, slug, trLower, match, icon, ICONS, DB, toast, modal, confirm, prompt, formModal, fieldsHtml, readForm, validate,
     table, chart, compact, dailySeries, PALETTE, csv, readFile, parseCsv, printHtml, beep, barcodeSvg, qrSvg, shell, pageHead, kpi, badge, searchBox, crud,
-    settingsPage, smsLog, toggleTheme, getTheme, setTheme, themeCards, THEMES, skeleton: (n = 4) => `<div class="nv-skel">${'<div class="skel" style="height:18px;width:38%"></div><div class="grid g4">' + '<div class="skel" style="height:84px"></div>'.repeat(4) + '</div>' + '<div class="skel" style="height:44px"></div>'.repeat(n)}</div>`, currentUser: null, cloud: CLOUD, merge3, pub: PUB, tenant: TENANT, payInfo, portalCode,
+    settingsPage, smsLog, smsText, smsTone, smsBatch, portalShare, toggleTheme, getTheme, setTheme, themeCards, THEMES, skeleton: (n = 4) => `<div class="nv-skel">${'<div class="skel" style="height:18px;width:38%"></div><div class="grid g4">' + '<div class="skel" style="height:84px"></div>'.repeat(4) + '</div>' + '<div class="skel" style="height:44px"></div>'.repeat(n)}</div>`, currentUser: null, cloud: CLOUD, merge3, pub: PUB, tenant: TENANT, payInfo, portalCode,
   };
 })();
 

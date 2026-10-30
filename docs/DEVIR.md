@@ -19,7 +19,9 @@ ebsoft güncel`). Node 24, .NET 8 var → `npm test`: 8 test dosyası geçti (XS
 - Yerel önizleme: 5050 portu bu bilgisayarda başka bir uygulamada → denemeler `PORT=5062 node server.js` ile yapıldı.
 - **YARIM commitler tamamlandı:** Butik 3. dalga (`06faf6b`), Veteriner 2. dalga, Fabrika spec + 1. dalga F1–F6 (bu commit). Ayrıntı ilgili spec'lerde.
 - `.claude/launch.json` servis-arac kaydı hâlâ 5061'i başlatıyordu → 5067 yapıldı. `sw.js` V → `nebsoft-v3-22`.
-- Sıradaki: §4.1 Ön Muhasebe 3. dalga kalanı.
+- **Ön Muhasebe 3. dalga tamamlandı** (özelleştirilebilir özet, akıllı uyarılar, proje/şube, 5000 faturada hız) — `docs/urun/ON-MUHASEBE.md`.
+- **Çekirdek istekleri — yüksek öncelikliler tamamlandı** (sahte başarı, doğrulanamayan bağlayıcılar, tutar, portal kodları); konaklama vergisi DOĞRULANAMADI. `sw.js` V → `nebsoft-v3-24`.
+- Sıradaki: §4.2 orta/düşük öncelikli çekirdek istekleri, sonra başlanmamış programlar.
 
 ---
 
@@ -178,14 +180,14 @@ Ayrıntı: `docs/urun/ON-MUHASEBE.md` (yapılanlar tabloları) ve `docs/MUHASEBE
 
 | Öncelik | İstek | İsteyen (dosya · no) |
 |---|---|---|
-| **Yüksek — sahte başarı** | `NS.smsLog` sonucu Promise döndürsün, simülasyon "TEST" görünsün | servis-arac Ç1 |
-| **Yüksek — sahte başarı** | `NS.integ.call` simülasyonda `toast(..,'ok')` yerine "TEST — gönderilmedi" | eticaret Ç2, konaklama Ç2, randevu Ç2 |
-| **Yüksek — sahte başarı** | Eski `sendEInvoice` yolu kaldırılsın / simülasyonda başarı yazmasın | eticaret Ç3 |
-| **Yüksek — doğrulanamayan** | Yedek parça (Martaş/Başbuğ/Dinamik), TRAMER, KBS, kanal yöneticisi (HotelRunner, SiteMinder, Booking…), resmî kurum bağlayıcıları (e-Nabız, e-Reçete, KPS, VetBİS, MEB) ve Google İşletme: resmî doküman yoksa "doğrulanmadı — seçilemez" | servis-arac Ç2, konaklama Ç4–Ç5, randevu Ç2 |
-| Yüksek — tutar | `NS.ebelge.create()` belge geneli indirimi (`doc.disc`) desteklesin ya da reddetsin | servis-arac Ç3 |
-| Yüksek — tutar | e-Belge'de konaklama vergisi (yalnızca KDV 0015 yazılıyor) — GİB kod listesinden doğrulanarak | konaklama Ç3 |
-| Yüksek — tutar | e-SMM'de stopaj yalnızca alıcı vergi kesintisi yapmakla yükümlüyse | profesyonel Ç1 |
-| Yüksek — güvenlik | Portal kodları formülle türetilmesin (VKN/TCKN/telefon + id): yalnızca rastgele `portalCode` (hukuk `hkkCode`, veteriner/spor/kurs telefonla giriş, anaokulu) — Ön Muhasebe portalı zaten böyle | profesyonel Ç2, randevu Ç7 |
+| ~~**Yüksek — sahte başarı**~~ **yapıldı 30.10.2026** | `NS.smsLog` sonucu Promise döndürsün, simülasyon "TEST" görünsün | servis-arac Ç1 |
+| ~~**Yüksek — sahte başarı**~~ **yapıldı 30.10.2026** | `NS.integ.call` simülasyonda `toast(..,'ok')` yerine "TEST — gönderilmedi" | eticaret Ç2, konaklama Ç2, randevu Ç2 |
+| ~~**Yüksek — sahte başarı**~~ **yapıldı 30.10.2026** (zaten `create()`'e yönlenmişti; iç yol TEST no döndürür) | Eski `sendEInvoice` yolu kaldırılsın / simülasyonda başarı yazmasın | eticaret Ç3 |
+| ~~**Yüksek — doğrulanamayan**~~ **yapıldı 30.10.2026** (`UNVERIFIED`, rapor B10) | Yedek parça (Martaş/Başbuğ/Dinamik), TRAMER, KBS, kanal yöneticisi (HotelRunner, SiteMinder, Booking…), resmî kurum bağlayıcıları (e-Nabız, e-Reçete, KPS, VetBİS, MEB) ve Google İşletme: resmî doküman yoksa "doğrulanmadı — seçilemez" | servis-arac Ç2, konaklama Ç4–Ç5, randevu Ç2 |
+| ~~Yüksek — tutar~~ **yapıldı (reddeder)** | `NS.ebelge.create()` belge geneli indirimi (`doc.disc`) desteklesin ya da reddetsin | servis-arac Ç3 |
+| Yüksek — tutar — **DOĞRULANAMADI** (rapor B9; GİB Kod Listeleri V1.43'te vergi kodu yok) | e-Belge'de konaklama vergisi (yalnızca KDV 0015 yazılıyor) — GİB kod listesinden doğrulanarak | konaklama Ç3 |
+| ~~Yüksek — tutar~~ **yapıldı 30.10.2026** | e-SMM'de stopaj yalnızca alıcı vergi kesintisi yapmakla yükümlüyse | profesyonel Ç1 |
+| ~~Yüksek — güvenlik~~ **yapıldı 30.10.2026** (`portal-kod.test.js`) | Portal kodları formülle türetilmesin (VKN/TCKN/telefon + id): yalnızca rastgele `portalCode` (hukuk `hkkCode`, veteriner/spor/kurs telefonla giriş, anaokulu) — Ön Muhasebe portalı zaten böyle | profesyonel Ç2, randevu Ç7 |
 | Orta — bulut kuralları | `RULES.otel` (hafta sonu fiyatı vb.), `RULES.bilet` (kod sınırları), randevuda yeni alanlar (`noReminder`, `waitlist`), Klinik online randevu kuralı, Otopark plaka sorgusu kuralı | konaklama Ç7–Ç8, randevu Ç4–Ç5, servis-arac Ç6 |
 | Orta — sunucu | Zamanlanmış hatırlatma (panel kapalıyken randevudan X saat önce SMS) | randevu Ç3 |
 | Orta — etiket | `core/labels.js`: eski fiyat uydurmasın (`fiyat × 1,2`), program alanı kaydı, önizleme bağlamı, logo öğesi, indirim yüzdesi; `printLabels` şablon desteği; `USED.butik`'e printer/label/barcode/pos | perakende Ç1–Ç7 |

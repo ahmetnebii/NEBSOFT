@@ -61,13 +61,13 @@
 
   function login() {
     $('#out').innerHTML = '';
-    $('#root').innerHTML = `<div class="tk-view"><div class="tk-intro"><h1>Çocuğunuzun eğitimi, her gün yanınızda</h1><p>Kayıtta verdiğiniz veli telefon numarasıyla girin; devam durumu, deneme sonuçları, ders programı ve ödemeler tek yerde.</p></div>
-      <div class="tk-find"><input class="input" id="ph" type="tel" inputmode="tel" placeholder="05xx xxx xx xx" aria-label="Veli telefonu" autocomplete="tel" style="text-transform:none;letter-spacing:.02em"><button class="btn primary lg" id="go">Giriş</button></div>
+    $('#root').innerHTML = `<div class="tk-view"><div class="tk-intro"><h1>Çocuğunuzun eğitimi, her gün yanınızda</h1><p>Kayıtta verdiğiniz veli telefon numarası ve kurumdan aldığınız giriş koduyla girin; devam durumu, deneme sonuçları, ders programı ve ödemeler tek yerde.</p></div>
+      <div class="tk-find"><input class="input" id="ph" type="tel" inputmode="tel" placeholder="05xx xxx xx xx" aria-label="Veli telefonu" autocomplete="tel" style="text-transform:none;letter-spacing:.02em"><input class="input" id="cd" placeholder="Giriş kodu" aria-label="Giriş kodu" autocomplete="one-time-code" style="max-width:140px;text-transform:uppercase"><button class="btn primary lg" id="go">Giriş</button></div>
       ${NS.pub ? '' : '<p class="small muted">Demo için <a href="#" id="hint">örnek veli numarası kullanın</a>.</p>'}
       <div class="tk-how"><div>${icon('check')}<b>Günlük yoklama</b>Her dersin yoklaması işlendiği anda burada.</div><div>${icon('chart')}<b>Deneme analizi</b>Ders bazında sınıf ortalamasıyla karşılaştırma ve gelişim grafiği.</div><div>${icon('message')}<b>Öğretmene mesaj</b>Mazeret bildirin, soru sorun; yanıt SMS ile gelir.</div></div></div>`;
-    const go = () => { const d = digits($('#ph').value); if (d.length !== 10 || db.lookup({ phone: d }) === null) db.load(); if (d.length !== 10 || !db.all('students').some((s) => digits(s.parentPhone) === d)) return toast('Bu numarayla kayıtlı öğrenci bulunamadı', 'err'); sset(d); kid = null; render(); };
+    const go = () => { const d = digits($('#ph').value); const code = $('#cd').value.trim().toUpperCase(); if (!code) return toast('Kurumdan aldığınız giriş kodunu yazın', 'err'); if (d.length !== 10 || db.lookup({ phone: d, code }) === null) db.load(); if (d.length !== 10 || !db.all('students').some((s) => digits(s.parentPhone) === d && (NS.pub || (s.portalCode && s.portalCode === code)))) return toast('Telefon veya giriş kodu hatalı', 'err'); sset(d); kid = null; render(); };
     $('#go').onclick = go; $('#ph').onkeydown = (e) => { if (e.key === 'Enter') go(); };
-    if ($('#hint')) $('#hint').onclick = (e) => { e.preventDefault(); const s = db.all('students')[0]; if (s) $('#ph').value = s.parentPhone; };
+    if ($('#hint')) $('#hint').onclick = (e) => { e.preventDefault(); const s = db.all('students')[0]; if (s) { $('#ph').value = s.parentPhone; $('#cd').value = NS.portalCode(db, s); } };
   }
 
   function genel(s) {

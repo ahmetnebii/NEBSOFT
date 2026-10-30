@@ -46,7 +46,7 @@
       ${NS.pub ? '' : '<p class="small muted">Demo için <a href="#" id="hint">örnek bayi bilgisini doldurun</a>.</p>'}`;
     const go = () => { if (db.lookup({ phone: $('#ph').value, code: $('#cd').value.trim().toUpperCase() }) === null) db.load(); const c = db.find('customers', (x) => digits(x.phone) === digits($('#ph').value) && T.code(x) === $('#cd').value.trim().toUpperCase()); if (!c) return toast('Telefon veya kod hatalı', 'err'); sset(c.id); render(); };
     $('#go').onclick = go; $('#cd').onkeydown = (e) => { if (e.key === 'Enter') go(); };
-    if ($('#hint')) $('#hint').onclick = (e) => { e.preventDefault(); const c = db.all('customers')[2]; $('#ph').value = c.phone; $('#cd').value = T.code(c); };
+    if ($('#hint')) $('#hint').onclick = (e) => { e.preventDefault(); const c = db.all('customers')[2]; $('#ph').value = c.phone; $('#cd').value = NS.portalCode(db, c); };
   }
   const lines = (c) => Object.entries(cart).filter(([, v]) => v > 0).map(([pid, qty]) => { const p = db.get('products', pid); return { pid, name: p.name, qty, price: T.price(p, c.list), vat: p.vat, disc: 0 }; });
   function katalog(c) {

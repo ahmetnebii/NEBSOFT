@@ -125,7 +125,7 @@
       defaults: () => ({ status: 'siparis', due: iso(addDays(new Date(), 7)) }), sort: (a, b) => String(a.due).localeCompare(String(b.due)),
       filters: [{ value: 'acik', label: 'Açık', test: (o) => o.status !== 'teslim' }, { value: 'all', label: 'Tümü' }],
       columns: [{ label: 'Müşteri', render: (o) => `<b>${esc((cus(o.customer) || {}).name || '-')}</b>` }, { key: 'desc', label: 'Sipariş', render: (o) => esc(o.desc) }, { key: 'due', label: 'Teslim', render: (o) => (o.status !== 'teslim' && o.due < today() ? badge(NS.date(o.due), 'err') : NS.date(o.due)) }, { label: 'Kapora / tutar', cls: 'right', render: (o) => `${money(o.deposit || 0)}<div class="small faint">${money(o.est || 0)}</div>` }, { key: 'status', label: 'Durum', render: (o) => badge(ST[o.status][0], ST[o.status][1]) }],
-      extraActions: [{ icon: 'message', act: 'sms', title: '"Hazır" SMS' }], onAction: (a, o) => { const c = cus(o.customer); if (!c || !c.phone) return toast('Müşteri telefonu yok', 'err'); NS.smsLog(db, { to: c.phone, name: c.name, text: `${S().bizName}: ${o.desc} siparişiniz hazır. Kalan: ${money((o.est || 0) - (o.deposit || 0))}` }, true); toast('SMS gönderildi', 'ok'); } });
+      extraActions: [{ icon: 'message', act: 'sms', title: '"Hazır" SMS' }], onAction: (a, o) => { const c = cus(o.customer); if (!c || !c.phone) return toast('Müşteri telefonu yok', 'err'); NS.smsLog(db, { to: c.phone, name: c.name, text: `${S().bizName}: ${o.desc} siparişiniz hazır. Kalan: ${money((o.est || 0) - (o.deposit || 0))}` }, true).result.then((res) => toast(NS.smsText(res), NS.smsTone(res))); } });
   }
 
   // ---------- Kasa & özet ----------

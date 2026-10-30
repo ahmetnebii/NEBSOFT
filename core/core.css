@@ -253,6 +253,7 @@ table.tbl { width: 100%; border-collapse: collapse; }
 .ns-toast { background: var(--text); color: var(--bg); padding: 11px 16px; border-radius: 10px; box-shadow: var(--shadow-lg); font-weight: 500; display: flex; gap: 8px; align-items: center; animation: pop .2s; max-width: 360px; }
 .ns-toast.ok { background: var(--ok); color: #fff; }
 .ns-toast.err { background: var(--err); color: #fff; }
+.ns-toast.warn { background: var(--warn); color: #fff; }
 
 .empty { text-align: center; padding: 40px 20px; color: var(--text-3); }
 .empty .ico { width: 40px; height: 40px; margin-bottom: 8px; opacity: .6; }

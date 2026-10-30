@@ -185,9 +185,14 @@
     kargo: ['kargofirma', 'gps', 'eirsaliye'], bilet: ['turnike', 'kps'], oto: ['anpr', 'okc', 'muhasebeaktar'], muhasebe: [],
     fabrika: ['eirsaliye', 'emustahsil', 'kantar', 'plc', 'muhasebeaktar', 'banka'],
   };
+  // Resmî, herkese açık API dokümanı bulunamayan bağlayıcılar (CLAUDE.md §1 — DOĞRULANAMADI): yalnızca simülasyon seçilebilir,
+  // gerçek / özel API çağrısı yapılmaz. Kaynak: docs/urun/CEKIRDEK-ISTEKLERI-* (servis-arac Ç2, konaklama Ç4–Ç5, randevu Ç2).
+  // Doküman bulunup doğrulanınca buradan çıkarılır. '*' = tüm sağlayıcılar (özel API dahil).
+  const UNVERIFIED = { parca: '*', tramer: '*', kbs: '*', kanal: '*', enabiz: '*', erecete: '*', kps: '*', vetbis: '*', petkayit: '*', meb: '*', googleisletme: '*' };
+  const unverified = (k, prov) => prov !== 'sim' && !!UNVERIFIED[k] && (UNVERIFIED[k] === '*' || UNVERIFIED[k].includes(prov));
   Object.entries(CONN).forEach(([k, [title, ic, desc, cat, provs, extra]]) => {
     DEFS[k] = { title, icon: ic, desc, cat, conn: true, provs, defaults: { enabled: false, provider: 'sim', test: true },
-      fields: (c) => [{ name: 'enabled', label: 'Bağlantı açık', type: 'checkbox', full: true }, { name: 'provider', label: 'Sağlayıcı', type: 'select', full: true, options: [{ value: 'sim', label: 'Simülasyon (test, gönderim yapılmaz)' }, ...Object.entries(provs).map(([value, label]) => ({ value, label })), { value: 'custom', label: 'Özel API / çözüm ortağı' }] },
+      fields: (c) => [{ name: 'enabled', label: 'Bağlantı açık', type: 'checkbox', full: true }, { name: 'provider', label: 'Sağlayıcı', type: 'select', full: true, options: [{ value: 'sim', label: 'Simülasyon (test, gönderim yapılmaz)' }, ...[...Object.entries(provs), ['custom', 'Özel API / çözüm ortağı']].filter(([value]) => !unverified(k, value) || value === c.provider).map(([value, label]) => ({ value, label: unverified(k, value) ? label + ' (resmî doküman doğrulanmadı — kullanılamaz)' : label }))], hint: UNVERIFIED[k] ? 'Bu bağlantının resmî, herkese açık API dokümanı doğrulanamadı; gerçek gönderim yapılamaz, yalnızca simülasyon (TEST) seçilebilir.' : undefined },
         ...(c.provider !== 'sim' ? [F('url', 'Servis adresi (API / ara servis)', { full: true, required: c.provider === 'custom', placeholder: 'https://...', hint: 'İstekler {action, payload} JSON olarak köprü üzerinden gönderilir' }), F('user', 'Kullanıcı adı / API key'), F('pass', 'Şifre / secret', { type: 'password' })] : []),
         ...extra.map((x) => { const [name, label, type] = x.split(':'); return F(name, label, type ? { type } : {}); }), F('test', 'Test ortamı', { type: 'checkbox' })] };
   });
@@ -199,9 +204,11 @@
     if (kind === 'kantar' && action === 'oku' && ['serial', 'tcp'].includes(c.provider)) {
       try { const kg = await readKantar({ ask: !!payload.ask }); log(kind, '', label, 'okundu', kg + ' kg'); return { ok: true, data: { kg } }; } catch (e) { log(kind, '', label, 'hata', e.message); if (!silent) toast('Kantar: ' + e.message, 'err'); return { ok: false, error: e.message }; }
     }
+    if (unverified(kind, c.provider)) { const msg = `${d.title}: resmî API dokümanı doğrulanmadığı için gönderim yapılmadı`; log(kind, payload.to || payload.no || '', label, 'hata', msg); if (!silent) toast(msg, 'err'); return { ok: false, unverified: true, error: msg }; }
     const direct = await directCall(kind, action, payload, c, silent, label); if (direct) return direct;
     const ref = (kind.slice(0, 3).toUpperCase()) + Date.now().toString().slice(-9);
-    if (c.provider === 'sim') { log(kind, payload.to || payload.no || '', label, 'simülasyon', JSON.stringify(payload).slice(0, 200)); if (!silent) toast(`${d.title}: ${action} (simülasyon) · ${ref}`, 'ok'); return { ok: true, simulated: true, ref }; }
+    // Simülasyon: hiçbir yere gönderilmez; referans "TEST-" ile başlar (kayda yazılırsa da gerçek numara sanılmaz)
+    if (c.provider === 'sim') { const tref = 'TEST-' + ref; log(kind, payload.to || payload.no || '', label, 'simülasyon', JSON.stringify(payload).slice(0, 200)); if (!silent) toast(`${d.title}: ${action} TEST — gönderilmedi (simülasyon; Entegrasyonlar’dan gerçek bağlantı kurun)`, 'warn'); return { ok: true, simulated: true, ref: tref }; }
     if (!c.url) { log(kind, '', label, 'hata', 'Servis adresi tanımlı değil'); if (!silent) toast(`${d.title}: servis adresi tanımlı değil`, 'err'); return { ok: false, error: 'Servis adresi yok' }; }
     try {
       const r = await httpCall({ url: c.url, method: 'POST', headers: { 'Content-Type': 'application/json', ...(c.user ? { Authorization: 'Basic ' + btoa(unescape(encodeURIComponent(`${c.user}:${c.pass || ''}`))) } : {}) }, body: JSON.stringify({ provider: c.provider, test: !!c.test, action, payload, app: appId(), at: new Date().toISOString() }) });
@@ -309,7 +316,7 @@
     text = String(text).slice(0, c.maxLen || 612);
     if (!c.enabled) { log('sms', num, text, 'kapalı', 'SMS kapalı'); return { ok: false, error: 'SMS gönderimi kapalı' }; }
     if (p.unverified) { log('sms', num, text, 'hata', `${p.name}: resmî API dokümanı doğrulanmadı`); if (!silent) toast(`${p.name} bağlantısı doğrulanmadığı için kapalı — Entegrasyonlar > SMS’ten başka sağlayıcı seçin`, 'err'); return { ok: false, error: 'Doğrulanmamış sağlayıcı' }; }
-    if (!p.build) { log('sms', num, text, 'simülasyon', 'Gerçek gönderim yapılmadı'); if (!silent) toast(`SMS (simülasyon): ${to}`, 'ok'); return { ok: true, simulated: true }; }
+    if (!p.build) { log('sms', num, text, 'simülasyon', 'Gerçek gönderim yapılmadı'); if (!silent) toast(`SMS TEST — gönderilmedi (simülasyon): ${to}`, 'warn'); return { ok: true, simulated: true }; }
     try {
       const r = await httpCall(p.build(c, num, text));
       const ok = p.ok ? p.ok(r, c) : r.ok;
@@ -661,7 +668,7 @@
   async function sendEsmmParasut(p, c) {
     if (c.vat === '' || c.vat === undefined || !Number.isFinite(Number(c.vat))) throw new Error('e-SMM KDV oranı kurulumda girilmemiş');
     const P = await prsSession(c); const amount = Number(p.amount || p.total) || 0; if (!(amount > 0)) throw new Error('Makbuz tutarı yok');
-    const inv = await prsInvoice(P, { buyer: p.name, buyerVkn: p.tc || p.vkn, address: p.address, lines: [{ name: p.desc || 'Serbest meslek hizmeti', total: amount, vat: Number(c.vat) }] }, { withholding: Number(c.stopaj) || 0 });
+    const inv = await prsInvoice(P, { buyer: p.name, buyerVkn: p.tc || p.vkn, address: p.address, lines: [{ name: p.desc || 'Serbest meslek hizmeti', total: amount, vat: Number(c.vat) }] }, { withholding: p.withholding === false ? 0 : Number(c.stopaj) || 0 }); // GVK 94: stopajı yalnızca vergi kesintisi yapmakla yükümlü alıcı yapar; programlar withholding:false gönderir (ör. bireysel hasta)
     const res = await P.api('POST', '/e_smms', { data: { type: 'e_smms', attributes: { note: p.desc || undefined }, relationships: { sales_invoice: { data: { id: inv.id, type: 'sales_invoices' } } } } });
     await prsJob(P, res); return { ok: true, ref: 'P' + inv.id };
   }
@@ -669,7 +676,8 @@
     const c = cfg('efatura');
     const type = doc.docType || (doc.buyerVkn && String(doc.buyerVkn).length === 10 && doc.eFaturaUser !== false ? 'e-Fatura' : 'e-Arşiv');
     const no = `${type === 'e-İrsaliye' ? 'IRS' : type === 'e-Fatura' ? c.efPrefix : c.eaPrefix}${new Date().getFullYear()}${String(Date.now()).slice(-9)}`;
-    if (c.provider === 'sim') { log('efatura', doc.buyer || '', `${type} ${no}`, 'simülasyon', money(doc.total || 0)); toast(`${type} oluşturuldu (simülasyon): ${no}`, 'ok'); return { ok: true, simulated: true, type, no, uuid: crypto.randomUUID ? crypto.randomUUID() : NS.uid() }; }
+    // Eski doğrudan yol (yalnızca I.sendDirect); programlar NS.ebelge.create() kullanır. Simülasyonda numara TEST olarak döner.
+    if (c.provider === 'sim') { log('efatura', doc.buyer || '', `${type} ${no}`, 'simülasyon', money(doc.total || 0)); toast(`${type} TEST — gönderilmedi (simülasyon)`, 'warn'); return { ok: true, simulated: true, type, no: 'TEST-' + no, uuid: crypto.randomUUID ? crypto.randomUUID() : NS.uid() }; }
     if (c.provider === 'uyumsoft') return sendUyumsoft(doc, c);
     if (c.provider === 'parasut') return sendParasut(doc, c);
     if (c.provider === 'custom' && c.url) {
@@ -885,6 +893,8 @@
   // Belge oluştur + gönder (tüm ürünlerin kullandığı tek giriş noktası)
   async function create(doc) {
     const c = I.cfg('efatura');
+    // Belge geneli indirim UBL'ye yazılmıyor; yok sayılırsa fatura programdakinden yüksek çıkar → açıkça reddedilir (servis-arac Ç3)
+    if (Number(doc.disc) > 0 || Number(doc.discount) > 0) { const e = 'Belge geneli indirim e-Belgede desteklenmiyor — indirimi satırlara (satır iskontosu) dağıtın'; toast('e-Belge oluşturulmadı: ' + e, 'err'); return { ok: false, error: e }; }
     let type = doc.docType;
     if (!type || type === 'auto') {
       const q = await isPayer(doc.buyerVkn);
