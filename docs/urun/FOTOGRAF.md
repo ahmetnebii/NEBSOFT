@@ -14,7 +14,7 @@ Program kimliği `fotograf`. Dal: `claude/rezervasyon-aile-faf00d`. Araştırma 
 | 6 | Galeri fotoğrafları "acik" sınıfında | Risk, karar gerek | Müşteri oturum açmadan gördüğü için `gizli` sınıf kullanılamadı. Adres tahmin edilemez ve yalnız girişten sonra verilir, ama adresi bilen açabilir. Gizli sınıf için `/f/` ucuna müşteri belirteci gerekir. |
 | 7 | Fotoğraflar yurt dışı depoya gitmez | Bilgi | Dosya deposu kendi sunucumuzdadır. Müşterinin yazdığı Drive bağlantısı onun sorumluluğundadır. |
 
-Dosya deposu gerçek sunucuda `server/test/dosya.test.js` ile sınanır; `fotograf` satırı bu kuralı kullanır. Galeri yüklemesi tarayıcıda yerel kipte denendi, bulut kipinde gerçek yükleme denenmedi.
+Yükleme, adres saklama ve müşteri seçimi `server/test/rezervasyon-aile-uctan.test.js` ile gerçek sunucuda sınandı. Tarayıcıdan bulut kipinde yükleme denenmedi, tarayıcı küçültmesi yerel kipte denendi.
 
 ## Pazar araştırması
 

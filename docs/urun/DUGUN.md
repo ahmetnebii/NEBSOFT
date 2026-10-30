@@ -13,7 +13,7 @@ Program kimliği `dugun`. Dal: `claude/rezervasyon-aile-faf00d`. Araştırma ve 
 | 5 | Ekranda atılan imzanın yazılı şekil yerine geçmesi | DOĞRULANAMADI | İncelenmedi. Çıktı alınıp ıslak imza atılabilir. |
 | 6 | Ek hizmet SMS'i | Test edilmedi | SMS sağlayıcısı yoksa "TEST, gönderilmedi" yazar. |
 
-Tarayıcıda denendi; sunucu tarafı saf kural testiyle denendi. Gerçek MariaDB üzerinde uçtan uca müşteri sayfası `server/test/rezervasyon-aile.test.js` kapsamında değildir.
+Tarayıcıda denendi. Sunucu kuralları `server/test/rezervasyon-aile.test.js`, müşteri sayfası `server/test/rezervasyon-aile-uctan.test.js` ile gerçek sunucuda sınandı.
 
 ## Pazar araştırması
 
