@@ -1,0 +1,50 @@
+{
+  "sablon": "ciftci/girdi-listesi",
+  "surum": 1,
+  "program": "ciftci",
+  "tur": "urun",
+  "ad": "Sık satılan girdiler",
+  "aciklama": "Bayi ve kooperatif için girdi adları. Fiyatı siz girin.",
+  "kaynak": "sablon",
+  "hedef": "products",
+  "fiyatAlan": "price",
+  "varsayilan": {
+    "kind": "girdi",
+    "cost": 0,
+    "stock": 0,
+    "min": 0,
+    "cat": "bitkisel"
+  },
+  "kayitlar": [
+    {
+      "anahtar": "dap",
+      "name": "DAP gübre",
+      "code": "GR-001",
+      "unit": "torba"
+    },
+    {
+      "anahtar": "ure",
+      "name": "Üre gübre",
+      "code": "GR-002",
+      "unit": "torba"
+    },
+    {
+      "anahtar": "amonyum",
+      "name": "Amonyum sülfat",
+      "code": "GR-003",
+      "unit": "torba"
+    },
+    {
+      "anahtar": "tohum",
+      "name": "Buğday tohumu",
+      "code": "GR-004",
+      "unit": "torba"
+    },
+    {
+      "anahtar": "mazot",
+      "name": "Mazot",
+      "code": "GR-005",
+      "unit": "lt"
+    }
+  ]
+}

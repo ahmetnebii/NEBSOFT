@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>İş Takibi ve Teklif Onayı</title>
+<meta name="robots" content="noindex">
+<link rel="stylesheet" href="../../core/core.css">
+<link rel="stylesheet" href="../../core/track.css">
+<style>
+  :root { --app-accent: #a16207; --app-accent-soft: #fef3c7; --app-accent-soft-dark: #3a2a0c; }
+  .it { display: grid; grid-template-columns: 1fr auto; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--border); }
+  .it:last-child { border-bottom: 0; }
+  .sum { display: flex; justify-content: space-between; padding: 6px 0; }
+  .sum.t { font-size: 20px; font-weight: 800; border-top: 1px solid var(--border); margin-top: 6px; padding-top: 12px; }
+</style>
+</head>
+<body>
+<header class="tk-bar"><div class="in" id="bar"></div></header>
+<main class="tk-wrap" id="root" style="max-width:760px"></main>
+<script src="../../core/core.js"></script>
+<script src="data.js"></script>
+<script>
+(function () {
+  const { esc, $, icon, money, toast } = NS;
+  const O = window.MOB;
+  const db = new NS.DB('mobilya', O.seed);
+  const S = () => db.settings({});
+  $('#bar').innerHTML = `<div class="tk-mark">${icon('factory')}</div><div class="grow"><b>${esc(S().bizName || 'Atölye')}</b><span>İş takibi</span></div>${S().bizPhone ? `<a class="btn ghost" href="tel:${esc(String(S().bizPhone).replace(/\s/g, ''))}">${icon('phone')} Ara</a>` : ''}`;
+  const key = (new URLSearchParams(location.search).get('k') || '').toUpperCase();
+  const job = () => db.find('jobs', (j) => j.key === key);
+  function render() {
+    if (!key || db.lookup({ k: key }) === null) db.load(); const j = job();
+    if (!j) { $('#root').innerHTML = `<div class="tk-intro"><h1>Kayıt bulunamadı</h1><p>Linkin tamamını açtığınızdan emin olun veya atölyeyi arayın.</p></div>`; return; }
+    const vat = S().vatRate != null ? Number(S().vatRate) : 20; const t = O.totals(j, vat); const pd = O.paidOf(j, db.all('payments')); const ix = O.FLOW.indexOf(j.status); const wait = j.status === 'teklif' && !!j.quoteSent;
+    $('#root').innerHTML = `<div class="tk-head"><div class="top"><b>${esc(j.title)}</b><span class="tk-pill">${esc(O.ST[j.status][0])}</span></div><p class="muted">${esc(j.no)} · ${NS.date(j.at)}${j.deadline ? ' · Termin ' + NS.date(j.deadline) : ''}</p></div>
+      ${j.status === 'iptal' ? `<div class="tk-call"><h3>Bu iş iptal edildi</h3></div>` : `<div class="tk-steps" style="--n:${O.FLOW.length}">${O.FLOW.map((s, i) => `<div class="tk-step ${i < ix ? 'done' : i === ix ? 'cur' : 'todo'}"><div class="d">${icon(O.ST[s][2])}</div><b>${esc(O.ST[s][0])}</b></div>`).join('')}</div>`}
+      ${wait ? `<div class="tk-call"><h3>${icon('alert')} Onayınız bekleniyor</h3><p>Teklifi ve ölçüleri inceleyin. Uygunsa adınızı yazıp onaylayın, değişiklik isterseniz notunuzu bırakın.</p></div>` : ''}
+      ${j.status === 'montaj' && j.installAt ? `<div class="tk-call" style="--c:var(--ok)"><h3>${icon('calendar')} Montaj tarihi: ${NS.date(j.installAt)}</h3></div>` : ''}
+      ${j.status === 'uretim' ? `<section class="tk-panel"><h3>${icon('factory')} Üretim</h3><div class="b">${O.STAGES.map(([k, l]) => `<div class="row small" style="padding:4px 0"><span style="color:var(--${j.stages && j.stages[k] ? 'ok' : 'text-3'})">${icon(j.stages && j.stages[k] ? 'check' : 'clock')}</span>${esc(l)}</div>`).join('')}</div></section>` : ''}
+      ${(j.measures || []).length ? `<section class="tk-panel"><h3>${icon('edit')} Ölçüler (cm)</h3><div class="b">${j.measures.map((m) => `<div class="it"><span>${esc(m.place)}${m.note ? `<div class="small muted">${esc(m.note)}</div>` : ''}</span><b>${m.w || '-'} × ${m.h || '-'} × ${m.d || '-'}</b></div>`).join('')}</div></section>` : ''}
+      ${(j.items || []).length && j.quoteSent ? `<section class="tk-panel"><h3>${icon('list')} Teklif · sürüm ${j.quoteV || 1}</h3><div class="b">${j.items.map((i) => `<div class="it"><span>${esc(i.name)}<div class="small muted">${i.qty} ${esc(i.unit || '')}</div></span><b>${money(O.lineNet(i))}</b></div>`).join('')}<div class="sum"><span class="muted">Ara toplam</span>${money(t.brut)}</div>${t.disc ? `<div class="sum"><span class="muted">İndirim</span>${money(-t.disc)}</div>` : ''}<div class="sum"><span class="muted">KDV %${t.rate}</span>${money(t.kdv)}</div><div class="sum t"><span>Genel toplam</span>${money(t.total)}</div>${pd ? `<div class="sum"><span class="muted">Alınan ödeme</span>${money(pd)}</div><div class="sum"><b>Kalan</b><b>${money(t.total - pd)}</b></div>` : ''}</div></section>` : `<section class="tk-panel"><div class="b muted">Teklifiniz hazırlanınca burada görünecek.</div></section>`}
+      ${wait ? `<section class="tk-panel"><div class="b"><div class="field"><label for="nm">Adınız soyadınız</label><input class="input" id="nm" autocomplete="name"></div><div class="tk-acts"><button class="btn primary lg" id="ok">${icon('check')} Teklifi onaylıyorum</button></div><div class="field mt"><label for="rv">Değişiklik isteğiniz</label><textarea class="input" id="rv" rows="2" maxlength="400"></textarea></div><button class="btn" id="rq">${icon('send')} Değişiklik iste</button></div></section>` : ''}
+      ${j.approval ? `<p class="small muted center">Onaylayan: ${esc(j.approval.name)} · ${NS.dt(j.approval.at)}</p>` : ''}${j.warrantyUntil ? `<p class="small muted center">Garanti bitişi: ${NS.date(j.warrantyUntil)}</p>` : ''}<p class="small muted center">${esc(S().bizAddress || '')}</p>`;
+    const ok = $('#ok'); if (ok) ok.onclick = () => { const n = $('#nm').value.trim(); if (n.length < 3) return toast('Adınızı yazın', 'err'); db.load(); const jj = job(); jj.status = 'onay'; jj.approval = { name: n, at: new Date().toISOString(), via: 'link' }; jj.history.push({ at: jj.approval.at, st: 'onay', note: `Müşteri linkten onayladı: ${n}` }); db.save(); toast('Teklif onaylandı', 'ok'); setTimeout(render, 500); };
+    const rq = $('#rq'); if (rq) rq.onclick = () => { const n = $('#rv').value.trim(); if (n.length < 3) return toast('İsteğinizi yazın', 'err'); db.load(); const jj = job(); jj.revNote = n; db.save(); toast('İsteğiniz kaydedildi, atölye sizi arayacak', 'ok'); setTimeout(render, 500); };
+  }
+  render();
+})();
+</script>
+</body>
+</html>

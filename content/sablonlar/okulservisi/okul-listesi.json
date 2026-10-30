@@ -1,0 +1,28 @@
+{
+  "sablon": "okulservisi/okul-listesi",
+  "surum": 1,
+  "program": "okulservisi",
+  "tur": "urun",
+  "ad": "Okul taslakları",
+  "aciklama": "Taşıma yaptığınız okullar için taslak kayıtlar.",
+  "kaynak": "sablon",
+  "hedef": "schools",
+  "fiyatAlan": "price",
+  "varsayilan": {
+    "phone": ""
+  },
+  "kayitlar": [
+    {
+      "anahtar": "ilkokul",
+      "name": "İlkokul (adını yazın)"
+    },
+    {
+      "anahtar": "ortaokul",
+      "name": "Ortaokul (adını yazın)"
+    },
+    {
+      "anahtar": "lise",
+      "name": "Lise (adını yazın)"
+    }
+  ]
+}

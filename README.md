@@ -113,6 +113,10 @@ Entegrasyon merkezinde ilgili bağlantı kapalıyken merkezler **simülasyon mod
 | Pazaryeri Satıcı Paneli | apps/pazaryeri | — | /pazaryeriprogrami |
 | Butik & Giyim | apps/butik | — | /butikprogrami |
 | Oto Servis & Sanayi | apps/otoservis | onay.html (teklif onayı, online ödeme) | /otoservisprogrami |
+| Mobilya & Özel İmalat | apps/mobilya | takip.html (teklif onayı, iş takibi) | /mobilyaimalatprogrami |
+| Servis & Okul Taşımacılığı | apps/okulservisi | veli.html (veli portalı) | /okulservisiprogrami |
+| Çiftçi & Kooperatif | apps/ciftci | uretici.html (üretici portalı) | /kooperatifprogrami |
+| Lastikçi & Oto Yedek Parça | apps/lastik | lastigim.html (lastik sorgu) | /lastikciprogrami |
 | Mali Müşavir Bürosu | apps/musavir | portal.html (mükellef portalı) | /malimusavirprogrami |
 | Toptancı & Plasiyer | apps/toptan | bayi.html (B2B sipariş) | /toptanciprogrami |
 | Kâr & Fiyat Robotu | apps/fiyatrobotu | — | /pazaryerikarhesaplama |

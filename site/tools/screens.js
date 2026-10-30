@@ -21,6 +21,8 @@ const PREP = {
 };
 // Sorgu gerektiren sayfalar için örnek kayıt
 const QUERY = {
+  'mobilya/takip.html': () => '?k=' + new NS.DB('mobilya').all('jobs').find((j) => j.quoteSent || j.approval).key,
+  'lastik/lastigim.html': () => '?k=' + new NS.DB('lastik').all('hotels')[0].key,
   'servis/takip.html': () => '?kod=' + (new NS.DB('servis').all('tickets').find((t) => t.status === 'onay') || new NS.DB('servis').all('tickets')[0]).code,
   'kargo/takip.html': () => '?no=' + (new NS.DB('kargo').all('ships').find((s) => s.status === 'dagitimda') || new NS.DB('kargo').all('ships')[0]).no,
   'otoservis/onay.html': () => '?k=' + OTS.token(new NS.DB('otoservis').all('jobs').find((j) => j.status === 'onay') || new NS.DB('otoservis').all('jobs').find((j) => j.status === 'islemde')),

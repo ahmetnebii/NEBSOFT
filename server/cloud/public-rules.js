@@ -1128,6 +1128,87 @@ RULES.oyun = {
     bookings: { ins: I({ child: 'str:80', guardian: 'str:80', phone: 'phone', date: 'date', start: 'time', kids: 'int:1:200', pkg: 'id', area: 'id' }, (r, x) => { const p = x.get('packages', r.pkg); if (!p) bad('Paket bulunamadı'); const z = OH.toMin(r.start) + (Number(p.dur) || 120); return { end: `${String(Math.floor(z / 60) % 24).padStart(2, '0')}:${String(z % 60).padStart(2, '0')}`, status: 'talep', src: 'web', no: x.seq('bookings', 'DG'), pkgName: p.name, total: OH.rezTutar(p, r.kids, 0), paid: 0 }; }, (r, x) => { if (!r.child || !r.guardian) bad('Ad gerekli'); if (r.date < x.today) bad('Geçmiş tarih seçilemez'); if (!x.get('areas', r.area)) bad('Alan bulunamadı'); const tampon = (x.doc._settings || {}).bufferMin; if (OH.cakisan(x.col('bookings'), r, tampon === undefined ? 30 : tampon, r.id)) throw Object.assign(new Error('Bu saat dolu, başka saat seçin'), { status: 409 }); if (x.col('bookings').filter((b) => samePhone(b.phone, r.phone) && b.status === 'talep').length >= 3) bad('Bekleyen talebiniz var'); }) },
   },
 };
+// ---------- Okul servisi: veli portalı (veli.html) — veli telefonu + rastgele kod ----------
+// Çocuk verisi: veli yalnız kendi çocuğunu görür. Şoför telefonu, diğer öğrenciler ve seferdeki başkalarının yoklaması gitmez.
+RULES.okulservisi = {
+  pub: {},
+  settings: ['bizName', 'bizPhone'],
+  login: (x, q) => { const d = digits(q.phone); const code = norm(q.code); return code && d.length === 10 && x.col('students').some((s) => s.active !== false && digits(s.parentPhone) === d && s.portalCode && norm(s.portalCode) === code) ? { k: 'p', i: d } : null; },
+  loginError: 'Bilgiler eşleşmedi',
+  view: (x) => {
+    const ph = me(x, 'p'); if (!ph) return {};
+    const kids = x.col('students').filter((s) => s.active !== false && digits(s.parentPhone) === ph); const ids = new Set(kids.map((s) => s.id)); const rts = new Set(kids.map((s) => s.route));
+    const routes = x.col('routes').filter((r) => rts.has(r.id)); const vs = new Set(routes.map((r) => r.vehicle)); const day = x.today;
+    return { students: kids.map((s) => x.pick(s, ['id', 'name', 'grade', 'route', 'stop', 'parentPhone', 'active'])), routes: routes.map((r) => x.pick(r, ['id', 'name', 'vehicle', 'amStart', 'pmStart', 'stops'])), vehicles: x.col('vehicles').filter((v) => vs.has(v.id)).map((v) => x.pick(v, ['id', 'plate'])),
+      fees: x.col('fees').filter((f) => ids.has(f.student)), trips: x.col('trips').filter((t) => t.date === day && rts.has(t.route)).map((t) => ({ ...x.pick(t, ['id', 'date', 'route', 'dir', 'startAt', 'endAt']), marks: Object.fromEntries(Object.entries(t.marks || {}).filter(([k]) => ids.has(k))) })),
+      absences: x.col('absences').filter((a) => ids.has(a.student) && a.date >= day), notices: x.col('notices').filter((n) => !n.route || rts.has(n.route)), messages: x.col('messages').filter((m) => ids.has(m.student)) };
+  },
+  write: {
+    absences: {
+      ins: I({ student: 'id', date: 'date', dir: 'enum:am|pm|both', note: 'str:200?' }, () => ({ source: 'portal', at: nowIso() }), (r, x) => {
+        const s = x.get('students', r.student); if (!s || digits(s.parentPhone) !== me(x, 'p')) deny(); if (r.date < x.today) bad('Geçmiş tarih seçilemez');
+        if (x.col('absences').filter((a) => a.student === s.id && a.date >= x.today).length >= 60) bad('Çok fazla bildirim var');
+      }),
+    },
+    messages: {
+      ins: I({ student: 'id', type: 'enum:sikayet|talep|soru', text: 'str:800' }, () => ({ status: 'yeni', source: 'portal', at: nowIso() }), (r, x) => {
+        const s = x.get('students', r.student); if (!s || digits(s.parentPhone) !== me(x, 'p')) deny(); if (r.text.length < 5) bad('Lütfen mesajınızı yazın');
+        if (x.col('messages').filter((m) => m.student === s.id && m.status === 'yeni').length >= 20) bad('Çok fazla yanıtlanmamış mesajınız var');
+      }),
+    },
+  },
+};
+
+// ---------- Çiftçi: üretici portalı (uretici.html) — telefon + rastgele kod ----------
+// Yalnız okuma: üretici kendi alım, girdi ve ödeme hareketini görür. T.C. kimlik, IBAN ve limit gitmez.
+RULES.ciftci = {
+  pub: {},
+  settings: ['bizName', 'bizPhone'],
+  login: (x, q) => { const d = digits(q.phone); const code = norm(q.code); const c = code && d.length === 10 && x.col('producers').find((r) => r.portalCode && norm(r.portalCode) === code && digits(r.phone) === d); return c ? { k: 'o', i: c.id } : null; },
+  loginError: 'Bilgiler eşleşmedi',
+  view: (x) => {
+    const id = me(x, 'o'); const c = id && x.get('producers', id); if (!c) return {}; const own = (r) => r.producer === id;
+    return { producers: [x.pick(c, ['id', 'name', 'phone', 'village'])], purchases: x.col('purchases').filter(own).map((r) => strip(r, ['user', 'cancelNote'])), sales: x.col('sales').filter(own).map((r) => ({ ...strip(r, ['note']), lines: (r.lines || []).map((l) => strip(l, ['cost'])) })), payments: x.col('payments').filter(own).map((r) => strip(r, ['user', 'note'])) };
+  },
+};
+
+// ---------- Lastikçi: lastik oteli sorgu sayfası (lastigim.html?k=) ----------
+// Bağlantıdaki rastgele key tek kaydı açar. Müşteri yalnız teslim talebi bırakır, raf ve imza gitmez.
+RULES.lastik = {
+  pub: {},
+  settings: ['bizName', 'bizPhone', 'bizAddress'],
+  login: (x, q) => { const k = norm(q.k); const h = k.length >= 10 && x.col('hotels').find((r) => r.key === k); return h ? { k: 'h', i: h.id } : null; },
+  loginError: 'Kayıt bulunamadı',
+  view: (x) => { const h = x.get('hotels', me(x, 'h')); if (!h) return { hotels: [] }; const v = x.get('vehicles', h.vehicle); return { hotels: [strip(h, ['customer', 'signIn', 'signOut', 'note', 'rack'])], vehicles: v ? [x.pick(v, ['id', 'plate', 'brand', 'model'])] : [] }; },
+  write: { hotels: { upd: U({ pickupReq: 'date' }, (h, x, set) => h.id === me(x, 'h') && h.status === 'depoda' && set.pickupReq >= x.today) } },
+};
+
+// ---------- Mobilya: iş takibi ve teklif onayı (takip.html?k=) ----------
+// Bağlantıdaki rastgele key işi açar; maliyet, stok bağı ve müşteri kimliği gitmez. Müşteri yalnız gönderilmiş teklifi onaylar veya değişiklik notu bırakır.
+RULES.mobilya = {
+  pub: {},
+  settings: ['bizName', 'bizPhone', 'bizAddress', 'vatRate'],
+  login: (x, q) => { const k = norm(q.k); const j = k.length >= 12 && x.col('jobs').find((r) => r.key === k); return j ? { k: 'j', i: j.id } : null; },
+  loginError: 'Kayıt bulunamadı',
+  view: (x) => {
+    const j = x.get('jobs', me(x, 'j')); if (!j) return { jobs: [], payments: [] };
+    const sent = !!j.quoteSent || !['talep', 'olcu', 'teklif'].includes(j.status);
+    return { jobs: [{ ...strip(j, ['customer', 'note', 'workNote', 'used', 'materialsUsed', 'team', 'contractSign', 'measureSign', 'signOut', 'photos', 'cancel']), approval: j.approval ? { name: j.approval.name, at: j.approval.at } : null, history: [], items: sent ? (j.items || []).map((i) => x.pick(i, ['id', 'name', 'qty', 'unit', 'price', 'type'])) : [], quotes: [] }],
+      payments: x.col('payments').filter((p) => p.job === j.id).map((p) => x.pick(p, ['id', 'job', 'amount', 'kind', 'at'])) };
+  },
+  write: {
+    jobs: {
+      upd: (j, set, x) => {
+        if (j.id !== me(x, 'j') || j.status !== 'teklif' || !j.quoteSent) deny('Bu teklif artık onay beklemiyor');
+        const keys = Object.keys(set).filter((k) => k !== 'updated'); if (keys.some((k) => !['status', 'approval', 'history', 'revNote'].includes(k))) deny();
+        if (set.revNote !== undefined) return { revNote: val('str:400', set.revNote, 'revNote'), history: [...(j.history || []), { at: nowIso(), st: 'teklif', note: 'Müşteri linkten değişiklik istedi' }], updated: nowIso() };
+        const name = val('str:80', set.approval && set.approval.name, 'approval'); if (name.length < 3 || set.status !== 'onay') bad();
+        const at = nowIso(); return { status: 'onay', approval: { name, at, via: 'link' }, history: [...(j.history || []), { at, st: 'onay', note: `Müşteri linkten onayladı: ${name}` }], updated: at };
+      },
+    },
+  },
+};
+
 
 module.exports = RULES;
 module.exports._lib = { appendOnly, strip, bad, deny, val, clean, I, U, me, mergeByPhone, samePhone, digits, norm, overlap, toMin, nowIso };

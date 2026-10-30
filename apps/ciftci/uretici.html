@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Üretici Portalı</title>
+<meta name="robots" content="noindex">
+<link rel="stylesheet" href="../../core/core.css">
+<link rel="stylesheet" href="../../core/track.css">
+<style>:root { --app-accent: #4d7c0f; --app-accent-soft: #ecfccb; --app-accent-soft-dark: #24340c; } .it { display: flex; justify-content: space-between; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--border); } .it:last-child { border-bottom: 0; }</style>
+</head>
+<body>
+<header class="tk-bar"><div class="in" id="bar"></div></header>
+<main class="tk-wrap" id="root" style="max-width:720px"></main>
+<script src="../../core/core.js"></script>
+<script src="data.js"></script>
+<script>
+(function () {
+  const { esc, $, icon, money, toast } = NS;
+  const O = window.CFT;
+  const db = new NS.DB('ciftci', O.seed);
+  const S = () => db.settings({});
+  const KEY = 'nebsoft:ciftci:uretici';
+  const dig = (x) => String(x || '').replace(/\D/g, '').slice(-10);
+  const sget = () => { try { return sessionStorage.getItem(KEY); } catch (e) { return null; } };
+  const sset = (v) => { try { v ? sessionStorage.setItem(KEY, v) : sessionStorage.removeItem(KEY); } catch (e) { /* yok */ } };
+  $('#bar').innerHTML = `<div class="tk-mark">${icon('layers')}</div><div class="grow"><b>${esc(S().bizName || 'Kooperatif')}</b><span>Üretici portalı</span></div>${S().bizPhone ? `<a class="btn ghost" href="tel:${esc(String(S().bizPhone).replace(/\s/g, ''))}">${icon('phone')} Ara</a>` : ''}`;
+  function login() {
+    $('#root').innerHTML = `<div class="tk-intro"><h1>Hesabım</h1><p>Kayıtlı telefonunuz ve aldığınız giriş koduyla bakiyenizi görün.</p></div><section class="tk-panel"><div class="b"><div class="field"><label for="ph">Telefon</label><input class="input" id="ph" type="tel" autocomplete="tel"></div><div class="field"><label for="cd">Giriş kodu</label><input class="input" id="cd" autocomplete="off"></div><button class="btn primary lg block mt" id="go">${icon('check')} Giriş yap</button></div></section>`;
+    $('#go').onclick = () => { const d = dig($('#ph').value); const code = $('#cd').value.trim().toUpperCase(); if (!code || d.length !== 10 || db.lookup({ phone: d, code }) === false) return toast('Bilgiler eşleşmedi', 'err'); if (!db.pub && !db.find('producers', (c) => dig(c.phone) === d && String(c.portalCode || '').toUpperCase() === code)) return toast('Bilgiler eşleşmedi', 'err'); sset(d); render(); };
+  }
+  function render() {
+    const me = sget() && db.find('producers', (c) => dig(c.phone) === sget()); if (!me) { sset(null); return login(); }
+    const L = O.statement(me.id, db.data); const b = L.length ? L[L.length - 1].bal : 0; const P = db.all('purchases', (x) => x.producer === me.id && x.status !== 'iptal').sort((x, y) => y.at.localeCompare(x.at)).slice(0, 10);
+    $('#root').innerHTML = `<div class="tk-head"><div class="top"><b>${esc(me.name)}</b><span class="tk-pill">${b > 0.01 ? 'Borçlu' : b < -0.01 ? 'Alacaklı' : 'Bakiye yok'}</span></div><h2>${money(Math.abs(b))}</h2></div>
+      <section class="tk-panel"><h3>${icon('truck')} Son alımlar</h3><div class="b">${P.map((x) => { const t = O.calc(x); return `<div class="it"><span>${esc(x.productName)}<div class="small muted">${NS.date(x.at)} · ${NS.num(t.qty)} ${esc(x.unit || 'kg')} · stopaj ${money(t.stopaj)}</div></span><b>${money(t.pay)}</b></div>`; }).join('') || '<div class="muted">Alım yok</div>'}</div></section>
+      <section class="tk-panel"><h3>${icon('list')} Hesap hareketleri</h3><div class="b">${L.slice(-15).reverse().map((m) => `<div class="it"><span>${esc(m.text)}<div class="small muted">${NS.date(m.at)} ${esc(m.doc)}</div></span><b style="color:var(--${m.b ? 'err' : 'ok'})">${m.b ? money(m.b) : '-' + money(m.a)}</b></div>`).join('') || '<div class="muted">Hareket yok</div>'}</div></section>
+      <p class="center"><button class="btn ghost" id="lo">Çıkış</button></p>`;
+    $('#lo').onclick = () => { sset(null); db.pubLogout(); login(); };
+  }
+  render();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,49 @@
+{
+  "sablon": "lastik/parca-listesi",
+  "surum": 1,
+  "program": "lastik",
+  "tur": "urun",
+  "ad": "Sık kullanılan parçalar",
+  "aciklama": "Lastikçi ve parçacı için kalem adları. Fiyatı siz girin.",
+  "kaynak": "sablon",
+  "hedef": "stock",
+  "fiyatAlan": "price",
+  "varsayilan": {
+    "kind": "parca",
+    "cost": 0,
+    "stock": 0,
+    "min": 0
+  },
+  "kayitlar": [
+    {
+      "anahtar": "sibop",
+      "name": "Sibop",
+      "code": "PR-001"
+    },
+    {
+      "anahtar": "balans-agirligi",
+      "name": "Balans ağırlığı",
+      "code": "PR-002"
+    },
+    {
+      "anahtar": "bijon",
+      "name": "Bijon",
+      "code": "PR-003"
+    },
+    {
+      "anahtar": "fitil",
+      "name": "Tamir fitili",
+      "code": "PR-004"
+    },
+    {
+      "anahtar": "aku",
+      "name": "Akü",
+      "code": "PR-005"
+    },
+    {
+      "anahtar": "silecek",
+      "name": "Silecek takımı",
+      "code": "PR-006"
+    }
+  ]
+}
