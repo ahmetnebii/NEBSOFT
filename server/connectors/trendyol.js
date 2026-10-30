@@ -22,6 +22,12 @@ function mapOrder(p) {
   };
 }
 
+// Trendyol iade kaydını NEBSOFT biçimine çevirir; items[].claimItems her biri 1 adettir, durum claimItemStatus.name içindedir
+function mapClaim(x) {
+  const items = (x.items || []).map((i) => { const l = i.orderLine || {}; const cs = i.claimItems || []; const c0 = cs[0] || {}; const why = c0.customerClaimItemReason || c0.trendyolClaimItemReason || {}; return { barcode: l.barcode || '', sku: l.merchantSku || l.barcode || '', name: l.productName || '', qty: cs.length || 1, price: Number(l.price) || 0, status: (c0.claimItemStatus || {}).name || '', reason: why.name || '' }; });
+  return { id: String(x.id || x.claimId), orderNo: String(x.orderNumber || ''), packageId: x.orderShipmentPackageId ? String(x.orderShipmentPackageId) : '', at: x.claimDate ? new Date(Number(x.claimDate)).toISOString() : new Date().toISOString(), tracking: x.cargoTrackingNumber ? String(x.cargoTrackingNumber) : '', reason: (items.find((i) => i.reason) || {}).reason || '', items };
+}
+
 const actions = {
   async 'baglanti-test'(c) { const r = await c.call('orders', { query: { size: 1, page: 0 } }); return r.ok ? { ok: true, data: { message: 'Trendyol bağlantısı başarılı' } } : r; },
   // payload: { since (ISO), status }  — en fazla 2 haftalık aralık; sayfa sayfa çeker
@@ -71,6 +77,17 @@ const actions = {
   async 'soru-yanitla'(c, p = {}) { if (!p.question || !p.answer) return { ok: false, error: 'Soru no ve yanıt gerekli' }; const r = await c.call('answer', { method: 'POST', vars: { id: p.question }, body: { text: String(p.answer) } }); return r.ok ? { ok: true, data: {} } : r; },
   // Hakediş: tarih aralığı en çok 15 gün (reference/getsettlements)
   async 'hakedis-cek'(c, p = {}) { const end = Date.now(); const start = Math.max(p.since ? new Date(p.since).getTime() : end - 14 * 864e5, end - 15 * 864e5 + 6e4); const r = await c.call('settlements', { query: { transactionType: p.type || 'Sale', startDate: start, endDate: end, size: 500 } }); if (!r.ok) return r; return { ok: true, data: { rows: ((r.data && r.data.content) || []).map((x) => ({ orderNo: String(x.orderNumber || ''), amount: Number(x.debt || x.credit || 0), commission: Number(x.commissionAmount || 0), commissionRate: Number(x.commissionRate || 0), sellerRevenue: Number(x.sellerRevenue || 0), paymentDate: x.paymentDate ? new Date(Number(x.paymentDate)).toISOString() : '' })) } }; },
+  // İade talepleri (reference/getclaims, 30.10.2026): size ≤ 200; kalem başına bir claimItem. Tarih aralığı sınırı dokümanda yok, 14 gün istenir.
+  async 'iade-cek'(c, p = {}) {
+    const end = Date.now(); const start = Math.max(p.since ? new Date(p.since).getTime() : end - 14 * 864e5, end - 14 * 864e5);
+    const claims = []; let page = 0;
+    for (;;) {
+      const r = await c.call('claims', { query: { startDate: start, endDate: end, page, size: 200 } }); if (!r.ok) return r;
+      ((r.data && r.data.content) || []).forEach((x) => claims.push(mapClaim(x)));
+      if (page + 1 >= ((r.data && r.data.totalPages) || 1) || page > 50) break; page++;
+    }
+    return { ok: true, data: { claims } };
+  },
   async 'kategori-cek'(c) { const r = await c.call('categories'); return r.ok ? { ok: true, data: { categories: (r.data && r.data.categories) || [] } } : r; },
 };
 
@@ -79,4 +96,4 @@ async function run(action, creds, payload) {
   let c; try { c = client(creds); } catch (e) { return { ok: false, error: e.message }; }
   return fn(c, payload || {});
 }
-module.exports = { run, mapOrder, actions: Object.keys(actions) };
+module.exports = { run, mapOrder, mapClaim, actions: Object.keys(actions) };

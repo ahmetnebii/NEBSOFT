@@ -29,7 +29,9 @@ window.MPHUB = (function () {
   // Kanal fiyatı: mağaza fiyatı + fiyat farkı %, ,90 ile biten fiyat
   const chPrice = (p, k) => { const base = p.sale || p.price; const c = ch(k); const v = base * (1 + (Number(c.markup) || 0) / 100); return Math.max(1, Math.ceil(v) - 0.1); };
   const chStock = (p, k) => sum(p.variants, (v) => Math.max(0, v.stock - (Number(ch(k).buffer) || 0)));
-  const listing = (pid, k) => db.find('listings', (x) => x.pid === pid && x.ch === k);
+  // Listeleme sorgusu ürün × kanal başına çalışır: dizi taranmaz, dizi veya boyu değişince dizin yeniden kurulur
+  const lIdx = { c: null, n: -1, m: new Map() };
+  const listing = (pid, k) => { const c = db.col('listings'); if (lIdx.c !== c || lIdx.n !== c.length) { lIdx.c = c; lIdx.n = c.length; lIdx.m = new Map(c.map((x) => [x.pid + '|' + x.ch, x])); } return lIdx.m.get(pid + '|' + k); };
   // ---- Canlı bağlantı: server.js köprüsündeki adaptörler (server/connectors) ----
   // Canlı mod yalnızca resmî dokümanla doğrulanan adaptörlerde seçilebilir (docs/urun/ETICARET.md §6, 29.10.2026).
   // Hepsiburada: geliştirici dokümanına erişilemedi (DOĞRULANAMADI) → canlı seçilemez, kod korunur.
@@ -81,8 +83,7 @@ window.MPHUB = (function () {
     db.all('orders').forEach((o, i) => { if (i % 5 < 2) { const k = pick(conn); o.source = o.channel; o.channel = k; o.channelNo = (k === 'trendyol' ? '1' : k === 'hepsiburada' ? '4' : '2') + rnd(10000000, 99999999); o.channelShip = rnd(45, 75); if (o.status === 'teslim') o.deliveredAt = addDays(new Date(o.at), rnd(2, 4)).toISOString(); } });
     const Q = ['Bu ürünün kumaşı terletir mi?', 'Boy 1.65, kilo 58 hangi bedeni almalıyım?', 'Ürün kalıbı dar mı, bol mu?', 'Siyah rengi ne zaman stoğa girer?', 'Astarlı mı?', 'Makinede yıkanabilir mi?', 'Kargoya ne zaman verilir?'];
     db.data.mpQuestions = Array.from({ length: 9 }, (_, i) => { const p = pick(db.all('products')); const at = new Date(Date.now() - rnd(1, 40) * 3600e3); return { id: NS.uid(), ch: pick(['trendyol', 'trendyol', 'hepsiburada', 'n11']), pid: p.id, text: Q[i % Q.length], customer: pick(['A*** K***', 'M*** T***', 'S*** Y***', 'E*** D***']), at: at.toISOString(), answer: i > 5 ? 'Merhaba, ürünümüz normal kalıptır; kendi bedeninizi tercih edebilirsiniz. İyi alışverişler dileriz.' : '', answeredAt: i > 5 ? new Date(at.getTime() + 3 * 3600e3).toISOString() : null }; });
-    db.data.mpLog = [];
-    ['trendyol', 'hepsiburada', 'n11'].forEach((k) => { log(k, 'Stok senkronu', `${rnd(80, 140)} varyant güncellendi`); log(k, 'Sipariş çekme', `${rnd(0, 4)} yeni sipariş`); });
+    db.data.mpLog = []; // Yapılmamış senkron işlemi günlüğe yazılmaz
     db.save();
   }
 
@@ -275,8 +276,10 @@ window.MPHUB = (function () {
   }
   // Pazaryeri siparişini kaydeder; kalemler stok kodu / barkod / eşleştirilmiş kodla varyanta bağlanır, bulunamayan kalem "eşleşmedi" kalır
   function importOrder(k, o, touched) {
-    if (!o || !o.orderNo || db.find('orders', (x) => x.channel === k && x.channelNo === o.orderNo)) return false;
-    const items = (o.items || []).map((i) => { const code = i.sku || i.barcode || ''; const fv = findVariant(i.sku) || findVariant(i.barcode); if (fv) { fv.v.stock = Math.max(0, fv.v.stock - i.qty); touched.push({ vid: fv.v.id }); } return { pid: fv ? fv.p.id : null, vid: fv ? fv.v.id : null, name: fv ? fv.p.name : i.name || code, variant: fv ? `${fv.v.color} / ${fv.v.size}` : code, code, qty: Number(i.qty) || 1, price: Number(i.price) || 0, lineId: i.lineId }; });
+    // Aynı sipariş birden çok pakete bölünebilir: paket no varsa tekrar denetimi paket üzerinden yapılır
+    if (!o || !o.orderNo || db.find('orders', (x) => x.channel === k && (o.packageId ? String(x.packageId || x.channelNo) === String(o.packageId) || (!x.packageId && x.channelNo === o.orderNo) : x.channelNo === o.orderNo))) return false;
+    // taken: stoktan gerçekten düşülen adet (iptalde bu kadarı geri döner); yetmeyen kalem "short" ile işaretlenir
+    const items = (o.items || []).map((i) => { const code = i.sku || i.barcode || ''; const q = Number(i.qty) || 1; const fv = findVariant(i.sku) || findVariant(i.barcode); let taken = 0; if (fv) { taken = Math.min(q, Math.max(0, fv.v.stock)); fv.v.stock -= taken; touched.push({ vid: fv.v.id }); } return { pid: fv ? fv.p.id : null, vid: fv ? fv.v.id : null, name: fv ? fv.p.name : i.name || code, variant: fv ? `${fv.v.color} / ${fv.v.size}` : code, code, qty: q, price: Number(i.price) || 0, lineId: i.lineId, taken, ...(fv && taken < q ? { short: q - taken } : {}) }; });
     const total = Math.round(items.reduce((t, i) => t + i.qty * i.price, 0) * 100) / 100; const c = o.customer || {};
     db.insert('orders', { no: 'PY' + db.nextNo('mp'), at: o.at || new Date().toISOString(), channel: k, channelNo: o.orderNo, packageId: o.packageId || null, channelShip: 0, ship: { name: c.name || '', phone: c.phone || '', city: c.city || '', district: c.district || '', address: [c.address, c.district].filter(Boolean).join(', ') }, items, subtotal: total, shipping: 0, discount: 0, total: o.total || total, pay: 'kart', payStatus: 'alindi', status: 'yeni', unmatched: items.some((i) => !i.pid), history: [{ at: new Date().toISOString(), st: 'yeni', note: `${CH[k] ? CH[k].name : k} siparişi alındı`, user: '' }], note: `${CH[k] ? CH[k].name : k} sipariş no ${o.orderNo}` }, true);
     return true;
@@ -293,10 +296,33 @@ window.MPHUB = (function () {
       const [oid, n] = b.dataset.match.split('|'); const vid = $(`[data-pick="${b.dataset.match}"]`, el).value; if (!vid) return toast('Varyant seçin', 'err');
       const o = db.get('orders', oid); const i = o.items[Number(n)]; const pr = db.all('products').find((x) => x.variants.some((v) => v.id === vid)); const v = pr.variants.find((x) => x.id === vid);
       if (i.code && ![v.sku, v.barcode, ...(v.aliases || [])].includes(i.code)) { if (findVariant(i.code)) return toast(`${i.code} kodu başka bir varyanta bağlı`, 'err'); v.aliases = [...(v.aliases || []), i.code]; }
-      Object.assign(i, { pid: pr.id, vid, name: pr.name, variant: `${v.color} / ${v.size}` }); v.stock = Math.max(0, v.stock - i.qty);
+      const taken = Math.min(i.qty, Math.max(0, v.stock)); Object.assign(i, { pid: pr.id, vid, name: pr.name, variant: `${v.color} / ${v.size}`, taken, ...(taken < i.qty ? { short: i.qty - taken } : {}) }); v.stock -= taken;
       o.unmatched = o.items.some((x) => !x.pid); (o.history = o.history || []).push({ at: new Date().toISOString(), st: o.status, note: `Eşleştirildi: ${i.code || ''} → ${pr.name} ${v.color}/${v.size}`, user: (NS.currentUser || {}).name || '' });
       db.save(); stockChanged([{ vid }]); toast('Eşleştirildi, stok düşüldü', 'ok'); app.refresh();
     });
+  }
+  // Müşteri iptali ve teslim durumu (Trendyol: reference/getshipmentpackages status filtresi). Durum geri kaymaz: yalnızca açık sipariş iptal olur, kargodaki teslim olur.
+  async function pullStatus(cancelFn, deliverFn) {
+    if (!isLive('trendyol')) return { cancelled: 0, delivered: 0, err: 'Trendyol canlı bağlı değil' };
+    const since = ch('trendyol').lastStatusPull || addDays(new Date(), -7).toISOString(); let cancelled = 0, delivered = 0; let err = '';
+    const find = (x) => db.find('orders', (o) => o.channel === 'trendyol' && (x.packageId ? String(o.packageId) === String(x.packageId) : o.channelNo === x.orderNo));
+    for (const [status, fn] of [['Cancelled', (o) => { if (['yeni', 'hazirlaniyor'].includes(o.status)) { cancelFn(o); cancelled++; } }], ['Delivered', (o) => { if (o.status === 'kargoda') { deliverFn(o); delivered++; } }]]) {
+      const r = await live('trendyol', 'siparis-cek', { since, status }); if (!r.ok) { err = `Trendyol: ${r.error}`; continue; }
+      (r.data.orders || []).forEach((x) => { const o = find(x); if (o) fn(o); });
+    }
+    if (!err) db.data.mpChannels.trendyol.lastStatusPull = new Date().toISOString(); db.save(); return { cancelled, delivered, err };
+  }
+  // Pazaryeri iade talepleri (Trendyol claims): iade kaydı "onay bekliyor" olarak düşer; onay, stok ve tutar kararı İadeler ekranında verilir
+  async function pullClaims() {
+    if (!isLive('trendyol')) return { count: 0, err: 'Trendyol canlı bağlı değil' };
+    const r = await live('trendyol', 'iade-cek', {}); if (!r.ok) return { count: 0, err: `Trendyol: ${r.error}` };
+    let count = 0, miss = 0;
+    (r.data.claims || []).forEach((c) => {
+      if (db.find('returns', (x) => x.extId === c.id)) return; const open = c.items.filter((i) => ['Created', 'WaitingInAction'].includes(i.status)); if (!open.length) return;
+      const o = db.find('orders', (x) => x.channel === 'trendyol' && x.channelNo === c.orderNo); if (!o) { miss++; return; }
+      db.data.returns.push({ id: NS.uid(), extId: c.id, ext: 'trendyol', order: o.id, reason: c.reason || 'Trendyol iade talebi', at: c.at, status: 'bekliyor', want: open.map((i) => ({ code: i.sku || i.barcode, name: i.name, qty: i.qty })), cargo: c.tracking }); count++;
+    });
+    db.save(); return { count, miss, err: '' };
   }
   // Kargo/fatura bilgisini pazaryerine bildirir (sipariş kargoya verilince app.js çağırır)
   async function shipNotify(o) {
@@ -305,6 +331,6 @@ window.MPHUB = (function () {
     else log(o.channel, 'TEST: kargo bildirimi gönderilmedi (simülasyon)', o.channelNo || '', false);
   }
 
-  return { CH, ensure, settle, chBadge, stockChanged, pullOrders, importOrders, unmatchedOrders, shipNotify, isLive, nav: [{ sec: 'Pazaryeri' }, { id: 'pazaryeri', label: 'Pazaryeri Merkezi', icon: 'store', roles: ['admin'] }, { id: 'listeleme', label: 'Ürün Listeleme', icon: 'upload', roles: ['admin'] }, { id: 'eslesmeyen', label: 'Eşleşmeyen Ürünler', icon: 'alert', badge: true }, { id: 'eslestirme', label: 'Kategori Eşleştirme', icon: 'link', roles: ['admin'] }, { id: 'hakedis', label: 'Hakediş', icon: 'wallet', roles: ['admin'] }, { id: 'sorular', label: 'Müşteri Soruları', icon: 'message' }],
+  return { CH, ensure, settle, chBadge, stockChanged, pullOrders, pullStatus, pullClaims, findVariant, importOrders, unmatchedOrders, shipNotify, isLive, anyLive, nav: [{ sec: 'Pazaryeri' }, { id: 'pazaryeri', label: 'Pazaryeri Merkezi', icon: 'store', roles: ['admin'] }, { id: 'listeleme', label: 'Ürün Listeleme', icon: 'upload', roles: ['admin'] }, { id: 'eslesmeyen', label: 'Eşleşmeyen Ürünler', icon: 'alert', badge: true }, { id: 'eslestirme', label: 'Kategori Eşleştirme', icon: 'link', roles: ['admin'] }, { id: 'hakedis', label: 'Hakediş', icon: 'wallet', roles: ['admin'] }, { id: 'sorular', label: 'Müşteri Soruları', icon: 'message' }],
     routes: { eslesmeyen: unmatchedPage, pazaryeri: hubPage, listeleme: listingsPage, eslestirme: catMapPage, hakedis: payoutPage, sorular: questionsPage } };
 })();

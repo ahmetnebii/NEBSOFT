@@ -746,19 +746,21 @@ RULES.emlak = {
 // ---------- E-ticaret: mağaza vitrini (magaza.html) ----------
 // Fiyat, indirim, kargo ve stok sunucuda hesaplanır; kartla ödeme bulutta kapalıdır (kapıda ödeme / havale)
 const shopSet = (x) => ({ freeShip: 750, shipFee: 79, codFee: 30, ...(x.doc._settings || {}) });
-const shopCoupon = (x, code) => code && x.col('coupons').find((c) => c.code === String(code).toUpperCase() && c.active);
+// Kupon: etkin, tarih aralığında ve kullanım sınırı dolmamış olmalı (apps/eticaret/data.js couponCheck ile aynı)
+const shopCoupon = (x, code) => { const k = code && x.col('coupons').find((c) => c.code === String(code).toUpperCase() && c.active); if (!k || (k.start && x.today < k.start) || (k.end && x.today > k.end) || (Number(k.maxUses) && (k.uses || 0) >= Number(k.maxUses))) return null; return k; };
 RULES.eticaret = {
   pub: {
     cats: true,
     products: { where: (p) => p.active !== false, omit: ['cost', 'supplier', 'buyPrice'] },
     reviews: { where: (r) => !r.pending },
   },
-  query: (x, q) => { const k = shopCoupon(x, q.coupon); return k ? { coupons: [x.pick(k, ['id', 'code', 'type', 'value', 'min', 'active'])] } : null; },
+  query: (x, q) => { const k = shopCoupon(x, q.coupon); return k ? { coupons: [x.pick(k, ['id', 'code', 'type', 'value', 'min', 'active', 'start', 'end', 'maxUses', 'uses'])] } : null; },
   login: (x, q) => { const no = norm(q.no); const o = no && x.col('orders').find((o) => o.no === no); const l4 = String(q.last4 || '').replace(/\D/g, ''); return o && l4.length === 4 && digits((o.ship || {}).phone).endsWith(l4) ? { k: 'o', i: o.id } : null; },
   loginError: 'Sipariş numarası ve telefon eşleşmedi',
   view: (x) => {
     const o = x.get('orders', me(x, 'o')); if (!o) return {};
-    return { orders: [o], returns: x.col('returns').filter((r) => r.order === o.id) };
+    // İç not, etiket, işlem geçmişi ve kanal kesintileri müşteriye gitmez
+    return { orders: [strip(o, ['memo', 'tags', 'history', 'payout', 'channelShip', 'packCheck', 'source'])], returns: x.col('returns').filter((r) => r.order === o.id).map((r) => strip(r, ['by', 'restocked', 'lines'])) };
   },
   write: {
     customers: { ins: I({ name: 'str:80', phone: 'phone', email: 'email?', city: 'str:40?', address: 'str:300?' }, {}) },
@@ -777,7 +779,7 @@ RULES.eticaret = {
         r.items.forEach((i) => { const v = x.get('products', i.pid).variants.find((z) => z.id === i.vid); v.stock -= i.qty; });
         const S = shopSet(x); const sub = r.items.reduce((t, i) => t + i.price * i.qty, 0);
         const k = shopCoupon(x, x.q.coupon); let discount = 0, freeBy = false;
-        if (k && sub >= (k.min || 0)) { if (k.type === 'pct') discount = Math.round(sub * k.value) / 100; else if (k.type === 'tl') discount = Number(k.value); else if (k.type === 'ship') freeBy = true; k.uses = (k.uses || 0) + 1; r.coupon = k.code; } else r.coupon = null;
+        if (k && sub >= (k.min || 0)) { if (k.type === 'pct') discount = Math.round(sub * k.value) / 100; else if (k.type === 'tl') discount = Math.min(sub, Number(k.value)); else if (k.type === 'ship') freeBy = true; k.uses = (k.uses || 0) + 1; r.coupon = k.code; } else r.coupon = null;
         const shipping = sub - discount >= S.freeShip || freeBy ? 0 : Number(S.shipFee); const cod = r.pay === 'kapida' ? Number(S.codFee) : 0;
         Object.assign(r, { subtotal: sub, discount, shipping, cod, total: Math.max(0, sub - discount + shipping + cod), no: x.seq('orders', 'LB') });
       }),
