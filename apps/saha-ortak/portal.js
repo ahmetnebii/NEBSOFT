@@ -21,12 +21,12 @@ window.SAHA_PORTAL = function (cfg) {
     return `<section class="tk-head"><div class="top"><div><div class="small muted mono">${esc(c.no)}</div><h2>${esc(c.title)}</h2><span class="tk-pill" style="--c:var(--accent)">${esc(H.FREQ[c.freq] || '')}</span></div></div></section>${panel('Ziyaretler', 'calendar', J.length ? `<table class="tk-lines">${J.slice(0, 40).map((j) => `<tr><td>${NS.date(j.date)} · ${esc((ST[j.status] || {}).name || j.status)}${j.report ? `<div class="small muted">${esc(j.report)}</div>` : ''}</td><td><a class="btn sm" href="?kod=${encodeURIComponent(j.code || '')}" data-r="${esc(j.code || '')}">Aç</a></td></tr>`).join('')}</table>` : '<p class="small muted" style="margin:0">Henüz ziyaret yok</p>')}`;
   }
   function ciz(kod) {
-    const k = String(kod || '').toUpperCase().trim(); if (!k || db.lookup({ kod: k }) === null) db.load();
+    const k = String(kod || '').toUpperCase().trim(); if ((!k || db.lookup({ kod: k }) === null) && !db.cloud) db.load(); // lookup yalnız müşteri kipinde okur; oturum açık personelde bulut belgesi, load gönderilmemiş kaydı siler
     const j = k && db.find('jobs', (x) => x.code === k); const c = k && !j && db.find('contracts', (x) => x.code === k);
     if (!k) { $('#root').innerHTML = `<div class="tk-view"><div class="tk-intro"><h1>${esc(cfg.title)}</h1><p>Size verilen 6 haneli takip kodunu yazın.</p></div>${bul('')}</div>`; return bag(); }
     if (!j && !c) { $('#root').innerHTML = `<div class="tk-view">${bul(k)}<div class="tk-panel"><div class="b empty">${icon('search')}<div><b>${esc(k)}</b> koduna ait kayıt bulunamadı.</div></div></div></div>`; return bag(); }
     $('#root').innerHTML = `<div class="tk-view">${bul(k)}${j ? isKart(j) : sozlesmeKart(c, db.all('jobs', (x) => x.plan === c.id).sort((a, b) => String(b.date).localeCompare(String(a.date))))}</div>`; bag();
-    const yaz = (id, f) => { db.load(); const x = db.find('jobs', (y) => y.id === id); if (x) { f(x); db.save(); ciz(k); } };
+    const yaz = (id, f) => { if (!db.cloud) db.load(); const x = db.find('jobs', (y) => y.id === id); if (x) { f(x); db.save(); ciz(k); } };
     const cevap = (id, karar, not) => yaz(id, (x) => { if (db.pub) x.offerAnswer = { decision: karar, note: not }; else Object.assign(x, H.teklifCevap(x, karar, 'Müşteri (online)', not)); });
     if ($('#ok')) $('#ok').onclick = (e) => { if (!$('#tc').checked) return toast('Lütfen teklifi okuduğunuzu işaretleyin', 'err'); cevap(e.currentTarget.dataset.j, 'onay', ''); toast('Onayınız kaydedildi', 'ok'); };
     if ($('#no')) $('#no').onclick = async (e) => { const id = e.currentTarget.dataset.j; const v = await NS.formModal({ title: 'Teklifi onaylamıyorum', fields: [{ name: 'why', label: 'Nedeniniz', type: 'textarea', full: true }] }); if (v) cevap(id, 'red', v.why || ''); };

@@ -295,7 +295,7 @@
   function cashPage(el, p, app) {
     let day = today();
     const draw = () => {
-      db.load();
+      if (!db.cloud) db.load(); // bulutta load sunucudan okur, henüz gönderilmemiş kaydı siler; başka oturumun değişikliğini izleme getirir
       const pays = db.all('payments', (x) => x.at.slice(0, 10) === day).sort((a, b) => b.at.localeCompare(a.at));
       const kind = (t) => (/kart/.test(t) ? 'Kart' : /havale|eft/i.test(t) ? 'Havale/EFT' : 'Nakit');
       const by = NS.groupBy(pays, (x) => kind(x.type));

@@ -552,7 +552,7 @@
     if (autoBusy || !S().autoRemind || !smsReady() || (NS.currentUser && NS.currentUser.role === 'personel')) return;
     autoBusy = true;
     try {
-      db.load();
+      if (!db._dirty && !db._flight) db.load(); // bulutta load gönderilmemiş kaydı siler: bekleyen kayıt varken bellekteki hâl kullanılır (gizli sekmede izleme çalışmaz, tazelik burada sağlanır)
       const due = db.all('appointments', (a) => ['onay', 'bekliyor'].includes(a.status) && !a.reminded && !a.noReminder && !a.remindTried && apptAt(a) > Date.now() && remindDue(a));
       let n = 0;
       for (const a of due) { a.remindTried = new Date().toISOString(); db.save(); if ((await sendSms(a)) === 'ok') n++; }

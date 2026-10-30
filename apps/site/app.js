@@ -281,7 +281,7 @@
     el.insertBefore(bar, el.children[1] || null);
     const check = () => {
       const c = $('#vc', el).value.trim().toUpperCase(); if (!c) return;
-      db.load(); const v = db.find('visitors', (x) => x.code === c);
+      if (!db._dirty && !db._flight) db.load(); const v = db.find('visitors', (x) => x.code === c);
       if (!v) return toast('Bu koda ait bildirim yok', 'err');
       if (v.status !== 'bekleniyor') return toast(`Kod geçersiz: ${v.status === 'geldi' ? 'zaten kullanıldı' : 'iptal edilmiş'}`, 'err');
       if (v.date !== today()) return toast(`Bu ziyaret ${NS.date(v.date)} için bildirilmiş`, 'err');

@@ -211,7 +211,7 @@
   function quotesPage(el, p, app) {
     let flt = 'bekleyen', q = '';
     const draw = () => {
-      db.load();
+      if (!db.cloud) db.load(); // bulutta load sunucudan okur, henüz gönderilmemiş kaydı siler; başka oturumun değişikliğini izleme getirir
       const all = db.all('quotes', (x) => !mine() || (db.get('deals', x.deal) || {}).owner === mine()).sort((a, b) => String(b.date + b.no).localeCompare(a.date + a.no));
       const F = { bekleyen: (x) => Q.status(x) === 'gonderildi', kabul: (x) => Q.status(x) === 'kabul', red: (x) => Q.status(x) === 'red', suresi: (x) => Q.status(x) === 'suresi', all: () => true };
       const rows = all.filter(F[flt]).filter((x) => { const d = db.get('deals', x.deal) || {}; return NS.match(q, x.no, d.title, comp(d.company).name); });
@@ -246,7 +246,7 @@
   function tasksPage(el, p, app) {
     let own = mine() || (NS.currentUser || {}).id || '';
     const draw = () => {
-      db.load();
+      if (!db.cloud) db.load();
       const t0 = today(), wk = iso(addDays(new Date(), 7));
       const all = db.all('activities', (a) => a.type === 'gorev' && (!own || a.owner === own));
       const open = all.filter((a) => !a.done).sort(dueCmp);
