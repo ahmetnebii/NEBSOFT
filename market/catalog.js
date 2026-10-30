@@ -78,6 +78,14 @@ window.CATALOG = {
       modules: ['Servis Kayıtları', 'Kanban Pano', 'Müşteriler', 'Parça Stoku', 'Teknisyenler', 'Durum Sorgulama', 'Raporlar'],
     },
     {
+      id: 'cicekci', ready: true, extraDemos: [{ label: 'Müşteri takip sayfasını aç', url: 'apps/cicekci/takip.html' }], cat: 'satis', name: 'Çiçekçi', tagline: 'Sipariş, saat aralığı, kurye ve teslim kanıtı', icon: 'flower', accent: '#16a34a',
+      ornekFiyat: true, prices: [499, 899, 1690], sectors: ['Çiçekçi', 'Çelenkçi', 'Organizasyon', 'Peyzaj satış'], // fiyat ÖRNEK, kullanıcı onayı bekliyor
+      desc: 'Gönderen ve alıcı ayrı sipariş, saat aralığı, kart notu, kurye atama, teslim alan kaydı, başarısız teslim, özel gün listesi ve çiçek tazeliği.',
+      features: ['Gönderen ve alıcı ayrı, gizli gönderen, kart notu, şerit yazısı', 'Saat aralığı ve aralık başına iş sınırı', 'Kurye atama, kurye fişi, dağıtım ekranı', 'Teslim alan kişi ve fotoğrafla teslim kanıtı', 'Teslim edilemedi nedeni ve yeniden deneme', 'Bölgeye göre teslimat ücreti', 'Özel gün listesi (işletme içi hatırlatma)', 'Çiçek partisi, kalan ömür ve fire'],
+      modules: ['Sipariş Panosu', 'Siparişler', 'Teslim Takvimi', 'Dağıtım', 'Özel Günler', 'Çiçek Stoğu', 'Teslimat Bölgeleri', 'Müşteriler', 'Ürünler ve Fiyatlar'],
+      faq: [['"Teslim edildi" nasıl kaydedilir?', 'Kurye teslim alan kişinin adını yazmadan teslim tamamlanmaz; isterse fotoğraf ekler. Teslim edilemediyse nedeni kaydedilir.'], ['Özel gün SMS\'i gidiyor mu?', 'Hayır. Özel Günler işletmeye iç hatırlatmadır, müşteriyi siz ararsınız. Ticari ileti kuralları nedeniyle program bu SMS\'i göndermez.']],
+    },
+    {
       id: 'pastane', ready: true, extraDemos: [{ label: 'Müşteri takip sayfasını aç', url: 'apps/pastane/takip.html' }], cat: 'yeme', name: 'Fırın & Pastane', tagline: 'Özel sipariş, kapora, üretim planı ve reçete maliyeti', icon: 'chef', accent: '#db2777',
       ornekFiyat: true, prices: [499, 899, 1690], sectors: ['Pastane', 'Fırın', 'Butik pasta', 'Tatlıcı', 'Kurabiye atölyesi'], // fiyat ÖRNEK, kullanıcı onayı bekliyor
       desc: 'Özel pasta siparişi, kapora, teslim saati, sipariş kartı, reçete maliyeti, günlük üretim planı, malzeme stoğu ve zayi takibi.',
