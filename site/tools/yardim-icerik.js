@@ -54,7 +54,7 @@ module.exports = {
   emlak: { kanca: 'Portföyünüz, müşteri talepleriniz ve kiralar farklı listelerde mi? Bu videoda Emlak Ofisi programında ilk ilanı giriyoruz.',
     gorevler: [['İlan girme', ['**Portföy** sayfasında **Yeni ilan** düğmesine basın.', 'Taşınmaz bilgilerini ve fiyatı girin.', '**Linki kopyala** ile ilan sayfasını paylaşın.']],
       ['Müşteri talebi', ['**Müşteri Talepleri** sayfasında talebi kaydedin.', '**Eşleşen ilanlar** bölümünü inceleyin.', '**Gösterim planla** ile randevu oluşturun.']],
-      ['Gösterim ve kira', ['**Gösterimler** sayfasından kaydı açın.', '**Yer gösterme belgesi** imzalatın.', '**Kira Takibi** sayfasında ödemeleri izleyin.']]],
+      ['Gösterim ve kira', ['**Gösterimler** sayfasından kaydı açın.', '**Taşınmaz gösterme belgesi** imzalatın.', '**Kira Takibi** sayfasında ödemeleri izleyin.']]],
     ipucu: 'Portallara gönderim için Portal ayarları bölümünden kendi portal hesabınızı bağlamanız gerekir.',
     sss: [['Danışman nasıl eklenir?', '**Danışmanlar** sayfasından eklenir.'], ['Web başvuruları nereye düşer?', '**Web Başvuruları** sayfasında listelenir.'], ['Satışı nereye kaydederim?', '**Satış & Komisyon** sayfasına.']] },
   kurs: { kanca: 'Yoklama, ödev ve taksit takibi deftere mi sığmıyor? Bu videoda Kurs programını ilk yoklamaya kadar kuruyoruz.',
