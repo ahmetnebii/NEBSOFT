@@ -2,9 +2,9 @@
 window.EMLAK = {
   seed(db) {
     const { rand, pick, addDays, iso } = NS;
-    db.data._settings = { bizName: 'Anahtar Gayrimenkul', bizPhone: '0232 777 88 99', bizAddress: 'Karşıyaka, İzmir', commission: 2, rentCommission: 100, whatsapp: '05327778899' };
+    db.data._settings = { bizName: 'Anahtar Gayrimenkul', bizPhone: '0232 777 88 99', bizAddress: 'Karşıyaka, İzmir', city: 'İzmir', commission: 2, rentCommission: 100, whatsapp: '05327778899', yetkiNo: 'ÖRNEK-0000000', sorumlu: 'Levent Aydın', mgmtPct: 5 };
     db.data.users = [{ id: 'u1', name: 'Levent Broker', role: 'admin', pin: '1234', active: true, agent: 'a1' }, { id: 'u2', name: 'Deniz Danışman', role: 'danisman', pin: '1234', active: true, agent: 'a2' }];
-    db.data.agents = [{ id: 'a1', name: 'Levent Aydın', phone: '0532 111 22 33', color: '#ca8a04' }, { id: 'a2', name: 'Deniz Koç', phone: '0533 222 33 44', color: '#2563eb' }, { id: 'a3', name: 'Sibel Yurt', phone: '0534 333 44 55', color: '#db2777' }];
+    db.data.agents = [{ id: 'a1', name: 'Levent Aydın', phone: '0532 111 22 33', color: '#ca8a04', share: 60 }, { id: 'a2', name: 'Deniz Koç', phone: '0533 222 33 44', color: '#2563eb', share: 50 }, { id: 'a3', name: 'Sibel Yurt', phone: '0534 333 44 55', color: '#db2777', share: 50 }];
     const districts = { Karşıyaka: ['Bostanlı', 'Mavişehir', 'Alaybey', 'Bahariye'], Bornova: ['Erzene', 'Kazımdirik', 'Doğanlar'], Konak: ['Alsancak', 'Göztepe', 'Güzelyalı'], Bayraklı: ['Manavkuyu', 'Adalet', 'Mansuroğlu'], Çiğli: ['Ataşehir', 'Balatçık'] };
     const feats = ['Asansör', 'Otopark', 'Site içi', 'Havuz', 'Güvenlik', 'Deniz manzarası', 'Balkon', 'Ankastre mutfak', 'Doğalgaz', 'Metroya yakın', 'Eşyalı', 'Ebeveyn banyosu'];
     const colors = ['#ca8a04', '#2563eb', '#16a34a', '#db2777', '#7c3aed', '#0891b2', '#ea580c'];
@@ -19,19 +19,19 @@ window.EMLAK = {
       const perM2 = cat === 'Arsa' ? rand(6, 18) : rand(38, 85);
       const price = sale ? Math.round((m2 * perM2 * 1000) / 50000) * 50000 : Math.round((m2 * rand(160, 320)) / 500) * 500;
       const status = Math.random() < 0.15 ? (sale ? 'satildi' : 'kiralandi') : Math.random() < 0.1 ? 'opsiyon' : 'aktif';
-      props.push({ id: 'p' + k, no: 'ILN' + (7000 + k), title: `${loc(nb)} ${sale ? 'satılık' : 'kiralık'} ${rooms !== '-' ? rooms + ' ' : ''}${cat.toLocaleLowerCase('tr-TR')}`, type: sale ? 'satilik' : 'kiralik', cat, city: 'İzmir', district: dist, nb, rooms, m2, floor: cat === 'Daire' ? rand(1, 12) : 0, age: rand(0, 30), price, dues: cat === 'Daire' ? rand(4, 25) * 100 : 0, heating: pick(['Kombi', 'Merkezi', 'Yerden ısıtma', 'Klima']), furnished: !sale && Math.random() < 0.3, features: feats.filter(() => Math.random() < 0.3), owner: pick(NS.NAMES), ownerPhone: NS.phone(), agent: pick(['a1', 'a2', 'a3']), status, color: pick(colors), desc: `${nb} merkezde, ulaşımı kolay, bakımlı ${cat.toLowerCase()}. Okul, market ve toplu taşımaya yürüme mesafesinde.`, created: addDays(new Date(), -rand(1, 120)).toISOString(), views: rand(20, 900) });
+      props.push({ id: 'p' + k, sample: true, no: 'ILN' + (7000 + k), title: `${loc(nb)} ${sale ? 'satılık' : 'kiralık'} ${rooms !== '-' ? rooms + ' ' : ''}${cat.toLocaleLowerCase('tr-TR')}`, type: sale ? 'satilik' : 'kiralik', cat, city: 'İzmir', district: dist, nb, rooms, m2, floor: cat === 'Daire' ? rand(1, 12) : 0, age: rand(0, 30), price, dues: cat === 'Daire' ? rand(4, 25) * 100 : 0, heating: pick(['Kombi', 'Merkezi', 'Yerden ısıtma', 'Klima']), furnished: !sale && Math.random() < 0.3, features: feats.filter(() => Math.random() < 0.3), owner: pick(NS.NAMES), ownerPhone: NS.phone(), agent: pick(['a1', 'a2', 'a3']), status, color: pick(colors), desc: `${nb} merkezde, ulaşımı kolay, bakımlı ${cat.toLowerCase()}. Okul, market ve toplu taşımaya yürüme mesafesinde.`, created: addDays(new Date(), -rand(1, 120)).toISOString(), views: rand(20, 900) });
     }
     db.data.props = props;
     db.data.requests = NS.NAMES.slice(0, 14).map((n, i) => { const sale = i % 3 !== 0; const dist = pick(Object.keys(districts)); return { id: 'r' + i, name: n, phone: NS.phone(), type: sale ? 'satilik' : 'kiralik', cat: 'Daire', district: Math.random() < 0.7 ? dist : '', rooms: pick(['', '2+1', '3+1']), budgetMax: sale ? rand(4, 14) * 1000000 : rand(18, 45) * 1000, m2Min: rand(70, 120), note: pick(['Okula yakın olsun', 'Site içi tercih', 'Yatırımlık', 'Acil', '']), status: 'aktif', agent: pick(['a1', 'a2', 'a3']), created: addDays(new Date(), -rand(1, 40)).toISOString() }; });
     db.data.showings = [];
     for (let k = 0; k < 16; k++) { const d = iso(addDays(new Date(), rand(-14, 7))); db.data.showings.push({ id: NS.uid(), prop: pick(props).id, request: pick(db.data.requests).id, date: d, time: pick(['10:00', '11:30', '14:00', '15:30', '17:00']), agent: pick(['a1', 'a2', 'a3']), result: d < NS.today() ? pick(['Beğendi, ikinci gösterim isteniyor', 'Fiyatı yüksek buldu', 'Teklif verecek', 'Uygun bulmadı']) : '' }); }
     const rented = props.filter((p) => p.type === 'kiralik').slice(0, 6);
-    db.data.leases = rented.map((p, i) => { const start = addDays(new Date(), -rand(30, 300)); start.setDate(1); const months = []; for (let d = new Date(start); d <= new Date(); d.setMonth(d.getMonth() + 1)) months.push(iso(d).slice(0, 7)); return { id: 'l' + i, prop: p.id, tenant: pick(NS.NAMES), tenantPhone: NS.phone(), rent: p.price, deposit: p.price * 2, start: iso(start), end: iso(addDays(start, 365)), payDay: 5, payments: months.map((m, k) => ({ period: m, paid: k < months.length - 1 || Math.random() < 0.5 })) }; });
+    db.data.leases = rented.map((p, i) => { const start = addDays(new Date(), -rand(30, 300)); start.setDate(1); const months = []; for (let d = new Date(start); d <= new Date(); d.setMonth(d.getMonth() + 1)) months.push(iso(d).slice(0, 7)); return { id: 'l' + i, prop: p.id, tenant: pick(NS.NAMES), tenantPhone: NS.phone(), rent: p.price, deposit: p.price * 2, start: iso(start), end: iso(addDays(start, 365)), payDay: 5, rentHist: [{ from: months[0], amount: p.price }], payments: months.filter((m, k) => k < months.length - 1 || Math.random() < 0.5).map((m) => ({ period: m, paid: true, amount: p.price })) }; });
     rented.forEach((p) => { p.status = 'kiralandi'; });
     db.data.deals = props.filter((p) => p.status === 'satildi').map((p) => ({ id: NS.uid(), prop: p.id, buyer: pick(NS.NAMES), price: Math.round(p.price * 0.96), pct: 2, date: iso(addDays(new Date(), -rand(3, 80))), agent: p.agent, kind: 'satis' }));
     db.data.leases.forEach((l) => db.data.deals.push({ id: NS.uid(), prop: l.prop, buyer: l.tenant, price: l.rent, pct: 100, date: l.start, agent: (props.find((p) => p.id === l.prop) || {}).agent, kind: 'kira' }));
   },
-  // Doğrulanmış Unsplash fotoğrafları (kategoriye göre) — ilanda photoList (satır başına URL) varsa o kullanılır
+  // Örnek görseller yalnızca demo verisindeki ilanlarda (sample) kullanılır: gerçek ilanda temsilî fotoğraf yanıltıcı bilgidir (Yönetmelik md. 12/1)
   PH: {
     int: ['1560448204-e02f11c3d0e2', '1502672260266-1c1ef2d93688', '1522708323590-d24dbb6b0267', '1493809842364-78817add7ffb', '1600210492486-724fe5c67fb0', '1583608205776-bfd35f0d9f83', '1600607687939-ce8a6c25118c'],
     apt: ['1545324418-cc1a3fa10c00', '1515263487990-61b07816b324'],
@@ -44,12 +44,14 @@ window.EMLAK = {
   photos(p) {
     const own = String(p.photoList || '').split(/\s+/).filter((u) => /^https?:\/\//.test(u));
     if (own.length) return own;
+    if (!p.sample) return [this.NOPHOTO];
     const h = [...String(p.id)].reduce((a, c) => a * 31 + c.charCodeAt(0), 7) >>> 0; const P = this.PH; const at = (a, k = 0) => a[(h + k) % a.length];
     if (p.cat === 'Arsa') return [at(P.land), at(P.house, 2)];
     if (p.cat === 'İşyeri') return [at(P.office), at(P.office, 1), at(P.int, 4), at(P.kitchen)];
     if (p.cat === 'Villa') return [at(P.villa), at(P.house), at(P.int, 1), at(P.kitchen), at(P.bed), at(P.bath), at(P.villa, 2)];
     return [at(P.int), at(P.apt), at(P.int, 3), at(P.kitchen, 1), at(P.bed, 1), at(P.bath), at(P.int, 5)];
   },
+  NOPHOTO: `data:image/svg+xml,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 500"><rect width="800" height="500" fill="#e2e8f0"/><text x="400" y="255" font-family="sans-serif" font-size="32" fill="#64748b" text-anchor="middle">Fotoğraf eklenmedi</text></svg>')}`,
   // İlçe merkez koordinatları (harita için); ilan koordinatı yoksa ilçe + küçük sapma
   GEO: { Karşıyaka: [38.4595, 27.115], Bornova: [38.4697, 27.2211], Konak: [38.4189, 27.1287], Bayraklı: [38.4622, 27.1667], Çiğli: [38.496, 27.066] },
   geo(p) {
@@ -57,10 +59,37 @@ window.EMLAK = {
     const c = this.GEO[p.district] || [38.4237, 27.1428]; const h = [...String(p.id)].reduce((a, ch) => a * 17 + ch.charCodeAt(0), 3) >>> 0;
     return [c[0] + ((h % 100) - 50) / 6000, c[1] + (((h >> 7) % 100) - 50) / 5000];
   },
-  NEAR: ['Metro / İzban', 'İlkokul', 'Market', 'Hastane', 'Park', 'Sahil'],
-  near(p) { const h = [...String(p.id)].reduce((a, ch) => a * 13 + ch.charCodeAt(0), 5) >>> 0; return this.NEAR.map((n, i) => [n, 150 + ((h >> i) % 18) * 90]); },
+  // Yakınlık bilgisi yalnızca ilanı girenin yazdığı metinden gelir ("Metro: 400 m"); uydurulmaz (Yönetmelik md. 12/1, 15/3-d,e)
+  near(p) { return String(p.nearText || '').split(/\r?\n/).map((l) => l.split(':')).filter((x) => x.length > 1 && x[0].trim() && x[1].trim()).map(([k, ...v]) => [k.trim(), v.join(':').trim()]); },
   TYPE: { satilik: 'Satılık', kiralik: 'Kiralık' },
   ST: { aktif: ['Yayında', 'ok'], opsiyon: ['Opsiyonlu', 'warn'], satildi: ['Satıldı', 'acc'], kiralandi: ['Kiralandı', 'info'], pasif: ['Pasif', ''] },
+  r2: (x) => Math.round((Number(x) || 0) * 100 + 1e-7) / 100,
+  // ---------- Hizmet bedeli — Taşınmaz Ticareti Hakkında Yönetmelik md. 20 (mevzuat.gov.tr 7.5.24645, son değişiklik RG 1/10/2026-33387) ----------
+  FEE_SALE_MAX: 4, // md. 20/1: satış bedelinin KDV hariç en çok %4'ü, taraflar toplamı
+  FEE_RENT_MAX: 100, // md. 20/2: KDV hariç en çok bir aylık kira
+  // Oranlar KDV hariçtir. Satışta pct taraf başı orandır; sides ödeyen taraf sayısıdır (eski kayıtlarda 2)
+  fee(d) { return this.r2(d.fee !== undefined && d.fee !== null ? d.fee : d.kind === 'kira' ? d.price * d.pct / 100 : d.price * d.pct / 100 * (Number(d.sides) || 2)); },
+  feeCheck(kind, pct, sides = 2) { const p = Number(pct); if (!(p >= 0)) return 'Hizmet bedeli oranını girin'; if (kind === 'kira') return p > this.FEE_RENT_MAX ? 'Kiralamada hizmet bedeli KDV hariç bir aylık kirayı aşamaz (Yönetmelik md. 20/2)' : ''; return p * (Number(sides) || 2) > this.FEE_SALE_MAX ? 'Satışta hizmet bedeli toplamı KDV hariç %4’ü aşamaz (Yönetmelik md. 20/1)' : ''; },
+  // İlan ve yetki kontrolü (md. 14/2-h,i,j; md. 15): eksik listesi döner
+  compliance(p, s = {}, today = new Date().toISOString().slice(0, 10)) { const m = []; if (!s.yetkiNo) m.push('İşletmenin yetki belgesi numarası (Ayarlar)'); if (!p.authNo) m.push('Yetkilendirme sözleşmesi'); else if (p.authEnd && p.authEnd < today) m.push('Yetkilendirme sözleşmesinin süresi dolmuş'); if (!p.eidsEnd) m.push('EİDS ilan yetkisi'); else if (p.eidsEnd < today) m.push('EİDS ilan yetkisinin süresi dolmuş'); if (!p.city || !p.district || !p.nb) m.push('İl, ilçe veya mahalle'); if (!p.ada || !p.parsel) m.push('Ada ve parsel'); return m; },
+  // ---------- Kira — 6098 sayılı TBK (mevzuat.gov.tr 1.5.6098) ----------
+  addMonths(ym, k) { const [y, m] = ym.split('-').map(Number); const d = new Date(Date.UTC(y, m - 1 + k, 1)); return d.toISOString().slice(0, 7); },
+  addYear(s, k = 1) { const [y, m, d] = s.slice(0, 10).split('-').map(Number); const t = new Date(Date.UTC(y + k, m - 1, d)); return t.toISOString().slice(0, 10); },
+  dueDate(period, day) { const [y, m] = period.split('-').map(Number); const last = new Date(Date.UTC(y, m, 0)).getUTCDate(); return `${period}-${String(Math.min(Number(day) || 1, last)).padStart(2, '0')}`; },
+  // TBK md. 342/1: güvence üç aylık kirayı aşamaz
+  depositCheck(deposit, rent) { return Number(deposit) > Number(rent) * 3 ? 'Güvence üç aylık kira bedelini aşamaz (TBK md. 342)' : ''; },
+  rentAt(l, period) { const h = (l.rentHist || []).filter((x) => x.from <= period).sort((a, b) => a.from.localeCompare(b.from)); return Number(h.length ? h[h.length - 1].amount : l.rent) || 0; },
+  // Dönem dönem borç: eski kayıtta { period, paid: true } tam ödeme sayılır; kısmi ödeme aynı dönemde birikir
+  // Eski sürüm yalnızca "Ödendi" işaretlenen ayı tutardı: rentHist'i olmayan kayıtta defter ilk ödemeden başlar, geçmiş aylar borç gösterilmez
+  ledger(l, today) { const out = []; const cur = today.slice(0, 7); const last = l.endedAt && l.endedAt.slice(0, 7) < cur ? l.endedAt.slice(0, 7) : cur; const old = (l.payments || []).map((x) => x.period).sort()[0]; const first = l.rentHist ? l.start.slice(0, 7) : old || cur; for (let p = first; p <= last; p = this.addMonths(p, 1)) { const due = this.rentAt(l, p); const paid = this.r2((l.payments || []).filter((x) => x.period === p && x.paid !== false).reduce((t, x) => t + (x.amount === undefined ? due : Number(x.amount) || 0), 0)); const dd = this.dueDate(p, l.payDay), dueOn = dd < l.start ? l.start.slice(0, 10) : dd; out.push({ period: p, due, paid, left: this.r2(Math.max(0, due - paid)), dueOn, late: paid < due && dueOn < today }); } return out; },
+  arrears(l, today) { return this.ledger(l, today).filter((x) => x.late); },
+  // TBK md. 347/1: kiracı 15 gün önce bildirmedikçe sözleşme bir yıl uzar; kiraya veren süre bitimine dayanarak sona erdiremez
+  leaseEnd(l, today) { let e = l.end; while (e < today) e = this.addYear(e); return e; },
+  leaseYears(l, today) { let n = 0; while (this.addYear(l.start, n + 1) <= today) n++; return n; },
+  nextRaise(l, today) { let d = this.addYear(l.start); while (d <= today) d = this.addYear(d); return d; },
+  // TBK md. 344: konut ve çatılı işyerinde artış TÜFE on iki aylık ortalama değişimini geçemez; oran kullanıcıdan gelir (TÜİK), programda sabit değildir
+  capApplies: (p) => !p || p.cat !== 'Arsa',
+  raiseCheck(l, newRent, tufe, on, p) { const out = { warn: [] }; const t = Number(tufe); if (tufe === '' || tufe === null || tufe === undefined || !(t >= 0)) { out.error = 'TÜFE on iki aylık ortalama değişim oranını girin (TÜİK)'; return out; } const base = this.rentAt(l, on.slice(0, 7)); out.cap = this.r2(base * (1 + t / 100)); if (!(Number(newRent) > 0)) { out.error = 'Yeni kirayı girin'; return out; } if (this.capApplies(p) && Number(newRent) > out.cap) out.error = `Yeni kira TBK md. 344 sınırını aşıyor (en çok ${out.cap})`; if (this.leaseYears(l, on) >= 5) out.warn.push('Beş yılı dolan sözleşmede anlaşma yoksa kirayı hâkim belirler (TBK md. 344/3); kiracıyla yazılı anlaşın.'); return out; },
   // Talep ile ilan uyum puanı (0-100)
   score(r, p) {
     if (p.type !== r.type || !['aktif', 'opsiyon'].includes(p.status)) return 0;

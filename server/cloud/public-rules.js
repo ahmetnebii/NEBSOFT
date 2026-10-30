@@ -727,10 +727,11 @@ RULES.galeri = {
 
 // ---------- Emlak: ilan sitesi (ilan.html) — ilanlar, talep, yer gösterme, değerleme ----------
 RULES.emlak = {
+  settings: ['bizName', 'bizPhone', 'bizAddress', 'city', 'whatsapp', 'commission', 'rentCommission', 'vatPct', 'yetkiNo', 'sorumlu', 'logo', 'email'],
   pub: {
-    props: { where: (p) => ['aktif', 'opsiyon'].includes(p.status), omit: ['owner', 'ownerPhone', 'commission', 'keyInfo', 'internal', 'notes', 'minPrice'] },
+    props: { where: (p) => ['aktif', 'opsiyon'].includes(p.status), omit: ['owner', 'ownerPhone', 'ownerTc', 'authNo', 'authEnd', 'eidsEnd', 'offers', 'priceHist', 'portals', 'closedAt', 'commission', 'keyInfo', 'internal', 'notes', 'minPrice'] },
     agents: { fields: ['id', 'name', 'phone', 'color', 'photo', 'title'] },
-    deals: { fields: ['id'] }, // yalnızca "satılan ilan" sayacı için
+    deals: { where: (d) => !d.cancelled, fields: ['id'] }, // yalnızca "satılan ilan" sayacı için
   },
   write: {
     requests: { ins: I({ name: 'str:80', phone: 'phone', type: 'enum:satilik|kiralik', cat: 'str:30', district: 'str:60?', rooms: 'str:20?', budgetMax: 'num:0:1e10?', m2Min: 'num:0:1e6?', note: 'str:600?', agent: 'str:40?' }, { status: 'aktif', source: 'web' }, leadLimit('requests')) },
