@@ -72,7 +72,7 @@ module.exports = {
   kiralama: { kanca: 'Hangi araç boşta, hangi sözleşme açık, tek bakışta görebiliyor musunuz? Bu videoda Araç Kiralama programıyla ilk kiralamayı yapıyoruz.',
     gorevler: [['Filo', ['**Araçlar** sayfasında aracı ve günlük fiyatı girin.', '**Müsaitlik Takvimi** sayfasında boş günleri görün.', 'Bakım giderlerini **Bakım & Masraf** sayfasına yazın.']],
       ['Kiralama', ['**Müşteriler** sayfasında **Yeni müşteri** ekleyin.', '**Kiralamalar** sayfasında **Yeni** düğmesine basın.', 'Tarih ve aracı seçip kaydedin.']],
-      ['Teslim ve iade', ['Kaydı açıp **Teslim** adımını yapın.', 'Kiracı imzasını alın.', 'Dönüşte **İade** ve **Kalan tahsilat** adımlarını tamamlayın.']]],
+      ['Teslim ve iade', ['Kaydı açıp **Teslim** adımını yapın.', 'Kiracı imzasını alın.', 'Dönüşte **İade** ve **Tahsilat** adımlarını tamamlayın.']]],
     ipucu: 'Kiralama kaydından araç kiralama sözleşmesini yazdırıp imzalatabilirsiniz.',
     sss: [['Bugün çıkan araçları nasıl görürüm?', '**Özet** sayfası günün teslim ve iadelerini gösterir.'], ['Bakım kaydı nereye girilir?', '**Bakım & Masraf** sayfasına.'], ['Raporlar nerede?', '**Raporlar** sayfasında.']] },
   site: { kanca: 'Aidat listesi, giderler ve duyurular dağınık mı? Bu videoda Apartman ve Site Yönetimi programıyla ilk aidatı tahakkuk ettiriyoruz.',
