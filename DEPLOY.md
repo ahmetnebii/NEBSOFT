@@ -201,6 +201,8 @@ Tanıtım sitelerinin metinlerini değiştirdiyseniz: `node site/tools/build-sit
 - [ ] HTTPS zorunlu (HTTP → HTTPS yönlendirmesi). `TRUST_PROXY=1` yalnızca nginx arkasında kullanılıyor.
 - [ ] MySQL kullanıcısı yalnızca kendi veritabanına yetkili (sihirbazın ürettiği SQL bunu yapar). Root kullanılmıyor.
 - [ ] Süper yönetici şifresi en az 12 karakter. Her personelin kendi hesabı var.
+- [ ] Tüm yöneticiler **Yöneticiler → İki adımlı giriş** ile doğrulama uygulamasını açtı, kurtarma kodlarını sakladı.
+  Telefonunu ve kodlarını kaybeden yönetici için sunucuda, servis ortam değişkenleriyle: `node scripts/totp-sifirla.js --eposta <adres> --evet`
 - [ ] Gece yedekleri alınıyor ve geri yükleme bir kez denendi.
 - [ ] `sudo journalctl -u nebsoft` günlükleri düzenli kontrol ediliyor.
 

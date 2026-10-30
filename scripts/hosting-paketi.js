@@ -7,7 +7,7 @@ const path = require('path');
 const ROOT = path.join(__dirname, '..');
 const OUT = path.join(ROOT, 'yayin');
 // Çalışma anında gereken her şey burada: yeni bir üst klasör eklenirse bu listeye de yazılmalı
-const DOSYALAR = ['server.js', 'package.json', 'package-lock.json', 'index.html', 'sw.js', 'robots.txt', 'sunucu.json'];
+const DOSYALAR = ['server.js', 'package.json', 'package-lock.json', 'index.html', 'sw.js', 'robots.txt', 'sunucu.json', 'scripts/totp-sifirla.js'];
 const KLASORLER = ['admin', 'apps', 'assets', 'config', 'content', 'core', 'market', 'server', 'site'];
 // Klasörlerin içinden atılanlar (kök klasöre göre)
 // site/src/site.config.js sunucu tarafından çalışma anında okunur, pakette kalır

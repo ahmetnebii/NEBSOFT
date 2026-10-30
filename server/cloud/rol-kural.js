@@ -10,6 +10,8 @@
 //   kapsam      { kok, alan, bagli, bosSerbest, anahtar }  yalnızca hesabın departmanına ait kayıtlar: kok koleksiyonu alan=departman; bagli koleksiyonda kişiye
 //               bağlı alan (bosSerbest'teki koleksiyonda kişisi boş kayıt açıktır: elle adı yazılmış belge); anahtar koleksiyonda "<kişi>|<tarih>" biçimli anahtar.
 //               Departmanı olmayan hesap kimseyi görmez (arayüz davranışı).
+//   onayli      { koleksiyon: ['alan'] }  var olan kayıtta yetkili onayı (NS.approve) belirteci olmadan değişmez: sunucudaki değer geri konur, ek.reddedilen'e yazılır
+//   onayRol     ['rol']                   belirteci alabilecek program kullanıcıları (varsayılan yalnızca admin); istemcinin bildirdiği rol dikkate alınmaz
 //   sonra       (sonuc, sunucudaki) => void  programa özel tutarlılık adımı
 // Her kuralda ek olarak: users[].pin gizlenir ve users korunur, _meta.ownerPin gizlenir, _settings değişmez, işlem geçmişi (_log) okunmaz ve yalnızca eklenir.
 // Yeni program için RULES'e kayıt eklemek yeterlidir; diğer programların rolleri yalnızca arayüzdedir.
@@ -20,7 +22,8 @@ const RULES = {
   // apps/eczane/app.js: Kurum Mutabakatı ve Kontrole Tabi Defter yalnızca eczacıda; hasta silme eczacıda.
   // Kalfanın satışı deftere kayıt ekler (ctrl), bu yüzden defter "ekle" kuralındadır. Eczacı PIN'iyle onaylanan iade defterde "iade" olarak işaretlenir (sonra).
   // Alerji, kronik ilaç, TC ve satış geçmişi satış ekranında gerekir, açık kalır.
-  eczane: { kalfa: { ad: 'Kalfa / teknisyen', kapat: ['claims'], ekle: ['ctrl'], silemez: ['patients'], sonra: (o) => { const iptal = new Set(dizi(o.sales).filter((s) => s && s.canceled).map((s) => s.no)); if (iptal.size && Array.isArray(o.ctrl)) o.ctrl = o.ctrl.map((c) => (c && iptal.has(c.saleNo) && !c.canceled ? { ...c, canceled: true } : c)); } } },
+  // İade (sales.canceled) ve fiyat (drugs.price) ekranda eczacı PIN'i ister; onayli bu kuralı sunucuda da zorlar. Satış kaydı silinemez: iade silerek taklit edilemesin.
+  eczane: { kalfa: { ad: 'Kalfa / teknisyen', kapat: ['claims'], ekle: ['ctrl'], silemez: ['patients', 'sales'], onayli: { sales: ['canceled'], drugs: ['price'] }, sonra: (o) => { const iptal = new Set(dizi(o.sales).filter((s) => s && s.canceled).map((s) => s.no)); if (iptal.size && Array.isArray(o.ctrl)) o.ctrl = o.ctrl.map((c) => (c && iptal.has(c.saleNo) && !c.canceled ? { ...c, canceled: true } : c)); } } },
   // apps/veteriner/app.js: canAct → "muayene, aşı ve tedavi kaydı hekimindir; asistan görür, onam alır, satış yapar". Asistan muayene ve aşıyı görür, gizlenecek alan yoktur;
   // kayıtları değiştiremez. Aşı hatırlatma SMS'i asistana açık olduğu için hatırlatma işareti yazılabilir. Sahip silme yöneticide; hayvan silme ekranı yoktur.
   veteriner: { asistan: { ad: 'Asistan', saltOkunur: ['visits', 'vaccines'], izinli: { vaccines: ['reminded', 'remindTest'] }, silemez: ['owners', 'pets'] } },
@@ -94,6 +97,15 @@ function geriKoy(app, rol, gelen, sunucudaki, ek = {}) {
     const var_ = new Set(o[c].map((x) => x && x.id)); const eksik = s[c].filter((r) => nesne(r) && !var_.has(r.id));
     if (eksik.length) o[c] = [...o[c], ...eksik];
   }
+  // Yetkili onayı: belirteç yoksa korunan alan sunucudaki değerine döner. Yeni kayıt kapsam dışıdır (ilk fiyat onay istemez).
+  for (const [c, alanlar] of Object.entries(k.onayli || {})) {
+    if (!Array.isArray(o[c]) || !Array.isArray(s[c])) continue; const m = idHarita(s[c]);
+    o[c] = o[c].map((r) => {
+      const es = nesne(r) ? m.get(r.id) : null; if (!es) return r; const degisen = alanlar.filter((f) => JSON.stringify(r[f]) !== JSON.stringify(es[f])); if (!degisen.length) return r;
+      if (ek.onay) { ek.onayKullanildi = true; return r; }
+      const n = { ...r }; degisen.forEach((f) => { if (f in es) n[f] = es[f]; else delete n[f]; }); ek.reddedilen = [...new Set([...(ek.reddedilen || []), c])]; return n;
+    });
+  }
   const ids = kapsamId(k, s, ek);
   if (ids) {
     const { bagli = {}, anahtar = [] } = k.kapsam;
@@ -125,6 +137,8 @@ function rolCoz(app, metin) {
   if (!kuralBul(app, rol)) return { hata: true };
   return { rol, dept: typeof r[`${app}_dept`] === 'string' ? r[`${app}_dept`] : '' };
 }
+// Bu rolde yetkili onayı belirteci üretilir mi, üretilirse PIN sahibi hangi rollerde olmalı
+const onayRolleri = (app, rol) => { const k = kuralBul(app, rol); return k && k.onayli ? k.onayRol || ['admin'] : null; };
 const kapsamli = (app, rol) => { const k = kuralBul(app, rol); return !!(k && k.kapsam); };
 // Tek programın rolünü günceller. rol boşsa kayıt kalkar; hiç kayıt kalmazsa null döner (tam yetki).
 function rolYaz(metin, app, rol, dept) {
@@ -149,4 +163,4 @@ function rollerTemizle(roller) {
 const programlar = () => Object.entries(RULES).map(([app, roller]) => ({ app, roller: Object.entries(roller).map(([id, k]) => ({ id, ad: k.ad || id, departman: !!k.kapsam })) }));
 const rolVar = (app, rol) => typeof rol === 'string' && !!kuralBul(app, rol) && rol !== '*';
 
-module.exports = { RULES, ORTAK, filtrele, geriKoy, rolCoz, rolYaz, rollerTemizle, rolVar, programlar };
+module.exports = { RULES, ORTAK, filtrele, geriKoy, rolCoz, rolYaz, rollerTemizle, rolVar, programlar, onayRolleri };

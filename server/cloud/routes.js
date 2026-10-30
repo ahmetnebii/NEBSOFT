@@ -17,6 +17,7 @@ const analitik = require('./analitik');
 const destek = require('./destek');
 const indirim = require('./indirim');
 const kural = require('./rol-kural');
+const totp = require('./totp');
 
 const uid = auth.uid;
 const now = () => new Date();
@@ -251,7 +252,22 @@ route('POST', '/api/auth/register', { auth: 'none', limit: ['reg', 5, 3600e3] },
   return { ok: true };
 });
 route('POST', '/api/auth/login', { auth: 'none', limit: ['login', 10, 600e3] }, async (c) => {
+  // Uygulama kodu adımı: şifre önceki adımda doğrulandı, bilet şifreye bağlıdır
+  if (c.body.totpTicket) {
+    const b = await totp.biletOku(c.body.totpTicket); if (!b) throw err(400, 'Girişin süresi doldu. Yeniden giriş yapın.');
+    const s = await totp.dogrula(b.user.id, c.body.code, { kurtarma: true });
+    if (!s.ok) { await audit({ ...c, user: b.user }, 'Hatalı iki adımlı kod', b.user.email); throw err(s.kilit ? 429 : 401, s.hata); }
+    await db.q('UPDATE users SET failed=0, locked_until=NULL, last_login=?, last_ip=? WHERE id=?', [now(), c.ip, b.user.id]); await auth.createSession(c.req, c.res, b.user, b.remember);
+    await audit({ ...c, user: b.user }, s.tur === 'kurtarma' ? 'Giriş (kurtarma kodu)' : 'Giriş (uygulama kodu)', b.user.email);
+    return { ok: true, role: b.user.role, ...(s.tur === 'kurtarma' ? { kurtarmaKalan: s.kalan } : {}) };
+  }
   if (!sec.V.email(c.body.email) || typeof c.body.pass !== 'string') throw err(400, 'E-posta ve şifre gerekli');
+  // Uygulama kodu etkinse e-posta kodu istenmez; e-posta altyapısına da bağlı değildir
+  if (!c.body.ticket && await totp.epostaEtkin(c.body.email.toLowerCase().trim())) {
+    const r = await auth.check(c.body.email, c.body.pass); await audit({ ...c, user: r.user }, r.ok ? 'Giriş (uygulama kodu bekleniyor)' : 'Hatalı giriş', c.body.email); if (!r.ok) throw err(401, r.error);
+    if (totp.kilitli(await totp.kayit(r.user.id))) throw err(429, totp.KILIT_HATA);
+    return { ok: true, needTotp: true, totpTicket: totp.bilet(r.user, !!c.body.remember) };
+  }
   const mc = (await mail.ready()) ? await mail.getConfig() : null;
   // Platform yöneticisi her işletmenin verisine erişir: müşteri ayarından bağımsız, e-posta kurulu ise kod zorunlu
   const yonetici = mc && !mc.twoFactorLogin && !!(await db.one("SELECT id FROM users WHERE email=? AND role IN ('admin','superadmin')", [c.body.email.toLowerCase().trim()]));
@@ -265,6 +281,7 @@ route('POST', '/api/auth/login', { auth: 'none', limit: ['login', 10, 600e3] }, 
     }
     const v = await mail.checkCode(c.body.ticket, c.body.code, 'login'); if (!v.ok) throw err(400, v.error);
     const u = await db.one("SELECT * FROM users WHERE id=? AND status='active'", [v.meta.uid]); if (!u) throw err(400, 'Hesap bulunamadı');
+    if (await totp.etkin(u.id)) throw err(400, 'Bu hesapta uygulama kodu gerekli. Yeniden giriş yapın.'); // kod, koruma açılmadan önce alınmış olabilir
     await db.q('UPDATE users SET failed=0, locked_until=NULL, last_login=?, last_ip=? WHERE id=?', [now(), c.ip, u.id]); await auth.createSession(c.req, c.res, u, !!v.meta.remember);
     await audit({ ...c, user: u }, 'Giriş (kodla)', u.email); return { ok: true, role: u.role };
   }
@@ -323,9 +340,11 @@ route('POST', '/api/auth/reset', { auth: 'none', limit: ['reset', 10, 600e3] }, 
   const v = await mail.checkCode(c.body.ticket, c.body.code, 'reset'); if (!v.ok) throw err(400, v.error);
   const u = await db.one("SELECT * FROM users WHERE email=? AND status='active'", [v.email]); if (!u) throw err(400, 'Hesap bulunamadı');
   await db.q('UPDATE users SET pass=?, failed=0, locked_until=NULL WHERE id=?', [await auth.hash(c.body.pass), u.id]); await db.q('DELETE FROM sessions WHERE user_id=?', [u.id]);
-  await auth.createSession(c.req, c.res, u, true); await audit({ ...c, user: u }, 'Şifre e-postayla sıfırlandı', u.email);
+  // E-postayı ele geçiren kişi uygulama kodunu atlatamasın: iki adımlı hesapta sıfırlama oturum açmaz, normal giriş gerekir
+  const ikiAdim = await totp.etkin(u.id); if (!ikiAdim) await auth.createSession(c.req, c.res, u, true);
+  await audit({ ...c, user: u }, 'Şifre e-postayla sıfırlandı', u.email);
   mailTo(u.email, 'Şifreniz değiştirildi', { title: 'Şifreniz değiştirildi', intro: 'Hesabınızın şifresi az önce yenilendi ve diğer cihazlardaki oturumlar kapatıldı.', blocks: [{ type: 'note', tone: 'warn', text: 'Bu işlemi siz yapmadıysanız hemen bizimle iletişime geçin.' }] });
-  return { ok: true, role: u.role };
+  return { ok: true, role: u.role, ...(ikiAdim ? { girisGerekli: true } : {}) };
 });
 
 // Hazır ürün kataloğu (havuz + Open Food Facts); yerel demo modunda da çalışır
@@ -557,7 +576,7 @@ route('PUT', '/api/team/:id/rol', { auth: 'user', limit: ['teamrol', 120, 3600e3
 route('DELETE', '/api/team/:id', { auth: 'user' }, async (c) => {
   if (c.params.id === c.user.id) throw err(400, 'Kendinizi silemezsiniz');
   await ownerOnly(c);
-  const r = await db.q('DELETE FROM users WHERE id=? AND tenant_id=?', [c.params.id, c.user.tenant_id || '-']); if (r.affectedRows) await db.q('DELETE FROM sessions WHERE user_id=?', [c.params.id]);
+  const r = await db.q('DELETE FROM users WHERE id=? AND tenant_id=?', [c.params.id, c.user.tenant_id || '-']); if (r.affectedRows) { await db.q('DELETE FROM sessions WHERE user_id=?', [c.params.id]); await db.q('DELETE FROM user_totp WHERE user_id=?', [c.params.id]); }
   await audit(c, 'Ekip üyesi silindi', c.params.id); return { ok: true };
 });
 route('GET', '/api/tickets', { auth: 'user' }, async (c) => ({ ok: true, destek: destekDurumu(await tenantOf(c.user)), paketler: destek.pub(), tickets: (await db.q('SELECT * FROM tickets WHERE tenant_id=? ORDER BY updated DESC LIMIT 100', [c.user.tenant_id || '-'])).map((t) => ({ ...t, messages: J(t.messages, []), sla: destek.state(t) })) }));
@@ -630,7 +649,8 @@ route('PUT', '/api/data/:app', { auth: 'user', bodyMax: 20e6, limit: ['data', 60
     if (!srv && prog) throw err(403, 'Programı önce hesap sahibi açmalıdır');
   }
   // Rolün yazamadığı alanlar, sürümü base'e eşit olan satırdan geri konur; UPDATE aynı sürüme koşulludur. Gizli bilgi mührü bundan sonra uygulanır (şifreli değerler aynen kalır).
-  const yaz = k ? kural.geriKoy(app, k.rol, data, srvDoc, { dept: k.dept }) : data;
+  const onay = prog && c.body.onay ? pinler.onayOku(c.body.onay, c.user.tenant_id, app, c.user.id) : null; const ek = { dept: k && k.dept, onay: !!onay };
+  const yaz = k ? kural.geriKoy(app, k.rol, data, srvDoc, ek) : data;
   // Kimlik bilgileri şifreli saklanır; programın geri gönderdiği yer tutucular mevcut şifreli değeri korur
   const text = await belge.kapat(c.user.tenant_id, app, JSON.stringify(secrets.seal(app, pinler.yazimda(c.user.tenant_id, app, yaz, srvDoc), srvDoc)));
   if (!srv) {
@@ -640,13 +660,15 @@ route('PUT', '/api/data/:app', { auth: 'user', bodyMax: 20e6, limit: ['data', 60
   }
   const r = await db.q('UPDATE app_data SET data=?, version=version+1, updated=?, updated_by=? WHERE tenant_id=? AND app=? AND version=?', [text, now(), c.user.id, c.user.tenant_id, app, base]);
   if (!r.affectedRows) throw err(409, 'Sürüm çakışması', await conflict(c.user.tenant_id, app, k));
+  if (ek.onayKullanildi) pinler.onayHarca(onay);
+  if (ek.reddedilen) await audit(c, 'Yetkili onayı olmadan değişiklik reddedildi', `${app} · ${ek.reddedilen.join(', ')}`);
   // Saatlik anlık görüntü (geri dönüş için son 48 saat)
   const last = await db.one('SELECT at FROM app_data_history WHERE tenant_id=? AND app=? ORDER BY id DESC LIMIT 1', [c.user.tenant_id, app]);
   if (!last || now() - new Date(last.at) > 3600e3) {
     await db.q('INSERT INTO app_data_history (tenant_id, app, version, data, at) VALUES (?,?,?,?,?)', [c.user.tenant_id, app, base + 1, text, now()]);
     await db.q('DELETE FROM app_data_history WHERE tenant_id=? AND app=? AND at < ?', [c.user.tenant_id, app, addDays(now(), -2)]);
   }
-  return { ok: true, version: base + 1 };
+  return { ok: true, version: base + 1, ...(ek.onayKullanildi ? { onayKullanildi: true } : {}), ...(ek.reddedilen ? { onayRed: ek.reddedilen } : {}) };
 });
 async function conflict(tid, app, k) { const r = await db.one('SELECT data, version FROM app_data WHERE tenant_id=? AND app=?', [tid, app]); return { code: 'conflict', data: r ? gorunum(app, k, await belge.oku(tid, app, r)) : null, version: r ? r.version : 0, ...rolAlani(k) }; }
 // Yetkili onayı: PIN'ler rolü olan hesaba inmediği için karşılaştırma burada yapılır. Hesap + program başına 5 hatada 15 dakika kilit; PIN hiçbir kayda yazılmaz.
@@ -668,7 +690,9 @@ route('POST', '/api/data/:app/pin', { auth: 'user', limit: ['pin', 30, 60e3] }, 
     throw err(403, 'PIN hatalı');
   }
   pinHata.delete(key); if (!uidIn) await audit(c, 'Yetkili PIN onaylandı', `${app} · ${hit.id}`);
-  return { ok: true, user: { id: hit.id, name: hit.name, role: hit.role } };
+  // Rolü olan hesapta korunan alan yalnızca bu belirteçle değişir. PIN sahibinin rolüne sunucu kuralı karar verir, istemcinin gönderdiği roller değil.
+  const hr = !uidIn ? await hesapRolu(c.user, app) : null; const izin = hr && !hr.ortak && !hr.hata ? kural.onayRolleri(app, hr.rol) : null;
+  return { ok: true, user: { id: hit.id, name: hit.name, role: hit.role }, ...(izin && izin.includes(hit.role) ? { onay: pinler.onayUret(c.user.tenant_id, app, c.user.id, hit.id) } : {}) };
 });
 
 // Hesap sahibi yönetici PIN'ini unutursa: hesap şifresiyle yeni PIN belirler. Şifre yalnızca doğrulanır, hiçbir kayda yazılmaz.
@@ -789,7 +813,7 @@ A('POST', '/tenants/:id/license', async (c) => {
   await db.q('INSERT INTO licenses (id, tenant_id, product, plan, period, status, start, end, lic_key) VALUES (?,?,?,?,?,?,?,?,?) ON DUPLICATE KEY UPDATE status=VALUES(status), end=VALUES(end)', [uid(), c.params.id, pid, Number(c.body.plan) || 1, 'aylik', c.body.trial ? 'deneme' : 'aktif', now(), addDays(now(), days), licKey(pid)]);
   await audit(c, 'Lisans tanımlandı', `${pid} ${days} gün`, c.params.id); return { ok: true };
 });
-A('GET', '/users', async () => ({ ok: true, users: await db.q("SELECT id, email, name, role, status, last_login, last_ip, created FROM users WHERE role IN ('admin','superadmin') ORDER BY created") }));
+A('GET', '/users', async () => ({ ok: true, users: await db.q("SELECT u.id, u.email, u.name, u.role, u.status, u.last_login, u.last_ip, u.created, COALESCE(t.enabled, 0) AS totp FROM users u LEFT JOIN user_totp t ON t.user_id=u.id WHERE u.role IN ('admin','superadmin') ORDER BY u.created") }));
 A('POST', '/users', async (c) => {
   if (c.user.role !== 'superadmin') throw err(403, 'Yalnız süper yönetici yönetici ekleyebilir');
   const b = c.body; if (!sec.V.email(b.email) || !sec.V.str(b.name, 120, 2)) throw err(400, 'Ad ve e-posta gerekli');
