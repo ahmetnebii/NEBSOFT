@@ -1,6 +1,6 @@
 // Arama motoru görünürlüğü ve "kendi kendini pazarlayan" sistem:
 //  • Alan adı yönetim panelindeki "Site adresi" ayarından gelir (tanıtım sitelerindeki yer tutucu sunarken değiştirilir)
-//  • /sitemap.xml dinamiktir: site/sitemap.xml (ürün siteleri, /programlar, /fiyatlar/, yasal metinler, /rehber/) + NEBSOFT kullanan her işletmenin herkese açık sayfası (/t/<işletme>/)
+//  • /sitemap.xml dinamiktir: site/sitemap.xml (ürün siteleri, /programlar, /paketler/, /fiyatlar/, yasal metinler, /rehber/) + NEBSOFT kullanan her işletmenin herkese açık sayfası (/t/<işletme>/)
 //  • /t/<işletme>/ : yayındaki işletme sitesi (core/bizsite.js) veya yalnızca online hizmet bağlantılarını gösteren noindex yalın sayfa
 //  • /t/<işletme>/hizmet/<slug>/ ve /t/<işletme>/sitemap.xml : hizmet sayfaları ve işletme site haritası (kendi alan adında kökten)
 //  • IndexNow: yeni/değişen adresler Bing, Yandex, Seznam vb. arama motorlarına anında bildirilir
@@ -11,6 +11,7 @@ const db = require('./db');
 const sec = require('./security');
 const { R, site, valid, J, syncCatalog } = require('./routes');
 const cat = require('./catalog');
+const paket = require('./paket');
 const bizsite = require('../../core/bizsite');
 const analitik = require('./analitik');
 const tlf = (n) => new Intl.NumberFormat('tr-TR').format(n);
@@ -59,6 +60,8 @@ async function rewrite(text, req) {
     // Arama motoru şeması (JSON-LD) da aynı fiyatı göstersin
     const pid = (text.match(/data-p="([a-z]+):\d"/) || [])[1]; const pr = pid && ov[pid] && ov[pid].prices;
     if (pr) text = text.replace(/"lowPrice":\d+(\.\d+)?/, `"lowPrice":${pr[0]}`).replace(/"highPrice":\d+(\.\d+)?/, `"highPrice":${pr[2]}`); }
+  // Hazır paket tutarları: katalog ve toplu indirim kuralından o anki değer yazılır
+  if (text.includes('data-pk="')) { try { await syncCatalog(); } catch (e) { /* yok */ } text = text.replace(/data-pk="([a-z0-9-]+):(\d):(liste|net|yuzde)">[^<]*</g, (m, id, i, alan) => { const pk = paket.bul(id); const f = pk && paket.fiyat(pk).planlar[i]; return f ? `data-pk="${id}:${i}:${alan}">${alan === 'yuzde' ? (f.aylik.indirim ? f.aylik.indirim.yuzde : 0) : paket.yazi(f.aylik[alan])}<` : m; }); }
   // Analitik yalnızca bulut modunda ve açıksa yüklenir: rıza bandı ve olay gönderimi core/olay.js içindedir (kaynak dosyalar değişmez)
   if (await analitik.acik().catch(() => false)) {
     const pid = (text.match(/data-p="([a-z]+):\d"/) || [])[1]; const body = text.lastIndexOf('</body>'); const foot = text.lastIndexOf('</footer>');

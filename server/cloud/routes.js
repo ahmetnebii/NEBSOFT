@@ -16,6 +16,7 @@ const log = require('./log');
 const analitik = require('./analitik');
 const destek = require('./destek');
 const indirim = require('./indirim');
+const paket = require('./paket');
 const kural = require('./rol-kural');
 const totp = require('./totp');
 
@@ -495,6 +496,9 @@ route('POST', '/api/trial', { auth: 'user', limit: ['trial', 20, 3600e3] }, asyn
   return { ok: true, license: await db.one('SELECT * FROM licenses WHERE tenant_id=? AND product=?', [c.user.tenant_id, pid]) };
 });
 route('POST', '/api/orders/quote', { auth: 'none', limit: ['quote', 120, 60e3] }, async (c) => { const p = await fiyatla(c.body); return { ok: true, coupon: p.coupon, kuponGirildi: p.kuponGirildi, lines: p.lines, subtotal: p.subtotal, discount: p.discount, indirim: p.indirim, vat: p.vat, total: p.total, olcut: p.olcut, kurumsal: p.kurumsal, sonraki: p.sonraki }; });
+// Hazır paket fiyatları: katalog + toplu indirim kuralı, veritabanı gerekmez (yerel kipte de çalışır)
+route('GET', '/api/paketler', { auth: 'none', db: false, limit: ['quote', 120, 60e3] }, async () => ({ ok: true, paketler: paket.pub() }));
+route('GET', '/api/paketler/oner', { auth: 'none', db: false, limit: ['quote', 120, 60e3] }, async (c) => ({ ok: true, ...paket.oner({ sektor: c.query.get('sektor'), calisan: c.query.get('calisan'), ihtiyac: c.query.get('ihtiyac') }) }));
 // Sepetteki paket seçimi: rakamlar yapılandırmadan gelir. Oturum varsa işletmenin geçerli paketi de döner.
 route('GET', '/api/destek/paketler', { auth: 'none', db: false }, async (c) => {
   const out = { ok: true, paketler: destek.pub(), varsayilan: destek.load().varsayilan, turler: (indirim.load().kurumsal || {}).turler || {} };

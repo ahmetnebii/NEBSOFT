@@ -74,6 +74,13 @@
     if (ex) Object.assign(ex, { plan, period }); else c.items.push({ id: NS.uid(), pid, plan, period, qty: 1 });
     db.save(); drawNav(); toast(`${item(pid).name} sepete eklendi`, 'ok');
   }
+  // Hazır paket: içindeki programlar tek işlemle sepete girer. Tutar her zaman sunucudan, sepet kalemlerine göre gelir
+  function addPaket(pk, plan = 1, period = 'aylik') {
+    const c = cart();
+    if (c.items.some((i) => i.pid === 'bundle')) { toast('Sepetinizdeki Hepsi Bir Arada bu programları zaten kapsıyor', ''); return false; }
+    pk.programlar.forEach((pid) => { const ex = c.items.find((i) => i.pid === pid); if (ex) Object.assign(ex, { plan, period, paket: pk.id }); else c.items.push({ id: NS.uid(), pid, plan, period, qty: 1, paket: pk.id }); });
+    db.save(); drawNav(); toast(`${pk.ad} paketi sepete eklendi (${pk.programlar.length} program)`, 'ok'); return true;
+  }
   function cartTotals() {
     const c = cart();
     const lines = c.items.map((i) => { const p = item(i.pid); return { ...i, p, unit: price(p, i.plan, i.period), line: price(p, i.plan, i.period) * (i.qty || 1) }; });
@@ -94,7 +101,7 @@
     if (EMBED) { document.body.innerHTML = '<main id="page"></main>'; document.body.classList.add('mk-embed'); return; }
     document.body.innerHTML = `<header class="mk-nav"><div class="mk-wrap">
         <a class="mk-logo" href="#/">${NS.logoMark(LOGO(), 36)}${brandName()}</a>
-        <nav class="mk-links" id="links"><a href="/programlar" data-l="urunler">Ürünler</a><a href="/fiyatlar/" data-l="fiyatlar">Fiyatlar</a><a href="/rehber/">Rehber</a><a href="/araclar">Ücretsiz araçlar</a><a href="#/sektorler" data-l="sektorler">Sektörler</a><a href="#/indir" data-l="indir">Masaüstü & Mobil</a><a href="#/iletisim" data-l="iletisim">İletişim</a><div class="mk-only-m" id="accm"></div></nav>
+        <nav class="mk-links" id="links"><a href="/programlar" data-l="urunler">Ürünler</a><a href="/paketler/" data-l="paketler">Paketler</a><a href="/fiyatlar/" data-l="fiyatlar">Fiyatlar</a><a href="/rehber/">Rehber</a><a href="/araclar">Araçlar</a><a href="#/sektorler" data-l="sektorler">Sektörler</a><a href="#/indir" data-l="indir">Masaüstü & Mobil</a><a href="#/iletisim" data-l="iletisim">İletişim</a><div class="mk-only-m" id="accm"></div></nav>
         <span class="grow mk-hide-m"></span>
         <button class="btn ghost icon" data-theme title="Tema" data-theme-ico>${icon(NS.getTheme() === 'dark' ? 'sun' : 'moon')}</button>
         <a class="btn ghost icon cart-btn" href="#/sepet" title="Sepet">${icon('cart')}<span class="cnt hide" id="cc"></span></a>
@@ -105,7 +112,7 @@
       <footer class="mk-foot"><div class="mk-wrap"><div class="cols">
         <div><a class="mk-logo" href="#/">${NS.logoMark(LOGO(), 36)}${brandName()}</a><p class="muted small mt">Türkiye'deki işletmeler için bulut tabanlı işletme yazılımları. Kurulum yok, taahhüt yok.</p><p class="small mt">${icon('phone')} ${esc(S().phone)}<br>${icon('mail')} ${esc(S().email)}<br>${icon('map')} ${esc(S().address)}</p></div>
         <div><h4>Ürünler</h4>${products().filter((p) => p.ready).map((p) => `<a href="${urunHref(p)}">${esc(p.name)}</a>`).join('')}<a href="/programlar">Tüm ürünler →</a></div>
-        <div><h4>Kurumsal</h4><a href="#/indir">Masaüstü sürümünü indir</a><a href="/fiyatlar/">Fiyatlandırma</a><a href="/rehber/">Rehber</a><a href="#/sektorler">Sektörler</a><a href="#/yardim">Yardım merkezi</a><a href="#/iletisim">İletişim</a><a href="#/hesabim">Müşteri paneli</a><a href="admin/">Yönetim paneli</a></div>
+        <div><h4>Kurumsal</h4><a href="#/indir">Masaüstü sürümünü indir</a><a href="/paketler/">Hazır paketler</a><a href="/fiyatlar/">Fiyatlandırma</a><a href="/rehber/">Rehber</a><a href="#/sektorler">Sektörler</a><a href="#/yardim">Yardım merkezi</a><a href="#/iletisim">İletişim</a><a href="#/hesabim">Müşteri paneli</a><a href="admin/">Yönetim paneli</a></div>
         <div><h4>Yasal</h4><a href="/kvkk/">KVKK Aydınlatma</a><a href="/mesafeli-satis/">Mesafeli Satış Sözleşmesi</a><a href="/iade/">İptal ve İade</a><a href="/gizlilik/">Gizlilik Politikası</a><a href="/cerez/">Çerez Politikası</a>${CL && CL.analitik ? '<a href="#" data-olay-tercih>Analitik tercihleri</a>' : ''}</div>
       </div><hr><div class="row between small faint"><span>© ${new Date().getFullYear()} ${esc(S().siteName)} Yazılım. Tüm hakları saklıdır.</span></div></div></footer>`;
     on(document.body, 'click', '[data-theme]', NS.toggleTheme);
@@ -306,6 +313,8 @@
         <div class="steps3">${[['Ücretsiz hesap açın', `Kısa bir formla kayıt olun. Hesabınız süresizdir; seçtiğiniz programın ${TRIAL()} günlük deneme lisansı hemen başlar.`], ['Verilerinizi aktarın', 'Ürün, müşteri ve stoklarınızı Excel ile yükleyin; takıldığınız yerde destek ekibimize yazın.'], ['Paketinizi seçin', 'Deneme bitince aylık ya da yıllık (2 ay bedava) paketinizi seçin; verileriniz olduğu gibi kalır.']].map(([h, p], i) => `<div class="card reveal hm-step"><span class="hm-step-n">${i + 1}</span><h3 class="mb">${h}</h3><p class="muted">${p}</p></div>`).join('')}</div>
       </div></section>
 
+      ${window.NB_PAKET.vitrin()}
+
       <section class="sec" style="padding-top:0"><div class="mk-wrap"><div class="bundle reveal">
         <div><span class="badge" style="background:rgba(255,255,255,.18);color:#fff;border:0">BİRDEN FAZLA İŞİNİZ Mİ VAR?</span><h2 class="mt">Hepsi Bir Arada</h2><p style="opacity:.9;margin-top:10px">Tüm ${esc(S().siteName)} programlarını tek abonelikle kullanın. Yeni çıkan programlar da otomatik olarak dahil.</p></div>
         <div class="center"><div class="old">${money(sum(ready, (p) => p.prices[1]))}/ay</div><div style="font-size:44px;font-weight:800;letter-spacing:-.03em">${money(prod('bundle').prices[1]).replace(',00', '')}<span style="font-size:16px;opacity:.8">/ay</span></div><button class="btn lg mt" data-bundle>${icon('cart')} Paketi sepete ekle</button></div>
@@ -423,6 +432,9 @@
     $$('.reveal', el).forEach((x) => x.classList.add('in'));
   }
 
+  // ---------- Hazır paketler (ekran: market/paket-ek.js) ----------
+  const paketCtx = () => ({ addPaket, addCart, prod, urunHref, plans: C.plans, bulut: () => !!CL, trial: TRIAL });
+
   // ---------- Fiyatlar ----------
   function pricingPage(el) {
     const ps = products();
@@ -443,7 +455,7 @@
     const t = cartTotals(); const ek = !!CL && !!window.NB_SEPET; // bulutta tutarlar sunucudan gelir, destek paketi ve toplu indirim de orada hesaplanır
     el.innerHTML = `<section class="sec" style="padding-top:40px"><div class="mk-wrap"><h1 class="mb">Sepetim</h1>${!t.lines.length && !(ek && cart().support) ? `<div class="card pad empty">${icon('cart')}<div>Sepetiniz boş</div><a class="btn primary mt" href="#/urunler">Ürünlere göz atın</a></div>` : `
       <div class="grid g-21"><div class="col" style="gap:16px;min-width:0">${t.lines.length ? `<div class="card">${t.lines.map((l) => `<div class="list-item" style="padding:16px 18px"><span class="avatar lg" style="background:${l.p.accent}22;color:${l.p.accent}">${icon(l.p.icon)}</span>
-          <div class="grow"><b>${esc(l.p.name)}</b><div class="row mt gap-s">${l.p.addon ? '<span class="badge acc">Aylık eklenti</span>' : `<select class="input" style="max-width:150px;height:32px" data-pl="${l.id}">${C.plans.map((pl, i) => `<option value="${i}" ${i === l.plan ? 'selected' : ''}>${pl.name}</option>`).join('')}</select>`}
+          <div class="grow"><b>${esc(l.p.name)}</b>${window.NB_PAKET.etiket(l.paket)}<div class="row mt gap-s">${l.p.addon ? '<span class="badge acc">Aylık eklenti</span>' : `<select class="input" style="max-width:150px;height:32px" data-pl="${l.id}">${C.plans.map((pl, i) => `<option value="${i}" ${i === l.plan ? 'selected' : ''}>${pl.name}</option>`).join('')}</select>`}
           <select class="input" style="max-width:170px;height:32px" data-pe="${l.id}"><option value="aylik" ${l.period === 'aylik' ? 'selected' : ''}>Aylık</option><option value="yillik" ${l.period === 'yillik' ? 'selected' : ''}>Yıllık (2 ay bedava)</option></select>
           <label class="small muted row nw">${ek ? 'Lisans' : 'Şube'} <input class="input" type="number" min="1" value="${l.qty || 1}" data-qt="${l.id}" style="width:64px;height:32px"></label></div></div>
           <div class="right"><b style="font-size:17px">${money(l.line)}</b><div class="small faint">${l.period === 'yillik' ? 'yıllık' : 'aylık'}</div></div><button class="btn ghost icon" data-rm="${l.id}">${icon('trash')}</button></div>`).join('')}</div>` : ''}${ek ? '<div id="sp-ek" class="col" style="gap:16px"></div>' : ''}</div>
@@ -991,9 +1003,9 @@
   }
 
   // ---------- Yönlendirme ----------
-  const ROUTES = { kayit: (el) => noAccountSystem(el), '': home, programlarim: appsPage, sifre: forgotPage, indir: downloadPage, giris: (el) => (me() ? (location.hash = '#/programlarim') : loginPage(el)), urunler: catalogPage, urun: productPage, fiyatlar: pricingPage, sektorler: sectorsPage, eklentiler: (el) => window.NB_EK.store(el, ekCtx()), websitem: (el) => (!CL || me() ? window.NB_EK.builder(el, ekCtx()) : (location.hash = '#/giris')), yardim: (el, p) => window.NB_YARDIM.sayfa(el, p), sepet: cartPage, odeme: checkoutPage, basarili: successPage, hesabim: accountPage, iletisim: contactPage, yasal: legalPage, yonetim: adminPage };
+  const ROUTES = { kayit: (el) => noAccountSystem(el), '': home, programlarim: appsPage, sifre: forgotPage, indir: downloadPage, giris: (el) => (me() ? (location.hash = '#/programlarim') : loginPage(el)), urunler: catalogPage, urun: productPage, paketler: (el) => window.NB_PAKET.liste(el, paketCtx()), paket: (el, p) => window.NB_PAKET.detay(el, p, paketCtx()), 'paket-sepet': (el, p) => window.NB_PAKET.sepet(p, paketCtx()), fiyatlar: pricingPage, sektorler: sectorsPage, eklentiler: (el) => window.NB_EK.store(el, ekCtx()), websitem: (el) => (!CL || me() ? window.NB_EK.builder(el, ekCtx()) : (location.hash = '#/giris')), yardim: (el, p) => window.NB_YARDIM.sayfa(el, p), sepet: cartPage, odeme: checkoutPage, basarili: successPage, hesabim: accountPage, iletisim: contactPage, yasal: legalPage, yonetim: adminPage };
   const ekCtx = () => ({ cloud: () => CL, addCart: (pid) => addCart(pid, 0, 'aylik'), me });
-  const TITLES = { yardim: 'Yardım merkezi', eklentiler: 'Eklenti Mağazası', websitem: 'Web sitem', programlarim: 'Programlarım', sifre: 'Şifremi unuttum', indir: 'Masaüstü & Mobil', giris: 'Giriş yap', urunler: 'Ürünler', fiyatlar: 'Fiyatlar', sektorler: 'Sektörler', sepet: 'Sepet', odeme: 'Ödeme', hesabim: 'Hesabım', iletisim: 'İletişim', yonetim: 'Yönetim' };
+  const TITLES = { yardim: 'Yardım merkezi', eklentiler: 'Eklenti Mağazası', websitem: 'Web sitem', programlarim: 'Programlarım', sifre: 'Şifremi unuttum', indir: 'Masaüstü & Mobil', giris: 'Giriş yap', urunler: 'Ürünler', paketler: 'Hazır Paketler', paket: 'Hazır paket', fiyatlar: 'Fiyatlar', sektorler: 'Sektörler', sepet: 'Sepet', odeme: 'Ödeme', hesabim: 'Hesabım', iletisim: 'İletişim', yonetim: 'Yönetim' };
   function route() {
     const [, r = '', p] = location.hash.match(/^#\/?([^/]*)\/?(.*)$/) || [];
     const fn = ROUTES[r] || home;

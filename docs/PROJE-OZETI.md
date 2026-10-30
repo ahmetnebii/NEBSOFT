@@ -38,7 +38,7 @@ Yazma yolları:
 | `server/cloud/` | Bulut API'si, aşağıda |
 | `server/connectors/` | Pazaryeri bağlayıcıları (Trendyol, n11) |
 | `server/test/` | Testler |
-| `market/`, `index.html` | Pazar yeri (hash yönlendirmeli tek sayfa), `market/catalog.js` ürün ve fiyat kaynağı |
+| `market/`, `index.html` | Pazar yeri (hash yönlendirmeli tek sayfa), `market/catalog.js` ürün ve fiyat kaynağı, `market/paketler.js` hazır paket listesi |
 | `site/` | Üretilen statik SEO sayfaları. Elle düzenleme: `site/src/`, `site/tools/` |
 | `admin/` | Platform yönetim paneli |
 | `config/` | `destek-paketleri.json`, `toplu-indirim.json` (örnek fiyatlar) |
@@ -67,6 +67,7 @@ Yazma yolları:
 | Ortak katalog | `server/cloud/katalog.js`, `katalog-api.js`, `docs/KATALOG-LISANS.md` |
 | Log ve analitik | `server/cloud/log.js`, `analitik.js`, `docs/LOG-YAPISI.md` |
 | Dış istek köprüsü | `server/cloud/bridge.js`, `/api/istek` |
+| Hazır paketler | `market/paketler.js`, `market/paket-ek.js`, `server/cloud/paket.js`, `site/src/paketler.js`, rapor `docs/HAZIR-PAKETLER.md` |
 | SEO | `site/tools/build-sites.js`, `site/src/products.js`, `server/cloud/seo.js`, `docs/SEO-KURALLARI.md` |
 | Ücretsiz araçlar | `site/src/araclar/<slug>.js`, `site/tools/build-araclar.js`, görsel ve PDF altyapısı `docs/ARACLAR-DOSYA.md` |
 | Rehber yazıları | `site/src/rehber/*.md` |

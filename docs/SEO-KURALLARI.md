@@ -11,6 +11,7 @@ Derleme sonrası: `node server/test/seo-sayfalar.test.js`. Yeni üst klasör ekl
 | Anahtar kelime adayları | `products.js` sonundaki `ANAHTAR` |
 | Yasal metin | `site/src/yasal/<ad>.md` (`kvkk`, `gizlilik`, `mesafeli-satis`, `iade`, `cerez`) |
 | Rehber yazısı | `site/src/rehber/<slug>.md` |
+| Hazır paket | `market/paketler.js` (liste) + `site/src/paketler.js` (metin) |
 | Son değişiklik tarihi | `site/src/lastmod.json` (üretici yazar, elle değiştirmeyin) |
 
 Rehber dosyası biçimi:
@@ -66,7 +67,7 @@ Kaynak `site/src/araclar/<slug>.js`, derleme `node site/tools/build-araclar.js`,
 
 ## Kalite kontrolü (noindex)
 
-Üretici her sayfayı denetler. Ana içerik 120 kelimenin (rehberde 200) altındaysa ya da başlık, açıklama veya H1 eksikse sayfaya `noindex,follow` eklenir, sayfa `sitemap.xml` dışında kalır ve derleme çıktısında `!` ile uyarılır. Sayfa yayında kalır, yalnızca dizine girmez.
+Üretici her sayfayı denetler. Ana içerik 120 kelimenin (rehberde 200, hazır pakette 220) altındaysa ya da başlık, açıklama veya H1 eksikse sayfaya `noindex,follow` eklenir, sayfa `sitemap.xml` dışında kalır ve derleme çıktısında `!` ile uyarılır. Sayfa yayında kalır, yalnızca dizine girmez.
 
 `noindex` sayfaları `robots.txt` ile kapatmayın: Google taramazsa `noindex` etiketini göremez ([Google, 2025-12-10](https://developers.google.com/search/docs/crawling-indexing/block-indexing)).
 
@@ -77,6 +78,7 @@ Kaynak `site/src/araclar/<slug>.js`, derleme `node site/tools/build-araclar.js`,
 | Hepsi | Organization, WebSite, BreadcrumbList |
 | Program | SoftwareApplication (AggregateOffer), FAQPage |
 | Rehber | BlogPosting, FAQPage (soru varsa) |
+| Hazır paket (sektör sayfası da budur) | ItemList, FAQPage. Fiyat şemaya yazılmaz |
 | Fiyatlar | FAQPage |
 | Yasal | WebPage |
 

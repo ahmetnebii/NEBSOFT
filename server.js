@@ -123,7 +123,7 @@ const SITES = new Set(fs.existsSync(path.join(ROOT, 'site')) ? fs.readdirSync(pa
 const DENY = /^\/(data|dosyalar|config|server|node_modules|site\/tools|site\/src|awesome-claude-design|docs|desktop|android|scripts|yayin|ic-araclar|\.[^/]*)(\/|$)|^\/(server\.js|sunucu\.json|package(-lock)?\.json|skills-lock\.json|baslat\.bat)$|\.(md|bat|sh|test\.js)$|\/\.[^/]+$/i;
 const LONG = /\.(jpg|jpeg|png|webp|svg|ico|woff2?)$/i;
 // Adresi sonda / ile biten statik sayfalar (program sayfaları ve /programlar eski biçimde kalır: sonda / yok)
-const SLASHED = new Set(['fiyatlar', 'kvkk', 'gizlilik', 'mesafeli-satis', 'iade', 'cerez', 'kayit', 'rehber']);
+const SLASHED = new Set(['fiyatlar', 'kvkk', 'gizlilik', 'mesafeli-satis', 'iade', 'cerez', 'kayit', 'rehber', 'paketler']);
 const GZ = /^(text\/|application\/(json|xml|manifest\+json)|image\/svg)/; // sıkıştırılacak türler
 const canGz = (req, type, size) => size >= 1024 && GZ.test(type) && /\bgzip\b/.test(String(req.headers['accept-encoding'] || ''));
 
@@ -205,9 +205,9 @@ function serve(req, res, p) {
   const q = req.url.includes('?') ? req.url.slice(req.url.indexOf('?')) : '';
   // Aynı sayfanın /site/... kopyası ayrı adres olarak görünmesin
   const dup = /^\/site\/([a-z0-9-]+)\/(?:([a-z0-9-]+)\/)?(index\.html)?$/.exec(p);
-  if (dup && SITES.has(dup[1]) && (!dup[2] || dup[1] === 'rehber')) { res.writeHead(301, { Location: `/${dup[1]}${dup[2] ? '/' + dup[2] : ''}${SLASHED.has(dup[1]) ? '/' : ''}${q}` }); return res.end(); }
+  if (dup && SITES.has(dup[1]) && (!dup[2] || dup[1] === 'rehber' || dup[1] === 'paketler')) { res.writeHead(301, { Location: `/${dup[1]}${dup[2] ? '/' + dup[2] : ''}${SLASHED.has(dup[1]) ? '/' : ''}${q}` }); return res.end(); }
   if (SLASHED.has(seg) && SITES.has(seg)) {
-    if (p === '/' + seg || /^\/rehber\/[a-z0-9-]+$/.test(p)) { res.writeHead(301, { Location: p + '/' + q }); return res.end(); }
+    if (p === '/' + seg || /^\/(rehber|paketler)\/[a-z0-9-]+$/.test(p)) { res.writeHead(301, { Location: p + '/' + q }); return res.end(); }
     p = '/site' + p;
   } else if (/^[a-z0-9-]+$/.test(seg) && SITES.has(seg)) {
     if (p === '/' + seg + '/') { res.writeHead(301, { Location: '/' + seg }); return res.end(); }
