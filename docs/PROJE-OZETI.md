@@ -57,7 +57,7 @@ Yazma yolları:
 | Entegrasyon, e-Belge | `core/integrations.js`, `core/integ-wizard.js`; doğrulanmamışlar `UNVERIFIED` listesinde |
 | API uçları | `server/cloud/routes.js` |
 | Rol kuralları | `server/cloud/rol-kural.js`, ekip ekranı `market/market.js` |
-| Belge şifreleme | `server/cloud/belge.js` (klinik, eczane, veteriner, ik, anaokulu, entegrasyon) |
+| Belge şifreleme | `server/cloud/belge.js` (klinik, eczane, veteriner, danisan, ik, anaokulu, entegrasyon) |
 | PIN | `server/cloud/pin.js`, istemci `pinKontrol` |
 | Kimlik bilgisi şifreleme | `server/cloud/secrets.js` |
 | Dosya deposu | `server/cloud/dosya.js`, `/f/<tenant>/<id>` |

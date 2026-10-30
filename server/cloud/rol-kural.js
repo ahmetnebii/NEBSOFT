@@ -51,6 +51,8 @@ function fabrikaMaliyet(o, s) {
     return v;
   });
 }
+// Danışan: kilitli seans notu değişmez ve silinmez. Ek yazmak serbesttir (adds)
+const notKilit = (o, s) => { if (!Array.isArray(o.notes)) return; const yeni = idHarita(o.notes); const kilit = dizi(s.notes).filter((n) => nesne(n) && n.locked); o.notes = o.notes.map((n) => { const e = nesne(n) ? kilit.find((k) => k.id === n.id) : null; return e ? { ...e, adds: dizi(n.adds) } : n; }); kilit.forEach((k) => { if (!yeni.has(k.id)) o.notes.push(k); }); };
 // Süresi geçmiş bilet iadesi: arayüzdeki gün farkı ile saat farkı yüzünden doğru işlem reddedilmesin diye bir gün pay bırakılır
 const biletGec = (t, s) => { const e = idHarita(s.events).get(t.event); const g = Number((nesne(s._settings) ? s._settings : {}).refundDays) || 0; return !!e && !!e.date && (new Date(e.date) - Date.now()) / 864e5 < g - 1; };
 const emlakYabanci = (r, b) => !eslesir(r, 'agent', b);
@@ -237,6 +239,12 @@ const RULES = {
     egitmen: { ad: 'Eğitmen', kisi: { kol: 'teachers', alan: 'teacher', baslik: 'Eğitmen', yok: 'Eğitmen seçin (seçilmezse grup görünmez)' }, kapat: ['payments', 'leads'], ekle: ['sms'], gizle: { enrolls: ['fee', 'installments'], teachers: ['rate'], trainees: ['email', 'note'] }, saltOkunur: ['teachers', 'courses', 'groups', 'trainees', 'certs'], silemez: ['enrolls', 'sessions'],
       satir: { groups: (g, b) => eslesir(g, 'teacher', b), sessions: (s, b) => eslesir(s, 'teacher', b), enrolls: (e, b) => b.ids('groups').has(e.group) } },
     kayit: { ad: 'Kayıt / Muhasebe', gizle: { teachers: ['rate'] }, saltOkunur: ['teachers', 'courses'] },
+  },
+  // apps/danisan: clinical() sekreterde kapalı: seans notu, ölçüm, plan ve sağlık alanları gitmez. Uzman yalnız kendi danışanını görür (myS). Danışan kaydı silinmez, pasife alınır.
+  danisan: {
+    uzman: { ad: 'Uzman', kisi: { kol: 'staff', alan: 'staff', baslik: 'Uzman', yok: 'Uzman seçin (seçilmezse danışan görünmez)' }, ekle: ['sms'], gizle: { staff: ['rate'] }, saltOkunur: ['staff', 'services'], silemez: ['clients', 'notes'], sonra: notKilit,
+      satir: { clients: (c, b) => eslesir(c, 'owner', b), appts: (a, b) => eslesir(a, 'staff', b), notes: (n, b) => b.ids('clients').has(n.client), measures: (m, b) => b.ids('clients').has(m.client), plans: (p, b) => b.ids('clients').has(p.client), packs: (p, b) => b.ids('clients').has(p.client), payments: (p, b) => b.ids('clients').has(p.client) } },
+    sekreter: { ad: 'Sekreter', kapat: ['notes', 'measures', 'plans'], gizle: { clients: ['anamnez', 'goal', 'meds', 'allergy'], staff: ['rate'] }, saltOkunur: ['staff', 'services'], silemez: ['clients'] },
   },
   // apps/fiyatrobotu: izleyici tüm ekranları görür, hiçbir şeyi değiştiremez (canEdit). Gizlenecek alan yoktur, yazma kapalıdır. Fiyat uzmanında yalnız menü farkı vardır, kural eklenmedi.
   fiyatrobotu: { izleyici: { ad: 'İzleyici', saltOkunur: ['products', 'listings', 'history', 'runs', 'channels', 'cargoOverride', 'comOverride', 'feeOverride', 'ratesOwn'] } },

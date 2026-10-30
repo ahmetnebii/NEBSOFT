@@ -262,6 +262,14 @@ window.CATALOG = {
       faq: [['Sertifika e-Devlet’te görünür mü?', 'Hayır. Program e-Devlet veya MEB sistemine bağlı değildir. Belge kurumun kendi belgesidir, resmî geçerlilik sağlamaz. Doğrulama sayfası yalnız kurum kaydını gösterir.'], ['Dershane veya etüt için uygun mu?', 'Sınıf ve deneme sınavı odaklı kurumlar için Kurs & Etüt programı daha uygundur. Bu program kısa dönemli, sertifikalı eğitimler içindir.']],
     },
     {
+      id: 'danisan', ready: false, cat: 'saglik', name: 'Danışan Takibi', tagline: 'Diyetisyen, psikolog ve fizyoterapist için seans ve ödeme', icon: 'heart', accent: '#0d9488',
+      prices: [449, 790, 1490], sectors: ['Diyetisyen', 'Psikolog', 'Fizyoterapist', 'Danışmanlık merkezi'],
+      desc: 'Danışan kartı, randevu, kilitli seans notu, ölçüm takibi, plan yazdırma, seans paketi ve ödeme. Satışa açılmadan önce hukuki inceleme gerekir.',
+      features: ['Danışan kartı ve onam imzası', 'Uzman takvimi ve çakışma kontrolü', 'Kilitlenebilir seans notu, kilitli nota yalnız ek', 'Kilo, bel ve ağrı ölçümü, gelişim grafiği', 'Beslenme ve egzersiz planı yazdırma', 'Seans paketi ve kalan seans', 'Sekreter sağlık bilgisini görmez, uzman yalnız kendi danışanını görür'],
+      modules: ['Randevular', 'Danışanlar', 'Seans Notları', 'Ölçümler', 'Planlar', 'Kasa & Bakiyeler', 'Uzmanlar'],
+      faq: [['e-Nabız veya reçete bağlantısı var mı?', 'Hayır. Program bir sağlık bilgi sistemi değildir.']],
+    },
+    {
       id: 'eczane', ready: false, extraDemos: [{ label: 'Reçetemi hazırla sayfasını aç', url: 'apps/eczane/recete.html' }], cat: 'saglik', name: 'Eczane', tagline: 'Reçeteli satış, SKT takibi ve muadil ilaç', icon: 'pill', accent: '#0d9488',
       prices: [1090, 1890, 3290], sectors: ['Eczane', 'Hastane eczanesi', 'Dermokozmetik mağazası'],
       desc: 'Karekodlu hızlı satış, reçete türüne göre hasta katkı payı, SKT (son kullanma tarihi) ve parti bazlı stok, etken maddeye göre muadil arama ve depo sipariş listesi.',

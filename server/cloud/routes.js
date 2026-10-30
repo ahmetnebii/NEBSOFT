@@ -612,7 +612,7 @@ route('GET', '/api/referral', { auth: 'user' }, async (c) => {
 });
 
 // Uygulama verisi (işletme bazlı; lisans kontrollü; iyimser sürüm kontrolüyle çakışma önleme)
-const HEALTH = ['klinik', 'eczane', 'veteriner']; const readLog = new Map();
+const HEALTH = ['klinik', 'eczane', 'veteriner', 'danisan']; const readLog = new Map();
 // Hesabın bu programdaki rolü her istekte veritabanından gelir (auth.current). Hesap sahibi ve yönetici kısıtlanamaz. Bozuk kayıt tam yetki sayılmaz.
 async function hesapRolu(u, app) {
   if (!u || u.role !== 'customer' || !u.tenant_id || !u.team_roles) return null;

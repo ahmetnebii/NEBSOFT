@@ -178,7 +178,7 @@ Bu noktadan sonra tüm uygulamalar, satış sitesi ve müşteri sayfaları bu My
 ```
 
 - `NEBSOFT_DATA` klasörünü (`config.enc`) ve `/etc/nebsoft.env` dosyasını (`NEBSOFT_SECRET`) **ayrıca** güvenli bir yere yedekleyin.
-- **Anahtar kaybolursa veri geri gelmez.** Klinik, eczane, veteriner, İK, anaokulu ve entegrasyon belgeleri veritabanında `NEBSOFT_SECRET` (yoksa `secret.key`) ile şifrelidir; personel PIN özetleri de bu anahtara bağlıdır. Veritabanı yedeği anahtar olmadan açılmaz. Anahtarı veritabanı yedeğiyle aynı yere koymayın.
+- **Anahtar kaybolursa veri geri gelmez.** Klinik, eczane, veteriner, danışan, İK, anaokulu ve entegrasyon belgeleri veritabanında `NEBSOFT_SECRET` (yoksa `secret.key`) ile şifrelidir; personel PIN özetleri de bu anahtara bağlıdır. Veritabanı yedeği anahtar olmadan açılmaz. Anahtarı veritabanı yedeğiyle aynı yere koymayın.
 - Anahtar değişimi: yeni değeri `NEBSOFT_SECRET`, eskisini `NEBSOFT_SECRET_ESKI` olarak verip sunucuyu başlatın. Belgeler açılışta yeni anahtara taşınır. Günlükte hata yoksa `NEBSOFT_SECRET_ESKI` değerini kaldırın. PIN özetleri eski anahtar kaldırılınca geçersiz olur: personel PIN'lerini Ayarlar'dan yeniden girin. `config.enc` de eski anahtarla şifreli olduğundan veritabanı ayarlarını yeniden kaydedin.
 - Eski sürüme dönülecekse önce `node scripts/belge-coz.js --evet` çalıştırın; yoksa eski kod şifreli belgeleri okuyamaz.
 - Bu sürümden önce alınan yedekler sağlık verisini ve PIN'leri düz metin içerir. Süresi dolunca silindiklerini doğrulayın.
