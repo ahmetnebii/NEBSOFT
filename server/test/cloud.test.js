@@ -57,9 +57,13 @@ function client() {
     // 3) Müşteri kaydı + 7 gün deneme
     r = await C('POST', '/api/auth/register', { email: 'musteri@firma.test', pass: 'zayif', name: 'Ali Veli', phone: '05321112233', company: 'Veli Market', kvkk: true }); assert.equal(r.status, 400); ok('zayıf müşteri şifresi reddedildi');
     r = await C('POST', '/api/auth/register', { email: 'musteri@firma.test', pass: 'Sifre1234', name: 'Ali Veli', phone: '05321112233', company: 'Veli Market', kvkk: true, product: 'pos' }); assert.equal(r.j.ok, true, JSON.stringify(r.j)); ok('müşteri kaydı');
-    r = await C('GET', '/api/auth/me'); assert.equal(r.j.user.email, 'musteri@firma.test'); const lic = r.j.licenses.find((l) => l.product === 'pos'); assert.equal(lic.status, 'deneme');
-    const days = Math.round((new Date(lic.end) - Date.now()) / 864e5); assert.equal(days, 7); ok('POS için 7 günlük deneme açıldı');
-    r = await C('POST', '/api/trial', { product: 'adisyon' }); assert.equal(r.j.ok, true); ok('ikinci ürün için deneme');
+    r = await C('GET', '/api/auth/me'); assert.equal(r.j.user.email, 'musteri@firma.test'); let lic = r.j.licenses.find((l) => l.product === 'pos'); assert.equal(lic.status, 'talep'); ok('kayıtta deneme talebi oluştu (lisans henüz açık değil)');
+    r = await C('GET', '/api/data/pos'); assert.equal(r.status, 402); ok('onaylanmamış talep veriye erişemez');
+    r = await A('GET', '/api/admin/trial-requests'); assert.ok(r.j.rows.some((x) => x.id === lic.id)); ok('yönetici deneme talebini görüyor');
+    r = await A('POST', `/api/admin/licenses/${lic.id}/trial`, { days: 7 }); assert.equal(r.j.ok, true);
+    r = await C('GET', '/api/auth/me'); lic = r.j.licenses.find((l) => l.product === 'pos'); assert.equal(lic.status, 'deneme');
+    const days = Math.round((new Date(lic.end) - Date.now()) / 864e5); assert.equal(days, 7); ok('yönetici onayıyla POS için 7 günlük deneme açıldı');
+    r = await C('POST', '/api/trial', { product: 'adisyon' }); assert.equal(r.j.ok, true); ok('ikinci ürün için deneme talebi');
 
     // 4) Uygulama verisi: lisanslı uygulama okunur/yazılır, lisanssız reddedilir, sürüm çakışması yakalanır
     r = await C('GET', '/api/data/pos'); assert.equal(r.j.version, 0); ok('boş veri');
@@ -73,7 +77,7 @@ function client() {
     r = await A('POST', '/api/admin/banks', { holder: 'NEBSOFT Yazılım A.Ş.', iban: 'TR33 0006 1005 1978 6457 8413 26', bank: 'İş Bankası' });
     assert.equal(r.j.ok, true, JSON.stringify(r.j)); ok('banka hesabı eklendi (ad soyad + IBAN)');
     r = await C('POST', '/api/orders', { items: [{ pid: 'pos', plan: 1, period: 'yillik', qty: 1, price: 1 }], billing: { name: 'Ali Veli', taxNo: '1234567890', address: 'Konya Merkez' } });
-    assert.equal(r.j.ok, true, JSON.stringify(r.j)); assert.equal(r.j.order.status, 'odeme-bekliyor'); assert.equal(r.j.order.subtotal, 6990); assert.ok(r.j.banks[0].iban); ok('sipariş "ödeme bekliyor"; fiyat sunucuda hesaplandı (istemci fiyatı yok sayıldı)');
+    assert.equal(r.j.ok, true, JSON.stringify(r.j)); assert.equal(r.j.order.status, 'odeme-bekliyor'); assert.equal(r.j.order.subtotal, 10990); assert.ok(r.j.banks[0].iban); ok('sipariş "ödeme bekliyor"; fiyat sunucuda hesaplandı (istemci fiyatı yok sayıldı)');
     const oid = r.j.order.id;
     r = await C('POST', `/api/admin/orders/${oid}/approve`, {}); assert.equal(r.status, 403); ok('müşteri kendi siparişini onaylayamaz');
     r = await A('GET', '/api/admin/orders?status=odeme-bekliyor'); assert.equal(r.j.orders.length, 1); ok('admin bekleyen havaleyi görüyor');
@@ -83,7 +87,7 @@ function client() {
 
     // 6) Müşteriye açık sayfa (online randevu): yalnızca izinli veri, sunucu tarafı doğrulama
     r = await C('GET', '/api/auth/me'); const slug = r.j.tenant.slug;
-    await C('POST', '/api/trial', { product: 'randevu' });
+    await C('POST', '/api/trial', { product: 'randevu' }); { const q = await A('GET', '/api/admin/trial-requests'); const t = q.j.rows.find((x) => x.product === 'randevu'); await A('POST', `/api/admin/licenses/${t.id}/trial`, { days: 7 }); }
     const doc = { _meta: {}, _settings: { bizName: 'Veli Kuaför', smsApiKey: 'GIZLI-ANAHTAR', autoConfirm: false, cancelHours: 2 },
       services: [{ id: 's1', name: 'Saç kesimi', duration: 30, price: 500, online: true, staff: ['u1'], cost: 120 }],
       staff: [{ id: 'u1', name: 'Ayşe', active: true, hours: Object.fromEntries([0, 1, 2, 3, 4, 5, 6].map((d) => [d, { start: '09:00', end: '20:00' }])) }],

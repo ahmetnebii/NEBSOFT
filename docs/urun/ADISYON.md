@@ -4,7 +4,7 @@
 
 ## CANLIYA ÇIKMAYI ENGELLEYENLER
 - **ÖKC (yazarkasa) mali fiş:** resmî entegrasyon dokümanı yok → yalnızca simülasyon ("TEST"); adisyon bilgi fişidir.
-- **Menü KDV oranları:** her ürüne oran girilebilir (boşsa %10). Oranları mali müşavir doğrulamalı (yiyecek / alkollü içecek farklı olabilir — hafızadan, doğrulanmadı).
+- **Menü KDV oranları:** her ürüne oran girilebilir (boşsa %10). 2007/13033 sayılı Karar II sayılı liste md. 24: lokanta, içkili lokanta, kebapçı vb. hizmetler indirimli orandadır, "alkollü içeceklere isabet eden kısmı hariç"; gazino, bar, diskotek, pavyon, taverna, birahane listenin dışındadır (RG 30.12.2007/26742, `resmigazete.gov.tr/eskiler/2007/12/20071230-4.htm`, okundu 30.10.2026 — **DOĞRULANDI**, kapsam için). Güncel oran rakamları (%10 / %20) sonraki değişikliklerden gelir — **DOĞRULANAMADI** (metin okunamadı); alkollü içecekleri ve bar türü işletmeyi mali müşavire doğrulatın.
 - **QR kodlar yeniden basılmalı:** bulutta QR sipariş artık masa + gizli QR anahtarı ister; eski QR'lar (anahtarsız) çalışmaz.
 
 ## 0. Yapılanlar

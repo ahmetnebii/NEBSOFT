@@ -26,6 +26,10 @@ ebsoft güncel`). Node 24, .NET 8 var → `npm test`: 8 test dosyası geçti (XS
 - Çekirdek `UNVERIFIED` (yalnızca simülasyon): okc, sgk, bankamaas, ebordro, pdks, medula, its, uts, aracbildirim, hgs, ilan, parca, tramer, kbs, kanal, enabiz, erecete, kps, vetbis, petkayit, meb, googleisletme.
 - `NS.approve` (yetkili PIN onayı) çekirdekte; POS ve Adisyon kullanıyor.
 - **1. dalga (güven) ayrıca yapıldı:** Kuyumcu (`KUYUMCU.md`), Fiyat Robotu (`FIYAT-ROBOTU.md`), Araç Kiralama (`KIRALAMA.md`), Emlak (`EMLAK.md`); simülasyonda banka hareketi / arayan numara / gelen e-Fatura uydurma kaldırıldı (Ön Muhasebe, Site, Adisyon, CRM, çekirdek).
+- **Bu bilgisayarda kurulanlar (30.10.2026):** `%LOCALAPPDATA%\Android` altında Microsoft JDK 17 ve Android SDK (build-tools 34.0.0, android-34); `%LOCALAPPDATA%\MariaDB` altında taşınabilir MariaDB 11.4.5 (sistem servisi değil; test için `mariadbd.exe --datadir=...\data --port=3306 --bind-address=127.0.0.1 --console` ile başlatılır, root şifresiz, yalnızca yerel).
+- **Yeni APK imza anahtarı üretildi** (kullanıcı kararı, 30.10.2026): `data/android-release.jks` + `android-keystore.txt`. Eski kurulu APK'lar bu sürümle güncellenemez, önce silinmeli. Bu iki dosya depoda yok; yedeklenmeli. SHA-256: 51b76361e3242712a547856b9e2157c1468b03217e76e80966685872f5785fa9.
+- **B8 kapandı:** kod bilinçli olarak `talep → yönetici onayı → 7 gün deneme` akışında; `cloud.test.js` buna ve güncel fiyata uyarlandı, **44 test geçti**. `npm test` tamamı geçiyor (MariaDB açıkken). `docs/GELISTIRME-PLANI.md`'deki "deneme hemen başlar" metni kodla çelişiyor; site metni kontrol edilmeli.
+- **Bordro parametreleri doğrulandı** (`IK.md`); kıdem tavanı ve prim indirimi düzeltildi.
 - **Sıradaki:** Spor, Kurs, Anaokulu, Mali Müşavir, Toptan, CRM için (bunlarda bilinen güven hatası taraması temiz) ve 1. dalgası yapılanlar için pazar araştırması + spec + dalgalar (portal kodu ve SMS düzeltmeleri bunların bazılarında zaten yapıldı); İK ve Eczane 2–3. dalga; kalan 2–3. dalgalar; §4.3 entegratörler.
 
 ---
@@ -66,7 +70,7 @@ Depo adresi yoksa: eski bilgisayardaki `C:\Users\AHMET\Downloads\NEBSOFT-git.bun
 
 ```bash
 npm install                 # kök (mysql2)
-npm test                    # beklenen: yalnızca cloud.test.js "'talep' == 'deneme'" hatası (§5 B8, eskiden beri var)
+npm test                    # tamamı geçer; cloud.test.js için yerelde MySQL/MariaDB (root, şifresiz, 3306) açık olmalı
 npm start                   # http://localhost:5050  — ürünleri ?demo=1 ile aç, ör. /apps/muhasebe/index.html?demo=1
 ```
 Claude Desktop tarayıcı önizlemesi için `.claude/launch.json` depoda var (`nebsoft`, port 5050).
@@ -254,7 +258,7 @@ Ayrıntı ve kaynaklar: `docs/MUHASEBE-DOGRULAMA-RAPORU.md`.
 | B5 | Mutlucell SMS: resmî doküman bulunamadı, kapalı | — |
 | B6 | Logo / Sovos / Mysoft / EDM entegratörleri: kapalı | §4.3 ile doküman ara |
 | B7 | Gelen e-Faturaları entegratörden çekme yok | B1 hesabı ile |
-| B8 | `cloud.test.js`: lisans durumu 'talep' bekleniyor, kod 'deneme' veriyor (eskiden beri) | Kullanıcı kararı: deneme lisansı mı, talep mi? |
+| ~~B8~~ | **Kapandı 30.10.2026:** `cloud.test.js` talep + yönetici onayı akışına uyarlandı, 44 test geçiyor | — |
 Alt oturumların kendi engelleyenleri her spec dosyasının "karar / hesap gerektirenler" bölümündedir.
 
 ---
