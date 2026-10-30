@@ -129,7 +129,9 @@ ok('Zayıf, kaynaksız ve kopya içerik noindex olur');
 
 // Üretilen dosyalar kaynakla aynı (derleme atlanmamış)
 const liste = JSON.parse(fs.readFileSync(path.join(__dirname, '../../site/araclar/liste.json'), 'utf8')); assert.strictEqual(liste.araclar.length, hepsi.length); assert.ok(liste.araclar.every((x) => x.index && x.yol === `/araclar/${x.slug}/` && x.kelime >= 200));
-hepsi.forEach((a) => assert.strictEqual(fs.readFileSync(path.join(__dirname, `../../site/araclar/${a.slug}/index.html`), 'utf8'), B.sayfa(a, [...hepsi].sort((x, y) => liste.araclar.findIndex((l) => l.slug === x.slug) - liste.araclar.findIndex((l) => l.slug === y.slug))), `${a.slug} eski: node site/tools/build-araclar.js`));
-assert.strictEqual(fs.readFileSync(path.join(__dirname, '../../site/assets/araclar-hesap.js'), 'utf8'), fs.readFileSync(path.join(__dirname, '../../site/tools/araclar/hesap.js'), 'utf8'));
+// Git'in satır sonu çevirisi ve alt bilgideki yıl karşılaştırmayı bozmasın
+const duz = (s) => s.replace(/\r\n/g, '\n').replace(/© \d{4}/g, '© YIL');
+hepsi.forEach((a) => assert.strictEqual(duz(fs.readFileSync(path.join(__dirname, `../../site/araclar/${a.slug}/index.html`), 'utf8')), duz(B.sayfa(a, [...hepsi].sort((x, y) => liste.araclar.findIndex((l) => l.slug === x.slug) - liste.araclar.findIndex((l) => l.slug === y.slug)))), `${a.slug} eski: node site/tools/build-araclar.js`));
+assert.strictEqual(duz(fs.readFileSync(path.join(__dirname, '../../site/assets/araclar-hesap.js'), 'utf8')), duz(fs.readFileSync(path.join(__dirname, '../../site/tools/araclar/hesap.js'), 'utf8')));
 ok('Üretilen sayfalar ve liste.json güncel');
 console.log(`\nAraçlar: ${n} test grubu geçti`);
