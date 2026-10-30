@@ -35,6 +35,15 @@
         "process.env.PORT='5063';require('./server.js')"
       ],
       "port": 5063
+    },
+    {
+      "name": "randevu-uyelik",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "-e",
+        "process.env.PORT='5064';require('./server.js')"
+      ],
+      "port": 5064
     }
   ]
 }
