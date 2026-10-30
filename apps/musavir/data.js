@@ -8,20 +8,23 @@ window.MSV = {
     babs: { name: 'Form Ba-Bs', day: 'son', color: '#0891b2', who: (c) => c.defter === 'bilanco' },
     damga: { name: 'Damga Vergisi', day: 26, color: '#64748b', who: (c) => c.type !== 'sahis' },
     gecici: { name: 'Geçici Vergi', day: 17, months: [5, 8, 11], color: '#ea580c', who: () => true },
-    edefter: { name: 'e-Defter Berat', day: 'son', lag: 3, color: '#16a34a', who: (c) => c.edefter },
+    edefter: { name: 'e-Defter Berat', day: 14, lag: 4, color: '#16a34a', who: (c) => c.edefter },
     yillik: { name: 'Yıllık Gelir Vergisi', day: 31, months: [3], color: '#db2777', who: (c) => c.type === 'sahis' || c.type === 'serbest' },
     kurumlar: { name: 'Kurumlar Vergisi', day: 30, months: [4], color: '#be123c', who: (c) => ['ltd', 'as'].includes(c.type) },
   },
   ST: { bekliyor: ['Bekliyor', ''], evrak: ['Evrak bekleniyor', 'warn'], hazirlaniyor: ['Hazırlanıyor', 'info'], verildi: ['Verildi', 'ok'], odendi: ['Verildi + ödendi', 'ok'] },
   TYPES: { sahis: 'Şahıs (işletme)', serbest: 'Serbest meslek', ltd: 'Limited şirket', as: 'Anonim şirket' },
   DOCS: ['Satış faturaları', 'Alış faturaları', 'Banka ekstresi', 'POS / Z raporları', 'Personel puantaj', 'Kasa / gider fişleri'],
-  // Dönem: "2026-09" → son gün (ayın 28'i gibi ya da ayın son günü), beyan bir sonraki ay verilir
-  due(type, period) {
+  // Son gün hafta sonuna denk gelirse ilk iş gününe kayar (VUK md. 18/4; Ön Muhasebe beyan takvimiyle aynı). Bayram kaymaları hesaplanmaz.
+  shift(ds) { const d = new Date(ds + 'T12:00:00'); while (d.getDay() === 0 || d.getDay() === 6) d.setDate(d.getDate() + 1); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; },
+  // Dönem: "2026-09" → son gün (ayın 28'i gibi ya da ayın son günü), beyan bir sonraki ay verilir.
+  // e-Defter beratı: dönemden 4 ay sonraki ayın 10'u (gelir vergisi mükellefi) / 14'ü (diğer) — GİB vergi takvimi (Ön Muhasebe ile aynı kural)
+  due(type, period, c) {
     const t = MSV.T[type]; const [y, m] = period.split('-').map(Number);
     const lag = t.lag || 1; const d = new Date(y, m - 1 + lag, 1);
     const last = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
-    const day = t.day === 'son' ? last : Math.min(t.day, last);
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+    const base = type === 'edefter' && c && ['sahis', 'serbest'].includes(c.type) ? 10 : t.day; const day = base === 'son' ? last : Math.min(base, last);
+    return MSV.shift(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`);
   },
   // Takvim ayı için verilmesi gereken beyannameler: [{type, period}]
   forMonth(c, ym) {
@@ -33,7 +36,7 @@ window.MSV = {
       if (t.lag) { const p3 = new Date(y, m - 1 - t.lag, 1); out.push({ type: k, period: `${p3.getFullYear()}-${String(p3.getMonth() + 1).padStart(2, '0')}` }); return; }
       out.push({ type: k, period: pp });
     });
-    return out.map((x) => ({ ...x, due: x.period.length === 4 || x.type === 'kdv3' ? `${y}-${String(m).padStart(2, '0')}-${String(MSV.T[x.type].day).padStart(2, '0')}` : MSV.due(x.type, x.period) }));
+    return out.map((x) => ({ ...x, due: x.period.length === 4 || x.type === 'kdv3' ? MSV.shift(`${y}-${String(m).padStart(2, '0')}-${String(MSV.T[x.type].day).padStart(2, '0')}`) : MSV.due(x.type, x.period, c) }));
   },
   // Portal giriş kodu: işletme 'portal bilgisini gönder' dediğinde rastgele kod üretilir (NS.portalCode); yoksa eski formül
   code: (c) => c.portalCode || '' /* yalnızca rastgele kod (NS.portalCode); formül kaldırıldı */,
