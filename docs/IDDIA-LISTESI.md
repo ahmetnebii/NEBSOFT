@@ -1,6 +1,6 @@
 # Site iddiaları listesi
 
-Tarih: 2026-10-30 · Dal: `guven/donusum-yardim` · Kapsam: `market/`, `site/src/products.js`, `site/tools/`, `core/support.js`, e-posta şablonları.
+Tarih: 2026-10-30 · Son güncelleme: `masaustu/electron-45` (tanıtım metinleri `0ee1c46`, sunucu rolleri, belge şifreleme, yönetici TOTP sonrası) · Kapsam: `market/`, `site/src/products.js`, `site/tools/`, `core/support.js`, e-posta şablonları, müşteriye açık program sayfaları.
 
 Etiketler CLAUDE.md §1'e göredir. Bir iddia ancak ölçüm veya resmî kaynak gelince geri yazılır; veri `docs/VAKA-FORMU.md` ile toplanır ve yönetim panelinden girilir.
 
@@ -15,6 +15,9 @@ Bu veriler hiçbir kayda dayanmıyordu. Kod değil, elle yazılmış sabit değe
 | Ürün kartı ve ürün sayfası | Yıldız, puan, "+ işletme" | Gösterim kaldırıldı | Kaldırıldı |
 | Ürün listesi sıralama | "En yüksek puan", "En popüler" | "Önerilen sıra" | Kaldırıldı |
 | Fiyat kartı (`market.js`, `build-sites.js`) | "En çok tercih edilen" | "Önerilen" | DOĞRULANAMADI → yumuşatıldı |
+| `apps/randevu/book.html` kapak | "288+ tamamlanan randevu" | Silindi. Demoda sayı rastgele örnek veriden geliyordu; canlıda müşteri sayfasına yalnız bugünden sonraki randevular gittiği için toplamı yansıtmıyordu | DOĞRULANAMADI → kaldırıldı |
+| `apps/servis/takip.html` | Ayar yoksa da "90 gün garanti" | İşletmenin "Garanti süresi" ayarından gelir, ayar boşsa gösterilmez. Teslim edilmiş kayıtta teslimde yazılan tarih esastır | Kaldırıldı |
+| `apps/servis/app.js` | Ayar yoksa 90 gün garanti kaydı ve teslim belgesi | Ayar boşsa garanti tarihi yazılmaz | Kaldırıldı |
 
 ## 2. Yumuşatılan sonuç iddiaları
 
@@ -44,12 +47,37 @@ Bu veriler hiçbir kayda dayanmıyordu. Kod değil, elle yazılmış sabit değe
 | kb-genel | "Kişisel veriler KVKK'ya uygun işlenir" | Yalnız aydınlatma metnine bağlantı | Hukuk görüşü |
 | Yenileme e-postası | "Yıllık ödemede 2 ay ücretsiz." | Çıkarıldı (bilgilendirme iletisinde tanıtım olamaz) | Tanıtım izni |
 
-## 3. Dokunulmayan, sizin bakmanız gereken ifadeler
+## 3. Tanıtım metinleri: `0ee1c46` sonrası durum
 
-Bunlar site metninde duruyor. Sonuç vaadi değil, özellik veya entegrasyon anlatımı oldukları için bu işte değiştirilmedi; entegrasyon durumları `docs/ENTEGRASYON-RAPORU.md` ile karşılaştırılmalıdır. Hepsi: DOĞRULANAMADI (bu çalışmada denenmedi).
+Doğrulanmamış veya çalışmayan bağlantılar müşteriye özellik gibi sunulmuyor. Bu çalışmada `site/src/products.js` ve `market/` tek tek yeniden okundu.
 
-- `site/src/products.js`: Booking/Expedia, Trendyol, Hepsiburada, Amazon, n11, sahibinden, Hepsiemlak, Emlakjet, Yemeksepeti, Getir, Migros, e-Nabız, plaka kamerası, bariyer, turnike, online ödeme anlatımları.
-- `market/market.js`: ana sayfa örnek ekranındaki rakamlar ("312 Fiş", "%24", "₺48.320", "+%12") gösterim amaçlıdır; "örnek" etiketi yoktur.
-- `market/market.js`: "Canlı önizleme" bölümündeki `nebsoftapp.com` adresi ve `site.config.js` içindeki `www.domain.com` yer tutucu görünüyor.
+| İfade | Bugünkü metin | Durum |
+|---|---|---|
+| Yemek platformları (Yemeksepeti, Getir, Trendyol Yemek, Migros) | Platform siparişi elle girilir; bağlantı platform anlaşması ve canlı test sonrası açılır | Düzeltildi. Otomatik bağlantı DOĞRULANAMADI |
+| Booking, Expedia | Kanal bağlantısı açılana kadar elle girilir | Düzeltildi. Otomatik bağlantı DOĞRULANAMADI |
+| sahibinden, Hepsiemlak, Emlakjet | Portal ilanlarının numara ve süresinin elle kaydı | Düzeltildi. Otomatik gönderim DOĞRULANAMADI: `core/integrations.js` `UNVERIFIED.ilan`, yalnız TEST seçilebilir. `docs/video/emlak.md` de buna göre yazıldı |
+| Trendyol, n11 | Pazaryeri metinleri canlı seçilebilen bu iki kanalla sınırlı | Hesap ve canlı test gerekir, `docs/ENTEGRASYON-RAPORU.md` |
+| Hepsiburada, Amazon | `fiyatrobotu` tanıtımında kâr hesabı için geçer; `catalog.js` canlıda seçilemediğini açıkça yazar | Canlı bağlantı iddiası değil |
+| Plaka tanıma kamerası, bariyer | Donanım anlatımı olarak duruyor | DOĞRULANAMADI (donanımlı saha testi yok) |
+| e-ticaret fotoğrafı | Üründe fotoğraf yükleme var, ilk fotoğraf kapak | DOĞRULANDI (kod, `docs/video/eticaret.md`) |
+
+## 4. Güvenlik anlatımı: kullanılabilecek sınırlar
+
+Site bu konularda şu an iddia taşımıyor. Eklenecekse aşağıdaki sınırların dışına çıkılmamalı. Test: `npm test` içindeki `rol-kural`, `sifreleme`, `guvenlik`, `guvenlik-ucuncu`.
+
+| Konu | Söylenebilir | Söylenemez | Durum |
+|---|---|---|---|
+| Ekip rolleri | Rol seçilen üye, kuralı olan 20 programda yalnız rolünün gördüğü veriyi alır; veri sunucuda süzülür | "Tüm programlarda". Rol atanmayan ekip hesabı tam yetkilidir; bilet, butik, emlak, fabrika, fiyatrobotu, kargo, oto, pazaryeri, servis programlarında rol yalnız arayüzdedir; spor ve kiralamada menü farkıdır | DOĞRULANDI (20 program, kod ve test) |
+| Belge şifreleme | Klinik, eczane, veteriner, İK, anaokulu ve entegrasyon verisi veritabanında şifreli tutulur (`server/cloud/belge.js`) | "Tüm veriler şifreli", "KVKK uyumlu", "256-bit" gibi tanıtım ifadeleri | DOĞRULANDI (6 program, kod ve test) |
+| Entegrasyon anahtarları | Bulutta kayıtlı şifre ve API anahtarları şifreli saklanır, tarayıcıya gitmez; API anahtarı olabilen `user` alanı da kapsama alındı | Yerel (bulut dışı) kullanımda bu koruma yoktur | DOĞRULANDI (kod ve test) |
+| İki adımlı giriş | Platform yöneticisi uygulama tabanlı iki adımlı girişi kendisi açabilir | "Tüm hesaplarda iki adımlı giriş", "zorunlu". Müşteri hesaplarında bu özellik yoktur | Kod ve RFC testi DOĞRULANDI; gerçek telefon uygulamasıyla DOĞRULANAMADI |
+
+## 5. Hâlâ sizin bakmanız gereken ifadeler
+
+Sonuç vaadi değil, ama doğrulanmamış. Hepsi: DOĞRULANAMADI (bu çalışmada denenmedi).
+
+- `market/market.js`: ana sayfa örnek ekranındaki rakamlar ("₺48.250", "312 Fiş", "%24") gösterim amaçlıdır; "örnek" etiketi yoktur.
+- `market/market.js`: örnek pencerelerdeki `nebsoftapp.com` adresi ve `site/src/site.config.js` içindeki `www.domain.com` yer tutucu görünüyor.
 - Destek telefonu `0850 555 00 34` varsayılan değerdir; gerçek hat olduğu bu çalışmada doğrulanmadı.
 - Yıllık ödemede "2 ay bedava": kodla uyumludur (`catalog.js` fiyatı × 10), tanıtım olarak kullanımı izne bağlıdır.
+- Video senaryolarının kapanışındaki "yedi gün ücretsiz": varsayılan `trialDays: 7` ile uyumludur; yönetim panelinden değiştirilirse senaryo elle güncellenmelidir.

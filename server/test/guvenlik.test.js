@@ -143,6 +143,20 @@ async function gizliAdres() {
   assert.strictEqual((await gonder('https://api.netgsm.com.tr/sms')).headers.A, 'düz-anahtar'); assert.strictEqual((await gonder('https://efatura.uyumsoft.com.tr/x')).headers.A, 'düz-anahtar'); assert.strictEqual((await gonder('https://ozel.firmam.com/v2')).headers.A, 'düz-anahtar');
   await assert.rejects(gonder('https://kotu.example.com/topla'), (e) => e.status === 400); await assert.rejects(gonder('https://ozel.firmam.com.kotu.example/x'), (e) => e.status === 400);
   assert.strictEqual((await s.resolve(dbx, 't', { url: 'https://kotu.example.com/', body: 'yer tutucu yok' })).body, 'yer tutucu yok'); ok('gizli bilgi yalnızca sağlayıcıya veya kayıtlı adrese çözülüyor');
+  // user alanı: API anahtarı olan bağlantılarda şifreli, kullanıcı adı olan sağlayıcılarda düz
+  { const d = { cfg: { pazaryeri: { provider: 'trendyol', user: 'gercekKey', pass: 'sifre1' }, kargofirma: { provider: 'custom', url: 'https://aracim.firmam.com/x', user: 'kargoKey', pass: 'p' }, sms: { provider: 'netgsm', user: '8501112233', pass: 'p' }, efatura: { provider: 'uyumsoft', user: 'wsuser', pass: 'p' }, plc: { provider: 'mqtt', user: 'broker', pass: 'p' } } };
+    const m = s.seal('entegrasyon', d, {}); assert.ok(m.cfg.pazaryeri.user.startsWith('enc:v1:')); assert.ok(m.cfg.kargofirma.user.startsWith('enc:v1:')); assert.strictEqual(m.cfg.sms.user, '8501112233'); assert.strictEqual(m.cfg.efatura.user, 'wsuser'); assert.strictEqual(m.cfg.plc.user, 'broker');
+    const ozel = s.seal('entegrasyon', { cfg: { efatura: { provider: 'custom', user: 'cid', url: 'https://x.firmam.com' } } }, {}); assert.ok(ozel.cfg.efatura.user.startsWith('enc:v1:'));
+    const v = s.mask('entegrasyon', m); const tkU = s.token('entegrasyon', 'pazaryeri', 'user'); assert.strictEqual(v.cfg.pazaryeri.user, tkU); assert.ok(!JSON.stringify(v).includes('gercekKey')); assert.strictEqual(v.cfg.sms.user, '8501112233');
+    assert.strictEqual(s.seal('entegrasyon', v, m).cfg.pazaryeri.user, m.cfg.pazaryeri.user); assert.strictEqual(s.open('entegrasyon', m).cfg.pazaryeri.user, 'gercekKey'); ok('API anahtarı olan user şifreli, kullanıcı adları düz, yer tutucu geri gelince değer korunuyor');
+    // Eski kayıt: düz user geçişte şifrelenir, istemciye düz gitmez
+    const eski = { cfg: { pazaryeri: { provider: 'trendyol', user: 'eskiKey' } } }; assert.ok(!JSON.stringify(s.mask('entegrasyon', eski)).includes('eskiKey')); const g2 = s.seal('entegrasyon', eski, eski); assert.ok(g2.cfg.pazaryeri.user.startsWith('enc:v1:')); assert.strictEqual(s.seal('entegrasyon', { cfg: { pazaryeri: { provider: 'trendyol', user: tkU } } }, eski).cfg.pazaryeri.user.startsWith('enc:v1:'), true);
+    // Sağlayıcı kullanıcı adı olan bir sağlayıcıya dönse de şifreli değer düz gitmez
+    const gecis = { cfg: { efatura: { provider: 'uyumsoft', user: ozel.cfg.efatura.user } } }; assert.strictEqual(s.mask('entegrasyon', gecis).cfg.efatura.user, s.token('entegrasyon', 'efatura', 'user')); ok('eski düz kayıt geçişi ve sağlayıcı değişimi güvenli');
+    // Basic başlığında kullanıcı ve şifre yer tutucusu birlikte çözülür
+    const dby = { one: async () => ({ data: JSON.stringify(s.seal('entegrasyon', { cfg: { kargofirma: { provider: 'custom', url: 'https://aracim.firmam.com/x', user: 'kargoKey', pass: 'gizli' } } }, {})) }) }; const b64 = Buffer.from(`${s.token('entegrasyon', 'kargofirma', 'user')}:${s.token('entegrasyon', 'kargofirma', 'pass')}`).toString('base64');
+    const r3 = await s.resolve(dby, 't', { url: 'https://aracim.firmam.com/x', headers: { Authorization: 'Basic ' + b64 } }); assert.strictEqual(Buffer.from(r3.headers.Authorization.slice(6), 'base64').toString(), 'kargoKey:gizli');
+    await assert.rejects(s.resolve(dby, 't', { url: 'https://kotu.example.com/', headers: { Authorization: 'Basic ' + b64 } }), (e) => e.status === 400); ok('Basic başlığında yer tutucu sunucuda çözülüyor, başka adrese gitmiyor'); }
 }
 // Randevu: telefon tek başına giriş açmaz; başkasının numarasıyla alınan randevunun kodu müşteri kimliği vermez
 function randevuKodu() {

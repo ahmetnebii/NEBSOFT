@@ -1,6 +1,6 @@
 // Shopier ödeme testi: sahte Shopier sunucusuyla (gerçek hesap kullanılmaz).
 //   1. bölüm veritabanı istemez: imza, tutar, karar kuralları ve API istemcisi.
-//   2. bölüm uçtan uca çalışır, MySQL ister; kendi "nebsoft_shopier_test" veritabanını ve geçici veri klasörünü kullanır:
+//   2. bölüm uçtan uca çalışır, MySQL ister; kendi "nebsoft_shopier_test" (SHOPIER_TEST_DB_NAME ile değişir) veritabanını ve geçici veri klasörünü kullanır:
 //   TEST_DB_HOST=127.0.0.1 TEST_DB_USER=root TEST_DB_PASS= node server/test/shopier.test.js
 // MySQL yoksa 2. bölüm "ATLANDI" yazar; bu geçti sayılmaz.
 const http = require('http'); const crypto = require('crypto'); const assert = require('assert');
@@ -70,7 +70,7 @@ async function unit() {
 }
 
 // ---------- 2. bölüm: uçtan uca ----------
-const DBH = process.env.TEST_DB_HOST || '127.0.0.1', DBU = process.env.TEST_DB_USER || 'root', DBP = process.env.TEST_DB_PASS || ''; const DBN = 'nebsoft_shopier_test';
+const DBH = process.env.TEST_DB_HOST || '127.0.0.1', DBU = process.env.TEST_DB_USER || 'root', DBP = process.env.TEST_DB_PASS || ''; const DBN = process.env.SHOPIER_TEST_DB_NAME || 'nebsoft_shopier_test'; // paralel oturumlar ayrı ad kullanır
 function client() {
   let cookie = '';
   return async (method, url, body) => {

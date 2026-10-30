@@ -1,6 +1,7 @@
 // Bulut API uçtan uca testi. Gerekli: erişilebilir MySQL/MariaDB ve test veritabanı yetkisi.
 //   TEST_DB_HOST=127.0.0.1 TEST_DB_USER=root TEST_DB_PASS= node server/test/cloud.test.js
 // Test kendi geçici veri klasörünü ve "nebsoft_test" veritabanını kullanır (her çalıştırmada sıfırlanır).
+// Paralel oturumlar çakışmasın diye ad değiştirilebilir: TEST_DB_NAME (veritabanı), TEST_DB_APP_USER (testin açtığı kullanıcı).
 const { spawn } = require('child_process');
 const fs = require('fs'); const os = require('os'); const path = require('path');
 const mysql = require('mysql2/promise');
@@ -8,6 +9,7 @@ const assert = require('assert');
 
 const PORT = Number(process.env.TEST_PORT) || 5097;
 const DBH = process.env.TEST_DB_HOST || '127.0.0.1', DBU = process.env.TEST_DB_USER || 'root', DBP = process.env.TEST_DB_PASS || '';
+const DBN = process.env.TEST_DB_NAME || 'nebsoft_test', APPU = process.env.TEST_DB_APP_USER || 'ns_test';
 const BASE = `http://127.0.0.1:${PORT}`;
 const DATA = fs.mkdtempSync(path.join(os.tmpdir(), 'nstest-'));
 let passed = 0; const ok = (name) => { passed++; console.log('  ✓', name); };
@@ -25,7 +27,7 @@ function client() {
 
 (async () => {
   const root = await mysql.createConnection({ host: DBH, user: DBU, password: DBP, multipleStatements: true });
-  await root.query("DROP DATABASE IF EXISTS nebsoft_test; DROP USER IF EXISTS 'ns_test'@'localhost'; DROP USER IF EXISTS 'ns_test'@'127.0.0.1';");
+  await root.query(`DROP DATABASE IF EXISTS ${DBN}; DROP USER IF EXISTS '${APPU}'@'localhost'; DROP USER IF EXISTS '${APPU}'@'127.0.0.1';`);
   const srv = spawn(process.execPath, ['server.js'], { cwd: path.join(__dirname, '..', '..'), env: { ...process.env, PORT: String(PORT), NEBSOFT_DATA: DATA, NEBSOFT_SECRET: 'test-secret-123', HOST: '127.0.0.1' }, stdio: ['ignore', 'pipe', 'pipe'] });
   let log = ''; srv.stdout.on('data', (d) => { log += d; }); srv.stderr.on('data', (d) => { log += d; });
   try {
@@ -34,13 +36,13 @@ function client() {
 
     // 1) Kurulum: SQL üret → yönetici SQL'i çalıştırır → bağlantı bilgisi girilir
     let r = await A('GET', '/api/setup/status'); assert.equal(r.j.configured, false); ok('kurulum durumu: yapılandırılmamış');
-    r = await A('POST', '/api/setup/sql', { database: 'nebsoft_test', user: 'ns_test', host: '127.0.0.1' }); assert.ok(r.j.sql.includes('CREATE USER')); ok('veritabanı/kullanıcı/yetki SQL’i üretildi');
+    r = await A('POST', '/api/setup/sql', { database: DBN, user: APPU, host: '127.0.0.1' }); assert.ok(r.j.sql.includes('CREATE USER')); ok('veritabanı/kullanıcı/yetki SQL’i üretildi');
     await root.query(r.j.sql.replace(/-- .*$/gm, '').replace("'127.0.0.1'", "'127.0.0.1'"));
-    await root.query(`CREATE USER IF NOT EXISTS 'ns_test'@'localhost' IDENTIFIED BY '${r.j.password}'; GRANT ALL ON nebsoft_test.* TO 'ns_test'@'localhost';`);
+    await root.query(`CREATE USER IF NOT EXISTS '${APPU}'@'localhost' IDENTIFIED BY '${r.j.password}'; GRANT ALL ON ${DBN}.* TO '${APPU}'@'localhost';`);
     const pw = r.j.password;
-    r = await A('POST', '/api/setup/db', { host: '127.0.0.1', database: 'nebsoft_test', user: 'ns_test', password: pw, token: 'yanlis' }); assert.equal(r.status, 403); ok('yanlış kurulum anahtarı reddedildi');
+    r = await A('POST', '/api/setup/db', { host: '127.0.0.1', database: DBN, user: APPU, password: pw, token: 'yanlis' }); assert.equal(r.status, 403); ok('yanlış kurulum anahtarı reddedildi');
     const token = fs.readFileSync(path.join(DATA, 'setup-token.txt'), 'utf8').trim();
-    r = await A('POST', '/api/setup/db', { host: '127.0.0.1', database: 'nebsoft_test', user: 'ns_test', password: pw, token }); assert.equal(r.j.ok, true, JSON.stringify(r.j)); ok('MySQL bağlandı ve tablolar oluştu');
+    r = await A('POST', '/api/setup/db', { host: '127.0.0.1', database: DBN, user: APPU, password: pw, token }); assert.equal(r.j.ok, true, JSON.stringify(r.j)); ok('MySQL bağlandı ve tablolar oluştu');
     assert.ok(!fs.readFileSync(path.join(DATA, 'config.enc'), 'utf8').includes(pw)); ok('bağlantı şifresi diskte şifreli');
     r = await A('POST', '/api/setup/admin', { email: 'admin@nebsoft.test', name: 'Yönetici', pass: 'kisa1', token }); assert.equal(r.status, 400); ok('zayıf yönetici şifresi reddedildi');
     r = await A('POST', '/api/setup/admin', { email: 'admin@nebsoft.test', name: 'Yönetici', pass: 'GucluSifre2026!', token }); assert.equal(r.j.ok, true, JSON.stringify(r.j)); ok('süper yönetici oluşturuldu');
@@ -118,6 +120,6 @@ function client() {
 
     console.log(`\n${passed} test geçti`);
   } catch (e) { console.error('\nTEST HATASI:', e.message, '\n--- sunucu çıktısı ---\n' + log.slice(-3000)); process.exitCode = 1; } finally {
-    srv.kill(); await root.query("DROP DATABASE IF EXISTS nebsoft_test; DROP USER IF EXISTS 'ns_test'@'localhost'; DROP USER IF EXISTS 'ns_test'@'127.0.0.1';"); await root.end(); fs.rmSync(DATA, { recursive: true, force: true });
+    srv.kill(); await root.query(`DROP DATABASE IF EXISTS ${DBN}; DROP USER IF EXISTS '${APPU}'@'localhost'; DROP USER IF EXISTS '${APPU}'@'127.0.0.1';`); await root.end(); fs.rmSync(DATA, { recursive: true, force: true });
   }
 })();

@@ -7,12 +7,16 @@ Ek olarak bilgisayardaki donanıma erişim sağlar.
 |---|---|
 | Giriş ve program listesi | `config.json → serverUrl` adresindeki `/#/giris` açılır; akış web sitesiyle aynıdır |
 | Donanım köprüsü | Paketteki `server.js` 127.0.0.1:`bridgePort` üzerinde çalışır; programlar `window.nebsoftDesktop.bridge` ile ağ yazıcısı, terazi, SMS vekili vb. kullanır |
+| Seri port | `navigator.serial` çalışır; tek port doğrudan seçilir, birden fazlaysa soru penceresi açılır. Seçim `ayarlar.json` içinde hatırlanır |
 | Yazdırma | `NS.printHtml` masaüstünde yazıcı penceresiyle; `localStorage['nebsoft:silentPrint']='1'` ise sessiz (varsayılan yazıcı) |
 | Arka plan | Pencere kapatılınca sistem tepsisine iner; sipariş/garson bildirim sesleri çalmaya devam eder |
 | Kasa modu | F10 · Yeni pencere Ctrl+N (ör. mutfak ekranı ikinci monitörde) |
 | Güncelleme | `electron-updater`, `publish.url` adresindeki `latest.yml` dosyasına bakar |
 
 ## Geliştirme
+
+Electron 45.1.0 kullanılır (sürüm sabittir); Node.js 22.12 veya üstü gerekir. Electron 42'den beri ikili dosya `npm install` sırasında değil,
+ilk `npm start` çalıştığında indirilir. Önceden indirmek için: `node node_modules/electron/install.js`.
 
 ```bash
 cd nebsoft-pazar/desktop

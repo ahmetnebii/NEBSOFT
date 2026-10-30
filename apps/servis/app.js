@@ -4,7 +4,7 @@
   const { esc, $, $$, on, icon, money, num, toast, modal, confirm, formModal, table, chart, badge, kpi, pageHead, sum, addDays, iso, today } = NS;
   const SV = window.SERVIS;
   const db = new NS.DB('servis', SV.seed);
-  const S = () => db.settings({ warrantyDays: 90 });
+  const S = () => db.settings({});
   const ST = Object.fromEntries(SV.STATUS.map((s) => [s.id, s]));
   const cust = (id) => db.get('customers', id) || { name: '-', phone: '' };
   const tech = (id) => db.get('techs', id) || { name: 'Atanmadı' };
@@ -137,8 +137,8 @@
         const due = total(t) - paid(t); const inv = !!(NS.ebelge && NS.integ && NS.integ.isOn('efatura') && total(t) > 0); let wantInv = false;
         if (due > 0 || inv) { const v = await formModal({ title: due > 0 ? `Teslim — tahsilat ${money(due)}` : 'Teslim', fields: [...(due > 0 ? [{ name: 'amount', label: 'Tutar', type: 'number', step: '0.01', value: due }, { name: 'type', label: 'Ödeme', type: 'select', options: [{ value: 'nakit', label: 'Nakit' }, { value: 'kart', label: 'Kart' }, { value: 'havale', label: 'Havale' }] }] : []), ...(inv ? [{ name: 'inv', label: 'e-Arşiv / e-Fatura kes', type: 'checkbox' }] : [])], values: { amount: due, inv: inv && !t.invoice }, submitLabel: 'Teslim et' }); if (!v) return; if (due > 0 && Number(v.amount) > 0) t.payments.push({ type: v.type, amount: Number(v.amount), at: new Date().toISOString() }); wantInv = !!v.inv; }
         if (wantInv) { const r = await NS.ebelge.create({ docType: 'auto', buyer: cust(t.customer).name, no: t.no, lines: [...t.parts.map((p) => ({ name: p.name, qty: p.qty, total: p.price * p.qty, vat: 20 })), ...(t.labor ? [{ name: 'İşçilik', qty: 1, total: t.labor, vat: 20 }] : [])], note: `${t.brand} ${t.model} ${t.serial || ''}` }); if (r && r.no) { t.invoice = r.no + (r.simulated ? ' (TEST)' : ''); t.log.push({ at: new Date().toISOString(), status: t.status, note: 'Fatura ' + t.invoice }); } else if (r && r.error) toast('Fatura kesilemedi: ' + r.error, 'err'); }
-        const wasIade = t.status === 'iade'; if (!wasIade) t.warrantyUntil = iso(addDays(new Date(), S().warrantyDays || 90));
-        if (wasIade) { t.delivered = new Date().toISOString(); if (t.lockCode) t.lockCode = ''; t.log.push({ at: t.delivered, status: 'iade', note: 'Cihaz onarılmadan iade edildi' }); db.save(); } else { setStatus(t, 'teslim', `Teslim edildi · ${S().warrantyDays} gün garanti`); printDelivery(t); }
+        const wasIade = t.status === 'iade'; const wDays = Number(S().warrantyDays) || 0; if (!wasIade) t.warrantyUntil = wDays ? iso(addDays(new Date(), wDays)) : '';
+        if (wasIade) { t.delivered = new Date().toISOString(); if (t.lockCode) t.lockCode = ''; t.log.push({ at: t.delivered, status: 'iade', note: 'Cihaz onarılmadan iade edildi' }); db.save(); } else { setStatus(t, 'teslim', `Teslim edildi${wDays ? ` · ${wDays} gün garanti` : ''}`); printDelivery(t); }
       } else if (s === 'iade') { const n = await NS.prompt('Neden tamir edilemedi?', '', { title: 'İade' }); if (n === null) return; setStatus(t, 'iade', n || 'Tamir edilemedi'); }
       else setStatus(t, s);
       re();
@@ -180,7 +180,7 @@
     const s = S(), c = cust(t.customer);
     NS.printHtml(`<div class="doc"><h2>${esc(s.bizName)}</h2><div>${esc(s.bizAddress)} · ${esc(s.bizPhone)}</div><hr><h3>TESLİM VE GARANTİ BELGESİ — ${esc(t.no)}</h3><p><b>${esc(c.name)}</b> · ${esc(t.brand)} ${esc(t.model)} (${esc(t.serial || '-')})</p><p><b>Yapılan işlem:</b> ${esc(t.diagnosis || '-')}</p>
       <table><tr><th>Kalem</th><th>Adet</th><th style="text-align:right">Tutar</th></tr>${t.parts.map((p) => `<tr><td>${esc(p.name)}</td><td>${p.qty}</td><td style="text-align:right">${money(p.price * p.qty)}</td></tr>`).join('')}<tr><td>İşçilik</td><td>1</td><td style="text-align:right">${money(t.labor || 0)}</td></tr><tr><td colspan="2"><b>TOPLAM</b></td><td style="text-align:right"><b>${money(total(t))}</b></td></tr></table>
-      <p>Garanti bitiş: <b>${NS.date(t.warrantyUntil)}</b> (yapılan işlem ve değişen parçalar için)</p><p style="margin-top:30px">Teslim alan müşteri imza: ____________________</p></div>`, { title: t.no });
+      ${t.warrantyUntil ? `<p>Garanti bitiş: <b>${NS.date(t.warrantyUntil)}</b> (yapılan işlem ve değişen parçalar için)</p>` : ''}<p style="margin-top:30px">Teslim alan müşteri imza: ____________________</p></div>`, { title: t.no });
   }
 
   // ---------- Kanban pano ----------
@@ -298,6 +298,6 @@
   NS.shell({
     id: 'servis', integrations: ['sms', 'whatsapp', 'email', 'printer', 'label', 'barcode', 'pos', 'efatura', 'webhook', 'backup'], name: 'Teknik Servis', tagline: 'Servis Takip Sistemi', icon: 'wrench', accent: '#ea580c', db, home: 'pano', auth: { roles: ROLES }, titles: { kayit: 'Servis kaydı' },
     nav: [{ sec: 'Servis' }, { id: 'ozet', label: 'Özet', icon: 'home', roles: ['admin'] }, { id: 'pano', label: 'Servis Panosu', icon: 'kanban' }, { id: 'kayitlar', label: 'Servis Kayıtları', icon: 'list' }, { id: 'musteriler', label: 'Müşteriler', icon: 'users' }, { sec: 'Yönetim' }, { id: 'parcalar', label: 'Parça Stoku', icon: 'box' }, { id: 'teknisyenler', label: 'Teknisyenler', icon: 'user', roles: ['admin'] }, { id: 'bildirimler', label: 'SMS Bildirimleri', icon: 'message' }, { id: 'ayarlar', label: 'Ayarlar', icon: 'settings', roles: ['admin'] }],
-    routes: { ozet: dashboard, pano: boardPage, kayitlar: listPage, kayit: detailPage, musteriler: customersPage, parcalar: partsPage, teknisyenler: techsPage, bildirimler: smsPage, ayarlar: (el, p, a) => NS.settingsPage(el, a, { roles: ROLES, fields: [{ type: 'section', label: 'Servis ayarları' }, { name: 'warrantyDays', label: 'Garanti süresi (gün)', type: 'number' }, { name: 'diagFee', label: 'Onarılamayan cihazda tespit ücreti (₺, yoksa 0)', type: 'number' }, { name: 'terms', label: 'Kabul formu koşulları', type: 'textarea', full: true }] }) },
+    routes: { ozet: dashboard, pano: boardPage, kayitlar: listPage, kayit: detailPage, musteriler: customersPage, parcalar: partsPage, teknisyenler: techsPage, bildirimler: smsPage, ayarlar: (el, p, a) => NS.settingsPage(el, a, { roles: ROLES, fields: [{ type: 'section', label: 'Servis ayarları' }, { name: 'warrantyDays', label: 'Garanti süresi (gün; boşsa müşteriye gösterilmez)', type: 'number' }, { name: 'diagFee', label: 'Onarılamayan cihazda tespit ücreti (₺, yoksa 0)', type: 'number' }, { name: 'terms', label: 'Kabul formu koşulları', type: 'textarea', full: true }] }) },
   });
 })();
