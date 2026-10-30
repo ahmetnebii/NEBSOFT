@@ -42,6 +42,13 @@
     for (let i = 0; i < n; i++) { let due = ayEkle(son, i - (n - 1)); if (due < String(o.bugun).slice(0, 10)) due = String(o.bugun).slice(0, 10); satir.push({ due, amount: i === n - 1 ? r2(kalan - birim * (n - 1)) : birim, label: `${i + 1}. taksit` }); }
     return satir;
   }
+  // Düzenlemede fiyat yalnız paket, davetli veya tarih değişince yeniden hesaplanır: not veya salon düzeltmesi güncel fiyat listesini kayda taşımaz
+  const fiyatKorunur = (e, y) => !!e && e.pkg === y.pkg && Number(e.guests) === Number(y.guests) && e.date === y.date;
+  // Kesinleşmiş ama imzalanmamış kayıt değişince plan yeniden kurulur: kapora tutarı ve tarihi ile taksit sayısı korunur
+  function planYenile(e, o) {
+    const L = e.plan || []; if (!L.length) return []; const kap = L.find((t) => t.label === 'Kapora'); const tek = L.some((t) => t.label === 'Kalan ödeme');
+    return plan({ total: toplam(e).genel, deposit: kap ? kap.amount : 0, taksit: tek ? 0 : L.filter((t) => t !== kap).length, date: e.date, sonGun: o.sonGun, bugun: o.bugun }).map((t) => (t.label === 'Kapora' && kap ? { ...t, due: kap.due } : t));
+  }
   // Ödeme durumu: taksitler ödemeler toplamıyla baştan kapatılır; böylece iade veya kısmi ödeme planı bozmaz
   function odeme(e, payments, bugun) {
     const pays = (payments || []).filter((p) => p && p.event === e.id); const odenen = r2(sum(pays, (p) => p.amount)); const genel = toplam(e).genel; let kasa = odenen;
@@ -54,5 +61,5 @@
     const pct = k ? Number(k.pct) || 0 : 0; return { kalanGun: kalan, pct, kademe: k || null, iade: r2((Math.max(0, odenen) * pct) / 100) };
   }
   const hazirlik = (d) => [[-180, 'Menü ve paket onayı alındı'], [-90, 'Süsleme ve masa düzeni seçildi'], [-30, 'Davetli sayısı kesinleşti'], [-14, 'Müzik ve akış planı onaylandı'], [-3, 'Son ödeme kontrol edildi'], [0, 'Salon teslim kontrolü yapıldı']].map(([k, t], i) => ({ id: 't' + i, text: t, due: addDay(d, k), done: false }));
-  return { SEANS, TUR, DURUM, r2, sum, dayN, gunFark, addDay, ayEkle, haftaSonu, aktif, suresiDoldu, seansCakisir, cakisan, sezonPct, paketFiyat, toplam, plan, odeme, iptalOneri, hazirlik };
+  return { SEANS, TUR, DURUM, r2, sum, dayN, gunFark, addDay, ayEkle, haftaSonu, aktif, suresiDoldu, seansCakisir, cakisan, sezonPct, paketFiyat, toplam, plan, fiyatKorunur, planYenile, odeme, iptalOneri, hazirlik };
 }));
