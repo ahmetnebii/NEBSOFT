@@ -1,7 +1,7 @@
 # Bilet / Etkinlik — Ürün Spesifikasyonu
 
 > **Durum (29.10.2026):** Kullanıcı tüm programlar için eksiklerin giderilmesini ve ek özellikleri önceden onayladı; etkinlik/bilet programını özellikle andı.
-> Dalgalar sırayla uygulanıyor; sonuçlar "Yapılanlar" bölümünde.
+> **30.10.2026:** 1., 2. ve 3. dalga tamamlandı; sonuçlar "Yapılanlar" bölümünde. Yeni dosya: `apps/bilet/ek.js`.
 
 Tarih: 29.10.2026 · Dal: `claude/urun-konaklama-etkinlik-8b3b84` · Yöntem: `CLAUDE.md` §2
 
@@ -53,12 +53,12 @@ Biletinial ve Passo'nun organizatör özellik sayfaları aramada bulunamadı (bu
 | Özellik | Bizde | Rakipte | Sınıf |
 |---|---|---|---|
 | Etkinlik oluşturma, tür, afiş, kategori fiyatları | ✅ | BB BX | O |
-| Numaralı koltuk planı, genel giriş (ayakta) alanlar | ✅ (genel giriş salonu yalnızca demo verisinde; arayüzden oluşturulamıyor) | BX | O |
+| Numaralı koltuk planı, genel giriş (ayakta) alanlar | ✅ | BX | O |
 | Satış başlangıç/bitiş zamanı (H10) | ❌ | BX | O |
-| Etkinlik tarihi/saati değişince alıcılara bildirim | ❌ | (şikâyet konusu) | O |
-| Aynı etkinliğin yeni seansını kopyalayarak açma | ❌ | BX | E |
-| Salon düzenleyici: koridor, kullanılamaz koltuk, genel giriş salonu | ❌ | — | E |
-| Bilet türleri (tam / öğrenci / çocuk) | 🟡 (yalnızca indirim koduyla) | BX | E |
+| Etkinlik tarihi/saati değişince alıcılara bildirim | ✅ B3 | (şikâyet konusu) | O |
+| Aynı etkinliğin yeni seansını kopyalayarak açma | ✅ B4 | BX | E |
+| Salon düzenleyici: koridor, kullanılamaz koltuk, genel giriş salonu | ✅ B5 | — | E |
+| Bilet türleri (tam / öğrenci / çocuk) | ✅ B2 | BX | E |
 
 ### Satış
 | Özellik | Bizde | Rakipte | Sınıf |
@@ -68,19 +68,19 @@ Biletinial ve Passo'nun organizatör özellik sayfaları aramada bulunamadı (bu
 | Online kartla ödeme (sanal POS) | ❌ (§6) | BX | O |
 | Ödenmemiş rezervasyon süresi (H2) | ❌ | — | O |
 | İndirim kodu: sınır, tarih, etkinlik (H8) | 🟡 | BX | O |
-| **Davetiye ve kontenjan** (protokol/sponsor/basın koltukları, davetli listesi, toplu davetiye) | ❌ | D | E |
-| Bileti WhatsApp/SMS/e-posta ile gönderme | ❌ | BX | E |
-| Bilet devri (başka isme), koltuk değiştirme | ❌ | — | E |
-| Bekleme listesi (tükenince, iade olunca haber) | ❌ | — | F |
-| Erken kuş fiyat basamakları (tarihe göre otomatik) | ❌ | — | F |
+| **Davetiye ve kontenjan** (protokol/sponsor/basın koltukları, davetli listesi, toplu davetiye) | ✅ B1 | D | E |
+| Bileti WhatsApp/SMS/e-posta ile gönderme | 🟡 B6 (e-posta yok) | BX | E |
+| Bilet devri (başka isme), koltuk değiştirme | ✅ B7 | — | E |
+| Bekleme listesi (tükenince, iade olunca haber) | ✅ F1 | — | F |
+| Erken kuş fiyat basamakları (tarihe göre otomatik) | ✅ F2 | — | F |
 
 ### Kapı
 | Özellik | Bizde | Rakipte | Sınıf |
 |---|---|---|---|
 | Kod/okuyucu ile giriş, tekrar kullanım uyarısı, canlı sayaç | ✅ | BC Y | O |
 | Telefon kamerasıyla QR (H5) | ❌ | Y (PassPass: yalnızca telefon) | O |
-| Çoklu kapı (kapı adı, kapı bazında sayım) | ❌ | Y | E |
-| Çıkış-yeniden giriş izni | ❌ | Y | E |
+| Çoklu kapı (kapı adı, kapı bazında sayım) | ✅ B8 | Y | E |
+| Çıkış-yeniden giriş izni | ✅ B8 | Y | E |
 | Bağlantı koparsa kapıda çalışmaya devam | 🟡 (aynı cihazda yerel veri) | Y | E |
 
 ### İade ve güven
@@ -94,9 +94,9 @@ Biletinial ve Passo'nun organizatör özellik sayfaları aramada bulunamadı (bu
 | Özellik | Bizde | Rakipte | Sınıf |
 |---|---|---|---|
 | Etkinlik hasılatı, doluluk, katılım, türe göre | ✅ | BB | O |
-| Kanal, indirim kodu, kategori, kasiyer bazında gün sonu | ❌ | BB | E |
-| Organizatör/sanatçı hesap kesimi (hasılat payı, hizmet bedeli ayrı) | ❌ | — | F |
-| Canlı doluluk / giriş ekranı (TV modu) | ❌ | — | F |
+| Kanal, indirim kodu, kategori, kasiyer bazında gün sonu | ✅ B9 | BB | E |
+| Organizatör/sanatçı hesap kesimi (hasılat payı, hizmet bedeli ayrı) | ✅ F3 | — | F |
+| Canlı doluluk / giriş ekranı (TV modu) | ✅ F4 | — | F |
 
 ---
 
@@ -127,6 +127,46 @@ Biletinial ve Passo'nun organizatör özellik sayfaları aramada bulunamadı (bu
 ---
 
 ## Yapılanlar
+
+### 2. ve 3. dalga (30.10.2026)
+Kanıt: "Tarayıcı" = `?demo=1` ile gerçekten denendi. "Kod incelendi" = tarayıcıda denenmedi. "Test" = `server/test/bilet-kural.test.js`.
+
+**Kırık ve eksik temel**
+| # | Sorun | Sonuç | Kanıt |
+|---|---|---|---|
+| K1 | **Sunucu koltuğun kategorisini istemciden alıyordu:** VIP koltuk en ucuz kategoriden alınabiliyor, var olmayan koltuk numarası kabul ediliyordu | Kategori salondan gelir; var olmayan, kapalı, kontenjanlı koltuk satılmaz ve kilitlenemez | Test |
+| K2 | Ödenmemiş rezervasyon hasılata sayılıyordu (özet, etkinlik kartı, rapor) | Hasılat yalnızca ödenmiş bilet; "N rezervasyon ödenmedi" yazar | Tarayıcı: 999 ₺'lik rezervasyon eklendi, hasılat değişmedi |
+| K3 | Etkinlik iptal SMS'i ödemeyene de "tutarınız iade edilecek" diyordu; SMS tek tek ve kayıtsız gidiyordu | Metin ödeyen/ödemeyene göre; `NS.smsBatch` | Tarayıcı: 28 TEST, rezervasyon sahibine iade cümlesi yok |
+| K4 | Süresi dolan veya iptalle düşen rezervasyonun indirim hakkı geri dönmüyordu | Geri döner | Tarayıcı (iptal: 61 → 60); süre dolumu Kod incelendi |
+| K5 | Gişe görevlisi etkinlik oluşturup iptal edebiliyor, süresi geçmiş iadeyi onaysız yapabiliyordu | Etkinlik işlemleri yönetici; geç iade yönetici onayı (`NS.approve`) | Tarayıcı: düğmeler görünmüyor; geç iade Kod incelendi |
+| K6 | Kullanılmış indirim kodu silinebiliyordu; salon yokken form, etkinlik yokken rapor bozuluyordu | Silme engellendi; boş durumlar düzeltildi | Kod incelendi |
+| K7 | Bilet çıktısı sabit HTML'di | `NS.docs` (bilet, hesap kesimi). Online sayfanın müşteri çıktısı olduğu gibi kaldı (işletme şablonu orada yüklü değil) | Tarayıcı: metin; kâğıtta denenmedi |
+| K8 | 50.000 bilette her koltuk için tüm bilet taranıyordu | Tek geçiş | Tarayıcı: 50.000 ek bilet: özet 1,04 sn, etkinlik detayı 209 ms, kalanı 60 ms altı |
+
+**2. dalga — beklenenler**
+| # | Özellik | Sonuç | Kanıt |
+|---|---|---|---|
+| B1 | Davetiye ve kontenjan | Koltuk grubuna ayırma (satışa kapanır); toplu davetiye (ad; telefon), önce kontenjandan; ₺0 ve "Davetiye" etiketiyle hasılat dışı, kapıda grup görünür | Tarayıcı: A2 Protokol'e ayrıldı, 2 davetiye. SMS seçeneği denenmedi |
+| B2 | Bilet türleri | Etkinlikte "Öğrenci:30"; gişe ve online satır bazında; sunucu hesaplar; kapıda "belge kontrol edin" | Tarayıcı + Test: 900 ₺ × erken kuş %10 × öğrenci %30 = 567 ₺ |
+| B3 | Değişiklik bildirimi | Tarih/saat değişince etkilenen sayısı sorulur, gerçek SMS sonucu kayda ve etkinlik sayfasına yazılır; online sayfada uyarı | Tarayıcı: "52 TEST (gönderilmedi)"; online uyarı Kod incelendi |
+| B4 | Seans kopyalama | Fiyat, tür, kontenjan kopyalanır; bilet ve satış tarihleri kopyalanmaz | Tarayıcı |
+| B5 | Salon düzenleyici | Koridor, kapalı koltuk (satılmış koltuk kapatılamaz), genel giriş salonu | Tarayıcı: A1 kapandı, kapasite 191, satılmış A4 reddedildi; 540 kişilik genel giriş salonu |
+| B6 | Bileti mesajla gönderme | SMS (gerçek sonuç) + WhatsApp bağlantısı | Tarayıcı: TEST sonucu; WhatsApp yalnızca bağlantı adresi kontrol edildi |
+| B7 | Devir ve koltuk değişimi | Devirde yeni kod, eski kod geçersiz; aynı kategoride boş koltuk; geçmiş kaydı | Tarayıcı: eski kod kapıda "Geçersiz bilet", A1 → A6 |
+| B8 | Çoklu kapı, yeniden giriş | Cihaz kapısı seçilir, kapı bazında sayım; etkinlikte izinliyse Giriş/Çıkış | Tarayıcı: giriş, tekrar uyarısı, çıkış, yeniden giriş |
+| B9 | Gün sonu | Kanal, ödeme, kasiyer, tür, kod; ödeme gününe yazılır; kasadaki nakit | Tarayıcı |
+
+**3. dalga — fark yaratanlar**
+| # | Özellik | Sonuç | Kanıt |
+|---|---|---|---|
+| F1 | Bekleme listesi | Tükenince online form; sunucu kuralı, liste herkese kapalı; "Yer açıldı" sırayla ve boş yer kadar haber verir; yalnızca gerçekten gidince "Haber verildi" | Tarayıcı (yerel): TEST'te "Bekliyor" kaldı. Test: sunucu kuralı |
+| F2 | Erken kuş | İki tarih basamağı; gişe, online, sunucu aynı hesap | Tarayıcı + Test |
+| F3 | Hesap kesimi | Etkinlik başına hasılat, hizmet bedeli, iade, pay; kesilince tutar saklanır, sonradan değişirse uyarır; `NS.docs` | Tarayıcı: 99.750 ₺ × %25 = 24.937,50 ₺, HK1001. "Sonradan değişti" Kod incelendi |
+| F4 | Canlı giriş (TV) | İçeride, kapı ve kategori sayıları, 4 sn'de bir yenilenir, tam ekran | Tarayıcı; tam ekran düğmesi denenmedi |
+
+Kalite kapısı: 375 px'te panelde 10 ekran taşmıyor, online sayfa dahil konsol hatası yok; boş durumlar: bekleme listesi, hesap kesimi. Koyu tema denenmedi. Bulutta (gerçek kiracı) online rezervasyon ve bekleme listesi denenmedi; yalnızca kural testi var. `sw.js` değiştirilmedi.
+
+**CANLIYA ÇIKMAYI ENGELLEYENLER (ek):** organizatör hesabında vergi, stopaj ve fatura kesintisi yoktur; davetiye ve hizmet bedelinin belgelendirilmesi mali müşavire sorulmalı — DOĞRULANAMADI.
 
 ### 1. dalga (29.10.2026)
 | # | Sonuç | Kanıt |
