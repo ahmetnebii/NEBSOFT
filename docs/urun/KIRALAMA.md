@@ -76,7 +76,7 @@ Satıcı tanıtımlarıdır; iddialar bağımsız doğrulanmadı.
 
 ## 5. Kalite kapısı
 - `kiralama-kural.test.js` 17 test geçti. `npm test` için `package.json`'a eklenmesi gerekir (bu oturumda dokunulmadı).
-- Tarayıcı: ana akışlar baştan sona, konsol hatası kalmadı; 375 px'te 9 ekranda yatay taşma yok; boş liste görüldü.
-- **Denenmedi:** koyu tema (renkler çekirdek değişkenlerinden geliyor, ama açılıp bakılmadı), bulut modunda gerçek online kiralama (sunucu kuralı yalnızca birim testiyle), yazdırılmış kâğıt çıktısı.
+- Tarayıcı: ana akışlar baştan sona, konsol hatası kalmadı; 375 px'te 9 ekranda yatay taşma yok; boş liste ve koyu tema (özet) görüldü.
+- **Denenmedi:** bulut modunda gerçek online kiralama (sunucu kuralı yalnızca birim testiyle), yazdırılmış kâğıt çıktısı.
 - Statik dosya değişti: `sw.js` sürümü birleştirme sırasında artırılmalı.
 - Çekirdek isteği: `core/notify.js` panelden girilen kiralamayı da "Yeni online kiralama" diye bildiriyor; `source === 'online'` filtresi gerekir.
