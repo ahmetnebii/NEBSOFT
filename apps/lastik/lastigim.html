@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lastiklerim</title>
+<meta name="robots" content="noindex">
+<link rel="stylesheet" href="../../core/core.css">
+<link rel="stylesheet" href="../../core/track.css">
+<style>:root { --app-accent: #334155; --app-accent-soft: #e2e8f0; --app-accent-soft-dark: #1e293b; } .it { display: flex; justify-content: space-between; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--border); } .it:last-child { border-bottom: 0; }</style>
+</head>
+<body>
+<header class="tk-bar"><div class="in" id="bar"></div></header>
+<main class="tk-wrap" id="root" style="max-width:640px"></main>
+<script src="../../core/core.js"></script>
+<script src="data.js"></script>
+<script>
+(function () {
+  const { esc, $, icon, money, toast } = NS;
+  const O = window.LST;
+  const db = new NS.DB('lastik', O.seed);
+  const S = () => db.settings({});
+  $('#bar').innerHTML = `<div class="tk-mark">${icon('car')}</div><div class="grow"><b>${esc(S().bizName || 'Lastik oteli')}</b><span>Lastiklerim</span></div>${S().bizPhone ? `<a class="btn ghost" href="tel:${esc(String(S().bizPhone).replace(/\s/g, ''))}">${icon('phone')} Ara</a>` : ''}`;
+  const key = (new URLSearchParams(location.search).get('k') || '').toUpperCase();
+  function render() {
+    if (!key || db.lookup({ k: key }) === null) db.load(); const h = db.find('hotels', (x) => x.key === key);
+    if (!h) { $('#root').innerHTML = `<div class="tk-intro"><h1>Kayıt bulunamadı</h1><p>Bağlantının tamamını açtığınızdan emin olun veya işletmeyi arayın.</p></div>`; return; }
+    const v = db.get('vehicles', h.vehicle) || {}; const on = h.status === 'depoda';
+    $('#root').innerHTML = `<div class="tk-head"><div class="top"><b class="mono">${esc(v.plate || '')}</b><span class="tk-pill">${on ? 'Depoda' : 'Teslim edildi'}</span></div><p class="muted">Etiket ${esc(h.no)} · Giriş ${NS.date(h.inAt)}${h.outAt ? ' · Çıkış ' + NS.date(h.outAt) : ''}</p></div>
+      <section class="tk-panel"><h3>${icon('list')} Lastikler</h3><div class="b">${(h.tires || []).map((t) => `<div class="it"><span>${esc(t.pos)}<div class="small muted">${esc(t.brand || '')} ${esc(t.size || '')}</div></span><b class="small">DOT ${esc(t.dot || '-')}${t.tread ? ` · ${t.tread} mm` : ''}</b></div>`).join('')}</div></section>
+      <section class="tk-panel"><div class="b"><div class="it"><span class="muted">Saklama ücreti</span><b>${money(h.fee || 0)} ${h.feePaid ? '· ödendi' : ''}</b></div></div></section>
+      ${on ? `<section class="tk-panel"><h3>${icon('calendar')} Teslim talebi</h3><div class="b">${h.pickupReq ? `<p>Talebiniz: <b>${NS.date(h.pickupReq)}</b>. İşletme sizi arayarak saati netleştirir.</p>` : ''}<div class="field"><label for="dt">Gelmek istediğiniz tarih</label><input class="input" id="dt" type="date" min="${NS.iso(new Date())}"></div><button class="btn primary" id="rq">${icon('send')} Talep bırak</button></div></section>` : ''}<p class="small muted center">${esc(S().bizAddress || '')}</p>`;
+    const rq = $('#rq'); if (rq) rq.onclick = () => { const d = $('#dt').value; if (!d) return toast('Tarih seçin', 'err'); db.load(); const x = db.find('hotels', (r) => r.key === key); x.pickupReq = d; db.save(); toast('Talebiniz kaydedildi', 'ok'); setTimeout(render, 500); };
+  }
+  render();
+})();
+</script>
+</body>
+</html>
