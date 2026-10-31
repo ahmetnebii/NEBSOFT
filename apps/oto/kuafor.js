@@ -8,7 +8,8 @@
     const ST = { kabul: ['Kabul', 'clock', '#64748b'], islem: ['İşlemde', 'wrench', '#0284c7'], kalite: ['Kalite kontrol', 'eye', '#d97706'], hazir: ['Hazır', 'check', '#16a34a'] };
     const NEXT = { kabul: 'islem', islem: 'kalite', kalite: 'hazir' };
     const NOTE = 'Araç iadesi bu fiş ile yapılır. Araç içinde kıymetli eşya bırakmayınız.';
-    if (NS.docs) [['kuafor', 'Oto kuaför iş kartı'], ['valefis', 'Araç teslim fişi']].forEach(([k, label]) => NS.docs.define('oto', k, { label }));
+    // Genel şablonun "takılan parçalar garantilidir" metni vale fişine ve iş kartına basılmaz; garanti süresi iş kartında kendi satırındadır
+    if (NS.docs) [['kuafor', 'Oto kuaför iş kartı', { signLabels: 'İşletme|Araç sahibi' }], ['valefis', 'Araç teslim fişi', { signLabels: 'Vale görevlisi|Sürücü' }]].forEach(([k, label, d]) => NS.docs.define('oto', k, { label, defaults: { terms: '', footer: '', ...d } }));
     const wk = (id) => db.get('workers', id) || { name: '-' };
     const val = (id) => db.get('valets', id) || { name: '-' };
     const pay = async (amount) => { const v = await formModal({ title: `Tahsilat ${money(amount)}`, fields: [{ name: 'pay', label: 'Ödeme', type: 'select', options: [{ value: 'nakit', label: 'Nakit' }, { value: 'kart', label: 'Kart' }, { value: 'havale', label: 'Havale' }] }], submitLabel: 'Tahsil et' }); if (!v) return null; if (v.pay === 'kart' && amount > 0 && NS.integ) { const r = await NS.integ.cardPayment(amount); if (!r.ok) { toast('Kart ödemesi alınamadı: ' + (r.error || ''), 'err'); return null; } } if (v.pay === 'nakit' && NS.integ) NS.integ.openDrawer(); return v.pay; };
@@ -54,8 +55,8 @@
       on(el, 'click', '[data-act]', async (e, b) => {
         const t = db.get('valet', b.dataset.id); if (!t) return; const a = b.dataset.act; if (a === 'pr') return printTicket(t); if (a === 'get') { t.status = 'getiriliyor'; db.save(); return app.refresh(); }
         const v = await formModal({ title: `İade: ${t.plate}`, fields: [{ name: 'code', label: 'Fişteki kod', hint: 'Araç iadesi fiş ile yapılır. Fiş yoksa boş bırakın, yetkili onayı istenir.' }, { name: 'km', label: 'Teslim km', type: 'number', value: t.km }, { name: 'damage', label: 'Hasar notu (varsa)', full: true }], submitLabel: 'Devam' }); if (!v) return;
-        if (String(v.code || '').trim().toUpperCase() !== t.code) { const by = await NS.approve(NS.app, `${t.plate} fişsiz iade`, ['admin']); if (!by) return; t.noTicket = { by: by.name || '', at: new Date().toISOString() }; }
-        let m = ''; if (t.fee > 0) { m = await pay(t.fee); if (!m) return; }
+        if (v.km !== '' && v.km != null && Number(v.km) < Number(t.km)) return toast(`Teslim km, giriş km'sinden (${t.km}) küçük olamaz`, 'err'); let fissiz = null; if (String(v.code || '').trim().toUpperCase() !== t.code) { const by = await NS.approve(NS.app, `${t.plate} fişsiz iade`, ['admin']); if (!by) return; fissiz = { by: by.name || '', at: new Date().toISOString() }; }
+        let m = ''; if (t.fee > 0) { m = await pay(t.fee); if (!m) return; } if (fissiz) t.noTicket = fissiz; // ödeme vazgeçilirse araç teslim edilmemiştir, fişsiz iade kaydı kalmaz
         Object.assign(t, { status: 'teslim', out: new Date().toISOString(), outKm: Number(v.km) || t.km, damageNote: v.damage || '', pay: m || 'yok' }); if (v.damage) db.insert('valetDamage', { ticket: t.id, plate: t.plate, note: v.damage, at: t.out }, true); db.log('Vale teslim', `${t.no} · ${t.plate}${v.damage ? ' · hasar notu' : ''}`); db.save(); toast('Araç teslim edildi', 'ok'); app.refresh();
       });
     }

@@ -5,8 +5,8 @@ Durum: kod geliştirildi, **satışa kapalı** (`market/catalog.js` `ready: fals
 ## CANLIYA ÇIKMAYI ENGELLEYENLER
 
 1. **Avukat kontrolü yapılmadı.** Seans notu, ölçüm, öykü ve ilaç bilgisi özel nitelikli kişisel veridir. Satış açılmadan avukat şunları değerlendirmeli: NEBSOFT'un veri işleyen rolü, veri işleme sözleşmesi, onam metni, saklama ve silme süreleri, yurt dışına aktarım, psikolog notlarının gizliliği.
-2. **KVKK md. 6/4 "yeterli önlemler" DOĞRULANAMADI.** Kurul kararının metni okunmadı. Programdaki önlemler bu karara göre denetlenmedi.
-3. **Kişisel Sağlık Verileri Yönetmeliği DOĞRULANAMADI.** mevzuat.gov.tr adresi (`MevzuatNo=24657`) 404 döndü. Yürürlük ve serbest çalışan uzmana uygulanıp uygulanmadığı okunamadı.
+2. **KVKK md. 6/4 "yeterli önlemler" kısmi uyum.** Kurul kararı 2018/10 okundu (https://www.kvkk.gov.tr/Icerik/4110/2018-10, 31.10.2026). Şifreleme var; tüm hareketlerin loglanması ve uzaktan erişimde iki kademeli doğrulama eksik veya doğrulanmadı. Ayrıntı `docs/test/uyelik-egitim-saglik.md`.
+3. **Kişisel Sağlık Verileri Yönetmeliği:** yürürlükte, RG 21.6.2019-30808, son değişiklik 4.7.2026-33300, `MevzuatNo=32610` (31.10.2026). Bu üç mesleğe uygulanıp uygulanmadığı DOĞRULANAMADI: meslekler adıyla geçmiyor, avukat değerlendirmeli.
 4. **Sağlık Bakanlığı yükümlülüğü DOĞRULANAMADI.** e-Nabız bildirimi, reçete, meslek mensubu kayıt şartı bu üç meslek için incelenmedi. Program bu bağlantıları içermez.
 5. **Psikolog ile psikiyatrist ayrımı ve meslek yetkisi DOĞRULANAMADI.** Program tanı kodu ve reçete tutmaz. Tanıtım tanı veya tedavi iddiası yazamaz.
 6. **Şifreleme yalnız sunucudadır.** Sunucuya erişen yazılım veriyi okuyabilir (`server/cloud/belge.js`). Hesap sahibi kilitli notu da değiştirebilir, kural yalnız ekip hesaplarında çalışır.
@@ -29,7 +29,7 @@ Durum: kod geliştirildi, **satışa kapalı** (`market/catalog.js` `ready: fals
 | SMS'te hizmet ve uzmanlık yok | Yalnız tarih, saat, işletme adı |
 | Kart görüntüleme kaydı, kişisel veri dışa aktarma, anonimleştirme | `core/kvkk.js` |
 | Onam imzası, metni kurum yazar | Program hazır metin vermez |
-| Pazarlama sitesi sayfası yok | `site/src/products.js` kaydı eklenmedi |
+| Pazarlama sitesi sayfası yok | `site/src/products.js` kaydı eklenmedi. Pazar yerinde `#/urun/danisan` ve "Yakında" kartı var, kaldırılması gerekir |
 
 ## Pazar araştırması
 

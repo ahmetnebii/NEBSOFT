@@ -18,7 +18,7 @@
   const pkValid = (p) => !p.canceled && p.used < p.total && (!p.expires || p.expires >= today());
   // Seans paketi modülü (Ayarlar > pkPlus, varsayılan kapalı): sıradaki seans tarihi son düşümden hesaplanır
   const pkNext = (p) => { if (!Number(p.interval) || p.canceled || p.used >= p.total) return null; const L = p.log || []; return iso(addDays(L.length ? L[L.length - 1].at : p.created || new Date(), Number(p.interval))); };
-  if (NS.docs) NS.docs.define('randevu', 'paket', { label: 'Seans paketi belgesi' });
+  if (NS.docs) NS.docs.define('randevu', 'paket', { label: 'Seans paketi belgesi', defaults: { terms: '', signLabels: 'İşletme|Müşteri' } });
   const pkFor = (customer, service) => db.all('packages', (p) => p.customer === customer && (!service || p.service === service) && pkValid(p)).sort((a, b) => String(a.expires || '9').localeCompare(String(b.expires || '9')));
   // Seans düşümü kim / ne zaman / hangi randevu olarak kaydedilir (geri alınabilsin diye)
   const pkUse = (p, appt, note) => { p.used++; p.log = [...(p.log || []), { at: new Date().toISOString(), appt: appt || null, by: (NS.currentUser || {}).name || '', note: note || '' }]; };
