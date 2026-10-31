@@ -29,7 +29,7 @@
   const BK = (kind) => !!(GU().BRAND_KINDS || {})[kind];
   const curProv = (kind) => { const c = NS.integ.cfg(kind); if (BK(kind)) return c.brand || ''; const f = provField(kind, c); return f ? c[f.name] : defProv(kind); };
   // Sözleşme gerektiren sağlayıcı: API dokümanı herkese açık değil, Entegre et yerine iletişim talebi gösterilir
-  const kapali = (g) => !!g && (['desteklenmiyor', 'yakinda'].includes(g.status) || (g.status === 'erisim' && (!g.test || g.test.type === 'none')));
+  const kapali = (g) => (GU().kapali ? GU().kapali(g) : false);
   const sunucu = (g) => !!(g && g.test && g.test.type === 'sunucu');
   // Sunucudaki son deneme sonucu (bulut). Yerelde durum bu cihazda tutulur, o da yalnız gerçek denemeden yazılır
   let SR = null;

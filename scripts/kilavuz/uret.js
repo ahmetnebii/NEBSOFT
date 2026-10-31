@@ -5,7 +5,7 @@
 // Seçici bulunamazsa, işaretli element görünmüyorsa, anlatılan ad kodda veya ekranda yoksa, menü modülü atlanmışsa üretim hata verir ve PDF yazılmaz.
 // Çıktı: indir/kilavuz/<id>.pdf + core/kilavuz.json (bağlantılar bu listeye bakar). Ayar: scripts/kilavuz/ayar.js. İçerik: docs/kilavuz/<id>.js. Rehber: docs/kilavuz/DURUM.md
 const fs = require('fs'); const os = require('os'); const path = require('path'); const { execSync } = require('child_process');
-const { chrome, sunucu, wait, ROOT } = require('./cdp'); const A = require('./ayar'); const S = require('./sablon'); const DN = require('./denetim'); const { oku } = require('./pdfoku'); const Ort = require('./ortak');
+const { chrome, sunucu, wait, ROOT } = require('./cdp'); const A = require('./ayar'); const { ekranBoyu } = require('./cizim'); const S = require('./sablon'); const DN = require('./denetim'); const { oku } = require('./pdfoku'); const Ort = require('./ortak');
 const YARDIM = fs.readFileSync(path.join(__dirname, 'sayfa.js'), 'utf8');
 const STIL = `.ns-toasts,.nsd,#nsdroot,.nsd-w,.ns-demo-bar{display:none!important}*{caret-color:transparent!important;animation:none!important;transition:none!important}`;
 const dizge = JSON.stringify;
@@ -14,14 +14,14 @@ const KUR = require(path.join(ROOT, 'core', 'kurulum-adimlari.js')); const YI = 
 
 const TARAMA = `(() => { const I = NS.integ, G = window.NB_GUIDES, o = NS.app.opts; const list = ((I.USED || {})[o.id] || Object.keys(I.DEFS)).filter((k) => I.DEFS[k]);
   const prv = (k) => { const d = I.DEFS[k], c = I.cfg(k); if ((G.BRAND_KINDS || {})[k]) return G.forKind(k).map((g) => ({ value: g.key.split(':')[1], label: g.name })); const fs = d.fields(c); const f = fs.find((x) => x.name === 'provider') || fs.find((x) => x.name === 'mode' && x.type === 'select'); return f ? (typeof f.options === 'function' ? f.options() : f.options || []).map((x) => (typeof x === 'object' ? { value: x.value, label: x.label } : { value: x, label: x })) : G.forKind(k).map((g) => ({ value: g.key.split(':')[1], label: g.name })); };
-  const kim = (g) => g && ({ name: g.name, status: g.status, sunucu: !!(g.test && g.test.type === 'sunucu'), testVar: !!(g.test && g.test.type && g.test.type !== 'none'), summary: g.summary, limit: g.limit, verified: g.verified, sources: g.sources || [], prereq: g.prereq || [], where: g.where || [], fields: (g.fields || []).map((f) => ({ name: f.name, type: f.type, pattern: f.pattern, label: f.label, required: !!f.required, nereden: f.help && f.help.where, ne: f.help && f.help.what })), test: g.test && g.test.note, errors: (g.errors || []).map((e) => ({ title: e.title, fix: e.fix })) });
-  return { id: o.id, ad: o.name, accent: o.accent, ikon: NS.icon(o.icon || 'grid'), roles: (o.auth && o.auth.roles) || {}, nav: o.nav.filter((n) => n.id).map((n) => ({ id: n.id, label: n.label, roles: n.roles || null })), navHepsi: [...document.querySelectorAll('.ns-nav a[data-nav]')].map((a) => [a.dataset.nav, a.innerText.trim()]), ent: list.map((k) => { const d = I.DEFS[k]; return { k, title: d.title, desc: d.desc, cat: d.cat || '', conn: !!d.conn, kilit: !!(I.UNVERIFIED || {})[k], provs: prv(k).map((p) => ({ value: String(p.value), label: p.label, g: kim(G.get(k, p.value)) })) }; }) }; })()`;
+  const kim = (g) => g && ({ name: g.name, status: g.status, sunucu: !!(g.test && g.test.type === 'sunucu'), kapali: G.kapali(g), summary: g.summary, limit: g.limit, verified: g.verified, sources: g.sources || [], prereq: g.prereq || [], where: g.where || [], fields: (g.fields || []).map((f) => ({ name: f.name, type: f.type, pattern: f.pattern, label: f.label, required: !!f.required, nereden: f.help && f.help.where, ne: f.help && f.help.what })), test: g.test && g.test.note, errors: (g.errors || []).map((e) => ({ title: e.title, fix: e.fix })) });
+  return { id: o.id, ad: o.name, accent: o.accent, ikon: NS.icon(o.icon || 'grid'), roles: (o.auth && o.auth.roles) || {}, nav: o.nav.filter((n) => n.id).map((n) => ({ id: n.id, label: n.label, roles: n.roles || null })), navHepsi: [...document.querySelectorAll('.ns-nav a[data-nav]')].map((a) => [a.dataset.nav, a.innerText.trim()]), ent: list.map((k) => { const d = I.DEFS[k]; return { k, title: d.title, desc: d.desc, cat: d.cat || '', conn: !!d.conn, provs: prv(k).map((p) => ({ value: String(p.value), label: p.label, kilit: I.unverified(k, p.value), g: kim(G.get(k, p.value)) })) }; }) }; })()`;
 
 function rect(kes, vw, vh) { const x = Math.max(0, kes.x); const y = Math.max(0, kes.y); return { x, y, width: Math.min(vw, kes.x + kes.w) - x, height: Math.min(vh, kes.y + kes.h) - y }; }
 
 // Sahne çekimi: sayfa baştan açılır, ön eylemler yapılır, seçiciler çözülür, kişi verisi bulanıklaşır, görüntü alınır
 async function cek(p, B, id, s, ctx) {
-  const yer = `${id} / ${ctx.yer}`; const H = ctx.hatalar; const boy = s.boy || A.EKRAN.boy; const en = s.en || A.EKRAN.en;
+  const yer = `${id} / ${ctx.yer}`; const H = ctx.hatalar; let boy = s.boy || A.EKRAN.boy; const en = s.en || A.EKRAN.en; let uzadi = false;
   if (s.boy || s.en) await p.boyut(en, boy);
   try {
     const url = s.adres ? `${B}/apps/${id}/${s.adres}` : `${B}/apps/${id}/?demo=1#/${s.git || ''}`;
@@ -35,6 +35,8 @@ async function cek(p, B, id, s, ctx) {
     }
     await wait(s.son || 260);
     const isaretli = s.adimlar.filter((a) => a.sec);
+    // İşaretli öğe ekranın altında kalıyorsa pencere içeriğe göre uzar: sahneye boy yazmak gerekmez
+    const gerekli = ekranBoyu(await p.calistir(`${dizge(isaretli.map((a) => a.sec))}.map((x)=>__k.kutu(x)).filter(Boolean)`), boy); if (gerekli > boy) { boy = gerekli; uzadi = true; await p.boyut(en, boy); await wait(250); }
     if (isaretli.length) await p.calistir(`(()=>{const e=__k.bul(${dizge(isaretli[0].sec)});if(e){const r=e.getBoundingClientRect();if(r.bottom>innerHeight-10||r.top<0)e.scrollIntoView({block:'center'});}})()`);
     await wait(120);
     const kirp = s.kirp === 'tam' ? null : await p.calistir(`(()=>{const e=${s.kirp === 'pencere' ? `document.querySelector('.ns-overlay [role=dialog],.ns-overlay .modal,.ns-overlay>*')` : s.kirp && s.kirp !== 'ana' ? `__k.bul(${dizge(s.kirp)})` : `document.querySelector('.ns-main')||document.body`};if(!e)return null;const r=e.getBoundingClientRect();return{x:r.left,y:r.top,w:r.width,h:r.height}})()`);
@@ -45,6 +47,7 @@ async function cek(p, B, id, s, ctx) {
       if (!k) { H.push(`${yer}: seçici bulunamadı: ${a.sec}`); continue; }
       if (!k.ustte && !a.ortulu) H.push(`${yer}: element görünmüyor veya başka bir şeyin altında: ${a.sec}`);
       if (k.x + k.w < alan.x || k.y + k.h < alan.y || k.x > alan.x + alan.width || k.y > alan.y + alan.height) H.push(`${yer}: element görüntü alanının dışında: ${a.sec}`);
+      if (a.metin.includes('{dugme}')) { const y = DN.dugmeYaz(a.metin, k.metin); if (y) a.metin = y; else H.push(`${yer}: beklenmeyen düğme adı: "${k.metin}"`); }
       a.kutu = { x: k.x - alan.x, y: k.y - alan.y, w: k.w, h: k.h }; a.bulunan = k.metin; a.isaretli = true; a.tur = a.tur || 'cerceve';
     }
     ctx.ekran.push(await p.calistir(`document.body.innerText + ' ' + [...document.querySelectorAll('[placeholder],[title],[aria-label],option')].map(e=>e.placeholder||e.title||e.getAttribute('aria-label')||e.textContent).join(' ') + ' ' + [...document.querySelectorAll('input[value],button')].map(e=>e.value||'').join(' ')`));
@@ -57,7 +60,7 @@ async function cek(p, B, id, s, ctx) {
     const dosya = path.join(ctx.dir, `e${String(++ctx.no).padStart(3, '0')}.jpg`); fs.writeFileSync(dosya, j); ctx.bayt += j.length;
     s.cekim = { dosya: 'file:///' + dosya.replace(/\\/g, '/'), w: Math.round(alan.width), h: Math.round(alan.height) };
     return s;
-  } finally { if (s.boy || s.en) await p.boyut(A.EKRAN.en, A.EKRAN.boy); }
+  } finally { if (s.boy || s.en || uzadi) await p.boyut(A.EKRAN.en, A.EKRAN.boy); }
 }
 
 // Dizi biçimli adımlar nesneye çevrilir: ['metin', 'seçici', 'ok']
