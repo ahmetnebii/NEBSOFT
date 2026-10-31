@@ -34,3 +34,20 @@ Kalite kapısı: `npm test` (cloud.test.js hariç) geçti; 17 ekran açıldı, k
 ## 2. Sonraki dalga adayları
 - Yemek platformları (Yemeksepeti, Getir, Trendyol Yemek, Migros) resmî API dokümanı doğrulaması (şu an simülasyon / webhook).
 - Masa birleştirme / ayırmada bahşiş ve indirimin taşınması kuralı.
+
+## Yemek platformu tohumu bulut belgesine yazmıyor (31.10.2026)
+
+**Sorun:** `apps/adisyon/platform.js` `ensure()` bulut belgesine bağlı görünen 3 platform, uydurma müşteri yorumları ve yapılmamış `menu-senkron` günlüğü yazıyordu. `CLAUDE.md` §1'e aykırı.
+
+**Yapılan:**
+- `ensure()` bulutta (`db.cloud`) hiçbir şey yazmaz. Demo ve yerel aynen kaldı.
+- `platforms`, `platOff`, `platReviews`, `platLog` bulutta kullanıcı platform bağlayana kadar yoktur. Bağlı platform yokken "Bağlı platform yok", yorum yokken "Yorum yok" görünür.
+- Bağlı platform yokken "Tüm platformlarda aç" ve "Yoğunluk modu" yapıldı demez, uyarır.
+- Simülasyonda platform bağlamak günlüğe "Kuruldu" değil "Kaydedildi (TEST, simülasyon)" yazar.
+- Paket ekranındaki platform siparişi çekme, simülasyon yanıtında bulutta uydurma adisyon açmaz (`apps/adisyon/app.js`), TEST uyarısı verir.
+
+Kanıt: `server/test/kanal-tohum.test.js` (üç programda 29 senaryo, eski kodda her programın ilk senaryosunda kırılır). Tarayıcı: gerçek sunucu, MariaDB ve başsız Chrome ile 22 denetim geçti. Yeni bulut hesabı, ilk açılış, yeniden açılış, arayüzden bağlama, 375 px, koyu tema, `?demo=1`; konsol hatası yok.
+
+**Kalan:** Platform bağlıyken yemek platformu entegrasyonu kapalıysa `send()` günlüğe işlem yazar, gönderilmediği yalnız sayfa üstündeki uyarıda söylenir. Günlük satırında TEST yazmıyor, düzeltilmedi.
+
+Daha önce tohumlanmış bulut belgeleri otomatik düzeltilmedi; düzeltme kararı işletme bazında verilmeli. Şu kayıtlar tohumdan gelmiş olabilir, bu kurallar kod incelemesine dayanır, gerçek müşteri belgesinde denenmedi: `platforms` içinde `ys-48211`, `gt-90233`, `tyg-3310`; `platReviews` içinde `E*** K.` biçimli altı yorum; `platLog` içinde `menu-senkron`.

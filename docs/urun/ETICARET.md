@@ -55,13 +55,13 @@ Bu kurallar kod incelemesine dayanır, gerçek müşteri belgesinde denenmedi. D
 
 Geri alma, bir siparişte: `channel = source`, `source`, `channelNo`, `channelShip` silinir. `deliveredAt` tohumda üretilmiş olabilir, `history` içindeki teslim kaydıyla karşılaştırılmalı. "Örnek verileri temizle" (`db.reset`) yalnızca dizileri siler; sahte `mpChannels` ve `mpCatMap` kalır, bu yüzden temizlik yapmış işletmede kanallar hâlâ bağlı görünebilir.
 
-### Aynı desen başka programlarda (düzeltilmedi)
+### Aynı desen başka programlarda
 
 | Program | Durum | Önem |
 |---|---|---|
-| `apps/pos/hizli.js` `ensure` | Bulut denetimi yok: Getir ve Yemeksepeti bağlı, 3 uydurma hızlı sipariş yazılır. Sipariş tamamlanırsa gerçek satış ve stok düşümü oluşur | Yüksek |
-| `apps/adisyon/platform.js` `ensure` | Bulut denetimi yok: 3 platform bağlı, uydurma platform yorumları ve yapılmamış "menu-senkron" günlüğü yazılır | Yüksek |
-| `apps/emlak/portal.js` `ensure` | İlan ve numara yalnızca örnek ilanlara yazılır, ama gerçek işletmede de üç portal `connected: true` olur | Orta |
+| `apps/pos/hizli.js` `ensure` | Düzeltildi (31.10.2026): bulutta yazmaz, `docs/urun/POS.md` | - |
+| `apps/adisyon/platform.js` `ensure` | Düzeltildi (31.10.2026): bulutta yazmaz, `docs/urun/ADISYON.md` | - |
+| `apps/emlak/portal.js` `ensure` | Düzeltildi (31.10.2026): bulutta yazmaz, `docs/urun/EMLAK.md` | - |
 | `apps/pazaryeri/data.js` `seed` | Yalnızca boş belgenin örnek verisinde, `mode: 'demo'` ile. Var olan kayda dokunmaz; `mpChannels` gibi `channels` da "Örnek verileri temizle" sonrası bağlı kalır | Orta |
 | `apps/site/data.js` `ensure` | Bulutta örnek anket ve gerçek dairelere örnek oy yazılır | Düşük |
 | `apps/butik` | Desen yok: bağlantı `NS.integ` ayarından okunur | - |
