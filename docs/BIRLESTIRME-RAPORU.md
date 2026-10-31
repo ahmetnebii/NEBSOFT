@@ -1,6 +1,6 @@
 # Birleştirme raporu: `birlesik/hepsi`
 
-Tarih: 2026-10-31. Kod ve üretim son commit: `97137b9`, son `npm test` bunun üstünde koştu. Bu rapor ayrı bir belge commit'idir. Bu oturum `devir/hepsi` dalına yazmadı, push yapmadı. Yerel `devir/hepsi` ilk birleştirmeden sonra 13.27'de bu oturum dışında `2fb3fb2` hâline alınmış, `origin/devir/hepsi` hâlâ `d5f4e06`.
+Tarih: 2026-10-31. Son `npm test` ve SEO denetimi Kılavuz 2 eki ve `sw.js` `nebsoft-v3-97` commit'i üstünde koştu. Bu rapor ayrı bir belge commit'idir. Bu oturum `devir/hepsi` dalına yazmadı, push yapmadı. Yerel `devir/hepsi` bu dala ileri sarıldı, `origin/devir/hepsi` hâlâ `d5f4e06`, push yapılmadı.
 
 ## CANLIYA ÇIKMAYI ENGELLEYENLER
 
@@ -13,7 +13,7 @@ Tarih: 2026-10-31. Kod ve üretim son commit: `97137b9`, son `npm test` bunun ü
 
 ### Bu iki birleştirmede kapanan
 
-- `sw.js` sürümü yükseltildi, son değer `nebsoft-v3-96` (saha E9).
+- `sw.js` sürümü yükseltildi, son değer `nebsoft-v3-97` (saha E9).
 - Gece kırılan `bilet-kural.test.js` (ticaret 8 ve üç rapor).
 - Panelden açılan iyzico kilidi birleşik kodda çalışıyor, borç tahsilatı süresi panelden okunuyor.
 - Paraşüt notu kodla uyumlu, `core/integ-guides.js`.
@@ -29,7 +29,7 @@ Tam liste `docs/kilavuz/PROGRAM-HATALARI.md`. Bu maddeler kod okumasıdır, bura
 - `apps/otel/app.js`: POS TEST sonucu folyoya ödeme yazar. HotelRunner bağlayıcısı programla uyumsuz.
 - `apps/bilet/app.js`: kapı açılmasa da bilet kullanıldı sayılır, `turnike` `UNVERIFIED` listesinde yok.
 - `apps/klinik`, `apps/otel`: e-Fatura eski `sendEInvoice` yolundan gider, `NS.ebelge.create` kullanmaz (CLAUDE.md §4).
-- `apps/randevu`, `apps/adisyon`, `apps/butik`, `apps/toptan`, `apps/kuyumcu`, `apps/kargo`, `apps/crm`, `apps/servis`, `apps/kiralama`, `apps/galeri`, `apps/spor`, `apps/kurs`, `apps/anaokulu`, `apps/emlak`: e-Belgeler menüde, `efatura` `USED` listesinde yok. Entegratör bağlanamaz, fatura TEST kalır. Liste notlardan alındı, satır satır yeniden doğrulanmadı.
+- `apps/adisyon`, `apps/butik`, `apps/toptan`, `apps/kuyumcu`, `apps/kargo`, `apps/crm`: e-Belgeler menüde, `efatura` `USED` listesinde yok. (`servis`, `kiralama`, `galeri`, `spor`, `kurs`, `anaokulu`, `emlak` son eklemede kapandı.) Entegratör bağlanamaz, fatura TEST kalır. Liste notlardan alındı, satır satır yeniden doğrulanmadı.
 - `core/integ-guides.js` `PAYLIMIT`: müşteriye açık kart ödemesi "henüz yoktur" diyor. iyzico, PayTR, Papara, Paynet, Craftgate için `integ-guides-sunucu.js` üstüne yazar, kalan sağlayıcılar için metin geçerli olabilir, denetlenmeli.
 - `docs/kilavuz`: e-SMM kartı kılavuzda "açtırılır" der, kodda Paraşüt doğrudan gönderimi var, sihirbaz "desteklenmiyor" gösterir. UYUMSUZ, karar gerekli.
 
@@ -168,3 +168,7 @@ Ortak bölümler (Ayarlar, Bildirimler, Belge şablonları, sağlayıcı rehberl
 - Ana klasörde birleştirmeden sonra `indir/kilavuz/` yoksa `seo-denetim` üç kesin hata verir, `hosting-paketi.js` durur. PDF'ler kopyalanmalı veya `node scripts/kilavuz/uret.js pos terzi eticaret` çalıştırılmalı.
 - `docs/ENTEGRASYON-ENVANTERI.md` ve `docs/kilavuz/DURUM.md` iyzico kilidini yalnız `IYZICO_CANLI` ile anlatır, panelden açma da artık geçerlidir.
 - Hazır kılavuzlar (`pos`, `terzi`, `eticaret`) bu birleşimden önce üretildi, yeniden üretilmedi. `claude/grup-*` dalları `core/kilavuz.json` kayıtları getirince bu dosyada çakışma beklenir.
+
+## Son ek: Kılavuz 2'nin commit edilmemiş işi
+
+İkinci birleştirmeden sonra `claude/grup-2-600694` çalışma kopyasında commit edilmemiş değişiklik bulundu (`4016541` olarak kaydedildi, `ba2c2b3` ile alındı): `core/integrations.js` `USED` eklemeleri, `apps/randevu/app.js` takvim çağrısı ve belge seçenekleri, dokuz kılavuz metni. `anaokulu`, `emlak`, `galeri`, `kiralama`, `kurs`, `oto`, `randevu`, `servis`, `spor` kılavuzları yeniden üretildi, üretici hata vermedi. Sonra `npm test` çıkış kodu 0, `AÇIK` satırı 9, XSD atlanmadı; SEO 210 sayfa, kesin hata 0, uyarı 100. Bu ek için tarayıcı turu yapıldı, sonucu kullanıcı özetindedir.

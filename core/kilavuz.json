@@ -8,9 +8,9 @@
  },
  "anaokulu": {
   "id": "anaokulu",
-  "sayfa": 54,
-  "boyut": 4581574,
-  "ekran": 32,
+  "sayfa": 58,
+  "boyut": 4827117,
+  "ekran": 33,
   "tarih": "2026-10-31"
  },
  "bilet": {
@@ -78,9 +78,9 @@
  },
  "emlak": {
   "id": "emlak",
-  "sayfa": 47,
-  "boyut": 5032136,
-  "ekran": 29,
+  "sayfa": 58,
+  "boyut": 5748453,
+  "ekran": 33,
   "tarih": "2026-10-31"
  },
  "eticaret": {
@@ -113,9 +113,9 @@
  },
  "galeri": {
   "id": "galeri",
-  "sayfa": 49,
-  "boyut": 4455851,
-  "ekran": 27,
+  "sayfa": 52,
+  "boyut": 4690640,
+  "ekran": 28,
   "tarih": "2026-10-31"
  },
  "hukuk": {
@@ -141,9 +141,9 @@
  },
  "kiralama": {
   "id": "kiralama",
-  "sayfa": 46,
-  "boyut": 4307477,
-  "ekran": 28,
+  "sayfa": 57,
+  "boyut": 5025547,
+  "ekran": 32,
   "tarih": "2026-10-31"
  },
  "klinik": {
@@ -155,9 +155,9 @@
  },
  "kurs": {
   "id": "kurs",
-  "sayfa": 69,
-  "boyut": 5514220,
-  "ekran": 38,
+  "sayfa": 73,
+  "boyut": 5758334,
+  "ekran": 39,
   "tarih": "2026-10-31"
  },
  "kurutemizleme": {
@@ -232,9 +232,9 @@
  },
  "oto": {
   "id": "oto",
-  "sayfa": 48,
-  "boyut": 4164613,
-  "ekran": 29,
+  "sayfa": 55,
+  "boyut": 4682981,
+  "ekran": 32,
   "tarih": "2026-10-31"
  },
  "otoservis": {
@@ -282,15 +282,15 @@
  "randevu": {
   "id": "randevu",
   "sayfa": 78,
-  "boyut": 7174776,
+  "boyut": 7193213,
   "ekran": 47,
   "tarih": "2026-10-31"
  },
  "servis": {
   "id": "servis",
-  "sayfa": 52,
-  "boyut": 4674863,
-  "ekran": 31,
+  "sayfa": 56,
+  "boyut": 4909380,
+  "ekran": 32,
   "tarih": "2026-10-31"
  },
  "site": {
@@ -302,9 +302,9 @@
  },
  "spor": {
   "id": "spor",
-  "sayfa": 56,
-  "boyut": 4582592,
-  "ekran": 32,
+  "sayfa": 65,
+  "boyut": 5067554,
+  "ekran": 34,
   "tarih": "2026-10-31"
  },
  "temizlik": {
