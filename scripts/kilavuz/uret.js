@@ -47,6 +47,7 @@ async function cek(p, B, id, s, ctx) {
       if (!k) { H.push(`${yer}: seçici bulunamadı: ${a.sec}`); continue; }
       if (!k.ustte && !a.ortulu) H.push(`${yer}: element görünmüyor veya başka bir şeyin altında: ${a.sec}`);
       if (k.x + k.w < alan.x || k.y + k.h < alan.y || k.x > alan.x + alan.width || k.y > alan.y + alan.height) H.push(`${yer}: element görüntü alanının dışında: ${a.sec}`);
+      if (a.metin.includes('{dugme}')) { const y = DN.dugmeYaz(a.metin, k.metin); if (y) a.metin = y; else H.push(`${yer}: beklenmeyen düğme adı: "${k.metin}"`); }
       a.kutu = { x: k.x - alan.x, y: k.y - alan.y, w: k.w, h: k.h }; a.bulunan = k.metin; a.isaretli = true; a.tur = a.tur || 'cerceve';
     }
     ctx.ekran.push(await p.calistir(`document.body.innerText + ' ' + [...document.querySelectorAll('[placeholder],[title],[aria-label],option')].map(e=>e.placeholder||e.title||e.getAttribute('aria-label')||e.textContent).join(' ') + ' ' + [...document.querySelectorAll('input[value],button')].map(e=>e.value||'').join(' ')`));
