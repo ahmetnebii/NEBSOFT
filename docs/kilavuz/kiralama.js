@@ -54,7 +54,7 @@ module.exports = (O) => ({
 
   roller: 'Ofis personeli kiralama, müşteri, araç ve bakım sayfalarında çalışır. Sezon fiyatları, raporlar ve ayarlar yöneticiye aittir.',
   musteri: [{ ad: 'Online kiralama sayfası', ne: 'Müşteri üyelik açmadan tarih seçer, sınıfa göre araç görür, ek hizmetleri işaretler ve rezervasyon yapar. Yaş ve ehliyet şartı **Ayarlar** değerlerinden kontrol edilir. **Rezervasyonum** bölümünde rezervasyon numarası ve telefonla kaydını görür, süresi içindeyse iptal eder.',
-    sahneler: [{ adres: 'kirala.html', ilk: 900, kirp: 'tam', boy: 1000, adimlar: [['Müşteri tarihleri seçer, **Araç bul** düğmesine basar.', '#sf'], ['**Rezervasyonum** kaydını açar.', 'a@Rezervasyonum']] }],
+    sahneler: [{ adres: 'kirala.html', ilk: 900, kirp: 'tam', boy: 760, adimlar: [['Müşteri tarihleri seçer, **Araç bul** düğmesine basar.', '#sf'], ['**Rezervasyonum** kaydını açar.', 'a@Rezervasyonum']] }],
     not: 'Sayfada kart bilgisi istenmez, ödeme araç teslim alınırken yapılır. Rezervasyon için müşteri kiralama koşullarını ve kişisel veri bilgilendirmesini işaretlemek zorundadır.' }],
   yazdirma: { ne: 'Belgeler kiralama penceresinden yazdırılır. Sözleşme ve tutanakta kiracı imzası ekranda alınır.', belgeler: [['Kiralama sözleşmesi', 'Kiralama penceresinde **Sözleşme**.'], ['Teslim ve iade tutanağı', 'Kiralama penceresinde **Tutanak**.'], ['Depozito kapatma belgesi', 'Kiralama penceresinde **Depozito belgesi**.']] },
 
