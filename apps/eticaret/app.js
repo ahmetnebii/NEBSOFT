@@ -18,10 +18,10 @@
   const FLOW = ['yeni', 'hazirlaniyor', 'kargoda', 'teslim'];
   const shopUrl = () => location.href.replace(/index\.html.*$/, '').replace(/#.*$/, '') + 'magaza.html';
   // Ödeme durumu: eski kayıtlarda alan yoksa ödenmiş sayılır; vitrindeki kart ödemesi sağlayıcı bağlı olmadığı için TEST'tir
-  const PST = { alindi: ['Ödeme alındı', 'ok'], bekliyor: ['Ödeme bekleniyor', 'warn'], kapida: ['Kapıda tahsil', 'info'], inceleme: ['iyzico inceliyor', 'warn'], kontrol: ['Ödeme kontrol edilmeli', 'err'], odenmedi: ['Ödenmedi', 'err'] };
+  const PST = { alindi: ['Ödeme alındı', 'ok'], bekliyor: ['Ödeme bekleniyor', 'warn'], kapida: ['Kapıda tahsil', 'info'], inceleme: ['Ödeme inceleniyor', 'warn'], kontrol: ['Ödeme kontrol edilmeli', 'err'], odenmedi: ['Ödenmedi', 'err'] };
   const payB = (o) => (o.payTest ? badge('TEST — ödeme alınmadı', 'err') : badge(...(PST[o.payStatus || 'alindi'] || PST.alindi)));
   const unpaid = (o) => o.payTest || ['bekliyor', 'inceleme', 'kontrol', 'odenmedi'].includes(o.payStatus);
-  // Kartla alınan ödeme iyzico üzerinden iade edilir; işlem sonucu sunucu siparişe yazar
+  // Online alınan ödeme sağlayıcı üzerinden iade edilir; işlem sonucu sunucu siparişe yazar
   const kartli = (o) => !!(o.payment && o.payment.paymentId && o.payStatus === 'alindi');
   async function kartIade(o, tutar) { let r; try { r = await fetch(`/api/eticaret/siparis/${o.id}/iade`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-ns-csrf': '1' }, body: JSON.stringify({ tutar }) }); } catch (e) { toast('Sunucuya ulaşılamadı', 'err'); return false; } const j = await r.json().catch(() => ({})); if (!r.ok || !j.ok) { toast(j.error || 'İade yapılamadı', 'err'); return false; } toast(`${money(tutar)} karta iade edildi`); return true; }
   const me = () => (NS.currentUser || {}).name || '';

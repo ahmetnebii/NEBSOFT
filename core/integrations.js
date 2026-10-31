@@ -61,14 +61,28 @@
     }
   }
 
+  // ---------- Sunucu istemcileri (server/cloud/entegrasyon): anahtar tarayıcıya gelmez, istek sunucudan çıkar ----------
+  // Bulutta durum sunucuda tutulur. Yerelde kimlik bilgisi bu cihazdadır, deneme sonucunun parmak izi kurulum kaydında durur
+  const kurulum = new NS.DB('entegrasyon-kurulum', (db) => { db.data.state = {}; db.data.drafts = {}; });
+  const entVar = (tur, prov) => { const g = window.NB_GUIDES && window.NB_GUIDES.get(tur, prov); return !!(g && g.test && g.test.type === 'sunucu'); };
+  const ent = {
+    async dene(tur, saglayici, alanlar) { const g = { tur, saglayici, alanlar }; const r = await (store.cloud ? viaCloud('/entegrasyon/dene', g) : bridge('/entegrasyon/dene', g)); return r.ok ? r : { ...r, ok: false, hata: r.hata || r.error || 'Bağlantı denenemedi' }; },
+    async durum() { if (!store.cloud) return null; const r = await fetch('/api/entegrasyon/durum'); const j = await r.json().catch(() => ({})); return j.ok ? j.liste : null; },
+    async islem(tur, islem, veri) {
+      const c = cfg(tur); kurulum.load(); const r = await (store.cloud ? viaCloud('/entegrasyon/islem', { tur, islem, veri }) : bridge('/entegrasyon/islem', { tur, saglayici: tur === 'webhook' ? 'http' : c.provider || c.mode, islem, veri, alanlar: c, parmak: ((kurulum.data.state || {})[tur] || {}).parmak || '' }));
+      return r.ok ? r : { ...r, ok: false, hata: r.hata || r.error || 'İşlem yapılamadı' };
+    },
+    // Fatura gibi tarayıcıda hazırlanan akışlar için: deneme geçti mi
+    async hazir(tur, prov) { if (store.cloud) { const L = await ent.durum().catch(() => null); return !!(L && L.some((x) => x.tur === tur && x.saglayici === prov && x.durum === 'bagli')); } kurulum.load(); const s = (kurulum.data.state || {})[tur]; return !!(s && s.prov === prov && s.status === 'ok'); },
+  };
+
   // ---------- Sağlayıcı tanımları ----------
   const F = (name, label, extra = {}) => ({ name, label, ...extra });
   const isToken = (v) => /^__nsg_/.test(String(v || '')); // sunucuda şifreli alanın yer tutucusu: düz metin kutusunda gösterilmez
   const SMS = {
     sim: { name: 'Simülasyon (gönderim yapılmaz)', fields: [], build: null },
-    netgsm: { name: 'Netgsm', fields: [F('user', 'Kullanıcı kodu', { required: true }), F('pass', 'Şifre', { type: 'password', required: true }), F('header', 'Mesaj başlığı', { required: true })],
-      // Resmî doküman (netgsm.com.tr/dokuman, 28.10.2026): HTTP GET ile gönderim 19.04.2022'den beri desteklenmiyor →
-      // POST /sms/rest/v2/send, HTTP Basic (abone no + API alt kullanıcı şifresi), numara 5xxxxxxxxx, başarı {"code":"00"}
+    // Netgsm, İleti Merkezi, Verimor, Mutlucell, Twilio: istek server/cloud/entegrasyon içinde oluşur
+    netgsm: { name: 'Netgsm', fields: [F('user', 'Abone numarası', { required: true }), F('pass', 'API alt kullanıcı şifresi', { type: 'password', required: true }), F('header', 'Mesaj başlığı', { required: true })],
       build: (c, to, text) => ({ url: 'https://api.netgsm.com.tr/sms/rest/v2/send', method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Basic ' + btoa(unescape(encodeURIComponent(`${c.user}:${c.pass}`))) }, body: JSON.stringify({ msgheader: c.header, messages: [{ msg: text, no: to.replace(/^90(?=5\d{9}$)/, '') }], encoding: 'TR', iysfilter: c.iys === 'ticari-bireysel' ? '11' : c.iys === 'ticari-tacir' ? '12' : '0', appname: 'NEBSOFT' }) }),
       ok: (r) => { try { return JSON.parse(r.body).code === '00'; } catch (e) { return false; } } },
     iletimerkezi: { name: 'İleti Merkezi', fields: [F('key', 'API anahtarı', { required: true }), F('hash', 'API hash', { type: 'password', required: true }), F('header', 'Gönderici adı', { required: true })],
@@ -78,7 +92,7 @@
     verimor: { name: 'Verimor', fields: [F('user', 'Kullanıcı adı (90...)', { required: true }), F('pass', 'API şifresi', { type: 'password', required: true }), F('header', 'Başlık', { required: true })],
       build: (c, to, text) => ({ url: 'https://sms.verimor.com.tr/v2/send.json', method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username: c.user, password: c.pass, source_addr: c.header, messages: [{ msg: text, dest: to }] }) }),
       ok: (r) => r.ok },
-    mutlucell: { name: 'Mutlucell', unverified: true, fields: [F('user', 'Kullanıcı adı', { required: true }), F('pass', 'Şifre', { type: 'password', required: true }), F('header', 'Başlık', { required: true })],
+    mutlucell: { name: 'Mutlucell', fields: [F('user', 'Kullanıcı adı', { required: true }), F('pass', 'Şifre', { type: 'password', required: true }), F('header', 'Başlık', { required: true })],
       build: (c, to, text) => ({ url: 'https://smsgw.mutlucell.com/smsgw-ws/sndblkex', method: 'POST', headers: { 'Content-Type': 'text/xml; charset=UTF-8' }, body: `<?xml version="1.0" encoding="UTF-8"?><smspack ka="${esc(c.user)}" pwd="${esc(c.pass)}" org="${esc(c.header)}" charset="turkish"><mesaj><metin>${esc(text)}</metin><nums>${to}</nums></mesaj></smspack>` }),
       ok: (r) => /^\$/.test(String(r.body).trim()) },
     twilio: { name: 'Twilio (uluslararası)', fields: [F('sid', 'Account SID', { required: true }), F('token', 'Auth token', { type: 'password', required: true }), F('from', 'Gönderen numara (+1...)', { required: true })],
@@ -91,20 +105,21 @@
   const EFAT = { nilvera: 'Nilvera',
     sim: 'Simülasyon (test)', parasut: 'Paraşüt', uyumsoft: 'Uyumsoft', logo: 'Logo e-Dönüşüm', sovos: 'Sovos (Foriba)', mysoft: 'Mysoft', edm: 'EDM Bilişim', custom: 'Özel API',
   };
-  // Doğrudan adaptörü olan ve resmî dokümanla karşılaştırılan entegratörler (Uyumsoft WSDL, Paraşüt API v4 swagger). Diğerleri canlıda seçilemez.
+  // Doğrudan bağlantısı olan entegratörler. Diğerleri sözleşme gerektirir, iletişim talebiyle gösterilir.
   const EFAT_OK = ['sim', 'uyumsoft', 'parasut', 'nilvera', 'custom'];
+  // Ödeme, e-posta, kargo sağlayıcı adları için liste aşağıda DEFS içinde
   const POSB = { manual: 'Manuel (çekimi cihazdan yapıp onaylayın)', bridge: 'Entegre terminal (köprü / üretici servisi)', demo: 'Demo terminal (test)' };
 
   // Her entegrasyonun ayar şeması ve varsayılanları
   const DEFS = {
     sms: { title: 'SMS', icon: 'message', desc: 'Randevu hatırlatma, servis durumu, veli bildirimi, kargo bilgilendirme', defaults: { provider: 'sim', enabled: true, maxLen: 612, iysNote: true },
-      fields: (c) => [{ name: 'enabled', label: 'SMS gönderimi açık', type: 'checkbox', full: true }, { name: 'provider', label: 'Sağlayıcı', type: 'select', options: Object.entries(SMS).filter(([value, p]) => !p.unverified || value === c.provider).map(([value, p]) => ({ value, label: p.unverified ? p.name + ' (resmî doküman doğrulanmadı — kullanılamaz)' : p.name })), full: true }, ...(SMS[c.provider] || SMS.sim).fields, { name: 'maxLen', label: 'En fazla karakter', type: 'number' }, ...(['netgsm', 'iletimerkezi'].includes(c.provider) ? [{ name: 'iys', label: 'Mesaj türü (İYS)', type: 'select', full: true, hint: 'Kampanya / tanıtım içeren mesajlar yasal olarak ticari ileti sayılır ve İYS’den kontrol edilmelidir. Fatura, hatırlatma gibi mesajlar bilgilendirmedir.', options: [{ value: 'bilgi', label: 'Bilgilendirme (İYS kontrolü yok)' }, { value: 'ticari-bireysel', label: 'Ticari ileti — bireysel alıcılar (İYS kontrollü)' }, { value: 'ticari-tacir', label: 'Ticari ileti — tacir alıcılar (İYS kontrollü)' }] }] : []), { name: 'iysNote', label: 'Ticari mesajlarda İYS onayı kontrol edilsin', type: 'checkbox' }] },
+      fields: (c) => [{ name: 'enabled', label: 'SMS gönderimi açık', type: 'checkbox', full: true }, { name: 'provider', label: 'Sağlayıcı', type: 'select', options: Object.entries(SMS).map(([value, p]) => ({ value, label: p.name })), full: true }, ...(SMS[c.provider] || SMS.sim).fields, { name: 'maxLen', label: 'En fazla karakter', type: 'number' }, ...(['netgsm', 'iletimerkezi'].includes(c.provider) ? [{ name: 'iys', label: 'Mesaj türü (İYS)', type: 'select', full: true, hint: 'Kampanya / tanıtım içeren mesajlar yasal olarak ticari ileti sayılır ve İYS’den kontrol edilmelidir. Fatura, hatırlatma gibi mesajlar bilgilendirmedir.', options: [{ value: 'bilgi', label: 'Bilgilendirme (İYS kontrolü yok)' }, { value: 'ticari-bireysel', label: 'Ticari ileti — bireysel alıcılar (İYS kontrollü)' }, { value: 'ticari-tacir', label: 'Ticari ileti — tacir alıcılar (İYS kontrollü)' }] }] : []), { name: 'iysNote', label: 'Ticari mesajlarda İYS onayı kontrol edilsin', type: 'checkbox' }] },
     whatsapp: { title: 'WhatsApp', icon: 'message', desc: 'Hatırlatma ve bilgilendirme mesajları', defaults: { mode: 'link' },
       fields: (c) => [{ name: 'mode', label: 'Gönderim yöntemi', type: 'select', options: [{ value: 'link', label: 'WhatsApp bağlantısı (wa.me — personel gönderir)' }, { value: 'cloud', label: 'WhatsApp Business Cloud API (otomatik)' }, { value: 'custom', label: 'Özel API (çözüm ortağı)' }], full: true },
-        ...(c.mode === 'cloud' ? [F('phoneId', 'Phone number ID', { required: true }), F('token', 'Erişim jetonu (token)', { type: 'password', required: true }), F('version', 'Graph API sürümü', { value: 'v23.0' }), F('template', 'Onaylı şablon adı (boşsa serbest metin)'), F('lang', 'Şablon dil kodu', { value: 'tr', hint: 'Şablonu Meta’da hangi dilde onaylattıysanız o kod' })] : []),
+        ...(c.mode === 'cloud' ? [F('phoneId', 'Phone number ID', { required: true }), F('token', 'Erişim jetonu (token)', { type: 'password', required: true }), F('version', 'Graph API sürümü', { value: 'v26.0' }), F('template', 'Onaylı şablon adı (boşsa serbest metin)'), F('lang', 'Şablon dil kodu', { value: 'tr', hint: 'Şablonu Meta’da hangi dilde onaylattıysanız o kod' })] : []),
         ...(c.mode === 'custom' ? [F('url', 'API adresi', { full: true, required: true }), F('headers', 'Başlıklar (JSON)', { full: true }), F('body', 'Gövde şablonu ({to} {text})', { type: 'textarea', full: true })] : [])] },
     email: { title: 'E-posta', icon: 'mail', desc: 'Fatura, sipariş ve rapor gönderimi', defaults: { mode: 'mailto', from: '' },
-      fields: (c) => [{ name: 'mode', label: 'Yöntem', type: 'select', options: [{ value: 'mailto', label: 'E-posta istemcisini aç (mailto)' }, { value: 'emailjs', label: 'EmailJS (tarayıcıdan doğrudan)' }, { value: 'http', label: 'Kendi e-posta API’niz (SMTP köprüsü)' }], full: true },
+      fields: (c) => [{ name: 'mode', label: 'Yöntem', type: 'select', options: [{ value: 'mailto', label: 'E-posta istemcisini aç (mailto)' }, { value: 'sendgrid', label: 'SendGrid' }, { value: 'mailgun', label: 'Mailgun' }, { value: 'brevo', label: 'Brevo' }, { value: 'resend', label: 'Resend' }, { value: 'postmark', label: 'Postmark' }, { value: 'emailjs', label: 'EmailJS (tarayıcıdan doğrudan)' }, { value: 'http', label: 'Kendi e-posta API’niz (SMTP köprüsü)' }], full: true },
         ...(c.mode === 'emailjs' ? [F('service', 'Service ID', { required: true }), F('template', 'Template ID', { required: true }), F('publicKey', 'Public key', { required: true })] : []),
         ...(c.mode === 'http' ? [F('url', 'API adresi', { full: true, required: true }), F('headers', 'Başlıklar (JSON)', { full: true }), F('body', 'Gövde şablonu ({to} {subject} {text})', { type: 'textarea', full: true })] : []), F('from', 'Gönderen adı / adresi')] },
     printer: { title: 'Fiş yazıcı', icon: 'print', desc: 'Satış fişi, adisyon, mutfak fişi, makbuz', defaults: { mode: 'browser', paper: 80, cols: 48, cut: true, drawer: false, copies: 1, baud: 9600, port: 9100, codepage: 'cp857', feed: 4 },
@@ -122,9 +137,9 @@
       fields: (c) => [{ name: 'mode', label: 'Entegrasyon', type: 'select', options: Object.entries(POSB).map(([value, label]) => ({ value, label })), full: true }, F('brand', 'Cihaz', { type: 'select', options: [{ value: 'ingenico', label: 'Ingenico' }, { value: 'verifone', label: 'Verifone' }, { value: 'beko', label: 'Beko ÖKC' }, { value: 'hugin', label: 'Hugin' }, { value: 'pavo', label: 'Pavo' }, { value: 'paygo', label: 'PayGo / Android POS' }, { value: 'diger', label: 'Diğer' }] }),
         ...(c.mode === 'bridge' ? [F('url', 'Terminal servis adresi', { full: true, required: true, placeholder: 'http://localhost:8085/sale veya /api/pos/satis' }), F('timeout', 'Zaman aşımı (sn)', { type: 'number' })] : []), F('maxInst', 'En fazla taksit', { type: 'number' })] },
     efatura: { title: 'e-Fatura / e-Arşiv', icon: 'file', desc: 'Faturaların GİB’e iletilmesi', defaults: { provider: 'sim', test: true, efPrefix: 'NEB', eaPrefix: 'EAR' },
-      fields: (c) => [{ name: 'provider', label: 'Entegratör', type: 'select', options: Object.entries(EFAT).filter(([value]) => EFAT_OK.includes(value) || value === c.provider).map(([value, label]) => ({ value, label: EFAT_OK.includes(value) ? label : label + ' (bağlantı yok — kullanılamaz)' })), full: true }, ...(c.provider === 'nilvera' ? [F('pass', 'API anahtarı (Nilvera Portal > API Tanımları; test ve canlı anahtarları ayrıdır)', { type: 'password', required: true, full: true }), F('vkn', 'Firma VKN')] : c.provider !== 'sim' ? [F('user', 'Kullanıcı adı / client id', { required: true, ...(c.provider === 'custom' || isToken(c.user) ? { type: 'password' } : {}) }), F('pass', 'Şifre / secret', { type: 'password', required: true }), F('vkn', 'Firma VKN'), F('url', 'API adresi (özel / test ortamı)', { full: true })] : []), F('efPrefix', 'e-Fatura seri'), F('eaPrefix', 'e-Arşiv seri'), F('test', 'Test ortamı', { type: 'checkbox' })] },
-    payment: { title: 'Online ödeme', icon: 'wallet', desc: 'Pazar yeri ve online satış sayfalarında kartla ödeme', defaults: { provider: 'none', sandbox: true },
-      fields: (c) => [{ name: 'provider', label: 'Sanal POS', type: 'select', options: [{ value: 'none', label: 'Kapalı (demo ödeme)' }, { value: 'iyzico', label: 'iyzico' }, { value: 'paytr', label: 'PayTR' }, { value: 'param', label: 'Param' }, { value: 'stripe', label: 'Stripe' }], full: true }, ...(c.provider === 'iyzico' ? [F('apiKey', 'API key', { required: true }), F('secret', 'Secret key', { type: 'password', required: true })] : []), ...(c.provider === 'paytr' ? [F('merchantId', 'Mağaza no', { required: true }), F('merchantKey', 'Mağaza parola', { type: 'password', required: true }), F('merchantSalt', 'Mağaza gizli anahtar', { type: 'password', required: true })] : []), ...(['param', 'stripe'].includes(c.provider) ? [F('apiKey', 'API anahtarı', { required: true }), F('secret', 'Gizli anahtar', { type: 'password', required: true })] : []), F('sandbox', 'Test (sandbox) modu', { type: 'checkbox', hint: 'Test modunda kart çekilmez, siparişler TEST görünür. iyzico canlı modu NEBSOFT tarafında test hesabıyla doğrulanınca açılır.' })] },
+      fields: (c) => [{ name: 'provider', label: 'Entegratör', type: 'select', options: Object.entries(EFAT).map(([value, label]) => ({ value, label })), full: true }, ...(c.provider === 'nilvera' ? [F('pass', 'API anahtarı (Nilvera Portal > API Tanımları; test ve canlı anahtarları ayrıdır)', { type: 'password', required: true, full: true }), F('vkn', 'Firma VKN')] : c.provider !== 'sim' ? [F('user', 'Kullanıcı adı / client id', { required: true, ...(c.provider === 'custom' || isToken(c.user) ? { type: 'password' } : {}) }), F('pass', 'Şifre / secret', { type: 'password', required: true }), F('vkn', 'Firma VKN'), F('url', 'API adresi (özel / test ortamı)', { full: true })] : []), F('efPrefix', 'e-Fatura seri'), F('eaPrefix', 'e-Arşiv seri'), F('test', 'Test ortamı', { type: 'checkbox' })] },
+    payment: { title: 'Online ödeme', icon: 'wallet', desc: 'E-ticaret vitrininde kartla ödeme', defaults: { provider: 'none', sandbox: true },
+      fields: (c) => [{ name: 'provider', label: 'Sanal POS', type: 'select', options: [{ value: 'none', label: 'Kapalı (demo ödeme)' }, { value: 'iyzico', label: 'iyzico' }, { value: 'paytr', label: 'PayTR' }, { value: 'param', label: 'Param' }, { value: 'papara', label: 'Papara' }, { value: 'moka', label: 'Moka United' }, { value: 'sipay', label: 'Sipay' }, { value: 'paynet', label: 'Paynet' }, { value: 'craftgate', label: 'Craftgate' }, { value: 'stripe', label: 'Stripe (yurt dışı şirketi)' }], full: true }, ...(c.provider === 'iyzico' ? [F('apiKey', 'API key', { required: true }), F('secret', 'Secret key', { type: 'password', required: true })] : []), ...(c.provider === 'paytr' ? [F('merchantId', 'Mağaza no', { required: true }), F('merchantKey', 'Mağaza parola', { type: 'password', required: true }), F('merchantSalt', 'Mağaza gizli anahtar', { type: 'password', required: true })] : []), ...(['param', 'stripe'].includes(c.provider) ? [F('apiKey', 'API anahtarı', { required: true }), F('secret', 'Gizli anahtar', { type: 'password', required: true })] : []), F('sandbox', 'Test (sandbox) modu', { type: 'checkbox', hint: 'Test modunda kart çekilmez, siparişler TEST görünür. Canlı ödeme sunucu kilidi açılınca çalışır.' })] },
     barcode: { title: 'Barkod okuyucu', icon: 'barcode', desc: 'El terminali, masaüstü okuyucu, kamera', defaults: { suffix: 'enter', minLen: 4, camera: true, beep: true },
       fields: () => [F('suffix', 'Okuyucu sonek tuşu', { type: 'select', options: [{ value: 'enter', label: 'Enter' }, { value: 'tab', label: 'Tab' }] }), F('minLen', 'En kısa barkod', { type: 'number' }), F('prefixStrip', 'Silinecek ön ek'), F('camera', 'Kamera ile okumaya izin ver', { type: 'checkbox' }), F('beep', 'Okutmada ses', { type: 'checkbox' })] },
     webhook: { title: 'Webhook', icon: 'send', desc: 'Satış, sipariş, randevu olaylarını başka sistemlere iletme', defaults: { url: '', events: '*', secret: '' },
@@ -144,7 +159,7 @@
     yemekkarti: ['Yemek kartları', 'card', 'Yemek kartı provizyonu ve mutabakat', 'Ödeme', { multinet: 'Multinet', pluxee: 'Pluxee (Sodexo)', edenred: 'Edenred (Ticket)', metropol: 'Metropol', setcard: 'Setcard', tokenflex: 'Token Flex' }, ['merchant:Üye işyeri no']],
     callerid: ['Arayan numara tanıma (Caller ID)', 'phone', 'Gelen çağrıda müşteri kartı / paket sipariş ekranı açılır', 'Donanım', { cidshow: 'Cidshow USB cihaz', santral: 'Sanal santral (webhook)', netgsm: 'Netgsm Bulut Santral', verimor: 'Verimor Santral' }, ['line:Hat / dahili']],
     pazaryeri: ['Pazaryerleri', 'store', 'Ürün, stok, fiyat ve sipariş senkronu', 'Pazaryeri', { trendyol: 'Trendyol', hepsiburada: 'Hepsiburada', n11: 'n11', amazon: 'Amazon TR', pazarama: 'Pazarama', ciceksepeti: 'Çiçeksepeti', idefix: 'İdefix' }, ['sellerId:Satıcı ID', 'auto:Stok değişince otomatik gönder:checkbox']],
-    kargofirma: ['Kargo firmaları', 'truck', 'Gönderi oluşturma, barkod, takip ve teslim bildirimi', 'Lojistik', { yurtici: 'Yurtiçi Kargo', aras: 'Aras Kargo', mng: 'MNG / DHL eCommerce', surat: 'Sürat Kargo', ptt: 'PTT Kargo', hepsijet: 'HepsiJet', kolaygelsin: 'Kolay Gelsin', ups: 'UPS' }, ['customerNo:Müşteri / sözleşme no']],
+    kargofirma: ['Kargo firmaları', 'truck', 'Gönderi oluşturma, barkod, takip ve teslim bildirimi', 'Lojistik', { yurtici: 'Yurtiçi Kargo', aras: 'Aras Kargo', mng: 'MNG / DHL eCommerce', surat: 'Sürat Kargo', ptt: 'PTT Kargo', hepsijet: 'HepsiJet', kolaygelsin: 'Kolay Gelsin', ups: 'UPS', dhl: 'DHL Express', geliver: 'Geliver' }, ['customerNo:Müşteri / sözleşme no']],
     medula: ['MEDULA (SGK Eczane Provizyon)', 'pill', 'Reçete giriş, provizyon, fatura ve kurum mutabakatı', 'Resmi', { sgk: 'SGK MEDULA Web Servis' }, ['facility:Eczane tesis kodu', 'gln:Eczane GLN']],
     its: ['İTS (İlaç Takip Sistemi)', 'qr', 'Karekodlu satış, alış ve iade bildirimleri', 'Resmi', { titck: 'TİTCK İTS Web Servis' }, ['gln:GLN numarası']],
     uts: ['ÜTS (Ürün Takip Sistemi)', 'qr', 'Tıbbi cihaz ve kozmetik verme/alma bildirimleri', 'Resmi', { titck: 'TİTCK ÜTS' }, ['firm:Kurum no']],
@@ -187,15 +202,14 @@
     kargo: ['kargofirma', 'gps', 'eirsaliye'], bilet: ['turnike', 'kps'], oto: ['anpr', 'okc', 'muhasebeaktar'], muhasebe: [],
     fabrika: ['eirsaliye', 'emustahsil', 'kantar', 'plc', 'muhasebeaktar', 'banka'],
   };
-  // Resmî, herkese açık API dokümanı bulunamayan bağlayıcılar (CLAUDE.md §1 — DOĞRULANAMADI): yalnızca simülasyon seçilebilir,
-  // gerçek / özel API çağrısı yapılmaz. Kaynak: docs/urun/CEKIRDEK-ISTEKLERI-* (servis-arac Ç2, konaklama Ç4–Ç5, randevu Ç2).
-  // Doküman bulunup doğrulanınca buradan çıkarılır. '*' = tüm sağlayıcılar (özel API dahil).
+  // API dokümanı herkese açık olmayan, sözleşme veya kurum yetkisi gerektiren bağlayıcılar: gerçek çağrı yapılmaz, ekranda iletişim talebi gösterilir.
+  // Liste: docs/ENTEGRASYON-ENVANTERI.md. '*' = tüm sağlayıcılar (özel API dahil).
   // okc (yazarkasa POS / GMP3): protokol GİB'de açık (GMP-3 s.5.0) ama §3.3 gereği yazılım ÖKC üreticisinin derlenmiş GMP-3 kütüphanesiyle konuşur ve eşleştirmeyi yetkili servis yapar; üretici anlaşması + kütüphane + test cihazı gerekir.
-  const UNVERIFIED = { eczadeposu: '*', okc: '*', sgk: '*', bankamaas: '*', ebordro: '*', pdks: '*', medula: '*', its: '*', uts: '*', aracbildirim: '*', hgs: '*', ilan: '*', parca: '*', tramer: '*', kbs: '*', kanal: '*', enabiz: '*', erecete: '*', kps: '*', vetbis: '*', petkayit: '*', meb: '*', googleisletme: '*' };
+  const UNVERIFIED = { eczadeposu: '*', okc: '*', sgk: '*', bankamaas: '*', ebordro: '*', pdks: '*', medula: '*', its: '*', uts: '*', aracbildirim: '*', hgs: '*', ilan: '*', parca: '*', tramer: '*', kbs: '*', kanal: ['siteminder', 'booking', 'expedia', 'airbnb'], enabiz: '*', erecete: '*', kps: '*', vetbis: '*', petkayit: '*', meb: '*', googleisletme: '*' };
   const unverified = (k, prov) => prov !== 'sim' && !!UNVERIFIED[k] && (UNVERIFIED[k] === '*' || UNVERIFIED[k].includes(prov));
   Object.entries(CONN).forEach(([k, [title, ic, desc, cat, provs, extra]]) => {
     DEFS[k] = { title, icon: ic, desc, cat, conn: true, provs, defaults: { enabled: false, provider: 'sim', test: true },
-      fields: (c) => [{ name: 'enabled', label: 'Bağlantı açık', type: 'checkbox', full: true }, { name: 'provider', label: 'Sağlayıcı', type: 'select', full: true, options: [{ value: 'sim', label: 'Simülasyon (test, gönderim yapılmaz)' }, ...[...Object.entries(provs), ['custom', 'Özel API / çözüm ortağı']].filter(([value]) => !unverified(k, value) || value === c.provider).map(([value, label]) => ({ value, label: unverified(k, value) ? label + ' (resmî doküman doğrulanmadı — kullanılamaz)' : label }))], hint: UNVERIFIED[k] ? 'Bu bağlantının resmî, herkese açık API dokümanı doğrulanamadı; gerçek gönderim yapılamaz, yalnızca simülasyon (TEST) seçilebilir.' : undefined },
+      fields: (c) => [{ name: 'enabled', label: 'Bağlantı açık', type: 'checkbox', full: true }, { name: 'provider', label: 'Sağlayıcı', type: 'select', full: true, options: [{ value: 'sim', label: 'Simülasyon (gönderim yapılmaz)' }, ...[...Object.entries(provs), ['custom', 'Özel API / çözüm ortağı']].filter(([value]) => value !== 'custom' || !unverified(k, value) || value === c.provider).map(([value, label]) => ({ value, label }))], hint: UNVERIFIED[k] ? 'Bu bağlantı sözleşme gerektirir. Entegrasyon Merkezi’nden iletişim talebi bırakabilirsiniz.' : undefined },
         ...(c.provider !== 'sim' ? [F('url', 'Servis adresi (API / ara servis)', { full: true, required: c.provider === 'custom', placeholder: 'https://...', hint: 'İstekler {action, payload} JSON olarak köprü üzerinden gönderilir' }), F('user', 'Kullanıcı adı / API key', c.provider === 'mqtt' && !isToken(c.user) ? {} : { type: 'password' }), F('pass', 'Şifre / secret', { type: 'password' })] : []),
         ...extra.map((x) => { const [name, label, type] = x.split(':'); return F(name, label, type ? { type } : {}); }), F('test', 'Test ortamı', { type: 'checkbox' })] };
   });
@@ -207,7 +221,14 @@
     if (kind === 'kantar' && action === 'oku' && ['serial', 'tcp'].includes(c.provider)) {
       try { const kg = await readKantar({ ask: !!payload.ask }); log(kind, '', label, 'okundu', kg + ' kg'); return { ok: true, data: { kg } }; } catch (e) { log(kind, '', label, 'hata', e.message); if (!silent) toast('Kantar: ' + e.message, 'err'); return { ok: false, error: e.message }; }
     }
-    if (unverified(kind, c.provider)) { const msg = `${d.title}: resmî API dokümanı doğrulanmadığı için gönderim yapılmadı`; log(kind, payload.to || payload.no || '', label, 'hata', msg); if (!silent) toast(msg, 'err'); return { ok: false, unverified: true, error: msg }; }
+    if (unverified(kind, c.provider)) { const msg = `${d.title}: bu sağlayıcı için bağlantı kurulmadı, gönderim yapılmadı`; log(kind, payload.to || payload.no || '', label, 'hata', msg); if (!silent) toast(msg, 'err'); return { ok: false, unverified: true, error: msg }; }
+    // Sunucu istemcisi olan sağlayıcı: anahtar sunucuda çözülür, sonuç sağlayıcının yanıtıdır. Denenmemiş bağlantı işlem yapmaz
+    if (entVar(kind, c.provider)) {
+      const r = await ent.islem(kind, action, payload).catch((e) => ({ ok: false, hata: e.message }));
+      if (r.ok) { const s = r.sonuc || {}; log(kind, payload.to || payload.no || '', label, s.test ? 'test' : 'gönderildi', s.ref || s.tracking || ''); if (!silent) toast(`${d.title}: ${action} ${s.test ? 'TEST' : 'tamam'}`, s.test ? 'warn' : 'ok'); return { ok: true, ref: s.ref || s.tracking, data: s, test: !!s.test }; }
+      // Takip sayfası ve iCal aboneliği bağlantı gerektirmez, denenmemiş hesapta eski yol sürer
+      if (!(r.kod === 'baglanmadi' && ((kind === 'kargofirma' && action === 'durum-sorgu') || kind === 'takvim'))) { log(kind, payload.to || payload.no || '', label, 'hata', r.hata); if (!silent) toast(`${d.title}: ${r.hata}`, 'err'); return { ok: false, error: r.hata, kod: r.kod }; }
+    }
     const direct = await directCall(kind, action, payload, c, silent, label); if (direct) return direct;
     const ref = (kind.slice(0, 3).toUpperCase()) + Date.now().toString().slice(-9);
     // Simülasyon: hiçbir yere gönderilmez; referans "TEST-" ile başlar (kayda yazılırsa da gerçek numara sanılmaz)
@@ -282,6 +303,9 @@
     let j = {}; try { j = JSON.parse(r.body); } catch (e) { /* yok */ } if (!j.access_token) throw new Error(`Zoom kimlik doğrulaması başarısız: ${r.status || ''} ${j.reason || j.error || r.error || ''}`); return j.access_token;
   }
   async function createMeeting(c, { title, start, minutes }) {
+    if (c.provider === 'zoom' && c.accountId && c.clientId && c.clientSecret && c.hostEmail) {
+      const r = await ent.islem('onlineders', 'toplanti-olustur', { title, start, minutes }); if (!r.ok) throw new Error(r.hata); return r.sonuc;
+    }
     if (c.provider === 'zoom' && c.accountId && c.clientId && c.clientSecret) {
       const tk = await zoomToken(c);
       const r = await httpCall({ url: 'https://api.zoom.us/v2/users/me/meetings', method: 'POST', headers: { Authorization: 'Bearer ' + tk, 'Content-Type': 'application/json' }, body: JSON.stringify({ topic: String(title || 'Ders').slice(0, 200), type: 2, start_time: String(start || '').length === 16 ? start + ':00' : start, timezone: 'Europe/Istanbul', duration: Number(minutes) || 40, settings: { waiting_room: true, join_before_host: false } }) });
@@ -318,7 +342,12 @@
     const c = cfg('sms'); const p = SMS[c.provider] || SMS.sim; const num = normPhone(to);
     text = String(text).slice(0, c.maxLen || 612);
     if (!c.enabled) { log('sms', num, text, 'kapalı', 'SMS kapalı'); return { ok: false, error: 'SMS gönderimi kapalı' }; }
-    if (p.unverified) { log('sms', num, text, 'hata', `${p.name}: resmî API dokümanı doğrulanmadı`); if (!silent) toast(`${p.name} bağlantısı doğrulanmadığı için kapalı — Entegrasyonlar > SMS’ten başka sağlayıcı seçin`, 'err'); return { ok: false, error: 'Doğrulanmamış sağlayıcı' }; }
+    if (entVar('sms', c.provider)) {
+      const r = await ent.islem('sms', 'gonder', { to: num, text, iys: c.iys }).catch((e) => ({ ok: false, hata: e.message }));
+      log('sms', num, text, r.ok ? 'gönderildi' : 'hata', r.ok ? (r.sonuc || {}).ref : r.hata);
+      if (!silent) toast(r.ok ? `SMS gönderildi: ${to}` : `SMS gönderilemedi: ${String(r.hata).slice(0, 120)}`, r.ok ? 'ok' : 'err');
+      return { ok: !!r.ok, response: r, error: r.hata };
+    }
     if (!p.build) { log('sms', num, text, 'simülasyon', 'Gerçek gönderim yapılmadı'); if (!silent) toast(`SMS TEST — gönderilmedi (simülasyon): ${to}`, 'warn'); return { ok: true, simulated: true }; }
     try {
       const r = await httpCall(p.build(c, num, text));
@@ -331,6 +360,10 @@
   async function whatsapp(to, text) {
     const c = cfg('whatsapp'); const num = normPhone(to);
     if (c.mode === 'link') { log('whatsapp', num, text, 'açıldı', 'wa.me bağlantısı'); origOpen(`https://wa.me/${num}?text=${encodeURIComponent(text)}`, '_blank', 'noopener'); return { ok: true }; }
+    if (entVar('whatsapp', c.mode)) {
+      const r = await ent.islem('whatsapp', 'gonder', { to: num, text }).catch((e) => ({ ok: false, hata: e.message }));
+      log('whatsapp', num, text, r.ok ? 'gönderildi' : 'hata', r.ok ? (r.sonuc || {}).ref : r.hata); toast(r.ok ? 'WhatsApp mesajı gönderildi' : `WhatsApp gönderilemedi: ${String(r.hata).slice(0, 120)}`, r.ok ? 'ok' : 'err'); return { ok: !!r.ok, error: r.hata };
+    }
     try {
       const req = c.mode === 'cloud'
         ? { url: `https://graph.facebook.com/${c.version || 'v23.0'}/${c.phoneId}/messages`, method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + c.token }, body: JSON.stringify(c.template ? { messaging_product: 'whatsapp', to: num, type: 'template', template: { name: c.template, language: { code: c.lang || 'tr' }, components: [{ type: 'body', parameters: [{ type: 'text', text }] }] } } : { messaging_product: 'whatsapp', to: num, type: 'text', text: { body: text } }) }
@@ -344,6 +377,10 @@
   async function email(to, subject, text) {
     const c = cfg('email');
     if (c.mode === 'mailto') { log('email', to, subject, 'açıldı', 'mailto'); location.href = `mailto:${encodeURIComponent(to)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(text)}`; return { ok: true }; }
+    if (entVar('email', c.mode)) {
+      const r = await ent.islem('email', 'gonder', { to, subject, text }).catch((e) => ({ ok: false, hata: e.message }));
+      log('email', to, subject, r.ok ? 'gönderildi' : 'hata', r.ok ? (r.sonuc || {}).ref : r.hata); toast(r.ok ? 'E-posta gönderildi' : `E-posta gönderilemedi: ${String(r.hata).slice(0, 120)}`, r.ok ? 'ok' : 'err'); return { ok: !!r.ok, error: r.hata };
+    }
     try {
       const req = c.mode === 'emailjs'
         ? { url: 'https://api.emailjs.com/api/v1.0/email/send', method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ service_id: c.service, template_id: c.template, user_id: c.publicKey, template_params: { to_email: to, subject, message: text, from_name: c.from } }) }
@@ -667,7 +704,7 @@
     try {
       if (doc.docType === 'e-İrsaliye') return fail('Paraşüt API’sinde e-İrsaliye resmileştirme uç noktası yok');
       const dl = doc.lines || [];
-      if (dl.some((l) => l.whtCode)) return fail('Tevkifatlı fatura bu sürümde Paraşüt’e gönderilmiyor: Paraşüt API dokümanında tevkifat oranının birimi belirtilmemiş (doğrulanamadı). Uyumsoft ile gönderin veya Paraşüt panelinden kesin.');
+      if (dl.some((l) => l.whtCode)) return fail('Tevkifatlı fatura bu sürümde Paraşüt’e gönderilmiyor: Paraşüt API dokümanında tevkifat oranının birimi belirtilmemiş. Uyumsoft ile gönderin veya Paraşüt panelinden kesin.');
       const exc = [...new Set(dl.filter((l) => l.exemptionCode).map((l) => String(l.exemptionCode)))];
       if (exc.length > 1) return fail('Paraşüt’te bir faturada tek istisna kodu kullanılabilir; farklı istisna kodlu kalemleri ayrı faturada kesin');
       const ex = exc.length ? { vat_exemption_reason_code: exc[0], vat_exemption_reason: ['250', '350'].includes(exc[0]) ? (dl.find((l) => l.exemptionCode) || {}).exemptionReason || undefined : undefined } : {};
@@ -700,6 +737,7 @@
     const no = `${type === 'e-İrsaliye' ? 'IRS' : type === 'e-Fatura' ? c.efPrefix : c.eaPrefix}${new Date().getFullYear()}${String(Date.now()).slice(-9)}`;
     // Eski doğrudan yol (yalnızca I.sendDirect); programlar NS.ebelge.create() kullanır. Simülasyonda numara TEST olarak döner.
     if (c.provider === 'sim') { log('efatura', doc.buyer || '', `${type} ${no}`, 'simülasyon', money(doc.total || 0)); toast(`${type} TEST — gönderilmedi (simülasyon)`, 'warn'); return { ok: true, simulated: true, type, no: 'TEST-' + no, uuid: crypto.randomUUID ? crypto.randomUUID() : NS.uid() }; }
+    if (entVar('efatura', c.provider) && !(await ent.hazir('efatura', c.provider))) { const m = `${(EFAT[c.provider] || c.provider)} bağlantısı denenmedi. Entegrasyonlar sayfasından Bağlantıyı dene adımını tamamlayın.`; log('efatura', doc.buyer || '', `${type} ${no}`, 'hata', m); toast(m, 'err'); return { ok: false, error: m }; }
     if (c.provider === 'uyumsoft' || c.provider === 'nilvera') return sendUyumsoft(doc, c);
     if (c.provider === 'parasut') return sendParasut(doc, c);
     if (c.provider === 'custom' && c.url) {
@@ -716,6 +754,8 @@
     const c = cfg('webhook'); if (!c.url) return;
     const evs = String(c.events || '*').split(',').map((x) => x.trim());
     if (!evs.includes('*') && !evs.includes(event)) return;
+    if (!(await ent.hazir('webhook', 'http'))) { log('webhook', c.url, event, 'hata', 'Bağlantı denenmedi'); return; }
+    if (entVar('webhook', 'http')) { const r = await ent.islem('webhook', 'gonder', { event, data: { app: appId(), ...data } }).catch((e) => ({ ok: false, hata: e.message })); log('webhook', c.url, event, r.ok ? 'iletildi' : 'hata', r.ok ? '' : r.hata); return; }
     const body = JSON.stringify({ event, app: appId(), at: new Date().toISOString(), data });
     let sig = '';
     // Kayıtlı imza anahtarı bulutta tarayıcıya gelmez (yer tutucu): imzayı sunucu hesaplar
@@ -782,13 +822,14 @@
   // ---------- Program bazında kullanım: yalnızca o programda gerçekten çalışan bağlantılar listelenir ----------
   // Kaynak: ürün kodunda çağrılan entegrasyonlar. Burada olmayan bağlantı o programda işe yaramadığı için gösterilmez.
   const USED = {
+    cicekci: ['sms', 'whatsapp', 'printer', 'efatura', 'backup'], kurutemizleme: ['sms', 'whatsapp', 'printer', 'efatura', 'backup'], matbaa: ['sms', 'whatsapp', 'printer', 'efatura', 'backup'], pastane: ['sms', 'whatsapp', 'printer', 'efatura', 'backup'], terzi: ['sms', 'whatsapp', 'printer', 'pos', 'efatura', 'backup'],
     dernek: ['sms', 'whatsapp', 'email', 'printer', 'backup'], egitim: ['sms', 'whatsapp', 'email', 'payment', 'printer', 'backup'], danisan: ['sms', 'email', 'printer', 'backup'],
     nakliyat: ['sms', 'whatsapp', 'email', 'printer', 'pos', 'efatura', 'webhook', 'backup'], temizlik: ['sms', 'whatsapp', 'email', 'printer', 'pos', 'efatura', 'webhook', 'backup'], usta: ['callerid', 'sms', 'whatsapp', 'email', 'printer', 'pos', 'efatura', 'webhook', 'backup'], peyzaj: ['sms', 'whatsapp', 'email', 'printer', 'pos', 'efatura', 'webhook', 'backup'],
     dugun: ['sms', 'backup'], yurt: ['sms', 'backup'], fotograf: ['sms', 'backup'], oyun: ['sms', 'backup'],
     mobilya: ['sms', 'whatsapp', 'efatura', 'printer', 'backup'], okulservisi: ['sms', 'whatsapp', 'efatura', 'backup'], ciftci: ['sms', 'whatsapp', 'efatura', 'emustahsil', 'printer', 'backup'], lastik: ['sms', 'whatsapp', 'efatura', 'printer', 'backup'],
     adisyon: ['printer', 'pos', 'okc', 'yemekplatform', 'yemekkarti', 'callerid', 'webhook', 'backup'], anaokulu: ['sms', 'backup'], bilet: ['sms', 'turnike', 'backup'],
     butik: ['sms', 'pazaryeri', 'printer', 'label', 'barcode', 'pos', 'backup'], crm: ['email', 'whatsapp', 'callerid', 'takvim', 'backup'], eczane: ['printer', 'pos', 'medula', 'its', 'sms', 'whatsapp', 'webhook', 'backup'],
-    emlak: ['ilan', 'whatsapp', 'backup'], eticaret: ['efatura', 'eirsaliye', 'kargofirma', 'pazaryeri', 'sms', 'whatsapp', 'backup'],
+    emlak: ['ilan', 'whatsapp', 'backup'], eticaret: ['payment', 'efatura', 'eirsaliye', 'kargofirma', 'pazaryeri', 'sms', 'whatsapp', 'backup'],
     fabrika: ['printer', 'label', 'scale', 'efatura', 'eirsaliye', 'emustahsil', 'kantar', 'plc', 'sms', 'email', 'whatsapp', 'webhook', 'backup'], fiyatrobotu: ['backup'],
     galeri: ['ilan', 'sms', 'whatsapp', 'backup'], hukuk: ['sms', 'efatura', 'backup'], ik: ['sgk', 'pdks', 'ebordro', 'bankamaas', 'backup'], kargo: ['kargofirma', 'gps', 'sms', 'whatsapp', 'backup'],
     kiralama: ['aracbildirim', 'hgs', 'gps', 'backup'], klinik: ['enabiz', 'erecete', 'kps', 'esmm', 'takvim', 'pos', 'efatura', 'sms', 'backup'], kurs: ['meb', 'onlineders', 'payment', 'sms', 'whatsapp', 'backup'],
@@ -848,7 +889,7 @@
     draw();
   }
 
-  NS.integ = { nvCall, nvPayer, prsSession, ubl, uyCall, readPlc, trackUrl, trackShipment, trackOf, TRACK, meetingLinkOk, createMeeting, zoomToken, htmlToLines, cfg, setCfg, sms, whatsapp, email, printReceipt, openDrawer, printLabels, parseScaleBarcode, readScale, readKantar, parseWeight, cardPayment, sendEInvoice, emit, backupAll, restoreAll, page, bridgeStatus, log, DEFS, normPhone, call, isOn, SECTOR, CONN, USED, http: httpCall };
+  NS.integ = { ent, entVar, nvCall, nvPayer, prsSession, ubl, uyCall, readPlc, trackUrl, trackShipment, trackOf, TRACK, meetingLinkOk, createMeeting, zoomToken, htmlToLines, cfg, setCfg, sms, whatsapp, email, printReceipt, openDrawer, printLabels, parseScaleBarcode, readScale, readKantar, parseWeight, cardPayment, sendEInvoice, emit, backupAll, restoreAll, page, bridgeStatus, log, DEFS, normPhone, call, isOn, SECTOR, CONN, USED, http: httpCall };
 })();
 
 /* ===== e-Belge merkezi: e-Fatura, e-Arşiv, e-İrsaliye giden/gelen kutusu =====

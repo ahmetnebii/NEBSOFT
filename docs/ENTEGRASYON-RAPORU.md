@@ -176,3 +176,7 @@ Durum sayıları: doğrulandı 10 · kısmen doğrulandı 26 · standart protoko
 | Google Takvim / Outlook | İmzalı iCal aboneliği; artık Randevu + Klinik (hekim bazında) + CRM görevleri | `server/test/takvim.test.js` (Randevu imzası eskisiyle aynı, iptaller hariç, telefon yok, yanlış imza 404) | Tek yönlü; yenileme sıklığını takvim uygulaması belirler |
 
 Ayrıca: iCal / Google / Outlook seçiliyken randevu kaydında görülen “servis adresi tanımlı değil” hatası giderildi (takvim akışla çalışır, ayrıca gönderim yapılmaz). Online ders API'si başarısız olursa artık başka bir bağlantı sessizce gönderilmez.
+
+## 12. Güncelleme — 31.10.2026 (8. tur: sunucu istemcileri)
+
+Kullanıcı kararı: müşteri API'yi kendi hesabıyla bağlar. 38 sağlayıcı anahtarı için `server/cloud/entegrasyon/` altında sunucu istemcisi yazıldı, tek akış Entegre et → Bağlantıyı dene oldu. Güncel durum, engelleyenler ve tam liste: `docs/ENTEGRASYON-ENVANTERI.md`. Bu dosyanın önceki bölümleri o günün durumudur.
