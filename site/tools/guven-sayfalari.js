@@ -19,7 +19,7 @@ const AKTARIM = [
 ];
 const DURUM_AD = { calisiliyor: 'Üzerinde çalışılıyor', planlandi: 'Planlandı', bekliyor: 'Dış hesap bekliyor' };
 
-module.exports = ({ DOC, esc, I, CFG, D, CAT, PRODUCTS, AKTIF, bas, tarihTr, SSS, faqHtml, SITE_SRC }) => {
+module.exports = ({ DOC, esc, I, CFG, D, CAT, PRODUCTS, AKTIF, bas, tarihTr, SSS, faqHtml, SITE_SRC, svg }) => {
   const dosya = (a) => fs.readFileSync(path.join(SITE_SRC, 'assets', a));
   const v = (a) => crypto.createHash('sha1').update(dosya(a)).digest('hex').slice(0, 10);
   const ek = `\n<link rel="stylesheet" href="/site/assets/guven.css?v=${v('guven.css')}">\n<script src="/site/assets/guven.js?v=${v('guven.js')}" defer></script>`;
@@ -71,7 +71,7 @@ module.exports = ({ DOC, esc, I, CFG, D, CAT, PRODUCTS, AKTIF, bas, tarihTr, SSS
   <div data-ortaklar hidden><h2>Onaylı iş ortakları</h2><p>Listede yalnız onaylanan ve görünmeye izin veren iş ortakları yer alır.</p><ul class="ortak"></ul></div>
   <h2 id="basvuru">Başvuru formu</h2>
   ${form}`;
-    L.push({ yol: '/bayilik/', rel: 'bayilik', html: DOC({ title, desc, url, h1: 'Bayi ve mali müşavirler için iş ortaklığı', lead: `${CFG.brand} programlarını müşterilerinize önerin. Başvurunuzu bırakın, koşulları birlikte belirleyelim.`, kirinti: kirinti('Bayilik ve mali müşavir', url), govde, ek, schema: [sayfa({ ad: 'Bayilik ve mali müşavir iş ortaklığı', url, desc }), SSS(faq)], sonra: faqHtml(faq, 'İş ortaklığı hakkında merak edilenler') }) });
+    L.push({ yol: '/bayilik/', rel: 'bayilik', html: DOC({ title, desc, url, gorsel: svg('bayilik'), h1: 'Bayi ve mali müşavirler için iş ortaklığı', lead: `${CFG.brand} programlarını müşterilerinize önerin. Başvurunuzu bırakın, koşulları birlikte belirleyelim.`, kirinti: kirinti('Bayilik ve mali müşavir', url), govde, ek, schema: [sayfa({ ad: 'Bayilik ve mali müşavir iş ortaklığı', url, desc }), SSS(faq)], sonra: faqHtml(faq, 'İş ortaklığı hakkında merak edilenler') }) });
   }
 
   // ---------- Veri taşıma ----------
@@ -109,7 +109,7 @@ module.exports = ({ DOC, esc, I, CFG, D, CAT, PRODUCTS, AKTIF, bas, tarihTr, SSS
   <p>Dosyanız karışıksa ya da listeyi kendiniz hazırlamak istemiyorsanız bize yazın. Elinizdeki veriye bakıp neyin taşınabileceğini söyleriz. Kapsam ve varsa ücret, iş başlamadan önce size yazılı olarak bildirilir.</p>
   <p class="kutu" data-kurulum hidden></p>
   ${form}`;
-    L.push({ yol: '/veri-tasima/', rel: 'veri-tasima', html: DOC({ title, desc, url, h1: 'Excel\'den veya eski programdan veri taşıma', lead: desc, genis: true, kirinti: kirinti('Veri taşıma', url), govde, ek, schema: [sayfa({ ad: 'Veri taşıma', url, desc }), SSS(faq)], sonra: faqHtml(faq, 'Veri taşıma hakkında merak edilenler') }) });
+    L.push({ yol: '/veri-tasima/', rel: 'veri-tasima', html: DOC({ title, desc, url, gorsel: svg('veri-tasima'), h1: 'Excel\'den veya eski programdan veri taşıma', lead: desc, genis: true, kirinti: kirinti('Veri taşıma', url), govde, ek, schema: [sayfa({ ad: 'Veri taşıma', url, desc }), SSS(faq)], sonra: faqHtml(faq, 'Veri taşıma hakkında merak edilenler') }) });
   }
 
   // ---------- Sistem durumu ----------
@@ -127,7 +127,7 @@ module.exports = ({ DOC, esc, I, CFG, D, CAT, PRODUCTS, AKTIF, bas, tarihTr, SSS
   <h2>Bu sayfa nasıl çalışır</h2>
   <p>Sayfadaki sonuçlar sabit yazı değildir. Sayfa açıkken tarayıcınız sunucudan ölçüm ister ve sonucu yarım dakikada bir yeniler. Ölçüm alınamazsa, sunucuya ulaşılamazsa veya bağlantınız kesilirse sonuç <b>Bilinmiyor</b> yazar. Bu, sorun olduğu anlamına da, her şeyin çalıştığı anlamına da gelmez.</p>
   <p>Sonuçlar bu anlık ölçümü gösterir, geçmişe dönük kesintisiz çalışma oranı değildir. Bu sayfada çalışma süresi taahhüdü verilmez. Bakım kayıtları yönetim panelinden elle girilir. Sorun yaşıyorsanız <a href="/#/iletisim">iletişim sayfasından</a> bize yazın.</p>`;
-    L.push({ yol: '/sistem-durumu/', rel: 'sistem-durumu', html: DOC({ title, desc, url, h1: 'Sistem durumu', lead: 'Uygulama ve veritabanı durumu sunucudan canlı ölçülür.', kirinti: kirinti('Sistem durumu', url), govde, ek, schema: [sayfa({ ad: 'Sistem durumu', url, desc })] }) });
+    L.push({ yol: '/sistem-durumu/', rel: 'sistem-durumu', html: DOC({ title, desc, url, gorsel: svg('sistem-durumu'), h1: 'Sistem durumu', lead: 'Uygulama ve veritabanı durumu sunucudan canlı ölçülür.', kirinti: kirinti('Sistem durumu', url), govde, ek, schema: [sayfa({ ad: 'Sistem durumu', url, desc })] }) });
   }
 
   // ---------- Yenilikler ----------
@@ -140,7 +140,7 @@ module.exports = ({ DOC, esc, I, CFG, D, CAT, PRODUCTS, AKTIF, bas, tarihTr, SSS
     const govde = `${gun.map((g) => `<h2><time datetime="${g}">${tarihTr(g)}</time></h2><ul class="yen">${K.filter((x) => x.tarih === g).map(madde).join('')}</ul>`).join('\n  ')}
   <h2>Sırada ne var</h2>
   <p>Planlanan işleri <a href="/yol-haritasi/">yol haritasında</a> görebilir, isteğinizi öneri kutusuna yazabilirsiniz. Sistemin şu anki hâli için <a href="/sistem-durumu/">sistem durumu</a> sayfasına bakın.</p>`;
-    L.push({ yol: '/yenilikler/', rel: 'yenilikler', html: DOC({ title, desc, url, h1: 'Yenilikler', lead: 'Programlarda yapılan gerçek değişiklikler, en yenisi üstte.', kirinti: kirinti('Yenilikler', url), govde, ek, schema: [sayfa({ ad: 'Yenilikler', url, desc })] }) });
+    L.push({ yol: '/yenilikler/', rel: 'yenilikler', html: DOC({ title, desc, url, gorsel: svg('yenilikler'), h1: 'Yenilikler', lead: 'Programlarda yapılan gerçek değişiklikler, en yenisi üstte.', kirinti: kirinti('Yenilikler', url), govde, ek, schema: [sayfa({ ad: 'Yenilikler', url, desc })] }) });
   }
 
   // ---------- Yol haritası ve öneri kutusu ----------
@@ -162,7 +162,7 @@ module.exports = ({ DOC, esc, I, CFG, D, CAT, PRODUCTS, AKTIF, bas, tarihTr, SSS
   <h2 id="oneri">Öneri kutusu</h2>
   <p>Programda eksik bulduğunuz bir şey ya da sektörünüz için istediğiniz yeni bir program varsa yazın. Hangi programın kaç kez istendiği ekibimize sayılarak görünür. Her isteğin yapılacağı anlamına gelmez, öneriler herkese açık yayımlanmaz.</p>
   ${form}`;
-    L.push({ yol: '/yol-haritasi/', rel: 'yol-haritasi', html: DOC({ title, desc, url, h1: 'Yol haritası ve öneri kutusu', lead: 'Sırada ne olduğunu görün, sizin için neyin önemli olduğunu söyleyin.', kirinti: kirinti('Yol haritası', url), govde, ek, schema: [sayfa({ ad: 'Yol haritası ve öneri kutusu', url, desc })] }) });
+    L.push({ yol: '/yol-haritasi/', rel: 'yol-haritasi', html: DOC({ title, desc, url, gorsel: svg('yol-haritasi'), h1: 'Yol haritası ve öneri kutusu', lead: 'Sırada ne olduğunu görün, sizin için neyin önemli olduğunu söyleyin.', kirinti: kirinti('Yol haritası', url), govde, ek, schema: [sayfa({ ad: 'Yol haritası ve öneri kutusu', url, desc })] }) });
   }
   return L;
 };

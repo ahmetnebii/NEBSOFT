@@ -4,12 +4,12 @@
 // Sunucu: /araclar dizini SITES ile çalışır; araç sayfaları sonda / ile açılır, bu yüzden canonical da /araclar/<slug>/ biçimindedir.
 const fs = require('fs'); const path = require('path'); const crypto = require('crypto');
 const ROOT = path.join(__dirname, '..', '..'); const SITE = path.join(ROOT, 'site'); const CIKTI = path.join(SITE, 'araclar'); const KAYNAK = path.join(SITE, 'src', 'araclar');
-const CFG = require('../src/site.config'); const PRODUCTS = require('../src/products');
+const CFG = require('../src/site.config'); const PRODUCTS = require('../src/products'); const O = require('./ortak');
 
-const D = CFG.domain.replace(/\/$/, ''); const tel = CFG.phone.replace(/\D/g, '');
+const D = CFG.domain.replace(/\/$/, '');
 const ASG_KELIME = 200;
 const cssV = (a) => crypto.createHash('sha1').update(fs.readFileSync(path.join(SITE, 'assets', a))).digest('hex').slice(0, 10); // adres içerikle değişir, sunucu uzun önbellek verir
-const CSS = `<link rel="stylesheet" href="/site/assets/site.css?v=${cssV('site.css')}"><link rel="stylesheet" href="/site/assets/araclar.css?v=${cssV('araclar.css')}">`;
+const CSS = O.kafa(`<link rel="stylesheet" href="/site/assets/araclar.css?v=${cssV('araclar.css')}">`);
 const OGOLCU = '<meta property="og:image:width" content="1200"><meta property="og:image:height" content="630">';
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const ORGW = [{ '@context': 'https://schema.org', '@type': 'Organization', '@id': `${CFG.domain}/#kurulus`, name: CFG.brand, url: `${CFG.domain}/` }, { '@context': 'https://schema.org', '@type': 'WebSite', '@id': `${CFG.domain}/#site`, name: CFG.brand, url: `${CFG.domain}/`, inLanguage: 'tr-TR', publisher: { '@id': `${CFG.domain}/#kurulus` } }];
@@ -21,20 +21,6 @@ const I = {
   kilit: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>',
   arrow: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>',
 };
-
-// Ana siteyle aynı üst menü ve alt bilgi
-const USTBAR = () => `<header class="hd mk"><div class="w">
-  <a class="logo" href="/" aria-label="${CFG.brand} ana sayfa"><img src="/assets/icons/icon-64.png" alt="" width="36" height="36"><span class="wm"><b>NEB</b><i>SOFT</i></span><span class="sub">Ücretsiz Araçlar</span></a>
-  <nav class="nav" aria-label="Ana menü"><a href="/programlar">Programlar</a><a href="/paketler/">Paketler</a><a href="/araclar">Araçlar</a><a href="/fiyatlar/">Fiyatlar</a><a href="/rehber/">Rehber</a><a href="/#/sektorler">Sektörler</a><a href="/#/iletisim">İletişim</a></nav>
-  <a class="btn g" href="/#/giris">Giriş yap</a><a class="btn p" href="/#/kayit">Ücretsiz başla ${I.arrow}</a>
-</div></header>`;
-const ALTBAR = () => `<footer class="ft"><div class="w">
-  <div class="cols">
-    <div><a class="logo" href="/"><img src="/assets/icons/icon-64.png" alt="" width="34" height="34"><span class="wm"><b>NEB</b><i>SOFT</i></span></a><p>Türkiye'deki işletmeler için bulut tabanlı yazılımlar ve ücretsiz iş araçları.</p><p><a href="tel:+90${tel.replace(/^0/, '')}">${esc(CFG.phone)}</a><a href="mailto:${CFG.email}">${esc(CFG.email)}</a></p></div>
-    ${[0, 1, 2].map((k) => `<div><h4>${['<a href="/programlar" style="color:inherit">Programlar</a>', '&nbsp;', '&nbsp;'][k]}</h4>${PRODUCTS.filter((x) => !x.satisDisi).filter((_, i) => i % 9 === k).map((x) => `<a href="/${x.slug}">${esc(x.kw[0].toLocaleUpperCase('tr') + x.kw.slice(1))}</a>`).join('')}</div>`).join('')}
-  </div>
-  <div class="copy">© ${new Date().getFullYear()} ${CFG.brand}. Tüm hakları saklıdır. · <a href="/araclar" style="display:inline">Ücretsiz araçlar</a> · <a href="/kvkk/" style="display:inline">KVKK ve yasal metinler</a></div>
-</div></footer>`;
 
 // ---------- Özgün metin ölçümü ----------
 const cumleler = (m) => String(m).toLocaleLowerCase('tr').split(/(?<=[.!?:])\s+/).map((x) => x.replace(/[^\p{L}\p{N}\s]/gu, ' ').replace(/\s+/g, ' ').trim()).filter(Boolean);
@@ -82,6 +68,7 @@ function formHtml(a) {
 }
 
 // ---------- Sayfa ----------
+const aracKart = (x, suz) => `<a class="kart" href="/araclar/${x.slug}/"${suz ? ' data-kart' : ''}><span class="kart-g">${O.ALT.arac[x.slug] ? O.svgImg('arac', x.slug) : ''}</span><span class="kart-m"><b>${esc(x.ad)}</b><span>${esc(x.kisa)}</span></span></a>`;
 function sayfa(a, hepsi = []) {
   const url = `${D}/araclar/${a.slug}/`; const index = indekslenir(a, hepsi); const p = PRODUCTS.find((x) => x.slug === a.program.slug);
   const rel = (a.ilgili || []).map((s) => hepsi.find((x) => x.slug === s)).filter(Boolean).concat(hepsi.filter((x) => x.kategori === a.kategori && x.slug !== a.slug && !(a.ilgili || []).includes(x.slug))).slice(0, 4);
@@ -94,7 +81,7 @@ function sayfa(a, hepsi = []) {
   const dAlan = (a.alanlar || []).find((f) => f.tip === 'dosya');
   const cfg = `{dosyaAdi:${JSON.stringify(a.slug)},gerekli:${JSON.stringify(gerekli).replace(/</g, '\\u003c')},hesap:${String(a.hesap)}${dosyali(a) ? `,dosyaAlan:${JSON.stringify(dAlan.ad)},canli:${!!a.canli},isle:${String(a.isle)}${a.hazirla ? `,hazirla:${String(a.hazirla)}` : ''}` : ''}}`;
   return `<!doctype html>
-<html lang="tr">
+${O.HTML}
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -107,19 +94,13 @@ ${dosyali(a) ? `<meta http-equiv="Content-Security-Policy" content="connect-src 
 <meta property="og:title" content="${esc(a.baslik)}"><meta property="og:description" content="${esc(a.ozet)}"><meta property="og:url" content="${url}"><meta property="og:image" content="${D}/assets/og/og.png">${OGOLCU}<meta name="twitter:card" content="summary_large_image"><meta name="twitter:title" content="${esc(a.baslik)}"><meta name="twitter:description" content="${esc(a.ozet)}"><meta name="twitter:image" content="${D}/assets/og/og.png">
 <link rel="icon" href="/assets/icons/icon-32.png" sizes="32x32" type="image/png"><link rel="icon" href="/assets/favicon.svg" type="image/svg+xml"><link rel="apple-touch-icon" href="/assets/icons/apple-touch-icon.png">
 ${CSS}
-<style>:root{--c:${a.renk || '#1d7bf5'}}</style>
-${schema.map(ld).join('\n')}
+${a.renk ? `<style>:root{--c:${a.renk}}</style>\n` : ''}${schema.map(ld).join('\n')}
 </head>
 <body>
 <a class="skip" href="#ana">İçeriğe geç</a>
-${USTBAR()}
+${O.ust('araclar')}
 <main id="ana">
-<div class="w ar-hero">
-  <nav class="crumb" aria-label="Konum"><a href="/">${CFG.brand}</a> / <a href="/araclar">Ücretsiz Araçlar</a> / ${esc(a.ad)}</nav>
-  <h1>${esc(a.ad)}</h1>
-  <p class="lead">${esc(a.ozet)}</p>
-  <p class="ar-gizli">${I.kilit}<span>${dosyali(a) ? 'Dosyanız sunucuya yüklenmez, işlem bu cihazda tarayıcınızın içinde yapılır. Sayfayı kapatınca hiçbir kopyası kalmaz.' : 'İşlem tarayıcınızda yapılır. Girdiğiniz bilgiler sunucuya gönderilmez ve kaydedilmez.'}</span></p>
-</div>
+${O.kahraman({ tek: true, kirinti: `<a href="/">${CFG.brand}</a> / <a href="/araclar">Ücretsiz Araçlar</a> / ${esc(a.ad)}`, h1: esc(a.ad), lead: esc(a.ozet), ic: `<p class="ar-gizli">${I.kilit}<span>${dosyali(a) ? 'Dosyanız sunucuya yüklenmez, işlem bu cihazda tarayıcınızın içinde yapılır. Sayfayı kapatınca hiçbir kopyası kalmaz.' : 'İşlem tarayıcınızda yapılır. Girdiğiniz bilgiler sunucuya gönderilmez ve kaydedilmez.'}</span></p>`, gorsel: O.ALT.arac[a.slug] ? O.svgImg('arac', a.slug, null, 'lcp') : '' })}
 <div class="w ar-is${a.tek ? ' tek' : ''}">
   <form class="ar-kart ar-form-k" id="ar-form" novalidate><h2>Bilgileri girin</h2><div class="ar-alanlar">
 ${formHtml(a)}
@@ -139,10 +120,10 @@ ${formHtml(a)}
   <h2>Sık sorulan sorular</h2>
   <div class="faq">${a.sss.map(([q, c], i) => `<details${i ? '' : ' open'}><summary>${esc(q)}</summary><p>${esc(c)}</p></details>`).join('')}</div>
 </div>
-${rel.length ? `<h2 class="ar-grup">İlgili araçlar</h2><div class="ar-kartlar">${rel.map((x) => `<a href="/araclar/${x.slug}/"><b>${esc(x.ad)}</b><span>${esc(x.kisa)}</span></a>`).join('')}</div>` : ''}
+${rel.length ? `<h2 class="ar-grup">İlgili araçlar</h2><div class="kartlar dort">${rel.map(aracKart).join('')}</div>` : ''}
 </div></section>
 </main>
-${ALTBAR()}
+${O.alt()}
 ${a.qr ? '<script src="/site/assets/vendor/qrcode-generator-1.4.4/qrcode.js"></script>\n' : ''}<script src="/site/assets/araclar-hesap.js"></script>
 ${dosyali(a) ? '<script src="/site/assets/araclar-dosya-saf.js"></script>\n<script src="/site/assets/araclar-dosya.js"></script>\n' : ''}<script src="/site/assets/araclar.js"></script>
 <script>AR.baslat(${cfg});</script>
@@ -159,7 +140,7 @@ function dizin(hepsi) {
     { '@context': 'https://schema.org', '@type': 'ItemList', name: 'Ücretsiz işletme araçları', itemListElement: hepsi.map((x, i) => ({ '@type': 'ListItem', position: i + 1, url: `${D}/araclar/${x.slug}/`, name: x.ad })) },
   ];
   return `<!doctype html>
-<html lang="tr">
+${O.HTML}
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -169,20 +150,20 @@ function dizin(hepsi) {
 <meta property="og:type" content="website"><meta property="og:locale" content="tr_TR"><meta property="og:site_name" content="${CFG.brand}"><meta property="og:title" content="${esc(title)}"><meta property="og:description" content="${esc(desc)}"><meta property="og:url" content="${url}"><meta property="og:image" content="${D}/assets/og/og.png">${OGOLCU}<meta name="twitter:card" content="summary_large_image"><meta name="twitter:title" content="${esc(title)}"><meta name="twitter:description" content="${esc(desc)}"><meta name="twitter:image" content="${D}/assets/og/og.png">
 <link rel="icon" href="/assets/icons/icon-32.png" sizes="32x32" type="image/png"><link rel="icon" href="/assets/favicon.svg" type="image/svg+xml"><link rel="apple-touch-icon" href="/assets/icons/apple-touch-icon.png">
 ${CSS}
-<style>:root{--c:#1d7bf5}</style>
 ${schema.map(ld).join('\n')}
 </head>
 <body>
 <a class="skip" href="#ana">İçeriğe geç</a>
-${USTBAR()}
-<main id="ana"><div class="w ar-hero">
-  <nav class="crumb" aria-label="Konum"><a href="/">${CFG.brand}</a> / Ücretsiz Araçlar</nav>
-  <h1>İşletmeler için ücretsiz araçlar</h1>
-  <p class="lead">${esc(desc)}</p>
-  <p class="ar-gizli">${I.kilit}<span>Tüm hesaplar tarayıcınızda çalışır. Oran gerektiren araçlarda resmî kaynak, adres ve son güncelleme tarihi sayfanın içinde yazılıdır.</span></p>
-  ${KATEGORI.map(([k, ad, alt]) => { const l = hepsi.filter((x) => x.kategori === k); return l.length ? `<h2 class="ar-grup">${esc(ad)}</h2><p style="color:var(--ink2);margin:-8px 0 14px">${esc(alt)}</p><div class="ar-kartlar">${l.map((x) => `<a href="/araclar/${x.slug}/"><b>${esc(x.ad)}</b><span>${esc(x.kisa)}</span></a>`).join('')}</div>` : ''; }).join('\n  ')}
-</div></main>
-${ALTBAR()}
+${O.ust('araclar')}
+<main id="ana">
+${O.kahraman({ kirinti: `<a href="/">${CFG.brand}</a> / Ücretsiz Araçlar`, rozet: `${hepsi.length} ücretsiz araç · Üyelik yok`, h1: 'İşletmeler için ücretsiz araçlar', lead: esc(desc), ic: `<p class="ar-gizli">${I.kilit}<span>Tüm hesaplar tarayıcınızda çalışır. Oran gerektiren araçlarda resmî kaynak, adres ve son güncelleme tarihi sayfanın içinde yazılıdır.</span></p>`, gorsel: `<div class="kolaj">${['pdf-birlestirme', 'kira-artis-hesaplama', 'qr-kod-olusturucu', 'kdv-hesaplama'].filter((x) => O.ALT.arac[x]).map((x, i) => O.svgImg('arac', x, null, i ? true : 'lcp')).join('')}</div>` })}
+<section class="s"><div class="w">
+  ${O.suzgec('Araç ara: PDF, KDV, QR, kıdem', KATEGORI.filter(([k]) => hepsi.some((x) => x.kategori === k)).map(([k, ad]) => [k, ad]))}
+  ${KATEGORI.map(([k, ad, alt]) => { const l = hepsi.filter((x) => x.kategori === k); return l.length ? `<div class="grp" data-grup="${k}"><div class="grp-b"><h2>${esc(ad)}</h2><small>${l.length} araç</small><p>${esc(alt)}</p></div><div class="kartlar">${l.map((x) => aracKart(x, true)).join('')}</div></div>` : ''; }).join('\n  ')}
+  <p class="bos" id="suz-bos" hidden>Bu aramayla eşleşen araç yok. Başka bir kelime deneyin.</p>
+</div></section>
+</main>
+${O.alt()}
 </body>
 </html>
 `;

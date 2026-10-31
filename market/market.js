@@ -101,24 +101,13 @@
   function frame() {
     document.body.className = 'mk';
     if (EMBED) { document.body.innerHTML = '<main id="page"></main>'; document.body.classList.add('mk-embed'); return; }
-    document.body.innerHTML = `<header class="mk-nav"><div class="mk-wrap">
-        <a class="mk-logo" href="#/">${NS.logoMark(LOGO(), 36)}${brandName()}</a>
-        <nav class="mk-links" id="links"><a href="/programlar" data-l="urunler">Ürünler</a><a href="/paketler/" data-l="paketler">Paketler</a><a href="/fiyatlar/" data-l="fiyatlar">Fiyatlar</a><a href="/rehber/">Rehber</a><a href="/araclar">Araçlar</a><a href="#/sektorler" data-l="sektorler">Sektörler</a><a href="#/indir" data-l="indir">Masaüstü & Mobil</a><a href="#/iletisim" data-l="iletisim">İletişim</a><div class="mk-only-m" id="accm"></div></nav>
-        <span class="grow mk-hide-m"></span>
-        <button class="btn ghost icon" data-theme title="Tema" data-theme-ico>${icon(NS.getTheme() === 'dark' ? 'sun' : 'moon')}</button>
-        <a class="btn ghost icon cart-btn" href="#/sepet" title="Sepet">${icon('cart')}<span class="cnt hide" id="cc"></span></a>
-        <div class="mk-acc" id="acc"></div>
-        <button class="btn ghost icon mk-burger" id="burger" aria-label="Menü">${icon('menu')}</button>
-      </div></header>
+    const parca = { h: '', ana: '#/', logo: NS.logoMark(LOGO(), 36) + brandName(), icon };
+    const P = S(); const adres = (x) => esc(x);
+    document.body.innerHTML = `${NB_KABUK.ust({ ...parca, temaIkon: icon(NS.getTheme() === 'dark' ? 'sun' : 'moon') })}
       <main id="page"></main>
-      <footer class="mk-foot"><div class="mk-wrap"><div class="cols">
-        <div><a class="mk-logo" href="#/">${NS.logoMark(LOGO(), 36)}${brandName()}</a><p class="muted small mt">Türkiye'deki işletmeler için bulut tabanlı işletme yazılımları. Kurulum yok, taahhüt yok.</p><p class="small mt">${icon('phone')} ${esc(S().phone)}<br>${icon('mail')} ${esc(S().email)}<br>${icon('map')} ${esc(S().address)}</p></div>
-        <div><h4>Ürünler</h4>${products().filter((p) => p.ready).map((p) => `<a href="${urunHref(p)}">${esc(p.name)}</a>`).join('')}<a href="/programlar">Tüm ürünler →</a></div>
-        <div><h4>Kurumsal</h4><a href="#/indir">Masaüstü sürümünü indir</a><a href="/paketler/">Hazır paketler</a><a href="/fiyatlar/">Fiyatlandırma</a><a href="/rehber/">Rehber</a><a href="#/sektorler">Sektörler</a><a href="#/yardim">Yardım merkezi</a><a href="/veri-tasima/">Veri taşıma</a><a href="/bayilik/">Bayilik ve mali müşavir</a><a href="/sistem-durumu/">Sistem durumu</a><a href="/yenilikler/">Yenilikler</a><a href="/yol-haritasi/">Yol haritası ve öneri</a><a href="#/iletisim">İletişim</a><a href="#/hesabim">Müşteri paneli</a><a href="admin/">Yönetim paneli</a></div>
-        <div><h4>Yasal</h4><a href="/kvkk/">KVKK Aydınlatma</a><a href="/mesafeli-satis/">Mesafeli Satış Sözleşmesi</a><a href="/iade/">İptal ve İade</a><a href="/gizlilik/">Gizlilik Politikası</a><a href="/cerez/">Çerez Politikası</a>${CL && CL.analitik ? '<a href="#" data-olay-tercih>Analitik tercihleri</a>' : ''}</div>
-      </div><hr><div class="row between small faint"><span>© ${new Date().getFullYear()} ${esc(S().unvan || S().siteName)}. Tüm hakları saklıdır.</span></div></div></footer>`;
+      ${NB_KABUK.alt({ ...parca, urunler: products().filter((p) => p.ready).map((p) => [urunHref(p), esc(p.name)]), tel: adres(P.phone), eposta: adres(P.email), adres: adres(P.address), unvan: esc(P.unvan || P.siteName), ek: CL && CL.analitik ? '<a href="#" data-olay-tercih>Analitik tercihleri</a>' : '' })}`;
     on(document.body, 'click', '[data-theme]', NS.toggleTheme);
-    $('#burger').onclick = () => $('#links').classList.toggle('open');
+    $('#burger').onclick = () => $('#burger').setAttribute('aria-expanded', $('#links').classList.toggle('open'));
     on(document.body, 'click', '#links a', () => $('#links').classList.remove('open'));
     // Hesap menüsü
     on(document.body, 'click', '[data-um]', (e, b) => { const w = b.closest('.mk-user'); const o = !w.classList.contains('open'); w.classList.toggle('open', o); b.setAttribute('aria-expanded', o); });
@@ -135,18 +124,19 @@
   function drawNav() {
     const n = cart().items.length;
     const cc = $('#cc'); if (cc) { cc.textContent = n; cc.classList.toggle('hide', !n); }
-    const u = me(); const signup = '#/kayit';
+    const u = me();
     const acc = $('#acc');
     if (acc) acc.innerHTML = u ? `<a class="btn primary mk-hide-m" href="#/programlarim">${icon('grid')} Programlarım</a>
       <div class="mk-user"><button class="btn ghost mk-user-b" data-um aria-haspopup="menu" aria-expanded="false" title="Hesabım"><span class="avatar">${esc(NS.initials(u.name))}</span><span class="mk-hide-m">${esc(u.name.split(' ')[0])}</span></button>
         <div class="ns-menu mk-user-m" role="menu"><div class="mk-user-h"><b>${esc(u.name)}</b><span>${esc(u.company || u.email || '')}</span></div><div class="ns-menu-sep"></div>
           <a class="ns-menu-i" role="menuitem" href="#/programlarim">${icon('grid')} Programlarım</a><a class="ns-menu-i" role="menuitem" href="#/hesabim">${icon('key')} Lisans ve abonelik</a><a class="ns-menu-i" role="menuitem" href="#/websitem">${icon('globe')} Web sitem</a><a class="ns-menu-i" role="menuitem" href="#/eklentiler">${icon('plus')} Eklenti Mağazası</a><a class="ns-menu-i" role="menuitem" href="#/hesabim/siparisler">${icon('receipt')} Siparişlerim</a><a class="ns-menu-i" role="menuitem" href="#/hesabim/destek">${icon('message')} Destek</a><a class="ns-menu-i" role="menuitem" href="#/hesabim/profil">${icon('settings')} Profil ve güvenlik</a><div class="ns-menu-sep"></div><button class="ns-menu-i" role="menuitem" data-phone>${icon('phone')} Telefonumda aç</button><button class="ns-menu-i" role="menuitem" data-install>${icon('download')} Uygulamayı yükle</button><a class="ns-menu-i" role="menuitem" href="#/indir">${icon('download')} Masaüstü sürümü</a>
           <div class="ns-menu-sep"></div><button class="ns-menu-i" role="menuitem" data-logout>${icon('logout')} Çıkış yap</button></div></div>`
-      : `<a class="btn mk-login" href="#/giris">${icon('user')} Giriş yap</a><a class="btn primary mk-hide-s" href="${signup}">Ücretsiz başla ${icon('right')}</a>`;
+      : NB_KABUK.misafir('', icon);
     const accm = $('#accm');
     if (accm) accm.innerHTML = u ? `<a href="#/programlarim">${icon('grid')} Programlarım</a><a href="#/hesabim">${icon('user')} Hesabım</a><a href="#" data-logout>${icon('logout')} Çıkış yap</a>`
-      : `<a href="#/giris">${icon('user')} Giriş yap</a><a class="btn primary block" href="${signup}">Ücretsiz hesap oluştur</a>`;
-    if (accm) accm.insertAdjacentHTML('beforeend', `<a href="#" data-theme onclick="return false">${icon(NS.getTheme() === 'dark' ? 'sun' : 'moon')} Açık / koyu tema</a>`);
+      : NB_KABUK.misafirMobil('', icon);
+    if (accm) accm.insertAdjacentHTML('beforeend', NB_KABUK.temaSatir(icon(NS.getTheme() === 'dark' ? 'sun' : 'moon')));
+    try { localStorage.setItem('nebsoft:kabuk', JSON.stringify({ n, ad: u ? u.name.split(' ')[0] : '' })); } catch (e) { /* yok */ } // statik sayfalar sepet sayısını ve hesabı buradan gösterir
   }
   async function logout(e) {
     if (e && e.preventDefault) e.preventDefault();

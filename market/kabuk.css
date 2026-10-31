@@ -1,0 +1,82 @@
+.mk-wrap { max-width: 1200px; margin: 0 auto; padding: 0 20px; }
+.mk-nav { position: sticky; top: 0; z-index: 40; background: color-mix(in srgb, var(--bg) 82%, transparent); backdrop-filter: saturate(1.4) blur(12px); border-bottom: 1px solid var(--border); }
+.mk-nav .mk-wrap { display: flex; align-items: center; gap: 18px; height: 66px; max-width: 1320px; }
+.mk-logo { display: flex; align-items: center; gap: 10px; font-weight: 800; font-size: 19px; letter-spacing: -.02em; color: var(--text); text-decoration: none !important; }
+.mk-logo .wm { font-size: 18px; }
+.mk-links { display: flex; gap: 4px; flex: 1; }
+.mk-links a { padding: 8px 12px; border-radius: 8px; color: var(--text-2); font-weight: 600; text-decoration: none; }
+.mk-links a:hover, .mk-links a.active { color: var(--text); background: var(--surface-2); }
+.cart-btn { position: relative; }
+.cart-btn .cnt { position: absolute; top: -4px; right: -4px; background: var(--err); color: #fff; border-radius: 99px; font-size: 10px; font-weight: 800; min-width: 17px; height: 17px; display: grid; place-items: center; padding: 0 4px; }
+.mk-burger { display: none; }
+@media (max-width: 1320px) {
+  .mk-links { display: none; position: absolute; top: 66px; left: 0; right: 0; flex-direction: column; background: var(--surface); border-bottom: 1px solid var(--border); padding: 10px; }
+  .mk-links.open { display: flex; }
+  .mk-burger { display: inline-flex; }
+}
+@media (max-width: 1024px) { .mk-hide-m { display: none !important; } }
+.mk-foot { border-top: 1px solid var(--border); padding: 48px 0 30px; margin-top: 40px; background: var(--surface); }
+.mk-foot .cols { display: grid; grid-template-columns: 1.5fr repeat(3, 1fr); gap: 28px; }
+.mk-foot h4 { font-size: 13px; margin-bottom: 12px; }
+.mk-foot a { display: block; color: var(--text-2); font-size: 13.5px; padding: 3px 0; }
+@media (max-width: 760px) { .mk-foot .cols { grid-template-columns: 1fr 1fr; } }
+.mk-acc { display: flex; align-items: center; gap: 8px; }
+.mk-login { font-weight: 600; }
+.mk-only-m { display: none; }
+.mk-user { position: relative; }
+.mk-user-b { gap: 8px; padding-left: 4px; }
+.mk-user-b .avatar { width: 30px; height: 30px; font-size: 12px; }
+.mk-user-m { position: absolute; right: 0; top: calc(100% + 6px); width: 260px; display: none; }
+.mk-user.open .mk-user-m { display: block; animation: mk-pop .16s cubic-bezier(.2, .8, .2, 1); transform-origin: top right; }
+.mk-user-m a.ns-menu-i { text-decoration: none; }
+.mk-user-h { padding: 8px 10px 4px; display: flex; flex-direction: column; min-width: 0; }
+.mk-user-h span { font-size: 12px; color: var(--text-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+@keyframes mk-pop { from { opacity: 0; transform: scale(.96) translateY(-4px); } }
+@media (max-width: 900px) {
+  .mk-only-m { display: flex; flex-direction: column; gap: 4px; border-top: 1px solid var(--border); margin-top: 6px; padding-top: 8px; }
+  .mk-only-m a { display: flex; align-items: center; gap: 8px; }
+  .mk-only-m .btn.block { justify-content: center; color: #fff; margin-top: 4px; }
+}
+@media (max-width: 520px) { .mk-hide-s { display: none !important; } .mk-login { padding: 0 10px; } .mk-nav .mk-wrap { gap: 6px; padding: 0 12px; } .mk-logo { min-width: 0; flex: 0 1 auto; overflow: hidden; } .mk-nav .btn.icon, .mk-burger { flex: none; } }
+@media (max-width: 600px) {
+  .mk-nav .mk-wrap { gap: 6px; }
+  .mk-nav .mk-logo { gap: 7px; } .mk-nav .mk-logo .ns-mark { width: 30px; height: 30px; } .mk-nav .mk-logo .wm { font-size: 15px; }
+  .mk-nav .mk-wrap > [data-theme] { display: none; }
+  .mk-login { height: 36px; padding: 0 10px; font-size: 13px; }
+}
+@media (max-width: 360px) { .mk-nav .mk-logo .wm { display: none; } }
+.mk-nav { background: color-mix(in srgb, var(--bg) 70%, transparent); backdrop-filter: saturate(1.6) blur(18px); -webkit-backdrop-filter: saturate(1.6) blur(18px); border-bottom: 1px solid transparent; transition: background .25s, border-color .25s, box-shadow .25s; }
+.mk-nav.scrolled { background: color-mix(in srgb, var(--surface) 86%, transparent); border-bottom-color: var(--border); box-shadow: 0 10px 30px -22px rgba(16, 18, 27, .45); }
+.mk-nav .mk-wrap { height: 76px; gap: 22px; }
+.mk-logo { font-size: 20px; gap: 11px; } .mk-logo .ns-mark { width: 38px; height: 38px; } .mk-logo .wm { font-size: 19px; letter-spacing: .1em; }
+.mk-links { gap: 2px; justify-content: center; }
+.mk-links a { position: relative; padding: 10px 15px; font-size: 15px; font-weight: 600; color: var(--text-2); border-radius: 10px; transition: color .15s, background .15s; }
+.mk-links a:hover { color: var(--text); background: color-mix(in srgb, var(--text) 5%, transparent); }
+.mk-links a.active { color: var(--text); background: none; }
+.mk-links a.active::after { content: ''; position: absolute; left: 15px; right: 15px; bottom: 3px; height: 2px; border-radius: 2px; background: linear-gradient(90deg, var(--brand), #06b6d4); }
+.mk-acc .btn.primary { height: 44px; padding: 0 20px; font-size: 14.5px; border-radius: 12px; background: linear-gradient(135deg, #6366f1, #4f46e5 50%, #7c3aed); box-shadow: 0 10px 26px -10px rgba(79, 70, 229, .85), inset 0 1px 0 rgba(255, 255, 255, .25); }
+.mk-acc .btn.primary:hover { transform: translateY(-1px); box-shadow: 0 14px 30px -10px rgba(79, 70, 229, .95), inset 0 1px 0 rgba(255, 255, 255, .25); }
+.mk-login { height: 44px; padding: 0 16px; border-radius: 12px; font-size: 14.5px; }
+@media (max-width: 1024px) { .mk-nav .mk-wrap { height: 64px; } .mk-links { top: 64px; } .mk-links a.active::after { display: none; } }
+.mk-links a { white-space: nowrap; }
+.mk-acc, .mk-acc .btn, .mk-login { white-space: nowrap; }
+@media (min-width: 1025px) and (max-width: 1240px) { .mk-nav .mk-wrap { gap: 12px; } .mk-links a { padding: 9px 10px; font-size: 14px; } .mk-links a.active::after { left: 10px; right: 10px; } .mk-acc .btn.primary { padding: 0 14px; } .mk-login { padding: 0 12px; } }
+@media (min-width: 1321px) { .mk-links a { padding: 10px 8px; font-size: 14px; } .mk-links a.active::after { left: 8px; right: 8px; } }
+@media (max-width: 1024px) { .mk-links a { padding: 12px 14px; font-size: 15.5px; } }
+:root[data-palette="kurumsal"] .mk-acc .btn.primary { background: linear-gradient(135deg, #2b6eea, #1f5fd6 50%, #174bb0); box-shadow: 0 10px 26px -10px rgba(31, 95, 214, .8), inset 0 1px 0 rgba(255, 255, 255, .25); }
+/* Telefonda logo kırpılmaz: hesap düğmesi yalnız simgeye iner, kalan yer logonundur (v3.3) */
+.mk-logo .wm { white-space: nowrap; }
+@media (max-width: 420px) { .mk-nav .mk-logo { overflow: visible; flex: none; } .mk-nav .mk-logo .wm { font-size: 13.5px; letter-spacing: .08em; } .mk-login { font-size: 0; gap: 0; width: 38px; padding: 0; } .mk-nav .mk-wrap { justify-content: space-between; } .mk-nav .cart-btn { margin-left: auto; } }
+/* Alt bilgi: ürünler iki sütun akar, sayfa boyu uzamaz */
+.mk-foot .cols { grid-template-columns: minmax(0, 1.35fr) minmax(0, 2fr) minmax(0, .95fr) minmax(0, .95fr); }
+.mk-foot p { margin: 0; line-height: 1.6; }
+.mk-foot .mk-foot-m .mt { margin-top: 12px; }
+.mk-foot .mk-foot-m p a.sat { display: inline; padding: 0; }
+.mk-foot .mk-foot-m .ico { width: 15px; height: 15px; margin-right: 4px; vertical-align: -3px; color: var(--text-3); }
+.mk-foot-l { columns: 2; column-gap: 24px; } .mk-foot-l a { break-inside: avoid; }
+.mk-foot a:hover { color: var(--text); }
+.mk-foot hr { border: 0; border-top: 1px solid var(--border); margin: 26px 0 18px; }
+.mk-foot .row { display: flex; align-items: center; } .mk-foot .small { font-size: 13px; } .mk-foot .muted { color: var(--text-2); } .mk-foot .faint { color: var(--text-3); }
+@media (max-width: 960px) { .mk-foot .cols { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } .mk-foot-m, .mk-foot-u { grid-column: 1 / -1; } }
+/* Sayfa değişiminde üst menü yerinde kalır, içerik kısa bir geçişle değişir (hareket kapalıysa geçiş yok) */
+@media (prefers-reduced-motion: no-preference) { @view-transition { navigation: auto; } .mk-nav { view-transition-name: mk-ust; } ::view-transition-group(root), ::view-transition-old(root), ::view-transition-new(root) { animation-duration: .16s; } }

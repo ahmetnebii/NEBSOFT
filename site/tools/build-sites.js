@@ -10,6 +10,7 @@ const SITE = path.join(OUT, 'site'); const SITE_SRC = path.join(ROOT, 'site');
 const MD_DIR = process.env.SITE_MD ? path.resolve(process.env.SITE_MD) : path.join(SITE_SRC, 'src');
 const LASTMOD = path.join(SITE_SRC, 'src', 'lastmod.json');
 const CFG = require('../src/site.config');
+const O = require('./ortak');
 const PRODUCTS = require('../src/products');
 const PAKET_METIN = require('../src/paketler');
 const paket = require('../../server/cloud/paket');
@@ -25,8 +26,6 @@ const D = CFG.domain.replace(/\/$/, '');
 const tel = CFG.phone.replace(/\D/g, '');
 const telHref = `tel:+90${tel.replace(/^0/, '')}`;
 const bas = (s) => s.slice(0, 1).toLocaleUpperCase('tr') + s.slice(1); // ilk harf büyük (Türkçe i/İ doğru)
-const cssV = crypto.createHash('sha1').update(fs.readFileSync(path.join(SITE_SRC, 'assets', 'site.css'))).digest('hex').slice(0, 10);
-const FONT = 'https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&amp;family=Inter:wght@400;500;600&amp;family=Michroma&amp;display=swap';
 const I = {
   check: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5L20 7"/></svg>',
   play: '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>',
@@ -47,22 +46,15 @@ const phone = (src, alt) => `<div class="phone">${img(src, alt, 780, 1688)}</div
 const AKTIF = PRODUCTS.filter((x) => !x.satisDisi);
 // Programla ilgili ücretsiz araçlar (build-araclar.js önce çalışır): yalnız dizine açık olanlar
 const ARACLAR = (() => { try { return JSON.parse(fs.readFileSync(path.join(SITE_SRC, 'araclar', 'liste.json'), 'utf8')).araclar.filter((x) => x.index); } catch (e) { return []; } })();
-const aracBolum = (slug, baslik, n = 4) => { const L = ARACLAR.filter((x) => x.program === slug).slice(0, n); return L.length ? `<section class="s"><div class="w"><div class="sh"><span class="eyebrow">Ücretsiz araçlar</span><h2>${esc(baslik)}</h2></div><div class="rel">${L.map((x) => `<a href="${x.yol}"><b>${esc(x.ad)}</b><span>${esc(x.kisa || x.ozet)}</span></a>`).join('')}</div></div></section>` : ''; };
-const SITEHEAD = (sub, extra = '') => `<header class="hd mk"><div class="w">
-  <a class="logo" href="/" aria-label="${CFG.brand} ana sayfa"><img src="/assets/icons/icon-64.png" alt="" width="36" height="36"><span class="wm"><b>NEB</b><i>SOFT</i></span>${sub ? `<span class="sub">${esc(sub)}</span>` : ''}</a>
-  <nav class="nav" aria-label="Ana menü"><a href="/programlar">Programlar</a><a href="/paketler/">Paketler</a><a href="/araclar">Araçlar</a><a href="/fiyatlar/">Fiyatlar</a><a href="/rehber/">Rehber</a><a href="/#/sektorler">Sektörler</a><a href="/#/indir">Masaüstü &amp; Mobil</a><a href="/#/iletisim">İletişim</a></nav>
-  <a class="btn g" href="/#/giris">Giriş yap</a><a class="btn p" href="/#/kayit">Ücretsiz başla ${I.arrow}</a>
-</div>${extra ? `<div class="subnav"><div class="w">${extra}</div></div>` : ''}</header>`;
+// Görselli kart: Sektörler ekranıyla aynı yapı. ic: görselin altındaki ek satırlar
+const kart = ({ href, renk, img: g, ad, alt, ic = '', em, cls = '', suz = true }) => `<a class="kart${cls ? ' ' + cls : ''}" href="${href}"${renk ? ` style="--pc:${renk}"` : ''}${suz ? ' data-kart' : ''}><span class="kart-g">${g}</span><span class="kart-m"><b>${ad}</b>${alt ? `<span>${alt}</span>` : ''}${ic}${em ? `<em>${em}</em>` : ''}</span></a>`;
+const urunKart = (x) => { const c = CAT.products.find((y) => y.id === x.id); return kart({ href: `/${x.slug}`, renk: c.accent, img: O.svgImg('program', x.id), ad: esc(bas(x.kw)), alt: esc(c.tagline), suz: false }); };
+const aracKart = (x) => kart({ href: x.yol, img: O.svgImg('arac', x.slug), ad: esc(x.ad), alt: esc(x.kisa || x.ozet), suz: false });
+const yaziKart = (r) => kart({ href: `/rehber/${r.slug}/`, renk: r.prog ? O.RENK[r.prog.id] : '', img: O.svgImg('rehber', r.slug), ad: esc(r.title), alt: esc(r.desc), suz: false });
+const aracBolum = (slug, baslik, n = 4) => { const L = ARACLAR.filter((x) => x.program === slug).slice(0, n); return L.length ? `<section class="s"><div class="w"><div class="sh"><span class="eyebrow">Ücretsiz araçlar</span><h2>${esc(baslik)}</h2></div><div class="kartlar dort">${L.map(aracKart).join('')}</div></div></section>` : ''; };
 // Kılavuz bağlantısı: yalnız core/kilavuz.json'da kaydı olan programda görünür, PDF'in kendisi noindex'tir (docs/SEO-KURALLARI.md)
 const KLV = (() => { try { return JSON.parse(fs.readFileSync(path.join(__dirname, '..', '..', 'core', 'kilavuz.json'), 'utf8')); } catch (e) { return {}; } })();
-const kilavuz = (c) => (KLV[c.id] ? `<section class="s"><div class="w"><div class="cta" style="margin:0"><a class="btn" href="/indir/kilavuz/${c.id}.pdf" download="nebsoft-${c.id}-kullanim-kilavuzu.pdf">Kullanım kılavuzu (PDF)</a></div><p class="note">${KLV[c.id].sayfa} sayfa, ${(KLV[c.id].boyut / 1048576).toFixed(1).replace('.', ',')} MB. Üyelik gerekmez.</p></div></section>` : '');
-const SITEFOOT = () => `<footer class="ft"><div class="w">
-  <div class="cols">
-    <div><a class="logo" href="/"><img src="/assets/icons/icon-64.png" alt="" width="34" height="34"><span class="wm"><b>NEB</b><i>SOFT</i></span></a><p>Türkiye'deki işletmeler için bulut tabanlı yazılımlar ve pazaryeri entegrasyonları. Kurulum yok, taahhüt yok.</p><p><a href="${telHref}">${esc(CFG.phone)}</a><a href="mailto:${CFG.email}">${esc(CFG.email)}</a></p></div>
-    ${[0, 1, 2].map((k) => `<div><h4>${['<a href="/programlar" style="color:inherit">Programlar</a>', '&nbsp;', '&nbsp;'][k]}</h4>${AKTIF.filter((_, i) => i % 3 === k).map((x) => `<a href="/${x.slug}">${esc(bas(x.kw))}</a>`).join('')}</div>`).join('')}
-  </div>
-  <div class="copy">© ${new Date().getFullYear()} ${CFG.brand}. Tüm hakları saklıdır. ${[['/paketler/', 'Hazır paketler'], ['/araclar', 'Ücretsiz araçlar'], ['/fiyatlar/', 'Fiyatlar'], ['/rehber/', 'Rehber'], ['/kvkk/', 'KVKK'], ['/gizlilik/', 'Gizlilik'], ['/mesafeli-satis/', 'Mesafeli satış'], ['/iade/', 'İptal ve iade'], ['/cerez/', 'Çerez politikası'], ['/#/indir', 'Masaüstü sürümünü indir'], ['/veri-tasima/', 'Veri taşıma'], ['/bayilik/', 'Bayilik ve mali müşavir'], ['/sistem-durumu/', 'Sistem durumu'], ['/yenilikler/', 'Yenilikler'], ['/yol-haritasi/', 'Yol haritası ve öneri']].map(([u, t]) => `· <a href="${u}" style="display:inline">${t}</a>`).join(' ')}</div>
-</div></footer>`;
+const kilavuz = (c) => (KLV[c.id] ? `<section class="s"><div class="w klv"><div class="cta"><a class="btn" href="/indir/kilavuz/${c.id}.pdf" download="nebsoft-${c.id}-kullanim-kilavuzu.pdf">Kullanım kılavuzu (PDF)</a></div><p class="note">${KLV[c.id].sayfa} sayfa, ${(KLV[c.id].boyut / 1048576).toFixed(1).replace('.', ',')} MB. Üyelik gerekmez.</p></div></section>` : '');
 
 // ---------- Ortak sayfa başı ve şemalar ----------
 const ORG = { '@context': 'https://schema.org', '@type': 'Organization', '@id': D + '/#kurulus', name: CFG.brand, url: D + '/', logo: D + '/assets/nebsoft-logo.webp', email: CFG.email, contactPoint: { '@type': 'ContactPoint', telephone: '+90' + tel.replace(/^0/, ''), contactType: 'sales', areaServed: 'TR', availableLanguage: 'Turkish' } };
@@ -70,7 +62,7 @@ const WEBSITE = { '@context': 'https://schema.org', '@type': 'WebSite', '@id': D
 const KIRINTI = (L) => ({ '@context': 'https://schema.org', '@type': 'BreadcrumbList', itemListElement: L.map(([name, item], i) => ({ '@type': 'ListItem', position: i + 1, name, ...(item ? { item } : {}) })) });
 const SSS = (L) => ({ '@context': 'https://schema.org', '@type': 'FAQPage', mainEntity: L.map(([q, a]) => ({ '@type': 'Question', name: q, acceptedAnswer: { '@type': 'Answer', text: a } })) });
 const HEAD = ({ title, desc, url, image = `${D}/assets/og/og.png`, ogType = 'website', theme = '#1d7bf5', schema = [], preload = '', style = '', ek = '' }) => `<!doctype html>
-<html lang="tr">
+${O.HTML}
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -83,11 +75,8 @@ const HEAD = ({ title, desc, url, image = `${D}/assets/og/og.png`, ogType = 'web
 <meta property="og:title" content="${esc(title)}"><meta property="og:description" content="${esc(desc)}"><meta property="og:url" content="${url}"><meta property="og:image" content="${image}"><meta property="og:image:width" content="1200"><meta property="og:image:height" content="630">
 <meta name="twitter:card" content="summary_large_image"><meta name="twitter:title" content="${esc(title)}"><meta name="twitter:description" content="${esc(desc)}"><meta name="twitter:image" content="${image}">
 <link rel="icon" href="/assets/icons/icon-32.png" sizes="32x32" type="image/png"><link rel="icon" href="/assets/favicon.svg" type="image/svg+xml"><link rel="apple-touch-icon" href="/assets/icons/apple-touch-icon.png">
-<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-${preload}<link rel="stylesheet" href="/site/assets/site.css?v=${cssV}">
-<link rel="stylesheet" href="${FONT}" media="print" onload="this.media='all'"><noscript><link rel="stylesheet" href="${FONT}"></noscript>
-<style>:root{--c:${theme}}${style}</style>
-${[ORG, WEBSITE, ...schema].map(ld).join('\n')}
+${preload}${O.kafa()}
+${theme !== '#1d7bf5' || style ? `<style>${theme !== '#1d7bf5' ? `:root{--c:${theme}}` : ''}${style}</style>\n` : ''}${[ORG, WEBSITE, ...schema].map(ld).join('\n')}
 </head>`;
 const faqHtml = (L, baslik, alt = true) => (L.length ? `<section class="s${alt ? ' alt' : ''}" id="sss"><div class="w">
   <div class="sh"><span class="eyebrow">Sık sorulan sorular</span><h2>${esc(baslik)}</h2></div>
@@ -141,12 +130,13 @@ function page(p) {
   return `${HEAD({ title: p.title, desc: p.desc, url, image: `${D}/assets/og/og-${p.id}.png`, theme: c.accent, schema, preload })}
 <body>
 <a class="skip" href="#ana">İçeriğe geç</a>
-${SITEHEAD(c.name, `<b>${esc(c.name)}</b><nav aria-label="Sayfa içi"><a href="#ekranlar">Ekranlar</a><a href="#ozellikler">Özellikler</a><a href="#fiyat">Fiyatlar</a><a href="#sss">SSS</a></nav><a class="btn s sm" href="${demo}">Canlı demo</a>`)}
+${O.ust('urunler')}
+<div class="subnav"><div class="w"><b>${esc(c.name)}</b><nav aria-label="Sayfa içi"><a href="#ekranlar">Ekranlar</a><a href="#ozellikler">Özellikler</a><a href="#fiyat">Fiyatlar</a><a href="#sss">SSS</a></nav><a class="btn sm" href="${demo}">Canlı demo</a></div></div>
 <main id="ana">
 <section class="hero"><div class="w">
   <div>
     <nav class="crumb" aria-label="Konum"><a href="/">${CFG.brand}</a> / <a href="/programlar">${esc(sector)}</a> / ${esc(kwTitle)}</nav>
-    <span class="eyebrow" style="margin-top:22px">${esc(kwTitle)}</span>
+    <span class="hm-pill">${esc(kwTitle)}</span>
     <h1>${esc(p.h1)}</h1>
     <p class="lead">${esc(p.lead)}</p>
     <div class="cta"><a class="btn p" href="${buy}">${CFG.trialDays} gün ücretsiz deneyin ${I.arrow}</a><a class="btn" href="${demo}">${I.play} Canlı demoyu aç</a></div>
@@ -167,37 +157,37 @@ ${SITEHEAD(c.name, `<b>${esc(c.name)}</b><nav aria-label="Sayfa içi"><a href="#
     <div>${p.shots.map(([, cap], i) => `<figure class="slide" role="tabpanel" id="g${i}" aria-labelledby="t${i}"${i ? ' hidden' : ''}>${browser(base + `pc-${i + 1}.jpg`, `${c.name} — ${cap}`, `${host}/${p.slug}`)}<figcaption>${esc(cap)}</figcaption></figure>`).join('')}</div>
     <figure>${phone(base + 'mobil-1.jpg', `${c.name} mobil ekran`)}<figcaption>Telefonda da tam ekran çalışır</figcaption></figure>
   </div>
-  ${(p.pub || []).map(([, cap], i) => `<div class="pub"><div><span class="eyebrow" style="margin-top:50px">Müşterinizin gördüğü</span><h3 style="font-size:26px;margin-bottom:16px">${esc(cap)}</h3>${browser(base + `musteri-pc-${i + 1}.jpg`, cap, host)}</div>${phone(base + `musteri-mobil-${i + 1}.jpg`, `${cap} — telefon`)}</div>`).join('')}
+  ${(p.pub || []).map(([, cap], i) => `<div class="pub"><div><span class="eyebrow" style="margin-top:40px">Müşterinizin gördüğü</span><h3 style="font-size:24px;margin-bottom:16px">${esc(cap)}</h3>${browser(base + `musteri-pc-${i + 1}.jpg`, cap, host)}</div>${phone(base + `musteri-mobil-${i + 1}.jpg`, `${cap} — telefon`)}</div>`).join('')}
 </div></section>
 
 <section class="s alt" id="ozellikler"><div class="w">
   <div class="sh"><span class="eyebrow">Özellikler</span><h2>${esc(k.altBaslik)}</h2><p>${esc(c.desc)} ${esc(k.paragraf)}</p></div>
   <ul class="feat">${c.features.map((f) => `<li>${esc(f)}</li>`).join('')}</ul>
-  <h3 style="margin-top:46px">Modüller</h3>
+  <h3 class="mh">Modüller</h3>
   <div class="chips">${c.modules.map((m) => `<span>${esc(m)}</span>`).join('')}</div>
-  ${c.sectors ? `<h3 style="margin-top:34px">Kimler için uygun?</h3><div class="chips">${c.sectors.map((m) => `<span>${esc(m)}</span>`).join('')}</div>` : ''}
+  ${c.sectors ? `<h3 class="mh">Kimler için uygun?</h3><div class="chips">${c.sectors.map((m) => `<span>${esc(m)}</span>`).join('')}</div>` : ''}
 </div></section>
 
 <section class="s" id="fiyat"><div class="w">
   <div class="sh"><span class="eyebrow">Fiyatlar</span><h2>Şeffaf fiyat, taahhüt yok</h2><p>Fiyatlar aylıktır, KDV hariçtir. Yıllık ödemede 2 ay bedava. Her pakette ${CFG.trialDays} gün ücretsiz deneme.</p></div>
-  <div class="prices">${CAT.plans.map((pl, i) => `<div class="price${pl.popular ? ' pop' : ''}">${pl.popular ? '<span class="tag">Önerilen</span>' : ''}<h3>${esc(pl.name)}</h3><div class="amt"><span data-p="${c.id}:${i}">${tl(c.prices[i])}</span> ₺<small> /ay</small></div><p>${esc(pl.desc)} · ${esc(pl.users)}</p><a class="btn${pl.popular ? ' p' : ''}" href="${buy}">Ücretsiz başla</a></div>`).join('')}</div>
+  <div class="prices">${CAT.plans.map((pl, i) => `<div class="price${pl.popular ? ' pop' : ''}">${pl.popular ? '<span class="tag">Önerilen</span>' : ''}<span class="price-g">${O.svgImg('plan', pl.id)}</span><h3>${esc(pl.name)}</h3><div class="amt"><span data-p="${c.id}:${i}">${tl(c.prices[i])}</span> ₺<small> /ay</small></div><p>${esc(pl.desc)} · ${esc(pl.users)}</p><a class="btn${pl.popular ? ' p' : ''}" href="${buy}">Ücretsiz başla</a></div>`).join('')}</div>
   ${pkLink(c.id)}<p class="note">Kurulum ve veri aktarımı ücretsizdir. <a href="/fiyatlar/">Tüm programların fiyatlarını</a> karşılaştırın. Sorunuz mu var? <a href="${telHref}">${esc(CFG.phone)}</a></p>
 </div></section>
 
 ${faqHtml(faq, `${kwTitle} hakkında merak edilenler`)}${kilavuz(c)}
 
-${rehber.length ? `<section class="s"><div class="w"><div class="sh"><span class="eyebrow">Rehber</span><h2>${esc(kwTitle)} seçerken okuyun</h2></div><div class="rel">${rehber.map((r) => `<a href="/rehber/${r.slug}/"><b>${esc(r.title)}</b><span>${esc(r.desc)}</span></a>`).join('')}</div></div></section>` : ''}
+${rehber.length ? `<section class="s"><div class="w"><div class="sh"><span class="eyebrow">Rehber</span><h2>${esc(kwTitle)} seçerken okuyun</h2></div><div class="kartlar dort">${rehber.map(yaziKart).join('')}</div></div></section>` : ''}
 
 ${aracBolum(p.slug, `${kwTitle} yanında ücretsiz araçlar`)}
 
 <section class="s"><div class="w">
   <div class="final"><div><h2>${esc(c.name)} programını bugün kullanmaya başlayın</h2><p>Kayıt olmadan canlı demoyu açın ya da ${CFG.trialDays} günlük ücretsiz denemeyi başlatın. Kurulumu ve veri aktarımını birlikte yapalım.</p></div>
-  <div class="cta" style="margin:0"><a class="btn p" href="${buy}">Ücretsiz dene ${I.arrow}</a><a class="btn" href="${telHref}">${I.phone} ${esc(CFG.phone)}</a></div></div>
-  <div class="sh" style="margin:80px 0 24px"><span class="eyebrow">Bunlar da ilginizi çekebilir</span><h2>Diğer ${CFG.brand} programları</h2></div>
-  <div class="rel">${rel.map(({ x, c: y }) => `<a href="/${x.slug}"><b>${esc(bas(x.kw))}</b><span>${esc(y.tagline)}</span></a>`).join('')}</div>
+  <div class="cta"><a class="btn p" href="${buy}">Ücretsiz dene ${I.arrow}</a><a class="btn" href="${telHref}">${I.phone} ${esc(CFG.phone)}</a></div></div>
+  <div class="sh" style="margin:64px auto 28px"><span class="eyebrow">Bunlar da ilginizi çekebilir</span><h2>Diğer ${CFG.brand} programları</h2></div>
+  <div class="kartlar dort">${rel.map(({ x }) => urunKart(x)).join('')}</div>
 </div></section>
 </main>
-${SITEFOOT()}
+${O.alt()}
 <div class="sticky-cta"><a class="btn" href="${demo}">Demo</a><a class="btn p" href="${buy}">Ücretsiz dene</a></div>
 <script>
 (function () {
@@ -223,42 +213,41 @@ function hub() {
     KIRINTI([[CFG.brand, D + '/'], ['Programlar', url]]),
     { '@context': 'https://schema.org', '@type': 'ItemList', name: 'İşletme programları', itemListElement: AKTIF.map((x, i) => ({ '@type': 'ListItem', position: i + 1, url: `${D}/${x.slug}`, name: (CAT.products.find((y) => y.id === x.id) || {}).name })) },
   ];
-  let n = 0; // ilk sıra görünür alanda: tembel yükleme LCP'yi geciktirmesin
-  const kart = ({ x, c }) => { const s = `/${x.slug}/img/pc-1.jpg`; const on = n++ < 3; return `<a class="hubcard" href="/${x.slug}" style="--c:${c.accent}"><span class="hubimg"><img src="${kucukVar(s) ? kucuk(s) : s}" alt="${esc(c.name)} ekranı" width="${kucukVar(s) ? 640 : 1440}" height="${kucukVar(s) ? 400 : 900}" ${on ? (n === 1 ? 'fetchpriority="high"' : '') : 'loading="lazy"'} decoding="async"></span><span class="hubtx"><b>${esc(bas(x.kw))}</b><span>${esc(c.tagline)}</span><em><span data-p="${c.id}:0">${tl(c.prices[0])}</span> ₺/ay'dan · İncele →</em></span></a>`; };
-  return `${HEAD({ title, desc, url, schema, style: '.hub h2{margin:56px 0 18px}' })}
+  const kolaj = ['pos', 'adisyon', 'randevu', 'otoservis'].map((id, i) => O.svgImg('program', id, null, i ? true : 'lcp')).join('');
+  const kartH = ({ x, c }) => kart({ href: `/${x.slug}`, renk: c.accent, img: O.svgImg('program', x.id), ad: esc(bas(x.kw)), alt: esc(c.tagline), em: `<span data-p="${c.id}:0">${tl(c.prices[0])}</span> ₺/ay'dan · İncele →` });
+  return `${HEAD({ title, desc, url, schema })}
 <body>
-${SITEHEAD('')}
-<main id="ana" class="hub">
+<a class="skip" href="#ana">İçeriğe geç</a>
+${O.ust('urunler')}
+<main id="ana">
+${O.kahraman({ kirinti: `<a href="/">${CFG.brand}</a> / Programlar`, rozet: `${AKTIF.length} sektörel program · Web, masaüstü ve mobil`, h1: 'İşletmeniz için bulut programlar', lead: `${esc(desc)} Hesap açmak ücretsizdir, ödemeyi havale ile yaparsınız.`, ic: `<div class="cta"><a class="btn p" href="/paketler/hangi-program/">Bana hangi program uygun? ${I.arrow}</a><a class="btn" href="/fiyatlar/">Fiyatları karşılaştır</a></div>`, gorsel: `<div class="kolaj">${kolaj}</div>` })}
 <section class="s"><div class="w">
-  <nav class="crumb" aria-label="Konum"><a href="/">${CFG.brand}</a> / Programlar</nav>
-  <h1>İşletmeniz için bulut programlar</h1>
-  <p class="lead">${esc(desc)} Hesap açmak ücretsizdir, ödemeyi havale ile yaparsınız.</p>
-  ${groups.map((g) => `<h2>${esc(g.k.name)}</h2><div class="hubgrid">${g.list.map(kart).join('')}</div>`).join('\n  ')}
-  <div class="final" style="margin-top:72px"><div><h2>Hangisi size uygun, emin değil misiniz?</h2><p>Bizi arayın; işletmenize uygun programı birlikte seçelim, kurulumu ve veri aktarımını ücretsiz yapalım.</p></div>
-  <div class="cta" style="margin:0"><a class="btn p" href="/fiyatlar/">Fiyatları karşılaştır ${I.arrow}</a><a class="btn" href="${telHref}">${I.phone} ${esc(CFG.phone)}</a></div></div>
+  ${O.suzgec('Program ara: market, kuaför, otel', groups.map((g) => [g.k.id, g.k.name]))}
+  ${groups.map((g) => `<div class="grp" data-grup="${g.k.id}"><div class="grp-b"><h2>${esc(g.k.name)}</h2><small>${g.list.length} program</small></div><div class="kartlar">${g.list.map(kartH).join('')}</div></div>`).join('\n  ')}
+  <p class="bos" id="suz-bos" hidden>Aradığınız program bulunamadı. Başka bir kelime deneyin ya da bizi arayın.</p>
+  <div class="final" style="margin-top:56px"><div><h2>Hangisi size uygun, emin değil misiniz?</h2><p>Bizi arayın; işletmenize uygun programı birlikte seçelim, kurulumu ve veri aktarımını ücretsiz yapalım.</p></div>
+  <div class="cta"><a class="btn p" href="/fiyatlar/">Fiyatları karşılaştır ${I.arrow}</a><a class="btn" href="${telHref}">${I.phone} ${esc(CFG.phone)}</a></div></div>
 </div></section>
 </main>
-${SITEFOOT()}
+${O.alt()}
 </body>
 </html>
 `;
 }
 
 // ---------- Metin sayfası iskeleti (yasal metinler, fiyatlar, rehber) ----------
-const DOC = ({ title, desc, url, h1, lead = '', kirinti, govde, schema = [], image, ogType, ek = '', sonra = '', genis = false }) => `${HEAD({ title, desc, url, image, ogType, ek, schema: [KIRINTI(kirinti), ...schema] })}
+const DOC = ({ title, desc, url, h1, lead = '', kirinti, govde, schema = [], image, ogType, ek = '', sonra = '', genis = false, aktif = '', gorsel = '' }) => `${HEAD({ title, desc, url, image, ogType, ek, schema: [KIRINTI(kirinti), ...schema] })}
 <body>
 <a class="skip" href="#ana">İçeriğe geç</a>
-${SITEHEAD('')}
+${O.ust(aktif)}
 <main id="ana">
+${O.kahraman({ tek: true, kirinti: kirinti.map(([ad, u], i) => (u && i < kirinti.length - 1 ? `<a href="${u.replace(D, '') || '/'}">${esc(ad)}</a>` : esc(ad))).join(' / '), h1: esc(h1), lead: lead ? esc(lead) : '', gorsel })}
 <section class="s"><div class="w${genis ? '' : ' doc-w'}">
-  <nav class="crumb" aria-label="Konum">${kirinti.map(([ad, u], i) => (u && i < kirinti.length - 1 ? `<a href="${u.replace(D, '') || '/'}">${esc(ad)}</a>` : esc(ad))).join(' / ')}</nav>
-  <h1 class="doc-h1">${esc(h1)}</h1>
-  ${lead ? `<p class="lead">${esc(lead)}</p>` : ''}
   <div class="doc">${govde}</div>
 </div></section>
 ${sonra}
 </main>
-${SITEFOOT()}
+${O.alt()}
 </body>
 </html>
 `;
@@ -285,7 +274,7 @@ function yasalSayfa(y) {
   const url = `${D}/${y.ad}/`; const title = (r && r.meta.title) || y.baslik; const desc = (r && r.meta.description) || y.desc;
   const updated = r && TARIH.test(r.meta.updated || '') ? r.meta.updated : '';
   const govde = r ? `${md(r.govde)}${updated ? `<p class="note">Son güncelleme: ${tarihTr(updated)}</p>` : ''}` : y.yedek + SABLON_NOTU;
-  return { updated, html: DOC({ title: `${title} — ${CFG.brand}`, desc, url, h1: title, kirinti: [[CFG.brand, D + '/'], [title, url]], govde, schema: [{ '@context': 'https://schema.org', '@type': 'WebPage', name: title, url, inLanguage: 'tr-TR', isPartOf: { '@id': D + '/#site' } }] }) };
+  return { updated, html: DOC({ title: `${title} — ${CFG.brand}`, desc, url, h1: title, gorsel: O.svgImg('sayfa', 'yasal', null, 'lcp'), kirinti: [[CFG.brand, D + '/'], [title, url]], govde, schema: [{ '@context': 'https://schema.org', '@type': 'WebPage', name: title, url, inLanguage: 'tr-TR', isPartOf: { '@id': D + '/#site' } }] }) };
 }
 
 // ---------- Fiyatlar ----------
@@ -297,21 +286,41 @@ function fiyatlar() {
   const gr = CAT.categories.map((k) => ({ k, L: AKTIF.map((x) => ({ x, c: CAT.products.find((y) => y.id === x.id) })).filter(({ c }) => c && c.cat === k.id) })).filter((g) => g.L.length);
   const hucre = (id, i, n) => `<td class="r"><span data-p="${id}:${i}">${tl(n)}</span> ₺</td>`;
   const govde = `
-  <div class="prices">${CAT.plans.map((pl) => `<div class="price${pl.popular ? ' pop' : ''}">${pl.popular ? '<span class="tag">Önerilen paket</span>' : ''}<h3>${esc(pl.name)}</h3><p>${esc(pl.desc)}</p><p><b>${esc(pl.users)}</b></p></div>`).join('')}</div>
-  ${BUNDLE_FIYAT.length === 3 ? `<h2>Hepsi Bir Arada</h2><p>Tüm NEBSOFT programları ve sonradan eklenenler tek abonelikte: ${CAT.plans.map((pl, i) => `${esc(pl.name)} <b><span data-p="bundle:${i}">${tl(BUNDLE_FIYAT[i])}</span> ₺/ay</b>`).join(', ')}. <a href="/#/fiyatlar">Paketi sepete ekleyin</a>.</p>` : ''}
+  <div class="prices">${CAT.plans.map((pl) => `<div class="price${pl.popular ? ' pop' : ''}">${pl.popular ? '<span class="tag">Önerilen paket</span>' : ''}<span class="price-g">${O.svgImg('plan', pl.id)}</span><h3>${esc(pl.name)}</h3><p>${esc(pl.desc)}</p><p style="margin:0 22px"><b>${esc(pl.users)}</b></p></div>`).join('')}</div>
+  ${BUNDLE_FIYAT.length === 3 ? `<div class="bant"><div><h2 style="margin-top:0">Hepsi Bir Arada</h2><p>Tüm NEBSOFT programları ve sonradan eklenenler tek abonelikte: ${CAT.plans.map((pl, i) => `${esc(pl.name)} <b><span data-p="bundle:${i}">${tl(BUNDLE_FIYAT[i])}</span> ₺/ay</b>`).join(', ')}. <a href="/#/fiyatlar">Paketi sepete ekleyin</a>.</p></div>${O.svgImg('plan', 'hepsi')}</div>` : ''}
   <h2>Programlara göre aylık fiyatlar</h2>
   <div class="tablo"><table><thead><tr><th>Program</th>${CAT.plans.map((pl) => `<th class="r">${esc(pl.name)}</th>`).join('')}</tr></thead>
   ${gr.map((g) => `<tbody><tr class="grup"><th colspan="${CAT.plans.length + 1}">${esc(g.k.name)}</th></tr>${g.L.map(({ x, c }) => `<tr><td><a href="/${x.slug}">${esc(bas(x.kw))}</a></td>${c.prices.map((n, i) => hucre(c.id, i, n)).join('')}</tr>`).join('')}</tbody>`).join('\n  ')}</table></div>
   <p class="note">Fiyatlar aylıktır, KDV hariçtir. Yıllık ödemede 2 ay bedava. Hesap açmak ücretsizdir; her programı ${CFG.trialDays} gün ücretsiz deneyebilirsiniz. <a href="/#/kayit">Ücretsiz hesap açın</a>.</p>`;
-  return DOC({ title, desc, url, h1: 'Fiyatlar: şeffaf aylık ücretler', lead: desc, genis: true, kirinti: [[CFG.brand, D + '/'], ['Fiyatlar', url]], govde, schema: [SSS(faq)], sonra: faqHtml(faq, 'Fiyatlar hakkında merak edilenler') });
+  return DOC({ title, desc, url, h1: 'Fiyatlar: şeffaf aylık ücretler', lead: desc, genis: true, aktif: 'fiyatlar', gorsel: O.svgImg('plan', 'pro', null, 'lcp'), kirinti: [[CFG.brand, D + '/'], ['Fiyatlar', url]], govde, schema: [SSS(faq)], sonra: faqHtml(faq, 'Fiyatlar hakkında merak edilenler') });
 }
 
 // ---------- Rehber ----------
 function rehberDizin() {
   const url = `${D}/rehber/`; const title = `Rehber — İşletmeler İçin Program Seçme Yazıları | ${CFG.brand}`;
   const desc = `İşletmenize uygun programı seçmek, süreçleri düzene koymak ve yasal yükümlülükleri takip etmek için ${CFG.brand} rehber yazıları.`;
-  const govde = REHBER.length ? `<div class="rel rehber-l">${REHBER.map((r) => `<a href="/rehber/${r.slug}/"><b>${esc(r.title)}</b><span>${esc(r.desc)}</span>${r.updated ? `<small>${tarihTr(r.updated)}</small>` : ''}</a>`).join('')}</div>` : `<p>Rehber yazıları hazırlanıyor. Bu sırada <a href="/programlar">programları inceleyebilirsiniz</a>.</p>`;
-  return DOC({ title, desc, url, h1: 'İşletmeler için rehber', lead: desc, genis: true, kirinti: [[CFG.brand, D + '/'], ['Rehber', url]], govde, schema: REHBER.length ? [{ '@context': 'https://schema.org', '@type': 'ItemList', name: 'Rehber yazıları', itemListElement: REHBER.map((r, i) => ({ '@type': 'ListItem', position: i + 1, url: `${D}/rehber/${r.slug}/`, name: r.title })) }] : [] });
+  const tarih = (r) => (r.updated ? `<small>${tarihTr(r.updated)}</small>` : '');
+  const gr = CAT.categories.map((k) => ({ k, L: REHBER.filter((r) => r.prog && (CAT.products.find((y) => y.id === r.prog.id) || {}).cat === k.id) })).filter((x) => x.L.length);
+  const yazi = (r) => kart({ href: `/rehber/${r.slug}/`, renk: r.prog ? O.RENK[r.prog.id] : '', img: O.ALT.rehber[r.slug] ? O.svgImg('rehber', r.slug) : '', ad: esc(r.title), alt: esc(r.desc), ic: tarih(r) });
+  const kolaj = REHBER.filter((r) => O.ALT.rehber[r.slug]).slice(0, 4).map((r, i) => O.svgImg('rehber', r.slug, null, i ? true : 'lcp')).join('');
+  const liste = REHBER.length ? `${O.suzgec('Rehberde ara: stok, kira, randevu', gr.map((x) => [x.k.id, x.k.name]))}
+  ${gr.map((x) => `<div class="grp" data-grup="${x.k.id}"><div class="grp-b"><h2>${esc(x.k.name)}</h2><small>${x.L.length} yazı</small></div><div class="kartlar">${x.L.map(yazi).join('')}</div></div>`).join('\n  ')}
+  <p class="bos" id="suz-bos" hidden>Bu aramayla eşleşen yazı yok.</p>` : `<p>Rehber yazıları hazırlanıyor. Bu sırada <a href="/programlar">programları inceleyebilirsiniz</a>.</p>`;
+  const kirinti = [[CFG.brand, D + '/'], ['Rehber', url]];
+  return `${HEAD({ title, desc, url, schema: [KIRINTI(kirinti), ...(REHBER.length ? [{ '@context': 'https://schema.org', '@type': 'ItemList', name: 'Rehber yazıları', itemListElement: REHBER.map((r, i) => ({ '@type': 'ListItem', position: i + 1, url: `${D}/rehber/${r.slug}/`, name: r.title })) }] : [])] })}
+<body>
+<a class="skip" href="#ana">İçeriğe geç</a>
+${O.ust('rehber')}
+<main id="ana">
+${O.kahraman({ kirinti: `<a href="/">${CFG.brand}</a> / Rehber`, rozet: `${REHBER.length} yazı`, h1: 'İşletmeler için rehber', lead: esc(desc), gorsel: kolaj ? `<div class="kolaj">${kolaj}</div>` : '' })}
+<section class="s"><div class="w">
+  ${liste}
+</div></section>
+</main>
+${O.alt()}
+</body>
+</html>
+`;
 }
 function rehberSayfa(r) {
   const url = `${D}/rehber/${r.slug}/`; const p = r.prog; const c = p && CAT.products.find((x) => x.id === p.id);
@@ -322,8 +331,8 @@ function rehberSayfa(r) {
   ];
   const diger = REHBER.filter((x) => x !== r && p && x.prog === p).slice(0, 4);
   const sonra = `${faqHtml(r.faq, 'Sık sorulan sorular', false)}
-${p && !p.satisDisi ? `<section class="s alt"><div class="w"><div class="final"><div><h2>${esc(bas(p.kw))} arıyorsanız</h2><p>${esc(c.tagline)}. Kayıt olmadan canlı demoyu açın ya da ${CFG.trialDays} gün ücretsiz deneyin.</p></div><div class="cta" style="margin:0"><a class="btn p" href="/${p.slug}">${esc(bas(p.kw))} ${I.arrow}</a></div></div>${diger.length ? `<div class="sh" style="margin:60px 0 20px"><h2>İlgili yazılar</h2></div><div class="rel">${diger.map((x) => `<a href="/rehber/${x.slug}/"><b>${esc(x.title)}</b><span>${esc(x.desc)}</span></a>`).join('')}</div>` : ''}</div></section>` : ''}${p ? aracBolum(p.slug, 'Bu konuda ücretsiz araçlar', 3) : ''}`;
-  return DOC({ title: `${r.title} | ${CFG.brand}`, desc: r.desc, url, image, ogType: 'article', h1: r.title, kirinti: [[CFG.brand, D + '/'], ['Rehber', `${D}/rehber/`], [r.title, url]], govde: `${r.updated ? `<p class="note">Güncelleme: <time datetime="${r.updated}">${tarihTr(r.updated)}</time></p>` : ''}${r.html}`, schema, sonra });
+${p && !p.satisDisi ? `<section class="s alt"><div class="w"><div class="final"><div><h2>${esc(bas(p.kw))} arıyorsanız</h2><p>${esc(c.tagline)}. Kayıt olmadan canlı demoyu açın ya da ${CFG.trialDays} gün ücretsiz deneyin.</p></div><div class="cta"><a class="btn p" href="/${p.slug}">${esc(bas(p.kw))} ${I.arrow}</a></div></div>${diger.length ? `<div class="sh" style="margin:56px auto 24px"><h2>İlgili yazılar</h2></div><div class="kartlar dort">${diger.map(yaziKart).join('')}</div>` : ''}</div></section>` : ''}${p ? aracBolum(p.slug, 'Bu konuda ücretsiz araçlar', 3) : ''}`;
+  return DOC({ title: `${r.title} | ${CFG.brand}`, desc: r.desc, url, image, ogType: 'article', h1: r.title, aktif: 'rehber', gorsel: O.ALT.rehber[r.slug] ? O.svgImg('rehber', r.slug, null, 'lcp') : '', kirinti: [[CFG.brand, D + '/'], ['Rehber', `${D}/rehber/`], [r.title, url]], govde: `${r.updated ? `<p class="note">Güncelleme: <time datetime="${r.updated}">${tarihTr(r.updated)}</time></p>` : ''}${r.html}`, schema, sonra });
 }
 
 // ---------- Hazır paketler ----------
@@ -339,21 +348,18 @@ function paketDizin() {
   return `${HEAD({ title, desc, url, schema })}
 <body>
 <a class="skip" href="#ana">İçeriğe geç</a>
-${SITEHEAD('')}
+${O.ust('paketler')}
 <main id="ana">
+${O.kahraman({ kirinti: `<a href="/">${CFG.brand}</a> / Hazır paketler`, rozet: `${PK.length} sektör paketi`, h1: 'Sektörünüze göre yazılım paketleri', lead: esc(desc), ic: `<p class="cta"><a class="btn p" href="/paketler/hangi-program/">Bana hangi program uygun? ${I.arrow}</a></p>`, gorsel: `<div class="kolaj">${PK.slice(0, 4).map((p, i) => O.svgImg('paket', p.id, null, i ? true : 'lcp')).join('')}</div>` })}
 <section class="s"><div class="w">
-  <nav class="crumb" aria-label="Konum"><a href="/">${CFG.brand}</a> / Hazır paketler</nav>
-  <h1 class="doc-h1">Sektörünüze göre yazılım paketleri</h1>
-  <p class="lead">${esc(desc)}</p>
-  <p class="cta"><a class="btn p" href="/paketler/hangi-program/">Bana hangi program uygun? ${I.arrow}</a></p>
-  <div class="pkgrid">${PK.map((p) => `<a class="pkcard" href="/paketler/${p.id}/" style="--c:${p.accent}"><b>${esc(bas(p.m.kw))}</b><span class="pkkim">${esc(p.ad)} paketi · ${esc(p.kim)}</span><span class="pkpr">${p.programlar.map((x) => `<i>${esc(pkAd(x))}</i>`).join('')}</span><em>${pkTutar(p, 1, 'net')} ₺/ay · %${pkTutar(p, 1, 'yuzde')} indirimli · İncele →</em></a>`).join('')}</div>
+  <div class="kartlar uc">${PK.map((p) => kart({ href: `/paketler/${p.id}/`, renk: p.accent, img: O.svgImg('paket', p.id), ad: esc(bas(p.m.kw)), alt: `${esc(p.ad)} paketi · ${esc(p.kim)}`, ic: `<span class="kart-e">${p.programlar.map((x) => `<i>${esc(pkAd(x))}</i>`).join('')}</span>`, em: `${pkTutar(p, 1, 'net')} ₺/ay · %${pkTutar(p, 1, 'yuzde')} indirimli · İncele →`, suz: false })).join('')}</div>
   <p class="note">Tutarlar Profesyonel plan içindir, aylıktır, KDV hariçtir ve toplu indirim dahildir. Plan seçimi paket sayfasındadır, kesin tutar sepette hesaplanır. Toplu indirim: ${pkKademe()}.</p>
-  <div class="final" style="margin-top:56px"><div><h2>Sektörünüz listede yok mu?</h2><p>Programları tek tek seçebilir ya da tüm programları Hepsi Bir Arada ile kullanabilirsiniz. Karar veremediyseniz bizi arayın.</p></div>
-  <div class="cta" style="margin:0"><a class="btn p" href="/programlar">Programları inceleyin ${I.arrow}</a><a class="btn" href="${telHref}">${I.phone} ${esc(CFG.phone)}</a></div></div>
+  <div class="final" style="margin-top:44px"><div><h2>Sektörünüz listede yok mu?</h2><p>Programları tek tek seçebilir ya da tüm programları Hepsi Bir Arada ile kullanabilirsiniz. Karar veremediyseniz bizi arayın.</p></div>
+  <div class="cta"><a class="btn p" href="/programlar">Programları inceleyin ${I.arrow}</a><a class="btn" href="${telHref}">${I.phone} ${esc(CFG.phone)}</a></div></div>
 </div></section>
 ${faqHtml(faq, 'Hazır paketler hakkında merak edilenler')}
 </main>
-${SITEFOOT()}
+${O.alt()}
 </body>
 </html>
 `;
@@ -369,12 +375,12 @@ function paketSayfa(p) {
   return `${HEAD({ title: m.title, desc: m.desc, url, image: `${D}/assets/og/og-${ilk.id}.png`, theme: p.accent, schema, preload })}
 <body>
 <a class="skip" href="#ana">İçeriğe geç</a>
-${SITEHEAD('')}
+${O.ust('paketler')}
 <main id="ana">
 <section class="hero"><div class="w">
   <div>
     <nav class="crumb" aria-label="Konum"><a href="/">${CFG.brand}</a> / <a href="/paketler/">Hazır paketler</a> / ${esc(p.ad)}</nav>
-    <span class="eyebrow" style="margin-top:22px">${esc(ad)} · ${esc(p.kim)}</span>
+    <span class="hm-pill">${esc(ad)} · ${esc(p.kim)}</span>
     <h1>${esc(m.h1)}</h1>
     <p class="lead">${esc(m.lead)}</p>
     <div class="cta"><a class="btn p" href="${buy()}">Paketi sepete ekle ${I.arrow}</a><a class="btn" href="#fiyat">Fiyatları görün</a></div>
@@ -390,13 +396,13 @@ ${SITEHEAD('')}
 
 <section class="s" id="programlar"><div class="w">
   <div class="sh"><span class="eyebrow">Pakette neler var?</span><h2>${esc(ad)} içindeki ${p.programlar.length} program</h2></div>
-  <div class="pkrol">${p.programlar.map((x) => `<a href="/${pkUrun(x).slug}" style="--c:${(CAT.products.find((y) => y.id === x) || {}).accent}"><b>${esc(pkAd(x))}</b><span>${esc(m.roller[x])}</span><em>Programı inceleyin →</em></a>`).join('')}</div>
+  <div class="pkrol">${p.programlar.map((x) => kart({ href: `/${pkUrun(x).slug}`, renk: O.RENK[x], img: O.svgImg('program', x), ad: esc(pkAd(x)), alt: esc(m.roller[x]), em: 'Programı inceleyin →', suz: false })).join('')}</div>
   <p class="note">Her program kendi verisini tutar, programlar arasında otomatik veri aktarımı yoktur. <a href="/paketler/#sss">Paketler nasıl çalışır?</a> Emin değilseniz <a href="/paketler/hangi-program/">üç soruda size uygun programı bulun</a>.</p>
 </div></section>
 
 <section class="s alt" id="fiyat"><div class="w">
   <div class="sh"><span class="eyebrow">Fiyat</span><h2>${esc(ad)} aylık fiyatları</h2><p>Aylık, KDV hariç, toplu indirim dahil. Yıllık ödemede 2 ay bedava.</p></div>
-  <div class="prices">${CAT.plans.map((pl, i) => `<div class="price${pl.popular ? ' pop' : ''}">${pl.popular ? '<span class="tag">Önerilen</span>' : ''}<h3>${esc(pl.name)}</h3><div class="pkeski"><s>${pkTutar(p, i, 'liste')} ₺</s> · %${pkTutar(p, i, 'yuzde')} indirim</div><div class="amt">${pkTutar(p, i, 'net')} ₺<small> /ay</small></div><p>${esc(pl.desc)} · ${esc(pl.users)}</p><a class="btn${pl.popular ? ' p' : ''}" href="${buy(i)}">Bu planla devam et</a></div>`).join('')}</div>
+  <div class="prices">${CAT.plans.map((pl, i) => `<div class="price${pl.popular ? ' pop' : ''}">${pl.popular ? '<span class="tag">Önerilen</span>' : ''}<span class="price-g">${O.svgImg('plan', pl.id)}</span><h3>${esc(pl.name)}</h3><div class="pkeski"><s>${pkTutar(p, i, 'liste')} ₺</s> · %${pkTutar(p, i, 'yuzde')} indirim</div><div class="amt">${pkTutar(p, i, 'net')} ₺<small> /ay</small></div><p>${esc(pl.desc)} · ${esc(pl.users)}</p><a class="btn${pl.popular ? ' p' : ''}" href="${buy(i)}">Bu planla devam et</a></div>`).join('')}</div>
   <p class="note">Kesin tutar sepette hesaplanır. <a href="/fiyatlar/">Tüm fiyatlar</a>.</p>
 </div></section>
 
@@ -404,12 +410,12 @@ ${faqHtml(faq, `${ad} hakkında merak edilenler`, false)}
 
 <section class="s alt"><div class="w">
   <div class="final"><div><h2>${esc(ad)} ile başlayın</h2><p>${esc(p.kim)} için ${p.programlar.length} program. Her programı ${CFG.trialDays} gün ücretsiz deneyebilirsiniz.</p></div>
-  <div class="cta" style="margin:0"><a class="btn p" href="${buy()}">Paketi sepete ekle ${I.arrow}</a><a class="btn" href="${telHref}">${I.phone} ${esc(CFG.phone)}</a></div></div>
-  <div class="sh" style="margin:80px 0 24px"><span class="eyebrow">Benzer işler</span><h2>Diğer hazır paketler</h2></div>
-  <div class="rel">${rel.map((x) => `<a href="/paketler/${x.id}/"><b>${esc(x.ad)} paketi</b><span>${esc(x.kim)}</span></a>`).join('')}</div>
+  <div class="cta"><a class="btn p" href="${buy()}">Paketi sepete ekle ${I.arrow}</a><a class="btn" href="${telHref}">${I.phone} ${esc(CFG.phone)}</a></div></div>
+  <div class="sh" style="margin:64px auto 28px"><span class="eyebrow">Benzer işler</span><h2>Diğer hazır paketler</h2></div>
+  <div class="kartlar dort">${rel.map((x) => kart({ href: `/paketler/${x.id}/`, renk: x.accent, img: O.svgImg('paket', x.id), ad: `${esc(x.ad)} paketi`, alt: esc(x.kim), suz: false })).join('')}</div>
 </div></section>
 </main>
-${SITEFOOT()}
+${O.alt()}
 <div class="sticky-cta"><a class="btn" href="#fiyat">Fiyatlar</a><a class="btn p" href="${buy()}">Sepete ekle</a></div>
 </body>
 </html>
@@ -428,12 +434,10 @@ function sihirbazSayfa() {
   return `${HEAD({ title, desc, url, schema: [KIRINTI([[CFG.brand, D + '/'], ['Hazır paketler', `${D}/paketler/`], ['Hangi program uygun?', url]]), SSS(faq)] })}
 <body>
 <a class="skip" href="#ana">İçeriğe geç</a>
-${SITEHEAD('')}
+${O.ust('paketler')}
 <main id="ana">
+${O.kahraman({ tek: true, kirinti: `<a href="/">${CFG.brand}</a> / <a href="/paketler/">Hazır paketler</a> / Hangi program uygun?`, h1: 'Bana hangi program uygun?', lead: 'Üç soruyu cevaplayın, işletmenize uygun programı ve güncel fiyatını görün. Üyelik veya iletişim bilgisi istemiyoruz.', gorsel: O.svgImg('sayfa', 'hangi', null, 'lcp') })}
 <section class="s"><div class="w sb-w">
-  <nav class="crumb" aria-label="Konum"><a href="/">${CFG.brand}</a> / <a href="/paketler/">Hazır paketler</a> / Hangi program uygun?</nav>
-  <h1 class="doc-h1">Bana hangi program uygun?</h1>
-  <p class="lead">Üç soruyu cevaplayın, işletmenize uygun programı ve güncel fiyatını görün. Üyelik veya iletişim bilgisi istemiyoruz.</p>
   <div class="sb" id="sb">
     ${adim(1, 'İşletmeniz hangi alanda çalışıyor?', sektorler)}
     ${adim(2, 'Programı kaç kişi kullanacak?', secenek('calisan', [['1-2', '1-2 kişi', 'Küçük işletme'], ['3-10', '3-10 kişi', 'Büyüyen ekip'], ['11+', '11 ve üzeri', 'Çok kullanıcı veya çok şube']]), true)}
@@ -444,7 +448,7 @@ ${SITEHEAD('')}
 </div></section>
 ${faqHtml(faq, 'Öneri sihirbazı hakkında', true)}
 </main>
-${SITEFOOT()}
+${O.alt()}
 <script>
 (function () {
   var kok = document.getElementById('sb'), son = document.getElementById('sb-son'), adimlar = [].slice.call(kok.querySelectorAll('[data-adim]')), S = {}, simdi = 1;
@@ -503,8 +507,8 @@ function kalite(html, tur) {
 }
 // lastmod yalnızca sayfanın anlamlı içeriği değişince güncellenir (Google, tutarlı doğru lastmod ister; alt bilgi ve yıl değişikliği sayılmaz)
 function sonDegisim(yol, html, ozel) {
-  const ozet = crypto.createHash('sha1').update(((/<title>[\s\S]*?<\/title>/.exec(html) || [''])[0]) + ((/<meta name="description"[^>]*>/.exec(html) || [''])[0]) + ((/<main[\s\S]*?<\/main>/.exec(html) || [''])[0])).digest('hex').slice(0, 16);
-  const k = LM[yol]; const d = ozel || (k && k.h === ozet ? k.d : today); LM[yol] = { h: ozet, d }; return d;
+  const ozet = crypto.createHash('sha1').update(((/<title>[\s\S]*?<\/title>/.exec(html) || [''])[0]) + ((/<meta name="description"[^>]*>/.exec(html) || [''])[0]) + anaMetin(html).replace(/\s+/g, ' ')).digest('hex').slice(0, 16);
+  const k = LM[yol]; const d = ozel || (k && (k.h === ozet || !k.m) ? k.d : today); LM[yol] = { h: ozet, d, m: 1 }; return d; // m: özet görünen metinden alınır, tasarım değişikliği tarihi oynatmaz
 }
 const HARITA = []; const uyari = [];
 function yaz(yol, rel, html, { tur, noindex, updated } = {}) {
@@ -535,8 +539,10 @@ yaz('/paketler/hangi-program/', path.join('paketler', 'hangi-program'), sihirbaz
 for (const p of PK) yaz(`/paketler/${p.id}/`, path.join('paketler', p.id), paketSayfa(p), { tur: 'paket' });
 yaz('/rehber/', 'rehber', rehberDizin());
 // Bayilik, veri taşıma, sistem durumu, yenilikler, yol haritası: kaynak site/tools/guven-sayfalari.js
-for (const s of require('./guven-sayfalari')({ DOC, esc, I, CFG, D, CAT, PRODUCTS, AKTIF, bas, tarihTr, SSS, faqHtml, SITE_SRC })) yaz(s.yol, s.rel, s.html);
+for (const s of require('./guven-sayfalari')({ DOC, esc, I, CFG, D, CAT, PRODUCTS, AKTIF, bas, tarihTr, SSS, faqHtml, SITE_SRC, svg: (ad) => O.svgImg('sayfa', ad, null, 'lcp') })) yaz(s.yol, s.rel, s.html);
 for (const r of REHBER) yaz(`/rehber/${r.slug}/`, path.join('rehber', r.slug), rehberSayfa(r), { tur: 'rehber', updated: r.updated });
+
+{ const f = path.join(SITE_SRC, 'kurumsal-teklif', 'index.html'); if (OUT === ROOT && fs.existsSync(f)) { let h = fs.readFileSync(f, 'utf8'); h = h.replace(/<html[^>]*>/, O.HTML).replace(/<!-- kabuk:bas -->[\s\S]*?<!-- \/kabuk:bas -->/, () => `<!-- kabuk:bas -->\n${O.kafa()}\n<!-- /kabuk:bas -->`).replace(/<header[\s\S]*?<\/header>/, () => O.ust('')).replace(/<footer[\s\S]*?<\/footer>/, () => O.alt()); fs.writeFileSync(f, h); } }
 
 // Pazar ana sayfası: arama motorları için sabit başlık, şema ve program bağlantıları (sayfa betiği açılınca kendi arayüzünü çizer)
 {
