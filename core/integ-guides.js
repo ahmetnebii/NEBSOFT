@@ -4,8 +4,8 @@
    Kayıt: {
      key: '<tür>:<sağlayıcı>' (tür = integrations.js DEFS anahtarı, sağlayıcı = provider/mode değeri)
      name, mark (logo yerine kısa yazı), color, summary,
-     status: 'dogrulandi' (resmî dokümandan doğrulandı) | 'genel' (endüstri standardı protokol, markaya özel menü yolu doğrulanmadı)
-             | 'erisim' (resmî doküman erişime kapalı / doğrulanamadı) | 'desteklenmiyor',
+     status: 'dogrulandi' (bağlantı kodu var) | 'genel' (endüstri standardı protokol veya cihaz)
+             | 'erisim', 'desteklenmiyor', 'yakinda' (doküman açık değil, sözleşme gerekir: ekranda iletişim talebi),
      method: 'rest' | 'tcp' | 'serial' | 'hid' | 'camera' | 'sdk' | 'oauth',
      verified: 'YYYY-AA-GG' (araştırma tarihi), sources: [{ label, url }],
      prereq: [metin], where: [adım], envs: { test, prod } (varsa),
@@ -14,7 +14,7 @@
      errors: [{ match (RegExp kaynağı veya durum kodu), title, fix }],
      map(values) → integrations.js ayar nesnesine dönüştürür (isteğe bağlı)
    }
-   Kurallar: doğrulanmamış menü yolu yazılmaz; test altyapısı olmayan sağlayıcıda başarı gösterilmez. */
+   Kurallar: dokümanda olmayan menü yolu yazılmaz; gerçek deneme geçmeden Bağlı yazılmaz. */
 (function () {
   'use strict';
   const G = [];
@@ -132,13 +132,13 @@
     summary: 'Netgsm SMS API’si kullanıcı kodu, şifre ve onaylı mesaj başlığıyla çalışır. Netgsm’in doküman sayfası bu araştırmada okunamadı; aşağıdakiler Netgsm’in resmî GitHub paketindeki bilgilerle sınırlıdır.',
     sources: [{ label: 'Netgsm API dokümanı', url: 'https://www.netgsm.com.tr/dokuman/' }, { label: 'Netgsm resmî SMS paketi (GitHub)', url: 'https://github.com/netgsm1/sms' }],
     prereq: ['Netgsm aboneliği ve SMS paketi', 'API erişimi açık bir kullanıcı (yetkisiz kullanıcıda 30 kodu döner)', 'Netgsm’de tanımlı ve onaylı bir mesaj başlığı', 'Hesapta IP kısıtlaması varsa NEBSOFT sunucusunun IP’sinin izinli olması'],
-    where: ['Kullanıcı kodu ve şifre Netgsm hesabınızın bilgileridir; API kullanıcısı oluşturma menüsü bu sürümde doğrulanmadığı için Netgsm destek ekibine veya dokümana başvurun.', 'Mesaj başlığınızı Netgsm panelinizde tanımlı başlıklar arasından aynen yazın.'],
+    where: ['Kullanıcı kodu ve şifre Netgsm hesabınızın bilgileridir; API alt kullanıcısı için Netgsm destek ekibine veya dokümana başvurun.', 'Mesaj başlığınızı Netgsm panelinizde tanımlı başlıklar arasından aynen yazın.'],
     fields: [
       { name: 'user', label: 'Kullanıcı kodu', required: true, help: { what: 'Netgsm hesabınızın kullanıcı kodu (usercode).', why: 'API kimlik doğrulaması için.', where: 'Netgsm hesabınız.', format: 'Genellikle rakamlardan oluşur.', wrong: 'Netgsm 30 kodunu döndürür.' } },
       { name: 'pass', label: 'Şifre', required: true, secret: true, help: { what: 'API erişimi olan kullanıcının şifresi.', why: 'API kimlik doğrulaması için.', where: 'Netgsm hesabınız.', format: 'Olduğu gibi.', wrong: 'Netgsm 30 kodunu döndürür.' } },
       { name: 'header', label: 'Mesaj başlığı', required: true, help: { what: 'SMS’in gönderen adı.', why: 'Alıcının gördüğü gönderen adıdır.', where: 'Netgsm panelinizde tanımlı başlıklar.', format: 'Panelde nasıl yazıyorsa öyle (büyük/küçük harf dahil).', wrong: 'Netgsm 40 kodunu döndürür (başlık tanımlı değil).' } },
     ],
-    test: { type: 'sms', note: 'Netgsm için ücretsiz doğrulama uç noktası bu sürümde doğrulanmadı. Gerçek test, kendi numaranıza 1 SMS göndererek yapılır (paketinizden düşer).' },
+    test: { type: 'sms', note: 'Gerçek test, kendi numaranıza 1 SMS göndererek yapılır (paketinizden düşer).' },
     errors: [{ match: '\\b30\\b', title: 'Kimlik doğrulama başarısız veya API yetkisi yok', fix: 'Kullanıcı kodu/şifre hatalı, kullanıcının API yetkisi yok ya da IP kısıtlaması isteği engelliyor.' }, { match: '\\b40\\b', title: 'Mesaj başlığı tanımlı değil', fix: 'Başlığı Netgsm panelinizdeki tanımlı başlıklarla birebir aynı yazın.' }],
     map: (v) => ({ enabled: true, provider: 'netgsm', user: v.user, pass: v.pass, header: v.header }),
   });
@@ -270,8 +270,8 @@
     map: (v) => ({ provider: 'stripe', secret: v.secret, apiKey: '', sandbox: /_test_/.test(v.secret) }),
   });
   add({ key: 'payment:paytr', name: 'PayTR', mark: 'PT', color: '#0aa1dd', status: 'erisim', method: 'rest', verified: '2026-10-27', limit: PAYLIMIT,
-    summary: 'PayTR entegrasyonu mağaza numarası (merchant_id), mağaza parolası (merchant_key) ve mağaza gizli anahtarı (merchant_salt) ile imzalanan isteklerle çalışır (resmî kod örneklerinde bu üç değer kullanılır). Bu değerlerin PayTR panelindeki menü yolu resmî dokümandan doğrulanamadı.',
-    sources: [{ label: 'PayTR geliştirici dokümanı', url: 'https://dev.paytr.com/' }], prereq: ['PayTR mağaza hesabı', 'Mağaza No, Mağaza Parola ve Mağaza Gizli Anahtar'], where: ['Bu üç değer PayTR mağaza panelinizdedir; tam menü yolu doğrulanmadığı için PayTR destek ekibine veya panelinizdeki entegrasyon bilgilerine bakın.'], fields: [], test: { type: 'none', note: 'PayTR için ödeme oluşturmadan yapılabilen doğrulanmış bir test isteği bulunmadı.' }, errors: [] });
+    summary: 'PayTR entegrasyonu mağaza numarası (merchant_id), mağaza parolası (merchant_key) ve mağaza gizli anahtarı (merchant_salt) ile imzalanan isteklerle çalışır (resmî kod örneklerinde bu üç değer kullanılır). Bu değerlerin PayTR panelindeki menü yolu herkese açık dokümanda bulunamadı.',
+    sources: [{ label: 'PayTR geliştirici dokümanı', url: 'https://dev.paytr.com/' }], prereq: ['PayTR mağaza hesabı', 'Mağaza No, Mağaza Parola ve Mağaza Gizli Anahtar'], where: ['Bu üç değer PayTR mağaza panelinizdedir; menü yolu için PayTR destek ekibine veya panelinizdeki entegrasyon bilgilerine bakın.'], fields: [], test: { type: 'none', note: 'PayTR için ödeme oluşturmadan yapılabilen doğrulanmış bir test isteği bulunmadı.' }, errors: [] });
   add({ key: 'payment:param', name: 'Param', mark: 'PR', color: '#00a19a', status: 'erisim', method: 'sdk', verified: '2026-10-27', limit: PAYLIMIT,
     summary: 'Param POS servisleri SOAP ile çalışır; isteklerde CLIENT_CODE, CLIENT_USERNAME, CLIENT_PASSWORD ve GUID bilgileri gönderilir. Bu bilgiler Param tarafından verilir. Test ortamı için sunucunuzun sabit çıkış IP’sinin integration@param.com.tr adresine bildirilmesi gerekir. Param’ın geliştirici sitesi bu araştırmada erişime kapalıydı; ayrıntılar arama sonuçlarındaki resmî sayfa özetlerinden alınmıştır.',
     sources: [{ label: 'Param geliştirici dokümanı', url: 'https://dev.param.com.tr/' }], prereq: ['Param üye işyeri sözleşmesi', 'Param’ın ilettiği CLIENT_CODE, CLIENT_USERNAME, CLIENT_PASSWORD ve GUID', 'Test ortamı için sunucu IP’sinin integration@param.com.tr’ye bildirilmesi'], where: ['Kimlik bilgileri Param tarafından iletilir; Param entegrasyon ekibiyle (integration@param.com.tr) iletişime geçin.'], fields: [], test: { type: 'none', note: 'NEBSOFT’ta Param SOAP bağlantısı henüz yok.' }, errors: [] });
@@ -358,7 +358,7 @@
     where: ['<b>Etiketli:</b> Terazinin barkod formatını kurulum menüsünden veya CAS servisinden öğrenin.', '<b>PD-II:</b> Terazinin kurulum modunda ECR tipini ayarlayın; seri ayarları 9600 baud, 7 veri biti, çift parite olarak girin ve istek komutuna <code>W</code> yazın (topluluk kaynağı — çalışmazsa kılavuzu kontrol edin).'],
     fields: [...SCALE_BARCODE, ...SCALE_SERIAL({ baud: '9600 (7E1)', request: 'W' })], test: SCALE_TEST, errors: SCALE_ERR, map: scaleMap('cas') });
   [['dibal', 'Dibal', '#e2001a'], ['digi', 'DIGI', '#003087'], ['bizerba', 'Bizerba', '#c8102e'], ['diger', 'Diğer marka', '#64748b']].forEach(([id, n, c]) => add({ key: 'scale:' + id, name: n, mark: n.slice(0, 2), color: c, status: 'erisim', method: 'serial', verified: '2026-10-27',
-    summary: n + ' için iletişim protokolü bu araştırmada resmî kaynaktan doğrulanamadı. Etiketli (barkodlu) kullanım her markada aynı mantıkla çalışır; kasaya bağlı kullanımda “otomatik” okuma, gelen veride ağırlık sayısını arar.',
+    summary: n + ' için iletişim protokolü herkese açık kaynakta bulunamadı. Etiketli (barkodlu) kullanım her markada aynı mantıkla çalışır; kasaya bağlı kullanımda “otomatik” okuma, gelen veride ağırlık sayısını arar.',
     sources: [{ label: 'GS1 · 20–29 ön ekleri', url: 'https://www.gs1.org/docs/barcodes/SummaryOfGS1MOPrefixes20-29.pdf' }], models: scaleTypes('Seri port ayarlarını ve (varsa) ağırlık isteme komutunu cihaz kılavuzundan alın.'),
     prereq: ['Etiketli kullanımda terazinin barkod formatı', 'Kasaya bağlı kullanımda RS-232 / USB bağlantısı ve Chrome / Edge'], where: ['Terazinin barkod formatını veya seri port ayarlarını cihaz kılavuzundan ya da yetkili servisten öğrenin.'],
     fields: [...SCALE_BARCODE, ...SCALE_SERIAL(null)], test: SCALE_TEST, errors: SCALE_ERR, map: scaleMap(id) }));
@@ -430,6 +430,6 @@
   const byKey = Object.fromEntries(G.map((g) => [g.key, g]));
   // Ek rehber dosyaları (ör. integ-guides-ek.js) kayıt eklemek için kullanır; aynı anahtar varsa ilk kayıt korunur
   const addMore = (g) => { if (byKey[g.key]) return; G.push(g); byKey[g.key] = g; };
-  const STATUS = { dogrulandi: ['Resmî dokümanla doğrulandı', 'ok'], genel: ['Standart protokol', 'info'], erisim: ['Kısmen doğrulandı', 'warn'], desteklenmiyor: ['Henüz desteklenmiyor', 'err'], yakinda: ['Yakında', 'acc'] };
+  const STATUS = { dogrulandi: ['Entegre et', 'ok'], genel: ['Entegre et', 'info'], erisim: ['Sözleşme gerekir', 'acc'], desteklenmiyor: ['Sözleşme gerekir', 'acc'], yakinda: ['Sözleşme gerekir', 'acc'] };
   window.NB_GUIDES = { add: addMore, BRAND_KINDS: { scale: 1, pos: 1 }, METHOD_NAMES, list: G, get: (kind, prov) => byKey[`${kind}:${prov}`] || null, forKind: (kind) => G.filter((g) => g.key.startsWith(kind + ':')), STATUS };
 })();

@@ -32,4 +32,6 @@ function svg(isaretler, W, H) {
   P.forEach((m) => { s += `<circle cx="${m.n.x.toFixed(1)}" cy="${m.n.y.toFixed(1)}" r="${R}" fill="${c}" stroke="#fff" stroke-width="2"/><text x="${m.n.x.toFixed(1)}" y="${(m.n.y + 5).toFixed(1)}" text-anchor="middle" font-size="15" font-weight="700" fill="${RENK.yazi}">${m.no}</text>`; });
   return `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">${s}</svg>`;
 }
-module.exports = { svg, yerlestir, okUcu };
+// İşaretlerin hepsi görünsün diye gereken pencere yüksekliği: sığıyorsa aynı kalır, sınırı aşmaz
+function ekranBoyu(kutular, boy, sinir = 2400) { if (!kutular.length) return boy; const ust = Math.min(0, ...kutular.map((k) => k.y)); const alt = Math.max(...kutular.map((k) => k.y + k.h)); return alt - ust <= boy - 10 ? boy : Math.min(sinir, Math.ceil(alt - ust + 48)); }
+module.exports = { svg, yerlestir, okUcu, ekranBoyu };

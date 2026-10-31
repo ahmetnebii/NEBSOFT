@@ -21,7 +21,7 @@ function adlar(K, ekran, kod) {
   return hata;
 }
 function vaat(K) {
-  const Y = /en iyi|garantili|garanti ediyor|garanti eder|sıfır hata|bir numara|1 numara|lider|kesintisiz|%\s?\d+\s?(?:artış|kazanç|tasarruf)|\d+\s?kat\b|binlerce (?:müşteri|işletme)|mutlu müşteri/i; const hata = [];
+  const Y = /henüz kullanılamıyor|kesin çalışır|gerçek hesapla denendi|en iyi|garantili|garanti ediyor|garanti eder|sıfır hata|bir numara|1 numara|lider|kesintisiz|%\s?\d+\s?(?:artış|kazanç|tasarruf)|\d+\s?kat\b|binlerce (?:müşteri|işletme)|mutlu müşteri/i; const hata = [];
   yazilar(K).forEach((t) => { const d = String(t).replace(/\*\*.+?\*\*/g, ''); const m = d.match(Y); if (m) hata.push(`Vaat ifadesi "${m[0]}": ${d.slice(0, 90)}`); });
   return hata;
 }

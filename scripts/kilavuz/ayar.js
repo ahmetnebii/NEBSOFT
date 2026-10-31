@@ -2,7 +2,8 @@
 const path = require('path');
 const ROOT = path.join(__dirname, '..', '..');
 module.exports = {
-  LOGO: path.join(ROOT, 'assets', 'nebsoft-logo.webp'),
+  LOGO: process.env.KILAVUZ_LOGO || path.join(ROOT, 'assets', 'nebsoft-logo.webp'), // yeni logo docs/tasarim/logo altında, onaylanınca bu satır değişir
+  MARKA: { lacivert: '#0B2A5B', mavi: '#1D7BF5', isaret: '#e11d48' },
   // Ekran: 1200 px genişlik A4 metin alanına sığar; ölçek keskinlik, kalite dosya boyutu içindir
   EKRAN: { en: 1200, boy: 760, olcek: 1.5, kalite: 68 },
   CIKTI: path.join(ROOT, 'indir', 'kilavuz'), // derleme çıktısı, depoya girmez (CLAUDE.md §4)
