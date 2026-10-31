@@ -1,6 +1,6 @@
 # Birleştirme raporu: `birlesik/hepsi`
 
-Tarih: 2026-10-31. Son `npm test` ve SEO denetimi Kılavuz 2 eki ve `sw.js` `nebsoft-v3-98` commit'i üstünde koştu. Bu rapor ayrı bir belge commit'idir. Bu oturum `devir/hepsi` dalına yazmadı, push yapmadı. Yerel `devir/hepsi` bu dala ileri sarıldı, `origin/devir/hepsi` hâlâ `d5f4e06`, push yapılmadı.
+Tarih: 2026-10-31. Son `npm test` ve SEO denetimi Kılavuz 2 eki ve `sw.js` `nebsoft-v3-99` commit'i üstünde koştu. Bu rapor ayrı bir belge commit'idir. Bu oturum `devir/hepsi` dalına yazmadı, push yapmadı. Yerel `devir/hepsi` bu dala ileri sarıldı, `origin/devir/hepsi` hâlâ `d5f4e06`, push yapılmadı.
 
 ## CANLIYA ÇIKMAYI ENGELLEYENLER
 
@@ -13,7 +13,7 @@ Tarih: 2026-10-31. Son `npm test` ve SEO denetimi Kılavuz 2 eki ve `sw.js` `neb
 
 ### Bu iki birleştirmede kapanan
 
-- `sw.js` sürümü yükseltildi, son değer `nebsoft-v3-98` (saha E9).
+- `sw.js` sürümü yükseltildi, son değer `nebsoft-v3-99` (saha E9).
 - Gece kırılan `bilet-kural.test.js` (ticaret 8 ve üç rapor).
 - Panelden açılan iyzico kilidi birleşik kodda çalışıyor, borç tahsilatı süresi panelden okunuyor.
 - Paraşüt notu kodla uyumlu, `core/integ-guides.js`.
@@ -29,7 +29,7 @@ Tam liste `docs/kilavuz/PROGRAM-HATALARI.md`. Bu maddeler kod okumasıdır, bura
 - `apps/otel/app.js`: POS TEST sonucu folyoya ödeme yazar. HotelRunner bağlayıcısı programla uyumsuz.
 - `apps/bilet/app.js`: kapı açılmasa da bilet kullanıldı sayılır, `turnike` `UNVERIFIED` listesinde yok.
 - `apps/klinik`, `apps/otel`: e-Fatura eski `sendEInvoice` yolundan gider, `NS.ebelge.create` kullanmaz (CLAUDE.md §4).
-- `apps/adisyon`, `apps/butik`, `apps/toptan`, `apps/kuyumcu`, `apps/kargo`, `apps/crm`: e-Belgeler menüde, `efatura` `USED` listesinde yok. (`servis`, `kiralama`, `galeri`, `spor`, `kurs`, `anaokulu`, `emlak` son eklemede kapandı.) Entegratör bağlanamaz, fatura TEST kalır. Liste notlardan alındı, satır satır yeniden doğrulanmadı.
+- `apps/adisyon`, `apps/butik`, `apps/kuyumcu`: e-Fatura kartı eklendi, fatura yalnız e-Belgeler sayfasındaki Manuel e-Arşiv ile kesilir, satış ekranında düğme yok.
 - `core/integ-guides.js` `PAYLIMIT`: müşteriye açık kart ödemesi "henüz yoktur" diyor. iyzico, PayTR, Papara, Paynet, Craftgate için `integ-guides-sunucu.js` üstüne yazar, kalan sağlayıcılar için metin geçerli olabilir, denetlenmeli.
 - `docs/kilavuz`: e-SMM kartı kılavuzda "açtırılır" der, kodda Paraşüt doğrudan gönderimi var, sihirbaz "desteklenmiyor" gösterir. UYUMSUZ, karar gerekli.
 

@@ -68,7 +68,7 @@ module.exports = (O) => {
       O.belgeler(),
       O.ayarlar({ alanlar: [['En az sipariş tutarı (₺)', 'Bayi siparişi için alt sınır.'], ['Varsayılan vade (gün)', 'Yeni caride önerilen vade.'], ['Plasiyer iskonto sınırı (%)', 'Plasiyere özel sınır yoksa bu değer geçerlidir.'], ['IBAN', 'Bayi sayfasında ve belgelerde görünür.']] }),
       O.bildirimler(),
-      { ...ebelge, ne: 'e-Fatura, e-Arşiv ve e-İrsaliye kayıtlarının giden ve gelen kutusudur. **Fatura kes** ve **Faturasızları faturala** belgeyi buraya işler. Bu programın Entegrasyonlar sayfasında e-Fatura kartı yoktur, bu yüzden belgeler TEST görünür, GİB’e gitmez. Resmî fatura için entegratörünüzün panelini kullanın.', hatalar: [['Belge TEST olarak görünüyor.', 'Bu programda entegratör bağlantısı kurulmaz. TEST belgeler resmî belge değildir.']] },
+      { ...ebelge, ne: 'e-Fatura, e-Arşiv ve e-İrsaliye kayıtlarının giden ve gelen kutusudur. **Fatura kes** ve **Faturasızları faturala** belgeyi buraya işler. Entegratör bağlanmadan belgeler TEST görünür, GİB’e gitmez.', hatalar: [['Belge TEST olarak görünüyor.', '**Entegrasyonlar** sayfasında e-Fatura kartından entegratörünüzü bağlayın. TEST belgeler resmî belge değildir.']] },
       O.entegrasyonlar(),
     ],
     roller: 'Plasiyer yalnız sipariş, plasiyer ekranı, iade ve carileri görür. Depo sevkiyat ve ürünlerle çalışır. Ofis tahsilat ve kampanyaları yönetir.',
@@ -77,6 +77,7 @@ module.exports = (O) => {
     yazdirma: { ne: 'Belgeler sipariş ve cari ekranlarından yazdırılır.', belgeler: [['Sipariş / sevk fişi', 'Sipariş detayında **Yazdır**, sevkte otomatik.'], ['Yükleme listesi', '**Sevkiyat** sayfasında **Yükleme listesi**.'], ['Tahsilat makbuzu', 'Tahsilat kaydedilince.'], ['Cari hesap ekstresi', '**Cariler** sayfasında **Ekstre**.']] },
     entegrasyon: {
       sms: { degisir: ['**Entegre et** ile sağlayıcıyı seçip bilgileri girersiniz. **Bağlantıyı dene** hesap bakiyesini okur, ileti göndermez. **Bağlı** yazısı görünmeden SMS gönderilmez.', '**Bayi portalı bilgisini gönder** bayiye gerçek SMS yollar. Bağlantı yokken kayıt TEST olur, bayiye gitmez.'], sorun: ['Kayıt hata gösteriyorsa sağlayıcı panelindeki kredi ve onaylı başlık bilgisini kontrol edin.', 'Carinin telefonunu kontrol edin.'] },
+      efatura: { degisir: ['**Fatura kes** ve **Faturasızları faturala** belgeyi entegratöre gönderir.', 'Kesilen belgeler **e-Belgeler** sayfasında görünür. Sağlayıcının altındaki sınırı okuyun.', 'Simülasyonda belge TEST etiketi taşır, GİB’e gitmez.'], sorun: ['Belge kesilmezse **e-Belgeler** sayfasındaki hata ayrıntısına bakın.'] },
       backup: O.E.backup(),
     },
   };

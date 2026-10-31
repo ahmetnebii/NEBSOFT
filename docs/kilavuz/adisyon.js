@@ -113,7 +113,7 @@ module.exports = (O) => {
       O.belgeler({ tur: 'Kasa devir tutanağı' }),
       O.ayarlar({ alanlar: [['Wi-Fi şifresi (fişte yazar)', 'Doluysa fişin altına yazılır, QR menüde de görünür.'], ['Fiş alt yazısı', 'Fişin altına basılan metin.']] }),
       O.bildirimler(),
-      { ...ebelge, ne: 'e-Fatura, e-Arşiv ve e-İrsaliye kayıtlarının giden ve gelen kutusudur. Bu programın Entegrasyonlar sayfasında e-Fatura kartı yoktur, hesap kapatırken fatura kesen düğme de yoktur. Burada oluşan belgeler TEST olarak görünür, GİB’e gitmez. Fatura gerekiyorsa e-Fatura özelliği olan bir NEBSOFT programını veya entegratörünüzün panelini kullanın.', hatalar: [['Belge TEST olarak görünüyor.', 'Bu programda entegratör bağlantısı kurulamaz. TEST belgeler resmî belge değildir.']] },
+      { ...ebelge, ne: 'e-Fatura, e-Arşiv ve e-İrsaliye kayıtlarının giden ve gelen kutusudur. Hesap kapatırken fatura kesen düğme yoktur, faturayı **Manuel e-Arşiv** ile bu sayfadan kesersiniz. Entegratör bağlanmadan belgeler TEST görünür, GİB’e gitmez.', hatalar: [['Belge TEST olarak görünüyor.', '**Entegrasyonlar** sayfasında e-Fatura kartından entegratörünüzü bağlayın. TEST belgeler resmî belge değildir.']] },
       O.entegrasyonlar(),
     ],
 
@@ -132,6 +132,7 @@ module.exports = (O) => {
       yemekkarti: {"degisir":["Yemek kartı firmalarının dokümanı herkese açık değildir, bağlantı NEBSOFT ile iletişime geçerek açtırılır.","Ödeme penceresinde **Yemek Kartı** seçilince kart markası sorulur, ödeme kayda geçer. Tahsilatı yemek kartı cihazınızdan ayrıca yaparsınız.","Bağlantı açıksa **Yemek kartı provizyonu alınamadı** uyarısında ödeme kaydedilmez."],"sorun":["Kart cihazından çekim yapmadan ödemeyi kaydetmeyin."]},
       callerid: {"degisir":["Santral ve Caller ID cihazlarının bağlantısı NEBSOFT ile iletişime geçerek açtırılır.","Bağlantı açılana kadar **Paket Servis** sayfasındaki **Gelen çağrı** düğmesi numarayı elle sorar.","Numara kayıtlı müşteriye aitse paket siparişi penceresinde ad ve adres dolar.","Simülasyonda **Arayan numara TEST** uyarısı çıkar."],"sorun":["Numarayı elle yazarak işinize devam edin."]},
       webhook: {"degisir":["**Bağlantıyı dene** adresinize imzalı bir test olayı gönderir. Adres başarılı yanıt verirse bağlantı **Bağlı** olur, bundan önce olay gönderilmez.","**Ödeme al** ile kapanan her hesap tanımladığınız adrese **satis** olayı olarak gönderilir.","**Paket Servis** sayfasındaki **Teslim et** ile kapanan siparişlerde bu olay gönderilmez."],"sorun":["Olay gelmiyorsa hedef adresin internetten erişilebilir olduğunu kontrol edin.","Adresi veya anahtarı değiştirdiyseniz **Bağlantıyı dene** adımını yineleyin."]},
+      efatura: { degisir: ['**e-Belgeler** sayfasındaki **Manuel e-Arşiv** düğmesi belgeyi entegratöre gönderir. Hesap kapatırken fatura kesen düğme yoktur.', 'Kesilen belgeler **e-Belgeler** sayfasında görünür. Sağlayıcının altındaki sınırı okuyun.', 'Simülasyonda belge TEST etiketi taşır, GİB’e gitmez.'], sorun: ['Belge kesilmezse **e-Belgeler** sayfasındaki hata ayrıntısına bakın.'] },
       backup: O.E.backup(),
     },
   };

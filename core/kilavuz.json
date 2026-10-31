@@ -1,9 +1,9 @@
 {
  "adisyon": {
   "id": "adisyon",
-  "sayfa": 80,
-  "boyut": 8058563,
-  "ekran": 58,
+  "sayfa": 86,
+  "boyut": 8544526,
+  "ekran": 61,
   "tarih": "2026-10-31"
  },
  "anaokulu": {
@@ -22,9 +22,9 @@
  },
  "butik": {
   "id": "butik",
-  "sayfa": 70,
-  "boyut": 6667142,
-  "ekran": 44,
+  "sayfa": 75,
+  "boyut": 6885033,
+  "ekran": 45,
   "tarih": "2026-10-31"
  },
  "cicekci": {
@@ -43,9 +43,9 @@
  },
  "crm": {
   "id": "crm",
-  "sayfa": 57,
-  "boyut": 5151459,
-  "ekran": 32,
+  "sayfa": 61,
+  "boyut": 5385239,
+  "ekran": 33,
   "tarih": "2026-10-31"
  },
  "dernek": {
@@ -134,9 +134,9 @@
  },
  "kargo": {
   "id": "kargo",
-  "sayfa": 62,
-  "boyut": 5238141,
-  "ekran": 32,
+  "sayfa": 66,
+  "boyut": 5488230,
+  "ekran": 33,
   "tarih": "2026-10-31"
  },
  "kiralama": {
@@ -169,9 +169,9 @@
  },
  "kuyumcu": {
   "id": "kuyumcu",
-  "sayfa": 53,
-  "boyut": 4876022,
-  "ekran": 33,
+  "sayfa": 58,
+  "boyut": 5126298,
+  "ekran": 34,
   "tarih": "2026-10-31"
  },
  "lastik": {
@@ -323,9 +323,9 @@
  },
  "toptan": {
   "id": "toptan",
-  "sayfa": 54,
-  "boyut": 4961393,
-  "ekran": 33,
+  "sayfa": 59,
+  "boyut": 5220235,
+  "ekran": 34,
   "tarih": "2026-10-31"
  },
  "usta": {

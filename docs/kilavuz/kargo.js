@@ -55,7 +55,7 @@ module.exports = (O) => {
       O.belgeler(),
       { ...O.ayarlar({ alanlar: [['Desi kademeleri (desi:fiyat,...)', 'Ücret tablosu.'], ['Son kademe üstü desi başı (₺)', 'Son kademeyi aşan desi ücreti.'], ['Kapıda tahsilat komisyonu %', 'Tahsilat tutarına uygulanan oran.'], ['KT en az ücret (₺)', 'Komisyonun alt sınırı.'], ['Gönderi ücreti KDV oranı (%)', 'Ücret KDV oranı.'], ['Şubeler (virgülle)', 'Kabulde seçilen şubeler.'], ['Şehir içi sayılan il', 'Bu il şehir içi tarifeye girer.'], ['Teslim başına kurye primi (₺)', 'Kuryede ayrı değer yoksa geçerlidir.'], ['Dağıtıma çıkınca alıcıya SMS gönder', 'Zimmette alıcıya SMS gider.']] }), baslik: 'Tarife & Ayarlar' },
       O.bildirimler(),
-      { ...ebelge, ne: 'e-Fatura, e-Arşiv ve e-İrsaliye kayıtlarının giden ve gelen kutusudur. **Fatura kes** ve **Aylık fatura kes** belgeyi buraya işler. Bu programın Entegrasyonlar sayfasında e-Fatura kartı yoktur, bu yüzden belgeler TEST görünür, GİB’e gitmez. Resmî fatura için entegratörünüzün panelini kullanın.', hatalar: [['Belge TEST olarak görünüyor.', 'Bu programda entegratör bağlantısı kurulmaz. TEST belgeler resmî belge değildir.']] },
+      { ...ebelge, ne: 'e-Fatura, e-Arşiv ve e-İrsaliye kayıtlarının giden ve gelen kutusudur. **Fatura kes** ve **Aylık fatura kes** belgeyi buraya işler. Entegratör bağlanmadan belgeler TEST görünür, GİB’e gitmez.', hatalar: [['Belge TEST olarak görünüyor.', '**Entegrasyonlar** sayfasında e-Fatura kartından entegratörünüzü bağlayın. TEST belgeler resmî belge değildir.']] },
       O.entegrasyonlar(),
     ],
     roller: 'Kabul rolü özet, kabul, gönderi ve zimmet ekranlarını görür. Kurye rolü yalnız **Kurye Ekranı** ile çalışır.',
@@ -67,6 +67,7 @@ module.exports = (O) => {
       gps: { degisir: ['Araç takip firmalarının dokümanı herkese açık değildir, bağlantı NEBSOFT ile iletişime geçerek açtırılır.', 'Bağlantı açılana kadar **Kurye konumları** gerçek konum göstermez.', 'Simülasyonda sonuç TEST olarak görünür.'], sorun: ['Konumu araç takip firmanızın kendi panelinden izleyin.'] },
       sms: { degisir: ['**Entegre et** ile sağlayıcıyı seçip bilgileri girersiniz. **Bağlantıyı dene** hesap bakiyesini okur, ileti göndermez. **Bağlı** yazısı görünmeden SMS gönderilmez.', '**Dağıtıma çıkınca alıcıya SMS gönder** açıksa zimmette alıcıya mesaj gider, mesajda takip bilgisi yer alır.', 'Bağlantı yokken kayıt TEST olur, alıcıya gitmez.'], sorun: ['Kayıt hata gösteriyorsa sağlayıcı panelindeki kredi ve onaylı başlık bilgisini kontrol edin.'] },
       whatsapp: { degisir: ['Bu programda yönetim ekranlarından WhatsApp mesajı gönderen düğme yoktur.', 'Takip sayfasının yardım bölümündeki WhatsApp bağlantısıyla alıcı işletmeye kendisi yazar.'], sorun: ['Takip sayfasındaki numara **Ayarlar** sayfasındaki telefondan gelir, bu alanı kontrol edin.'] },
+      efatura: { degisir: ['**Fatura kes** ve **Aylık fatura kes** belgeyi entegratöre gönderir.', 'Kesilen belgeler **e-Belgeler** sayfasında görünür. Sağlayıcının altındaki sınırı okuyun.', 'Simülasyonda belge TEST etiketi taşır, GİB’e gitmez.'], sorun: ['Belge kesilmezse **e-Belgeler** sayfasındaki hata ayrıntısına bakın.'] },
       backup: O.E.backup(),
     },
   };

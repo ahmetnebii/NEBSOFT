@@ -71,7 +71,7 @@ module.exports = (O) => {
       O.belgeler(),
       O.ayarlar({ alanlar: [['Kur servisi adresi (JSON)', 'Bağlı olduğunuz toptancının kur adresi.'], ['Kur en çok kaç dakika geçerli', 'Süre dolunca işlemde onay istenir.'], ['Kimlik tespiti sınırı (₺)', 'Bu tutara ulaşan işlemde kimlik istenir.'], ['Onaysız en çok indirim %', 'Bu oranın üstü onay ister.'], ['Satış fişi notu', 'Satış fişinin altındaki metin.'], ['Alış makbuzu notu', 'Alış makbuzunun altındaki metin.']] }),
       O.bildirimler(),
-      { ...ebelge, ne: 'e-Fatura, e-Arşiv ve e-İrsaliye kayıtlarının giden ve gelen kutusudur. Bu programın Entegrasyonlar sayfasında e-Fatura kartı yoktur, satış ekranında fatura kesen düğme de yoktur. Burada oluşan belgeler TEST görünür, GİB’e gitmez. Fatura için entegratörünüzün panelini kullanın.', hatalar: [['Belge TEST olarak görünüyor.', 'Bu programda entegratör bağlantısı kurulmaz. TEST belgeler resmî belge değildir.']] },
+      { ...ebelge, ne: 'e-Fatura, e-Arşiv ve e-İrsaliye kayıtlarının giden ve gelen kutusudur. Satış ekranında fatura kesen düğme yoktur, faturayı **Manuel e-Arşiv** ile bu sayfadan kesersiniz. Entegratör bağlanmadan belgeler TEST görünür, GİB’e gitmez.', hatalar: [['Belge TEST olarak görünüyor.', '**Entegrasyonlar** sayfasında e-Fatura kartından entegratörünüzü bağlayın. TEST belgeler resmî belge değildir.']] },
       O.entegrasyonlar(),
     ],
     roller: 'Tezgâhtar satış, alış, kasa, stok, müşteri ve sipariş ekranlarıyla çalışır. **Onaysız en çok indirim %** üstü ve eski kurla işlem dükkân sahibi onayı ister.',
@@ -80,6 +80,7 @@ module.exports = (O) => {
     yazdirma: { ne: 'Belgeler işlem sırasında veya raporlardan yazdırılır.', belgeler: [['Satış fişi ve alış makbuzu', 'İşlem bitince veya listedeki **Fiş** düğmesi.'], ['Etiketler', '**Stok** sayfasında **Etiket bas**.'], ['Gün sonu raporu', '**Kasa** sayfasında **Gün sonu**.'], ['Altın hesabı teslim tutanağı', '**Altın hesabını kapat** sırasında.'], ['Tahsilat makbuzu', '**Cari tahsilat** sırasında.']] },
     entegrasyon: {
       sms: { degisir: ['**Entegre et** ile sağlayıcıyı seçip bilgileri girersiniz. **Bağlantıyı dene** hesap bakiyesini okur, ileti göndermez. **Bağlı** yazısı görünmeden SMS gönderilmez.', '**Sipariş & Tamir** sayfasındaki **"Hazır" SMS** ve **Hazırlara SMS** gerçek mesaj gönderir. Bağlantı yokken kayıt TEST olur, müşteriye gitmez.'], sorun: ['Kayıt hata gösteriyorsa sağlayıcı panelindeki kredi ve onaylı başlık bilgisini kontrol edin.', 'Müşteri kartında telefon olduğunu kontrol edin.'] },
+      efatura: { degisir: ['**e-Belgeler** sayfasındaki **Manuel e-Arşiv** düğmesi belgeyi entegratöre gönderir. Satış ekranında fatura kesen düğme yoktur.', 'Kesilen belgeler **e-Belgeler** sayfasında görünür. Sağlayıcının altındaki sınırı okuyun.', 'Simülasyonda belge TEST etiketi taşır, GİB’e gitmez.'], sorun: ['Belge kesilmezse **e-Belgeler** sayfasındaki hata ayrıntısına bakın.'] },
       backup: O.E.backup(),
     },
   };

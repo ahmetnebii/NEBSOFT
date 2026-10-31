@@ -79,7 +79,7 @@ module.exports = (O) => {
       O.belgeler({ tur: 'İade / değişim formu' }),
       O.ayarlar({ alanlar: [['Puan oranı %', 'Alışverişten kazanılan puan oranı.'], ['Değişim süresi (gün)', 'Bu süreden sonra değişim yönetici onayı ister.'], ['Az kalan beden sınırı', 'Bu adedin altındaki beden azalan sayılır.'], ['Satış danışmanı primi % (net satış)', 'Raporlardaki prim hesabı.'], ['Stok değişince bağlı online kanala gönder', 'Kapalıysa stok ve fiyat kanala gönderilmez.']] }),
       O.bildirimler(),
-      { ...ebelge, ne: 'e-Fatura, e-Arşiv ve e-İrsaliye kayıtlarının giden ve gelen kutusudur. Bu programın Entegrasyonlar sayfasında e-Fatura kartı yoktur, satış ekranında fatura kesen düğme de yoktur. Burada oluşan belgeler TEST olarak görünür, GİB’e gitmez. Fatura gerekiyorsa entegratörünüzün panelini kullanın.', hatalar: [['Belge TEST olarak görünüyor.', 'Bu programda entegratör bağlantısı kurulmaz. TEST belgeler resmî belge değildir.']] },
+      { ...ebelge, ne: 'e-Fatura, e-Arşiv ve e-İrsaliye kayıtlarının giden ve gelen kutusudur. Satış ekranında fatura kesen düğme yoktur, faturayı **Manuel e-Arşiv** ile bu sayfadan kesersiniz. Entegratör bağlanmadan belgeler TEST görünür, GİB’e gitmez.', hatalar: [['Belge TEST olarak görünüyor.', '**Entegrasyonlar** sayfasında e-Fatura kartından entegratörünüzü bağlayın. TEST belgeler resmî belge değildir.']] },
       O.entegrasyonlar(),
     ],
     roller: 'Satış danışmanı değişim süresi geçmiş işlemde yönetici PIN’i girer. Kampanya, rapor ve yönetim sayfaları mağaza sahibine aittir.',
@@ -94,6 +94,7 @@ module.exports = (O) => {
       label: { degisir: ['**Etiket Basımı** sayfasında **Çıktı** seçeneği **A4 sayfa** veya **Etiket yazıcısı** olur. İkisi de tarayıcının yazdırma penceresinden basılır.', 'Etiket yazıcısı seçilince sayfa etiket boyunda hazırlanır.'], sorun: ['Etiket kaymışsa şablondaki **En (mm)** ve **Boy (mm)** değerlerini etiketinize göre düzeltin.'] },
       barcode: { degisir: ['USB ve Bluetooth okuyucular ek kurulumsuz çalışır. **Satış** ve **Değişim & İade** kutularına okutulan kod klavyeden yazılmış gibi gelir.', '**Etiket Basımı** ve **Yeni model** penceresinde **Kamerayla okut** telefon kamerasıyla okur.'], sorun: ['Okutunca işlem başlamıyorsa okuyucunun sonekini Enter yapın ve imlecin kutuda olduğunu kontrol edin.'] },
       pos: { degisir: ['Bu programda **Kredi kartı** ödemesi tutarı POS cihazına göndermez. Çekimi cihazdan yaparsınız, program ödemeyi kaydeder.'], sorun: ['Cihazdan çekim yapmadan satışı tamamlamayın.'] },
+      efatura: { degisir: ['**e-Belgeler** sayfasındaki **Manuel e-Arşiv** düğmesi belgeyi entegratöre gönderir. Satış ekranında fatura kesen düğme yoktur.', 'Kesilen belgeler **e-Belgeler** sayfasında görünür. Sağlayıcının altındaki sınırı okuyun.', 'Simülasyonda belge TEST etiketi taşır, GİB’e gitmez.'], sorun: ['Belge kesilmezse **e-Belgeler** sayfasındaki hata ayrıntısına bakın.'] },
       backup: O.E.backup(),
     },
   };

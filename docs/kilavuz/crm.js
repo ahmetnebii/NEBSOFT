@@ -54,7 +54,7 @@ module.exports = (O) => {
       O.belgeler(),
       O.ayarlar({ alanlar: [['Aylık satış hedefi (₺)', 'Panodaki hedef çubuğu.']] }),
       O.bildirimler(),
-      { ...ebelge, ne: 'e-Fatura, e-Arşiv ve e-İrsaliye kayıtlarının giden ve gelen kutusudur. Kabul edilen tekliften kesilen fatura buraya işlenir. Bu programın Entegrasyonlar sayfasında e-Fatura kartı yoktur, bu yüzden belgeler TEST görünür, GİB’e gitmez. Resmî fatura için entegratörünüzün panelini kullanın.', hatalar: [['Belge TEST olarak görünüyor.', 'Bu programda entegratör bağlantısı kurulmaz. TEST belgeler resmî belge değildir.']] },
+      { ...ebelge, ne: 'e-Fatura, e-Arşiv ve e-İrsaliye kayıtlarının giden ve gelen kutusudur. Kabul edilen tekliften kesilen fatura buraya işlenir. Entegratör bağlanmadan belgeler TEST görünür, GİB’e gitmez.', hatalar: [['Belge TEST olarak görünüyor.', '**Entegrasyonlar** sayfasında e-Fatura kartından entegratörünüzü bağlayın. TEST belgeler resmî belge değildir.']] },
       O.entegrasyonlar(),
     ],
     roller: 'Satış temsilcisi rapor ve yönetim sayfaları dışındaki bölümlerle çalışır.',
@@ -65,6 +65,7 @@ module.exports = (O) => {
       whatsapp: O.E.whatsappLink('Teklif penceresindeki **WhatsApp** düğmesi'),
       callerid: { degisir: ['Santral ve Caller ID cihazlarının bağlantısı NEBSOFT ile iletişime geçerek açtırılır.', 'Bağlantı açılana kadar **Gelen çağrı** numarayı elle sorar, kayıtlı kişi varsa eşleştirir.', 'Simülasyonda **Arayan numara TEST** uyarısı çıkar.'], sorun: ['Numarayı elle yazarak işinize devam edin.'] },
       takvim: { degisir: ['Google Takvim ve Outlook için kendi hesabınızı **Entegre et** ile bağlarsınız. **Bağlantıyı dene** takvim bilgisini okur, etkinlik eklemez, davet göndermez.', 'Bağlıyken fırsata son tarihli görev eklenince takvime etkinlik yazılır. Katılımcı eklenmez.', 'iCal aboneliği için bağlantı testi gerekmez.'], sorun: ['Google’da servis hesabının takvime yetkili olduğunu kontrol edin.', 'Etkinlik görünmüyorsa **Bağlantıyı dene** adımını yineleyin.'] },
+      efatura: { degisir: ['Kabul edilen tekliften kesilen fatura entegratöre gönderilir.', 'Kesilen belgeler **e-Belgeler** sayfasında görünür. Sağlayıcının altındaki sınırı okuyun.', 'Simülasyonda belge TEST etiketi taşır, GİB’e gitmez.'], sorun: ['Belge kesilmezse **e-Belgeler** sayfasındaki hata ayrıntısına bakın.'] },
       backup: O.E.backup(),
     },
   };

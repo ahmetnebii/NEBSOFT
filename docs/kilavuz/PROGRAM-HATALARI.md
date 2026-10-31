@@ -6,7 +6,7 @@ Kapananlar: `scripts/kilavuz/ortak.js` "Henüz kullanılamıyor" metni, sihirbaz
 
 ## Grup 1: adisyon, butik, crm, fiyatrobotu, ik, kargo, kuyumcu, muhasebe, pazaryeri, toptan
 
-1. Adisyon, Butik, Toptan, Kuyumcu, Kargo, CRM: `e-Belgeler` menüde, `efatura` `USED` listesinde yok. Entegratör bağlanamıyor, fatura TEST kalıyor. Toptan, Kargo ve CRM'de fatura düğmesi var.
+1. Adisyon, Butik, Kuyumcu: e-Fatura kartı eklendi (Toptan, Kargo, CRM ile birlikte), fakat satış ekranında fatura düğmesi yok, fatura yalnız Manuel e-Arşiv ile kesilir.
 2. Adisyon: `Mutfak fişini ayrıca yazdır` ayarı okunmuyor.
 3. Adisyon, Yemek Platformları: `Bağlan` yalnız yerel bayrak.
 4. Adisyon, Paket Servis: `Teslim et` yolunda `satis` webhook olayı yok.
