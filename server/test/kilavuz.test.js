@@ -21,8 +21,10 @@ assert.strictEqual(D.kisiVerisi('no 10000000146 son').length, 1); ok('Kimlik num
 
 // Entegrasyon sınıfları: doğrulanmamış olan canlıda "kullanılabilir" yazılamaz
 const e = { kilit: false }; const d = (x, p) => O.durum(x, p)[0];
-assert.strictEqual(d({ kilit: true }, { value: 'ingenico', g: { status: 'dogrulandi' } }), 'no'); assert.strictEqual(d(e, { value: 'amazon' }), 'no'); assert.strictEqual(d(e, { value: 'x', g: { status: 'yakinda' } }), 'no'); assert.strictEqual(d(e, { value: 'x', g: { status: 'dogrulandi' } }), 'ok'); assert.strictEqual(d(e, { value: 'x', g: { status: 'erisim' } }), 'ki'); assert.strictEqual(d(e, { value: 'sim' }), 'ki');
-ok('Kilitli, rehbersiz ve yakında olan sağlayıcı "Henüz kullanılamıyor" yazılır');
+assert.strictEqual(d({ kilit: true }, { value: 'ingenico', g: { status: 'dogrulandi' } }), 'no'); assert.strictEqual(d(e, { value: 'amazon' }), 'no'); assert.strictEqual(d(e, { value: 'x', g: { status: 'yakinda' } }), 'no'); assert.strictEqual(d(e, { value: 'x', g: { status: 'dogrulandi' } }), 'ok'); assert.strictEqual(d(e, { value: 'x', g: { status: 'erisim' } }), 'no'); assert.strictEqual(d(e, { value: 'x', g: { status: 'erisim', testVar: true } }), 'ok'); assert.strictEqual(d(e, { value: 'sim' }), 'ki');
+assert.strictEqual(O.durum(e, { value: 'x', g: { status: 'dogrulandi' } }, { kapali: { x: 'neden' } })[0], 'no'); assert.ok(O.durum({ kilit: true }, { value: 'y' })[1].includes('NEBSOFT ile iletişime geçerek'));
+assert.strictEqual(D.vaat({ moduller: [{ ne: 'Bu bağlantı henüz kullanılamıyor' }] }).length, 1); assert.strictEqual(D.vaat({ moduller: [{ ne: 'Bu entegrasyon kesin çalışır' }] }).length, 1);
+ok('Kapalı sağlayıcı "NEBSOFT ile iletişime geçerek açtırılır" yazılır, eski ifade ve kesinlik iddiası yakalanır');
 
 // PDF okuma: içindekiler sayfa numarası buradan gelir
 const pdf = Buffer.from('%PDF-1.4\n1 0 obj\n<</Type/Catalog/Pages 2 0 R/Dests 5 0 R>>\nendobj\n2 0 obj\n<</Type/Pages/Kids[3 0 R 4 0 R]/Count 2>>\nendobj\n3 0 obj\n<</Type/Page/Parent 2 0 R>>\nendobj\n4 0 obj\n<</Type/Page/Parent 2 0 R>>\nendobj\n5 0 obj\n<</Names[(m-a)[3 0 R/XYZ 0 0 0](m-b)[4 0 R/XYZ 0 0 0]]>>\nendobj\n');

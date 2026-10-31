@@ -814,12 +814,12 @@ RULES.eticaret = {
   view: (x) => {
     const o = x.get('orders', me(x, 'o')); if (!o) return {};
     // İç not, etiket, işlem geçmişi ve kanal kesintileri müşteriye gitmez
-    return { orders: [strip(o, ['memo', 'tags', 'history', 'payout', 'channelShip', 'packCheck', 'source'])], returns: x.col('returns').filter((r) => r.order === o.id).map((r) => strip(r, ['by', 'restocked', 'lines'])) };
+    return { orders: [strip(o, ['memo', 'tags', 'history', 'payout', 'channelShip', 'packCheck', 'source', 'payment'])], returns: x.col('returns').filter((r) => r.order === o.id).map((r) => strip(r, ['by', 'restocked', 'lines'])) };
   },
   write: {
     customers: { ins: I({ name: 'str:80', phone: 'phone', email: 'email?', city: 'str:40?', address: 'str:300?' }, {}) },
     orders: {
-      ins: I({ customer: 'id', ship: 'json:1200', items: 'json:30000', pay: 'enum:kapida|havale', note: 'str:400?', invoice: 'json:600?', installment: 'int:1:12?' }, () => ({ at: nowIso(), status: 'yeni', channel: 'Web sitesi', installment: 1 }), (r, x) => {
+      ins: I({ customer: 'id', ship: 'json:1200', items: 'json:30000', pay: 'enum:kapida|havale|kart', note: 'str:400?', invoice: 'json:600?', installment: 'int:1:12?' }, () => ({ at: nowIso(), status: 'yeni', channel: 'Web sitesi', installment: 1 }), (r, x) => {
         if (!x.get('customers', r.customer)) bad('Müşteri bilgisi eksik');
         const sh = clean({ name: 'str:80', phone: 'phone', city: 'str:40', address: 'str:400' }, r.ship || {}); r.ship = sh;
         if (r.invoice) r.invoice = clean({ title: 'str:160?', taxNo: 'str:11?', taxOffice: 'str:60?' }, r.invoice);
@@ -835,7 +835,7 @@ RULES.eticaret = {
         const k = shopCoupon(x, x.q.coupon); let discount = 0, freeBy = false;
         if (k && sub >= (k.min || 0)) { if (k.type === 'pct') discount = Math.round(sub * k.value) / 100; else if (k.type === 'tl') discount = Math.min(sub, Number(k.value)); else if (k.type === 'ship') freeBy = true; k.uses = (k.uses || 0) + 1; r.coupon = k.code; } else r.coupon = null;
         const shipping = sub - discount >= S.freeShip || freeBy ? 0 : Number(S.shipFee); const cod = r.pay === 'kapida' ? Number(S.codFee) : 0;
-        Object.assign(r, { subtotal: sub, discount, shipping, cod, total: Math.max(0, sub - discount + shipping + cod), no: x.seq('orders', 'LB') });
+        Object.assign(r, { subtotal: sub, discount, shipping, cod, total: Math.max(0, sub - discount + shipping + cod), no: x.seq('orders', 'LB'), payStatus: r.pay === 'kapida' ? 'kapida' : 'bekliyor' }); // alan yoksa panel ödenmiş sayar
       }),
     },
     returns: {
@@ -851,6 +851,8 @@ RULES.eticaret = {
     coupons: 'ignore',
   },
   after: (x, list) => mergeByPhone(x, list, 'customers', [['orders', 'customer']]),
+  // Kartla ödeme: anahtar sunucudadır, vitrin yalnız açık mı diye bilir (server/cloud/eticaret-odeme.js)
+  gorunumEki: (t) => require('./eticaret-odeme').gorunum(t), islemOncesi: (t, ops) => require('./eticaret-odeme').islemOncesi(t, ops), islemSonrasi: (t, l) => require('./eticaret-odeme').kayitSonrasi(t, l),
   grant: (x, list) => { const o = list.find(([n, rec]) => n === 'orders' && !rec.updated); return o ? { k: 'o', i: o[1].id } : null; },
 };
 

@@ -13,7 +13,7 @@ const cfg = require('./config');
 const fs = require('fs');
 const path = require('path');
 const GROUPS = { entegrasyon: 'cfg', pazaryeri: 'channels', pos: 'qcChannels' };
-const SECRET = new Set(['pass', 'password', 'secret', 'token', 'apiSecret', 'apiKey', 'hash', 'key', 'clientSecret', 'clientId', 'merchantKey', 'merchantSalt', 'headers']);
+const SECRET = new Set(['pass', 'password', 'secret', 'token', 'apiSecret', 'apiKey', 'hash', 'key', 'clientSecret', 'clientId', 'merchantKey', 'merchantSalt', 'headers', 'guid', 'serviceAccount', 'refreshToken']);
 const PFX = 'enc:v1:';
 const TOKEN_RE = /__nsg_([a-z0-9]+)_([a-z0-9]+)_([A-Za-z0-9]+)__/g;
 const token = (app, grp, field) => `__nsg_${app}_${grp}_${field}__`;
