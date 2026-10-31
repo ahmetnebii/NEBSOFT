@@ -22,4 +22,7 @@
 .sh-env { display: grid; gap: 6px; }
 .sh-env > div { display: grid; grid-template-columns: minmax(0, 1fr) 70px 70px 32px; gap: 6px; align-items: center; }
 .tbl-foot { padding: 10px 18px; }
-@media (max-width: 600px) { .sh-gun { grid-template-columns: 1fr; } }
+/* Boşluksuz uzun metin (adres, not, başlık) sayfayı yana açmasın */
+.sh-gun .card, .grid.g-21 .card, .sh-gun a, h1.grow { overflow-wrap: anywhere; min-width: 0; }
+.grid.g-21 > .col { min-width: 0; }
+@media (max-width: 600px) { .sh-gun { grid-template-columns: 1fr; } h1.grow { flex-basis: 100%; order: 3; } .seg button { min-height: 40px; } .card { overflow-wrap: anywhere; min-width: 0; } }

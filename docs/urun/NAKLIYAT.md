@@ -58,6 +58,7 @@ Yetki belgesi tür ve numarası Ayarlar'da tutulur; program belgenin geçerlili�
 
 ## Yapılmayan veya doğrulanmayan
 
-- U-ETDS bildirimi yoktur; K3 ve C3 için zorunlu olup olmadığı DOĞRULANAMADI.
+- U-ETDS bildirimi yoktur. Yönetmelik md. 40/6 (2018 metni) C3 ve K3 için kabulden en geç 6 saat içinde U-ETDS kaydı ister: DOĞRULANDI, güncel hâli DOĞRULANAMADI. Canlı engeli, `docs/test/saha-hizmet.md` E1.
+- Taşıma irsaliyesi yoktur (md. 39/1, 39/2). Canlı engeli, aynı rapor E2.
 - Fiyat hesabındaki birim ücretler işletmenin ayarıdır, program piyasa fiyatı önermez.
 - Pilot işletme denemesi yapılmadı.

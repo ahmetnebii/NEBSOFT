@@ -6,7 +6,6 @@ Program: `apps/peyzaj/`, ortak saha motoru `apps/saha-ortak/`. Durum: **kullanı
 
 | Konu | Etiket | Not |
 |---|---|---|
-| Biyosidal Yönetmelik Resmî Gazete künyesi | DOĞRULANAMADI | mevzuat.gov.tr metninde yayım tarih ve sayısı görünmedi. Metin okundu, künye yazılmadı. |
 | Ek-1 formunun saklama süresi | DOĞRULANAMADI | Yönetmelik gövdesinde süre bulunamadı. Program süre yazmaz, kayıt silinmez. |
 | Peyzaj ve park alanına bitki koruma ürünü kuralları | DOĞRULANAMADI | Yönetmelikte peyzaj, park, yeşil alan ifadesi yok. Kapsam ticari üretim yerleri. Program peyzaj işinde zorunluluk iddia etmez, il/ilçe tarım müdürlüğüne sorulmalı. |
 | Bakanlık elektronik bildirimi | DOĞRULANAMADI | Yönetmelik uygulama öncesi elektronik bildirim istiyor (md. 8/2-i). Sistemin arayüzü ve API'si doğrulanmadı. Program bildirim yapmaz, yalnız işletmenin elle işaretlediği alanı tutar ve "bildirildi" diye göstermez. |
@@ -15,6 +14,8 @@ Program: `apps/peyzaj/`, ortak saha motoru `apps/saha-ortak/`. Durum: **kullanı
 | Ürün fiyatı | Kullanıcı kararı | Katalogdaki fiyat örnektir. |
 
 ## Mevzuat
+
+Künye: RG 04.07.2019/30821 (DOĞRULANDI, mevzuat.gov.tr, 2026-10-31). Uygulama yerinde önceden duyuru (md. 21/4) programda alan olarak yok.
 
 | İddia | Etiket | Kaynak |
 |---|---|---|
