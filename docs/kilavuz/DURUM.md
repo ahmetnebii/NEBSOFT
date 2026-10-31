@@ -59,7 +59,7 @@ Tarih: 2026-10-31. Durum: üretici kuruldu, üç örnek çıktı, kullanıcı on
 6. `python scripts/kilavuz/sayfalar.py <klasör> indir/kilavuz/<id>.pdf <önek>` sayfaları görsele çevirir, hepsi okunur.
 7. `node site/tools/build-sites.js`, sonra `node server/test/kilavuz.test.js`.
 
-Demo verisi üretimde sabit tohumla oluşur, aynı örnekler gelir. Sahne `boy` ile uzatılır. Öğe yatayda taşıyorsa `en: 1500` verilir.
+Demo verisi üretimde sabit tohumla oluşur, aynı örnekler gelir. İşaretli öğe ekranın altındaysa pencere kendiliğinden uzar, `boy` yazmak gerekmez. Öğe yatayda taşıyorsa `en: 1500` verilir.
 
 ## Süre ve bölüştürme
 

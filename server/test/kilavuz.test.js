@@ -1,7 +1,7 @@
 // Kılavuz üreticisi: çizim, doğruluk denetimi, entegrasyon sınıflandırma, PDF okuma ve bağlantı kablolaması. Chrome ve MySQL gerekmez.
 const fs = require('fs'); const path = require('path'); const assert = require('assert');
 const ROOT = path.join(__dirname, '..', '..'); const K = path.join(ROOT, 'scripts', 'kilavuz');
-const { svg, yerlestir, okUcu } = require(path.join(K, 'cizim.js')); const D = require(path.join(K, 'denetim.js')); const O = require(path.join(K, 'ortak.js')); const { oku } = require(path.join(K, 'pdfoku.js')); const A = require(path.join(K, 'ayar.js'));
+const { svg, yerlestir, okUcu, ekranBoyu } = require(path.join(K, 'cizim.js')); const D = require(path.join(K, 'denetim.js')); const O = require(path.join(K, 'ortak.js')); const { oku } = require(path.join(K, 'pdfoku.js')); const A = require(path.join(K, 'ayar.js'));
 let n = 0; const ok = (m) => { n++; console.log('✓ ' + m); };
 
 // Çizim
@@ -10,6 +10,9 @@ const Y = yerlestir(M, 400, 300);
 Y.forEach((m) => { assert.ok(m.n.x >= 13 && m.n.x <= 387 && m.n.y >= 13 && m.n.y <= 287, 'işaret görüntüde kalır'); });
 assert.ok(Math.hypot(Y[0].n.x - Y[1].n.x, Y[0].n.y - Y[1].n.y) >= 26, 'işaretler üst üste binmez'); ok('İşaretler görüntü içinde kalır, birbirinin üstüne binmez');
 const u = okUcu({ x: 0, y: 212 }, M[2].kutu); assert.deepStrictEqual(u, { x: 300, y: 212 }); const s = svg(M.map((m, i) => ({ ...m, no: i + 4 })), 400, 300); assert.ok(s.includes('>4<') && s.includes('<polygon') && s.includes('viewBox="0 0 400 300"')); ok('Ok elementin kenarına iner, SVG numarayı taşır');
+
+// Altta kalan işaret: kapalı kartlarla başlayan listede ilk Entegre et düğmesi 760 px altına düşer, üretim durmamalı
+assert.strictEqual(ekranBoyu([{ y: 100, h: 40 }], 760), 760); assert.strictEqual(ekranBoyu([{ y: 100, h: 40 }, { y: 1250, h: 34 }], 760), 1332); assert.strictEqual(ekranBoyu([{ y: -200, h: 40 }, { y: 700, h: 40 }], 760), 988); assert.strictEqual(ekranBoyu([{ y: 9000, h: 40 }], 760), 2400); assert.strictEqual(ekranBoyu([], 760), 760); ok('Pencere işaretlere göre uzar, sığıyorsa değişmez, sınırı aşmaz');
 
 // Doğruluk denetimi
 const KK = { ne: 'Deneme **Yok Böyle Düğme** ile', moduller: [{ id: 'a', ne: '**Var**', alanlar: [['Olmayan alan', 'x']] }] };
