@@ -15,7 +15,7 @@ const { TUM } = require('./odeme-saglayici');
 const { route, err, valid, hesapRolu, canUseApp } = require('./routes');
 const { signToken, readToken } = require('./public');
 const { ayar, geriAdres, isletme, hataKapat, gorunum } = require('./eticaret-odeme');
-const TTL = () => Number(process.env.ETICARET_ODEME_TTL_MS) || 30 * 60e3;
+const TTL = require('./isletim').odemeMs;
 const BAG_SAAT = 7 * 24;
 const r2 = (n) => Math.round(Number(n) * 100) / 100;
 const gun = () => new Date(Date.now() + 3 * 3600e3).toISOString().slice(0, 10);
