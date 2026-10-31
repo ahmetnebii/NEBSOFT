@@ -53,6 +53,9 @@ const SITEHEAD = (sub, extra = '') => `<header class="hd mk"><div class="w">
   <nav class="nav" aria-label="Ana menü"><a href="/programlar">Programlar</a><a href="/paketler/">Paketler</a><a href="/araclar">Araçlar</a><a href="/fiyatlar/">Fiyatlar</a><a href="/rehber/">Rehber</a><a href="/#/sektorler">Sektörler</a><a href="/#/indir">Masaüstü &amp; Mobil</a><a href="/#/iletisim">İletişim</a></nav>
   <a class="btn g" href="/#/giris">Giriş yap</a><a class="btn p" href="/#/kayit">Ücretsiz başla ${I.arrow}</a>
 </div>${extra ? `<div class="subnav"><div class="w">${extra}</div></div>` : ''}</header>`;
+// Kılavuz bağlantısı: yalnız core/kilavuz.json'da kaydı olan programda görünür, PDF'in kendisi noindex'tir (docs/SEO-KURALLARI.md)
+const KLV = (() => { try { return JSON.parse(fs.readFileSync(path.join(__dirname, '..', '..', 'core', 'kilavuz.json'), 'utf8')); } catch (e) { return {}; } })();
+const kilavuz = (c) => (KLV[c.id] ? `<section class="s"><div class="w"><div class="cta" style="margin:0"><a class="btn" href="/indir/kilavuz/${c.id}.pdf" download="nebsoft-${c.id}-kullanim-kilavuzu.pdf">Kullanım kılavuzu (PDF)</a></div><p class="note">${KLV[c.id].sayfa} sayfa, ${(KLV[c.id].boyut / 1048576).toFixed(1).replace('.', ',')} MB. Üyelik gerekmez.</p></div></section>` : '');
 const SITEFOOT = () => `<footer class="ft"><div class="w">
   <div class="cols">
     <div><a class="logo" href="/"><img src="/assets/icons/icon-64.png" alt="" width="34" height="34"><span class="wm"><b>NEB</b><i>SOFT</i></span></a><p>Türkiye'deki işletmeler için bulut tabanlı yazılımlar ve pazaryeri entegrasyonları. Kurulum yok, taahhüt yok.</p><p><a href="${telHref}">${esc(CFG.phone)}</a><a href="mailto:${CFG.email}">${esc(CFG.email)}</a></p></div>
@@ -181,7 +184,7 @@ ${SITEHEAD(c.name, `<b>${esc(c.name)}</b><nav aria-label="Sayfa içi"><a href="#
   ${pkLink(c.id)}<p class="note">Kurulum ve veri aktarımı ücretsizdir. <a href="/fiyatlar/">Tüm programların fiyatlarını</a> karşılaştırın. Sorunuz mu var? <a href="${telHref}">${esc(CFG.phone)}</a></p>
 </div></section>
 
-${faqHtml(faq, `${kwTitle} hakkında merak edilenler`)}
+${faqHtml(faq, `${kwTitle} hakkında merak edilenler`)}${kilavuz(c)}
 
 ${rehber.length ? `<section class="s"><div class="w"><div class="sh"><span class="eyebrow">Rehber</span><h2>${esc(kwTitle)} seçerken okuyun</h2></div><div class="rel">${rehber.map((r) => `<a href="/rehber/${r.slug}/"><b>${esc(r.title)}</b><span>${esc(r.desc)}</span></a>`).join('')}</div></div></section>` : ''}
 

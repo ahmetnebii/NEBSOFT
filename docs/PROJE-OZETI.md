@@ -79,6 +79,7 @@ Yazma yolları:
 | Kurulum ve ayarlar, panele taşınan ayarlar | `server/cloud/kurulum.js`, `isletim.js`, `admin/panel-kurulum.js`, `docs/ADMIN-AYAR-DENETIMI.md` |
 | Kurulum | `DEPLOY.md`, klasör ayrımı `docs/KLASOR-YAPISI.md` |
 | Pazarlama | `docs/pazarlama/` |
+| PDF kullanım kılavuzu | `scripts/kilavuz/`, içerik `docs/kilavuz/<id>.js`, durum ve kullanım `docs/kilavuz/DURUM.md`, liste `core/kilavuz.json` |
 
 ## Komutlar
 

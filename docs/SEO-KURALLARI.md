@@ -115,6 +115,23 @@ Search Console gelince önceki grup izlenir: "Tarandı, dizine eklenmedi" payı 
 
 `noindex` sayfaları `robots.txt` ile kapatmayın: Google taramazsa `noindex` etiketini göremez ([Google, 2025-12-10](https://developers.google.com/search/docs/crawling-indexing/block-indexing)).
 
+## Kullanım kılavuzu PDF'leri
+
+Karar: PDF'ler herkese açık iner ama arama sonucuna girmez. `/indir/kilavuz/` altındaki yanıtlar `X-Robots-Tag: noindex` başlığı taşır (`server.js`).
+
+Gerekçe:
+
+- Kılavuzlarda roller, yedekleme ve entegrasyon gibi bölümler ortaktır, PDF'ler birbirine benzer. Dizine girerlerse kopya içerik gibi davranırlar.
+- Aramadan gelen ziyaretçinin inmesi gereken sayfa program sayfasıdır. PDF'te fiyat, deneme düğmesi ve site içi gezinme yoktur.
+- `rel=canonical` başlığı seçilmedi: Google bunu aynı içeriğin kopyaları için tanımlar, kılavuz program sayfasının kopyası değildir ([Google, 2026-07-10](https://developers.google.com/search/docs/crawling-indexing/consolidate-duplicate-urls)).
+- HTML olmayan dosyada `noindex` için yöntem yanıt başlığıdır ([Google, 2026-03-24](https://developers.google.com/search/docs/crawling-indexing/robots-meta-tag)).
+
+Kurallar:
+
+- `/indir/` yolunu `robots.txt` ile kapatmayın: Google taramazsa `noindex` başlığını göremez ([Google, 2025-12-10](https://developers.google.com/search/docs/crawling-indexing/block-indexing)).
+- PDF `sitemap.xml` dosyasına girmez.
+- Program sayfasındaki bağlantı üreticide tek yerdedir (`kilavuz()`, `site/tools/build-sites.js`), yalnız `core/kilavuz.json` kaydı olan programda görünür.
+
 ## Yapısal veri (JSON-LD)
 
 Şemadaki bilgi sayfada görünür olmalı, güncel olmalı, yanıltmamalı ([yapısal veri kuralları, 2026-07-10](https://developers.google.com/search/docs/appearance/structured-data/sd-policies)). Denetleyici SSS sorularını ve cevaplarını görünen metinde arar.

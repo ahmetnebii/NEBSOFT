@@ -8,13 +8,17 @@ const ROOT = path.join(__dirname, '..');
 const OUT = path.join(ROOT, 'yayin');
 // Çalışma anında gereken her şey burada: yeni bir üst klasör eklenirse bu listeye de yazılmalı
 const DOSYALAR = ['server.js', 'package.json', 'package-lock.json', 'index.html', 'sw.js', 'robots.txt', 'sunucu.json', 'scripts/totp-sifirla.js'];
-const KLASORLER = ['admin', 'apps', 'assets', 'config', 'content', 'core', 'market', 'server', 'site'];
+const KLASORLER = ['admin', 'apps', 'assets', 'config', 'content', 'core', 'market', 'server', 'site', 'indir/kilavuz']; // kılavuz PDF'leri depoda yok, üretilir: node scripts/kilavuz/uret.js
 // Klasörlerin içinden atılanlar (kök klasöre göre)
 // site/src/site.config.js sunucu tarafından çalışma anında okunur, pakette kalır. Yasal metin şablonları ve markdown.js panelde kullanılır (server/cloud/kurulum.js, seo.js)
 const HARIC = [/^server\/test(\/|$)/, /^site\/src\/(?!site\.config\.js$|yasal(\/|$))/, /^site\/tools\/(?!markdown\.js$)/, /\.test\.js$/, /(^|\/)\.DS_Store$/, /^(?!site\/src\/yasal\/).*\.md$/];
 // Pakette bulunursa işlem durur: gizli dosya kaçmasın
 const YASAK = [/^data(\/|$)/, /^dosyalar(\/|$)/, /^\.git(\/|$)/, /^\.claude(\/|$)/, /^ic-araclar(\/|$)/, /^server\/test(\/|$)/, /\.jks$/, /\.pem$/, /secret\.key$/, /config\.enc$/, /^CLAUDE\.md$/i, /\.env/];
 
+// core/kilavuz.json'daki her kılavuzun PDF'i bulunmalı: yoksa sitedeki bağlantı kırık çıkar
+const klv = path.join(ROOT, 'core', 'kilavuz.json');
+const eksikPdf = fs.existsSync(klv) ? Object.keys(JSON.parse(fs.readFileSync(klv, 'utf8'))).filter((id) => !fs.existsSync(path.join(ROOT, 'indir', 'kilavuz', `${id}.pdf`))) : [];
+if (eksikPdf.length) { console.error(`DURDURULDU: kılavuz PDF'i yok: ${eksikPdf.join(', ')}. Önce: node scripts/kilavuz/uret.js ${eksikPdf.join(' ')}`); process.exit(1); }
 const yol = (x) => x.split(path.sep).join('/');
 const haric = (rel) => HARIC.some((r) => r.test(yol(rel)));
 function kopya(rel) {

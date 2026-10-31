@@ -1,7 +1,7 @@
 // iyzico Bağlantıyı dene: ödeme işlemleri ../iyzico.js ve ../eticaret-odeme.js içindedir, canlı kilidi ../isletim.js (panel veya IYZICO_CANLI) ile açılır.
-const isletim = require('../isletim');
 // Kaynak (okundu 30.10.2026): docs.iyzico.com/en/getting-started/preliminaries/authentication/hmacsha256-auth; BIN sorgusu ENTEGRASYON-RAPORU §3 (sahte anahtarla 1001 alındı, 27.10.2026).
 // Zararsız deneme: POST /payment/bin/check (para çekmez).
+const isletim = require('../isletim');
 const iyz = require('../iyzico');
 const { SaglayiciHata, istek, jsonBekle, durumHata, ozel } = require('./ortak');
 const AD = 'iyzico'; const YOL = '/payment/bin/check';

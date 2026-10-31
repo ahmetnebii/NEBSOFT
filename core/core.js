@@ -922,6 +922,8 @@
     if (Date.now() - (modulSon[m] || 0) < 60e3) return; modulSon[m] = Date.now();
     fetch('/api/olay', { method: 'POST', headers: { 'Content-Type': 'application/json' }, keepalive: true, body: JSON.stringify({ tur: 'modul', program: APP_ID, modul: String(m).toLowerCase().slice(0, 40) }) }).catch(() => {});
   };
+  // Kullanım kılavuzu: core/kilavuz.json'da kaydı olan programın PDF adresi, yoksa null. Bağlantı yalnız kayıt varsa görünür.
+  let klv = null; const kilavuzAdres = (id) => { if (!/^https?:$/.test(location.protocol)) return Promise.resolve(null); klv = klv || fetch('/core/kilavuz.json').then((r) => (r.ok ? r.json() : {})).catch(() => ({})); return klv.then((L) => (L[id] ? { url: `/indir/kilavuz/${id}.pdf`, ...L[id] } : null)); };
   function shell(opts) {
     const app = { opts, db: opts.db, route: null, param: null };
     NS.app = app;
@@ -1043,7 +1045,7 @@
           <aside class="ns-side" id="side">
             <div class="ns-brand"><a class="nv-brand-mark" href="#/" title="${esc(opts.name)}">${logoMark(opts.accent, 30)}</a><div class="nv-brand-t"><b>${esc(opts.name)}</b><small><span class="wm"><b>NEB</b><i>SOFT</i></span>${opts.tagline ? ` · ${esc(opts.tagline)}` : ''}</small></div><button class="nv-mini-btn" type="button" data-mini title="Menüyü daralt / genişlet" aria-label="Menüyü daralt"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="M9 4v16"/></svg></button></div>
             <nav class="ns-nav">${navHtml}</nav>
-            <div class="ns-side-foot">
+            <div class="ns-side-foot"><a class="btn ghost block" style="justify-content:flex-start" id="nskl" target="_blank" rel="noopener" hidden>${icon('file')} Kullanım kılavuzu (PDF)</a>
               ${/[?&]demo=1/.test(location.search) ? `<a class="btn ghost block" style="justify-content:flex-start" href="${opts.backUrl || '../../index.html'}" target="_top">${icon('store')} NEBSOFT Pazar</a>`
                 : `<a class="btn ghost block" style="justify-content:flex-start" href="${CLOUD ? '/' : opts.backUrl || '../../index.html'}#/programlarim" target="_top">${icon('grid')} Programlarım</a><a class="btn ghost block" style="justify-content:flex-start" href="${CLOUD ? '/' : opts.backUrl || '../../index.html'}#/hesabim" target="_top">${icon('user')} Hesabım</a>`}
             </div>
@@ -1063,6 +1065,7 @@
           </main>
           <nav class="nv-tabbar" id="nvtab" aria-label="Hızlı menü"></nav>
         </div>`;
+      kilavuzAdres(opts.id).then((k) => { const a = $('#nskl'); if (a && k) { a.href = k.url; a.hidden = false; } });
       if (app._bound) return;
       app._bound = true;
       on(document.body, 'click', '[data-theme]', toggleTheme);
@@ -1345,7 +1348,7 @@
   window.NS = {
     api, dosya, esc, $, $$, on, uid, rand, pick, sum, groupBy, clamp, money, num, iso, today, addDays, daysBetween, date, dateLong, time, dt, ago, pad,
     MONTHS, DAYS, NAMES, phone, sampleGender, initials, logoMark, shade, setFavicon, slug, trLower, match, icon, ICONS, DB, toast, modal, confirm, prompt, formModal, fieldsHtml, readForm, validate,
-    table, chart, compact, dailySeries, PALETTE, csv, readFile, parseCsv, printHtml, beep, barcodeSvg, qrSvg, shell, pageHead, kpi, badge, searchBox, crud,
+    table, chart, compact, dailySeries, PALETTE, csv, readFile, parseCsv, printHtml, beep, barcodeSvg, qrSvg, shell, kilavuzAdres, pageHead, kpi, badge, searchBox, crud,
     settingsPage, smsLog, smsText, smsTone, smsBatch, portalShare, approve, pinKontrol, toggleTheme, getTheme, setTheme, themeCards, THEMES, skeleton: (n = 4) => `<div class="nv-skel">${'<div class="skel" style="height:18px;width:38%"></div><div class="grid g4">' + '<div class="skel" style="height:84px"></div>'.repeat(4) + '</div>' + '<div class="skel" style="height:44px"></div>'.repeat(n)}</div>`, currentUser: null, cloud: CLOUD, merge3, pub: PUB, tenant: TENANT, payInfo, portalCode,
   };
 })();

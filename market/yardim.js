@@ -22,7 +22,8 @@
       ${p.gorevler.map((g) => `<div class="card pad mb"><h2 class="mb">${esc(g.b)}</h2><ol style="margin:0;padding-left:20px">${g.a.map((x) => `<li>${md(x)}</li>`).join('')}</ol></div>`).join('')}
       <div class="card pad mb"><b>${icon('info')} İpucu</b><p class="mt">${esc(p.ipucu)}</p></div>
       <h2 class="mb">Sık sorulanlar</h2><div class="faq mb">${p.sss.map(([q, a]) => `<details><summary>${esc(q)}</summary><p>${md(a)}</p></details>`).join('')}</div>
-      <div class="card pad center"><p class="muted">Aradığınızı bulamadınız mı?</p><div class="row mt" style="justify-content:center"><a class="btn" href="apps/${esc(p.id)}/index.html?demo=1" target="_blank" rel="noopener">${icon('play')} Canlı demo</a><a class="btn primary" href="#/iletisim">${icon('message')} Bize ulaşın</a></div></div>`;
+      <div class="card pad center"><p class="muted">Aradığınızı bulamadınız mı?</p><div class="row mt" style="justify-content:center"><a class="btn" href="apps/${esc(p.id)}/index.html?demo=1" target="_blank" rel="noopener">${icon('play')} Canlı demo</a><a class="btn" id="ykl" target="_blank" rel="noopener" hidden>${icon('file')} Kullanım kılavuzu (PDF)</a><a class="btn primary" href="#/iletisim">${icon('message')} Bize ulaşın</a></div></div>`;
+    if (window.NS && window.NS.kilavuzAdres) window.NS.kilavuzAdres(p.id).then((k) => { const a = el.querySelector('#ykl'); if (a && k) { a.href = k.url; a.hidden = false; } });
   }
   window.NB_YARDIM = { sayfa };
   // Güven bölümü: pid yoksa genel kayıtlar. Veri yoksa veya istek başarısızsa sayfa aynen kalır.
