@@ -7,7 +7,7 @@ const crypto = require('crypto');
 const log = require('./log');
 const analitik = require('./analitik');
 const { R, err } = require('./routes');
-require('./public'); require('./totp-api'); require('./seo'); require('./odeme'); require('./eticaret-odeme'); require('./analitik-api'); require('./deneme'); require('./guven'); require('./vitrin'); require('./teklif'); require('./katalog-api'); const dosya = require('./dosya'); // müşteriye açık sayfaların, ödemenin, denemenin, güven bölümünün ve analitiğin uç noktaları (R listesine eklenir)
+require('./public'); require('./totp-api'); require('./seo'); require('./odeme'); require('./eticaret-odeme'); require('./analitik-api'); require('./deneme'); require('./guven'); require('./vitrin'); require('./kurulum'); require('./teklif'); require('./katalog-api'); const dosya = require('./dosya'); // müşteriye açık sayfaların, ödemenin, denemenin, güven bölümünün ve analitiğin uç noktaları (R listesine eklenir)
 
 // Günlük ve sayaçlara gerçek adres değil kalıp yazılır: /api/public/:slug/... (adresteki belirteçler kayda girmez)
 const kalip = (re) => re.source.replace(/\(\?<(\w+)>\[\^\/\]\+\)/g, ':$1').replace(/\\/g, '').replace(/^\^|\$$/g, '');
@@ -64,6 +64,7 @@ async function init() {
   if (db.ready()) { try { const p = await require('./pin').gecis(db); const b = await require('./belge').gecis(db); if (p || b) log.uygulama.bilgi('sifreleme.belge', { mesaj: `${p} belgede PIN özetlendi, ${b} kayıt şifrelendi` }); } catch (e) { log.uygulama.hata('sifreleme.belge', { mesaj: e.message }); } }
   if (db.ready()) { try { const n = await require('./secrets').migrate(db); if (n) log.uygulama.bilgi('sifreleme.gecis', { mesaj: `Entegrasyon kimlik bilgileri şifrelendi: ${n} kayıt` }); } catch (e) { log.uygulama.hata('sifreleme.gecis', { mesaj: 'Kimlik bilgisi şifreleme geçişi', hata: e }); } }
   if (db.ready()) dosya.zamanla();
+  if (db.ready()) await require('./routes').syncCatalog(true); // panel ayarları ilk istekten önce yüklenir
   let hasAdmin = false; if (db.ready()) hasAdmin = !!(await db.one("SELECT id FROM users WHERE role='superadmin' LIMIT 1"));
   // Kurulum anahtarı bilerek düz yazılır: DEPLOY.md yöneticiyi bu satıra yönlendirir ve bir kez kullanılır (maskelenirse kurulum yapılamaz)
   if (!hasAdmin) { const t = cfg.setupToken(true); console.log(`\n  Kurulum gerekli → /admin/  ·  Kurulum anahtarı: ${t}\n  (anahtar ayrıca ${cfg.DATA}/setup-token.txt dosyasında)\n`); }

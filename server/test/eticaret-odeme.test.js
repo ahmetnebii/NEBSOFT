@@ -72,6 +72,7 @@ async function e2e() {
     r = await V('POST', `${P}/view`, {}); assert.deepEqual(r.j.data._settings.kartOdeme, { test: true }); assert.ok(!r.text.includes(SECRET) && !r.text.includes(KEY)); ok('vitrin yalnız kart açık ve test bilgisini görür, anahtar gitmez');
     const g0 = await C('GET', '/api/data/entegrasyon'); assert.ok(!g0.text.includes(SECRET) && !g0.text.includes(KEY)); ok('anahtar panele de düz gönderilmez');
     await yaz(C, 'entegrasyon', { cfg: { payment: { provider: 'iyzico', apiKey: g0.j.data.cfg.payment.apiKey, secret: g0.j.data.cfg.payment.secret, sandbox: false } } }); r = await V('POST', `${P}/view`, {}); assert.equal(r.j.data._settings.kartOdeme, undefined); ok('canlı mod IYZICO_CANLI olmadan açılmaz');
+    r = await A('PUT', '/api/admin/kurulum/iyzico', { acik: true, testOnay: true }); assert.equal(r.j.ok, true, r.text); r = await V('POST', `${P}/view`, {}); assert.deepEqual(r.j.data._settings.kartOdeme, { test: false }); await A('PUT', '/api/admin/kurulum/iyzico', { acik: false }); r = await V('POST', `${P}/view`, {}); assert.equal(r.j.data._settings.kartOdeme, undefined); ok('süper yönetici panelden açınca canlı kart görünür, kapatınca kapanır');
     await yaz(C, 'entegrasyon', { cfg: { payment: { provider: 'iyzico', apiKey: g0.j.data.cfg.payment.apiKey, secret: g0.j.data.cfg.payment.secret, sandbox: true } } });
 
     r = await sip('sip00001'); assert.equal(r.status, 200, r.text); const tk = r.j.token; assert.ok(tk); const q = async (sql, p) => (await root.query(`USE ${DBN}`), (await root.execute(sql, p))[0]);

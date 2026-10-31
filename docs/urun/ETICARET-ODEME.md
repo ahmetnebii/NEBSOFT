@@ -15,7 +15,7 @@ Durum: kod tamam, sahte iyzico sunucusuyla test edildi. Gerçek iyzico test hesa
 | Aynı gün tam iade `cancel`, sonrası `refund` | DOĞRULANAMADI | Test hesabında denenir |
 | Mesafeli satış, ön bilgilendirme, KVKK metni: kimlik numarasının iyzico'ya aktarımı | Avukat | Metinler avukat onaylı değil |
 
-Canlı kilit: sunucuda `IYZICO_CANLI=1` yoksa işletme test modunu kapatsa bile kart seçeneği görünmez.
+Canlı kilit: süper yönetici Kurulum ve ayarlar ekranından test denemesini onaylayıp açmadıkça veya sunucuda `IYZICO_CANLI=1` verilmedikçe işletme test modunu kapatsa bile kart seçeneği görünmez. İşlem denetim kaydına yazılır.
 
 ## Kaynak
 

@@ -32,6 +32,8 @@ Görsel ve PDF araçları ile yedi oturumun dalı `devir/hepsi`e birleşti, çek
 
 ## Kullanıcıdan beklenenler
 
+Güncel liste panelde: `/admin/#/kurulum`. Ayrıntı ve panele alınmayanlar: `docs/ADMIN-AYAR-DENETIMI.md`.
+
 - `www.nebsoftapp.com` için HTTPS kurulumu. Gelmeden `sunucu.json` HTTP adresi kalkmaz, exe ve apk derlenmez.
 - Şirket unvanı, MERSİS, adres, KEP, gerçek destek telefonu ve saatleri.
 - `NEBSOFT_SECRET` belirleme ve ayrı yedekleme. Kaybolursa şifreli veri geri gelmez.

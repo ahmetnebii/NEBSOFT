@@ -9,12 +9,13 @@ const path = require('path');
 const crypto = require('crypto');
 const db = require('./db');
 const sec = require('./security');
-const { R, site, valid, J, syncCatalog } = require('./routes');
+const { R, site, setting, setSetting, valid, J, syncCatalog } = require('./routes');
 const cat = require('./catalog');
 const paket = require('./paket');
 const bizsite = require('../../core/bizsite');
 const analitik = require('./analitik');
 const tlf = (n) => new Intl.NumberFormat('tr-TR').format(n);
+const { md } = require('../../site/tools/markdown');
 
 const PLACEHOLDER = 'https://www.domain.com'; // eski derlemeler için; site.config.js artık gerçek adresi yazıyor
 const ROOT = path.join(__dirname, '..', '..');
@@ -37,12 +38,14 @@ const PAGES = {
 };
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
-let cache = { at: 0, s: null };
+let cache = { at: 0, s: null }; const yasalAra = new Map();
 async function settings() {
   if (!db.ready()) return {};
-  if (Date.now() - cache.at > 60e3) { try { cache = { at: Date.now(), s: await site() }; } catch (e) { cache.at = Date.now(); } }
+  if (Date.now() - cache.at > 60e3) { try { cache = { at: Date.now(), s: { ...(await site()), sirket: await setting('sirket', {}) } }; } catch (e) { cache.at = Date.now(); } }
   return cache.s || {};
 }
+// Panelde kayıt olunca hemen geçerli olsun (yeniden başlatma ve 1 dakika bekleme gerekmez)
+const tazele = () => { cache = { at: 0, s: null }; yasalAra.clear(); };
 // Sitenin kök adresi: panel ayarı; yoksa isteğin geldiği alan adı (yalnızca geçerli biçimdeyse)
 async function base(req) {
   const s = await settings();
@@ -60,13 +63,46 @@ const WA_NO = /^[1-9]\d{10,14}$/;
 const WA_CSS = '<style>.ns-wa{position:fixed;right:16px;bottom:16px;z-index:40;display:inline-flex;align-items:center;gap:8px;height:48px;padding:0 16px;border-radius:24px;background:#0b7a5e;color:#fff;font:600 14px/1 system-ui,sans-serif;text-decoration:none;box-shadow:0 6px 18px rgba(0,0,0,.28)}.ns-wa svg{width:22px;height:22px;flex:none}.ns-wa:hover{background:#086650}.ns-wa:focus-visible{outline:3px solid #fff;outline-offset:2px;box-shadow:0 0 0 6px #0b7a5e}body:has(.nsd) .ns-wa{right:20px;bottom:90px}@media(max-width:960px){.ns-wa{width:48px;padding:0;justify-content:center;bottom:calc(12px + env(safe-area-inset-bottom,0px))}body:has(.nsd) .ns-wa{right:25px;bottom:calc(90px + env(safe-area-inset-bottom,0px))}.ns-wa span{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)}.sticky-cta~.ns-wa{bottom:calc(74px + env(safe-area-inset-bottom,0px))}body{padding-bottom:72px}body:has(.sticky-cta){padding-bottom:130px}}@media print{.ns-wa{display:none}}</style>';
 // Pazar yeri sayfası gövdeyi yeniden çizer: düğme silinirse geri eklenir, biçim bu yüzden başlıktadır. Sağ altta destek düğmesi (.nsd) varsa onun üstünde durur.
 const waDugme = (no) => `<a class="ns-wa" href="https://wa.me/${no}" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 11.5a8.4 8.4 0 0 1-12.3 7.4L3 21l2.1-5.7A8.4 8.4 0 1 1 21 11.5z"/></svg><span>WhatsApp ile yazın</span></a><script>(function(){var w=document.querySelector('.ns-wa');new MutationObserver(function(){if(!document.body.contains(w))document.body.appendChild(w);}).observe(document.body,{childList:true});})();</script>`;
+// Örnek iletişim bilgisinin izini siler. Metin içinde kalan değer destek bölümüne yönlendirilir, sayfa bozulmaz.
+const reKac = (x) => x.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+function iletisimSil(text, deger, gorunen, sema) {
+  let t = text.replace(new RegExp(`<a\\b[^>]*href="${reKac(sema + deger)}"[^>]*>[\\s\\S]*?</a>`, 'g'), '');
+  if (sema === 'tel:') return t.replace(/,"contactPoint":\{[^}]*"telephone":"[^"]*"[^}]*\}/g, '').split(gorunen).join('destek talebi');
+  t = t.replace(new RegExp(`"email":"${reKac(deger)}",`, 'g'), ''); return t.split(`${gorunen} adresine`).join('Hesabım &gt; Destek bölümüne').split(gorunen).join('destek talebi');
+}
+// Şirket kimliği: yalnız girilen alanlar alt bilgiye yazılır, eksik alan için değer uydurulmaz
+function kimlikYaz(text, s) {
+  const k = s.sirket || {}; const p = text.lastIndexOf('</footer>'); if (p < 0) return text;
+  const satir = [k.unvan, k.mersis && `MERSİS ${k.mersis}`, (k.vergiDairesi || k.vergiNo) && `Vergi: ${[k.vergiDairesi, k.vergiNo].filter(Boolean).join(' ')}`, s.address, k.kep && `KEP ${k.kep}`, k.destekSaat && `Destek: ${k.destekSaat}`].filter(Boolean).map(esc).join(' · ');
+  return satir ? `${text.slice(0, p)}<p data-kimlik style="margin:10px 0 0;font-size:13px">${satir}</p>${text.slice(p)}` : text;
+}
+// Onaylanmış yasal metin: panelde kaydedilip avukat onayı işaretlenen metin üretilmiş örnek metnin yerine geçer ve sayfa dizine açılır
+async function yasalKayit(ad) {
+  if (yasalAra.has(ad)) return yasalAra.get(ad);
+  const r = await setting(`yasal:${ad}`, null).catch(() => null); yasalAra.set(ad, r); return r;
+}
+async function yasalYaz(text, req) {
+  const m = /^\/(kvkk|gizlilik|mesafeli-satis|iade|cerez)\/(?:index\.html)?(?:\?|$)/.exec(String(req.url || '')); if (!m || !db.ready()) return text;
+  const r = await yasalKayit(m[1]); if (!r || !r.onay || !r.metin) return text;
+  const a = text.indexOf('<div class="doc">'); const b = text.search(/<\/div>\r?\n<\/div><\/section>/); if (a < 0 || b < a) return text;
+  const html = md(r.metin) + (r.at ? `<p class="note">Son güncelleme: ${esc(new Date(r.at).toLocaleDateString('tr-TR', { timeZone: 'Europe/Istanbul' }))}</p>` : '');
+  return (text.slice(0, a) + '<div class="doc">' + html + text.slice(b)).replace(/<meta name="robots" content="noindex[^"]*">/, '<meta name="robots" content="index,follow">');
+}
 async function rewrite(text, req) {
   const s = await settings();
   // Google Search Console doğrulama etiketi (panel: Site Ayarları). Biçimi kayıtta denetlenir, burada yine de yalnız geçerli kod basılır
   if (/^[A-Za-z0-9_-]{10,100}$/.test(String(s.googleVerify || ''))) text = text.replace('</head>', `<meta name="google-site-verification" content="${s.googleVerify}">\n</head>`);
   if (text.includes('www.domain.com')) { const B = await base(req); text = text.split(PLACEHOLDER).join(B).split('www.domain.com').join(B.replace(/^https?:\/\//, '')); }
+  const kok = String(s.siteUrl || '').replace(/\/$/, ''); if (/^https?:\/\/[a-z0-9.-]+(:\d+)?$/i.test(kok) && kok !== BUILT.domain) { const h = (x) => x.replace(/^https?:\/\//, ''); text = text.split(BUILT.domain).join(kok).split(h(BUILT.domain)).join(h(kok)); }
+  // Telefon ve e-posta girilmemişse derlemedeki örnek değer gösterilmez: bağlantı, şema alanı ve düğme çıkarılır (yalnız bulut modunda)
   if (s.phone && s.phone !== BUILT.phone) text = text.split(telOf(BUILT.phone)).join(telOf(s.phone)).split(BUILT.phone).join(s.phone);
+  else if (s.phone === '') text = iletisimSil(text, telOf(BUILT.phone), BUILT.phone, 'tel:');
   if (s.email && s.email !== BUILT.email) text = text.split(BUILT.email).join(s.email);
+  else if (s.email === '') text = iletisimSil(text, BUILT.email, BUILT.email, 'mailto:');
+  if (s.trialDays && Number(s.trialDays) !== BUILT.trialDays) text = text.split(`${BUILT.trialDays} gün ücretsiz`).join(`${Number(s.trialDays)} gün ücretsiz`);
+  if (s.phone || s.email) text = text.replace('</head>', () => `<meta name="ns-iletisim" data-tel="${esc(s.phone)}" data-eposta="${esc(s.email)}">
+</head>`); // destek penceresi site sayfalarında buradan okur
+  text = await yasalYaz(text, req); text = kimlikYaz(text, s);
   if (WA_NO.test(String(s.whatsapp || ''))) { const b = text.lastIndexOf('</body>'); if (b > -1) text = (text.slice(0, b) + waDugme(s.whatsapp) + text.slice(b)).replace('</head>', () => `${WA_CSS}</head>`); }
   // Yönetim panelinde değişen fiyatlar
   if (text.includes('data-p="')) { try { await syncCatalog(); } catch (e) { /* yok */ } const ov = cat.overrides(); text = text.replace(/data-p="([a-z]+):(\d)">[^<]*</g, (m, id, i) => (ov[id] && ov[id].prices ? `data-p="${id}:${i}">${tlf(ov[id].prices[i])}<` : m));
@@ -97,7 +133,7 @@ async function sitemap(req) {
   const B = await base(req);
   const file = path.join(ROOT, 'site', 'sitemap.xml');
   let xml = fs.existsSync(file) ? fs.readFileSync(file, 'utf8') : '<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n</urlset>\n';
-  xml = xml.split(PLACEHOLDER).join(B);
+  xml = xml.split(PLACEHOLDER).join(B).split(BUILT.domain).join(B);
   const pts = await publicTenants(); const seen = new Set(pts.map((t) => t.slug));
   const sites = await db.q("SELECT t.slug, b.updated FROM biz_sites b JOIN tenants t ON t.id=b.tenant_id JOIN licenses l ON l.tenant_id=t.id AND l.product='eklenti-web' AND l.status IN ('aktif','deneme') AND l.end>UTC_TIMESTAMP() WHERE b.published=1 AND t.status='active'").catch(() => []);
   sites.forEach((x) => { if (!seen.has(x.slug)) { seen.add(x.slug); pts.push({ slug: x.slug, updated: x.updated }); } });
@@ -122,7 +158,7 @@ async function indexnowKey() {
 }
 async function pingIndexNow(req, urls) {
   const B = await base(req); const key = await indexnowKey();
-  if (!/^https:\/\//.test(B) || B === PLACEHOLDER) return { ok: false, error: 'Önce Site Ayarları → Site adresi alanına https:// ile başlayan alan adınızı girin' };
+  if (!/^https:\/\//.test(B) || B === PLACEHOLDER) return { ok: false, error: 'Önce Kurulum ve ayarlar ekranında https:// ile başlayan site adresinizi girin' };
   const list = urls && urls.length ? urls : [...(await sitemap(req)).matchAll(/<loc>([^<]+)<\/loc>/g)].map((m) => m[1]);
   const res = await fetch('https://api.indexnow.org/indexnow', { method: 'POST', headers: { 'Content-Type': 'application/json; charset=utf-8' }, body: JSON.stringify({ host: new URL(B).host, key, keyLocation: `${B}/${key}.txt`, urlList: list.slice(0, 10000) }), signal: AbortSignal.timeout(15000) });
   return { ok: res.status < 300, status: res.status, count: list.length };
@@ -222,7 +258,7 @@ a.c:hover{border-color:var(--a)}a.c span{color:var(--a)}.k{display:flex;flex-wra
 }
 
 // Yönetim: arama motorlarına bildir
-R.push({ method: 'POST', re: /^\/api\/admin\/seo\/ping$/, opt: { auth: 'admin', cloudOnly: true, limit: ['seo', 10, 3600e3] }, fn: async (c) => pingIndexNow(c.req) });
+R.push({ method: 'POST', re: /^\/api\/admin\/seo\/ping$/, opt: { auth: 'admin', cloudOnly: true, limit: ['seo', 10, 3600e3] }, fn: async (c) => { const r = await pingIndexNow(c.req); if (r.ok) await setSetting('indexnow_son', { at: new Date().toISOString(), n: r.count }); return r; } });
 R.push({ method: 'GET', re: /^\/api\/admin\/seo$/, opt: { auth: 'admin', cloudOnly: true }, fn: async (c) => ({ ok: true, base: await base(c.req), tenants: (await publicTenants()).length, key: await indexnowKey() }) });
 
 // Web sitem → arama hazırlığı: yayındaki sayfa gerçekten üretilip okunur; sonuç tahmin değildir.
@@ -247,4 +283,4 @@ R.push({ method: 'GET', re: /^\/api\/websitem\/hazirlik$/, opt: { auth: 'user', 
   return out;
 } });
 
-module.exports = { base, rewrite, sitemap, robots, indexnowKey, pingIndexNow, tenantPage, tenantService, tenantSitemap, tenantUrls, domainSite, SITE_CSP, publicTenants, PAGES, PLACEHOLDER };
+module.exports = { tazele, domainProbe, base, rewrite, sitemap, robots, indexnowKey, pingIndexNow, tenantPage, tenantService, tenantSitemap, tenantUrls, domainSite, SITE_CSP, publicTenants, PAGES, PLACEHOLDER };

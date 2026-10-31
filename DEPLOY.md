@@ -46,7 +46,7 @@ sudo -u nebsoft mkdir -p /opt/nebsoft/data && sudo chmod 700 /opt/nebsoft/data
 | `NEBSOFT_SECRET` | 64 karakter rastgele | Şifreleme ana anahtarı. Üretmek için: `openssl rand -hex 32`. **Kaybetmeyin ve değiştirmeyin**, aksi halde kayıtlı DB ayarı çözülemez |
 | `NEBSOFT_DATA` | `/opt/nebsoft/data` | Şifreli ayar, kurulum anahtarı (kod klasörünün dışında tutun) |
 | `NEBSOFT_DOSYALAR` | `/opt/nebsoft/data/dosyalar` | Yüklenen fotoğrafların klasörü. Verilmezse `NEBSOFT_DATA/dosyalar`. Kod klasörünün dışında olmalı; büyük bir diske alınacaksa burası değiştirilir |
-| `NEBSOFT_DOSYA_KOTA_MB` | `2048` | İşletme başına fotoğraf alanı (varsayılan 2 GB) |
+| `NEBSOFT_DOSYA_KOTA_MB` | `2048` | İşletme başına fotoğraf alanı (varsayılan 2 GB). Panelden de ayarlanır, bu değişken verilirse önceliklidir |
 | `DB_POOL` | `10` | MySQL bağlantı havuzu boyutu |
 
 `/etc/nebsoft.env` dosyasını oluşturun ve `chmod 600` yapın:
@@ -142,9 +142,11 @@ Bu noktadan sonra tüm uygulamalar, satış sitesi ve müşteri sayfaları bu My
 
 ## 8. Satışa açmadan önce (yönetim paneli)
 
-- **Site Ayarları:**
-  - **Site adresi** `https://www.alanadiniz.com` olarak girilmeli. Tanıtım sitelerindeki adresler, sitemap ve kanonik linkler buna göre üretilir.
-  - Telefon, e-posta ve adres girilmeli.
+Hepsi **Kurulum ve ayarlar** ekranındadır (`/admin/#/kurulum`): şirket kimliği, iletişim, site adresi, Search Console, fiyat ve indirim, yasal metin onayı, ödeme, yapılacaklar. Her satır Tamam veya Eksik görünür. Liste: `docs/ADMIN-AYAR-DENETIMI.md`.
+
+- **Kurulum ve ayarlar:**
+  - **Site adresi** `https://www.alanadiniz.com` olarak girilmeli. Sitedeki adresler, sitemap ve kanonik linkler buna göre yazılır, yeniden derleme gerekmez.
+  - Telefon, e-posta ve adres girilmeli. Girilmeyen bilgi sitede görünmez.
   - Deneme süresi 7 gün, tavsiye ödülü 30 gün.
 - **Banka Hesapları:**
   - Havale için hesap sahibinin **ad soyad / unvan** bilgisini, banka adını ve **IBAN**'ı girin. IBAN kontrol hanesi doğrulanır.
@@ -152,9 +154,9 @@ Bu noktadan sonra tüm uygulamalar, satış sitesi ve müşteri sayfaları bu My
 - **Kuponlar** (isteğe bağlı) ve **Yöneticiler**: personeliniz için ayrı hesaplar açın, ortak şifre kullanmayın.
 - **Arama motorları:**
   - Ayarlar sayfasındaki **"Arama motorlarına bildir"** düğmesine basın (IndexNow: Bing, Yandex vb.).
-  - Google Search Console'da HTML etiketi yöntemini seçin, kodu **Site Ayarları → Google Search Console doğrulama kodu** alanına yapıştırıp kaydedin, sonra `https://www.alanadiniz.com/sitemap.xml` adresini bir kez ekleyin.
+  - Google Search Console'da HTML etiketi yöntemini seçin, kodu **Kurulum ve ayarlar → Search Console** alanına yapıştırıp kaydedin, sonra `https://www.alanadiniz.com/sitemap.xml` adresini bir kez ekleyin.
   - Yeni sayfa kuralları: `docs/SEO-KURALLARI.md`. Metin değişince `node site/tools/build-sites.js`, görsel değişince önce `node site/tools/kucult.js` çalıştırılır.
-- Yasal metinler (KVKK, mesafeli satış, iade) **örnek şablondur**. Yayından önce hukukçunuza onaylatın.
+- Yasal metinler (KVKK, mesafeli satış, iade) **örnek şablondur**. Kurulum ekranında metni açıp kalan alanları doldurun; avukat onayından sonra "Avukat onayladı, yayınla" ile sayfaya yazılır.
 
 ### Satış akışı
 

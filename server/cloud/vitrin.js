@@ -1,6 +1,6 @@
 // Güven ve dönüşüm sayfalarının sunucu tarafı: bayi başvurusu, veri taşıma talebi, öneri kutusu, sistem durumu ve bakım kayıtları.
 //  • Herkese açık yazma uçları: IP ve genel hız sınırı, CSRF başlığı, tuzak alan, en kısa doldurma süresi, bağlantı sınırı, KVKK onayı zorunlu. Tuzak alan dolarsa da hata döner: gönderilmeyen şey "alındı" görünmez.
-//  • Komisyon oranı config/bayi.json dosyasındadır; boşsa dışarı hiç verilmez. Kurulum hizmeti fiyatı yalnız config/destek-paketleri.json içinde tanımlıysa verilir.
+//  • Komisyon oranı panelden (settings: 'bayi_komisyon') gelir, kayıt yoksa config/bayi.json okunur; boşsa dışarı hiç verilmez. Kurulum hizmeti fiyatı yalnız config/destek-paketleri.json içinde tanımlıysa verilir.
 //  • Sistem durumu gerçek ölçümdür: sabit "her şey yolunda" yoktur, ölçülemeyen bileşen "bilinmiyor" döner.
 //    Dışarı yalnız durum sözcüğü ve veritabanı yanıt süresi çıkar; sürüm, adres, veritabanı adı, hata metni ve istek sayısı çıkmaz.
 const fs = require('fs');
@@ -20,7 +20,8 @@ const pub = (method, re, opt, fn) => R.push({ method, re, opt, fn }); // catalog
 // ---------- Ayar dosyaları ----------
 const BAYI_DOSYA = path.join(__dirname, '..', '..', 'config', 'bayi.json');
 let bayiC = null; let bayiM = 0;
-function bayiAyar() { try { const m = fs.statSync(BAYI_DOSYA).mtimeMs; if (!bayiC || m !== bayiM) { bayiC = JSON.parse(fs.readFileSync(BAYI_DOSYA, 'utf8')); bayiM = m; } return bayiC; } catch (e) { return {}; } }
+let bayiPanel = null; const bayiPanelAta = (c) => { bayiPanel = c && c.komisyon ? c : null; };
+function bayiAyar() { if (bayiPanel) return bayiPanel; try { const m = fs.statSync(BAYI_DOSYA).mtimeMs; if (!bayiC || m !== bayiM) { bayiC = JSON.parse(fs.readFileSync(BAYI_DOSYA, 'utf8')); bayiM = m; } return bayiC; } catch (e) { return {}; } }
 // Boş veya geçersiz oran yok sayılır: sayfada oran satırı hiç görünmez
 function komisyon(c = bayiAyar()) { const k = (c && c.komisyon) || {}; const y = k.yuzde; if (typeof y !== 'number' || !(y > 0 && y <= 100)) return null; return { yuzde: y, aciklama: sec.clean(k.aciklama, 200) }; }
 function kurulum(c) { try { const k = (c || destek.load()).kurulumHizmeti; return k && typeof k.fiyat === 'number' && k.fiyat > 0 ? { ad: sec.clean(k.ad, 80) || 'Kurulum hizmeti', fiyat: k.fiyat } : null; } catch (e) { return null; } }
@@ -169,4 +170,4 @@ pub('GET', /^\/api\/vitrin$/, { auth: 'none', db: false, limit: ['vitrin', 120, 
   return out;
 });
 
-module.exports = { komisyon, kurulum, spamDenetle, oneriOzet, bakimOku, vtOlc, istekOlc, genelDurum, durum, durumTemizle };
+module.exports = { bayiPanelAta, bayiAyar, komisyon, kurulum, spamDenetle, oneriOzet, bakimOku, vtOlc, istekOlc, genelDurum, durum, durumTemizle };

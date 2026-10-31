@@ -1,11 +1,11 @@
-// Destek paketleri ve SLA: paketler config/destek-paketleri.json dosyasından gelir, kodda sabit değildir.
+// Destek paketleri ve SLA: paketler config/destek-paketleri.json dosyasından gelir, kodda sabit değildir. Panelde kaydedilen ayar (settings: 'fiyat_destek') dosyanın önüne geçer.
 // Süreler Türkiye saatine (UTC+3) göre yalnızca çalışma saatlerinde akar; talep açılırken sabitlenir, paket değişse de eski talep etkilenmez.
 const fs = require('fs');
 const path = require('path');
 
 const FILE = path.join(__dirname, '..', '..', 'config', 'destek-paketleri.json');
 const TR = 3 * 3600e3; // Türkiye yaz-kış saati uygulamıyor
-let cache = null; let mtime = 0;
+let cache = null; let mtime = 0; let panel = null;
 
 function check(c) {
   if (!c || !c.paketler || !c.takvimler || !c.paketler[c.varsayilan]) throw new Error('destek-paketleri.json: paketler, takvimler veya varsayılan hatalı');
@@ -13,8 +13,12 @@ function check(c) {
   Object.entries(c.paketler).forEach(([k, p]) => { if (!c.takvimler[p.takvim]) throw new Error(`Paket takvimi yok: ${k}`); if (!(p.ilkYanitSaat > 0) || !(p.cozumSaat >= p.ilkYanitSaat) || !(p.aylik >= 0) || !Number.isInteger(p.oncelik)) throw new Error(`Paket hatalı: ${k}`); });
   return c;
 }
+// Bozuk kayıt satışı durdurmasın: geçersiz panel ayarı yok sayılır, dosya kullanılır
+const panelAta = (c) => { try { panel = c ? check(c) : null; } catch (e) { panel = null; } };
+const dosya = () => check(JSON.parse(fs.readFileSync(FILE, 'utf8')));
 function load(file = FILE) {
   if (file !== FILE) return check(JSON.parse(fs.readFileSync(file, 'utf8')));
+  if (panel) return panel;
   const m = fs.statSync(file).mtimeMs; if (!cache || m !== mtime) { cache = check(JSON.parse(fs.readFileSync(file, 'utf8'))); mtime = m; } return cache;
 }
 const pack = (id, c = load()) => c.paketler[id] || c.paketler[c.varsayilan];
@@ -60,4 +64,4 @@ function pub(c = load()) {
 }
 const has = (id, c = load()) => typeof id === 'string' && Object.prototype.hasOwnProperty.call(c.paketler, id);
 
-module.exports = { load, check, pack, packId, line, addWork, ticketFields, state, paid, pub, has, takvimMetni };
+module.exports = { load, dosya, panelAta, check, pack, packId, line, addWork, ticketFields, state, paid, pub, has, takvimMetni };

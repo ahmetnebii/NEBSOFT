@@ -10,8 +10,8 @@ const OUT = path.join(ROOT, 'yayin');
 const DOSYALAR = ['server.js', 'package.json', 'package-lock.json', 'index.html', 'sw.js', 'robots.txt', 'sunucu.json', 'scripts/totp-sifirla.js'];
 const KLASORLER = ['admin', 'apps', 'assets', 'config', 'content', 'core', 'market', 'server', 'site'];
 // Klasörlerin içinden atılanlar (kök klasöre göre)
-// site/src/site.config.js sunucu tarafından çalışma anında okunur, pakette kalır
-const HARIC = [/^server\/test(\/|$)/, /^site\/src\/(?!site\.config\.js$)/, /^site\/tools(\/|$)/, /\.test\.js$/, /(^|\/)\.DS_Store$/, /\.md$/];
+// site/src/site.config.js sunucu tarafından çalışma anında okunur, pakette kalır. Yasal metin şablonları ve markdown.js panelde kullanılır (server/cloud/kurulum.js, seo.js)
+const HARIC = [/^server\/test(\/|$)/, /^site\/src\/(?!site\.config\.js$|yasal(\/|$))/, /^site\/tools\/(?!markdown\.js$)/, /\.test\.js$/, /(^|\/)\.DS_Store$/, /^(?!site\/src\/yasal\/).*\.md$/];
 // Pakette bulunursa işlem durur: gizli dosya kaçmasın
 const YASAK = [/^data(\/|$)/, /^dosyalar(\/|$)/, /^\.git(\/|$)/, /^\.claude(\/|$)/, /^ic-araclar(\/|$)/, /^server\/test(\/|$)/, /\.jks$/, /\.pem$/, /secret\.key$/, /config\.enc$/, /^CLAUDE\.md$/i, /\.env/];
 
