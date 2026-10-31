@@ -14,7 +14,7 @@ window.MOB = {
   // İndirim ve KDV genel toplamda hesaplanır; oran işletmenin ayarından gelir
   totals(j, vat) {
     const r2 = MOB.r2; const rate = Number(j.vat != null ? j.vat : vat != null ? vat : 20) || 0;
-    const brut = r2((j.items || []).reduce((s, i) => s + MOB.lineNet(i), 0)); const disc = Number(j.disc) || 0; const net = r2(brut - disc);
+    const brut = r2((j.items || []).reduce((s, i) => s + MOB.lineNet(i), 0)); const disc = Math.min(brut, Math.max(0, Number(j.disc) || 0)); const net = r2(brut - disc);
     const kdv = r2(net * rate / 100); return { brut, disc, net, rate, kdv, total: r2(net + kdv) };
   },
   costOf: (j) => MOB.r2((j.items || []).reduce((s, i) => s + (Number(i.qty) || 0) * (Number(i.cost) || 0), 0)),
@@ -27,6 +27,13 @@ window.MOB = {
   // Teklif kilidi: onaydan sonra kalem değişmez; değişiklik yeni sürüm teklif olarak yeniden onaya gider
   locked: (j) => ['onay', 'uretim', 'montaj', 'teslim', 'iptal'].includes(j.status),
   snapshot: (j, vat) => ({ v: j.quoteV || 1, at: new Date().toISOString(), total: MOB.totals(j, vat).total, items: (j.items || []).map((i) => ({ name: i.name, qty: i.qty, unit: i.unit, price: i.price, type: i.type })), disc: j.disc || 0 }),
+  // Onaylanan sürümün kopyası: linkten onayda da kayıp olmaz, aynı sürüm iki kez yazılmaz
+  keepQuote(j, vat) { const v = j.quoteV || 1; j.quotes = j.quotes || []; if (!j.quotes.some((q) => q.v === v)) j.quotes.push(MOB.snapshot(j, vat)); },
+  // Genel indirim e-Belgede satır iskontosuna dağıtılır: satırların KDV hariç toplamı işin KDV hariç tutarına eşit kalır
+  invoiceLines(j, vat) {
+    const t = MOB.totals(j, vat); const L = (j.items || []).filter((i) => MOB.lineNet(i) > 0); let left = t.disc;
+    return (j.items || []).map((i) => { const b = MOB.lineNet(i); const k = L.indexOf(i); const cut = k < 0 ? 0 : k === L.length - 1 ? left : Math.min(left, MOB.r2(t.disc * b / (t.brut || 1))); left = MOB.r2(left - cut); return { name: i.name, qty: i.qty, unit: i.unit || 'adet', price: i.price, disc: b > 0 ? (cut / b) * 100 : 0, vat: t.rate }; });
+  },
   // Stoktan düşecek miktarlar: yalnız malzeme kartına bağlı kalemler
   usage: (j) => { const m = {}; (j.items || []).forEach((i) => { if (i.mid) m[i.mid] = (m[i.mid] || 0) + (Number(i.qty) || 0); }); return m; },
   usageDiff: (j) => { const now = MOB.usage(j); const old = j.used || (j.materialsUsed ? now : {}); const d = {}; new Set([...Object.keys(now), ...Object.keys(old)]).forEach((k) => { const x = MOB.r2((now[k] || 0) - (old[k] || 0)); if (x) d[k] = x; }); return d; },

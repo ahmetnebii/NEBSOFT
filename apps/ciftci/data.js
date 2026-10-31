@@ -11,6 +11,8 @@ window.CFT = {
     const r2 = CFT.r2; const net = r2((Number(p.gross) || 0) - (Number(p.tare) || 0)); const qty = r2(net * (1 - (Number(p.fire) || 0) / 100)); const amount = r2(qty * (Number(p.price) || 0));
     const stopaj = p.noStopaj ? 0 : r2(amount * (Number(p.rate) || 0) / 100); const cut = Number(p.cut) || 0; return { net, qty, amount, stopaj, cut, pay: r2(amount - stopaj - cut) };
   },
+  // Alım fişi denetimi: eksi miktar ve eksi ödenecek makbuza girmez
+  checkBuy(p) { const n = (x) => Number(x) || 0; if (!(n(p.gross) > n(p.tare)) || n(p.tare) < 0) return 'Brüt, daradan büyük olmalı'; if (n(p.fire) < 0 || n(p.fire) >= 100) return 'Fire 0 ile 100 arasında olmalı'; if (!(n(p.price) > 0)) return 'Birim fiyat girin'; if (n(p.cut) < 0) return 'Kesinti eksi olamaz'; if (CFT.calc(p).pay < 0) return 'Kesinti, ödenecek tutarı aşamaz'; return null; },
   saleTotal: (s) => CFT.r2((s.lines || []).reduce((t, l) => t + (Number(l.qty) || 0) * (Number(l.price) || 0), 0) * (1 + (Number(s.vat) || 0) / 100)),
   // Üretici carisi: bakiye > 0 üretici borçlu, < 0 işletme üreticiye borçlu
   statement(pid, d) {
@@ -44,7 +46,7 @@ window.CFT = {
     const CR = ['Buğday', 'Arpa', 'Şeker pancarı', 'Ayçiçeği'];
     db.data.fields = db.data.producers.flatMap((p, i) => Array.from({ length: rand(1, 2) }, (_, k) => ({ id: `f${i}${k}`, producer: p.id, village: p.village, ada: rand(100, 900), parsel: rand(1, 80), area: rand(8, 90), crop: pick(CR), water: pick(['sulu', 'kuru']), own: pick(Object.keys(CFT.OWN)), season: new Date().getFullYear() })));
     const purchases = []; let no = 1; const U = db.data.products.filter((x) => x.kind === 'urun');
-    for (let d = 120; d >= 0; d -= 2) for (let k = 0; k < rand(0, 2); k++) { const p = pick(db.data.producers); const u = pick(U); const gross = rand(2, 24) * 1000; const tes = Math.random() < 0.3; const at = addDays(new Date(), -d); const r = { id: NS.uid(), no: 'AL' + (2000 + no), at: at.toISOString(), producer: p.id, product: u.id, productName: u.name, gross, tare: rand(50, 200), fire: pick([0, 0, 1, 2]), price: u.price, tescil: tes, cat: u.cat, rate: CFT.rate(u.cat, tes), cut: 0, receipt: 'MM' + String(no).padStart(6, '0'), status: 'kayit' }; purchases.push(r); no++; }
+    for (let d = 120; d >= 0; d -= 2) for (let k = 0; k < rand(0, 2); k++) { const p = pick(db.data.producers); const u = pick(U); const gross = rand(2, 24) * 1000; const tes = Math.random() < 0.3; const at = addDays(new Date(), -d); const r = { id: NS.uid(), no: 'AL' + (2000 + no), at: at.toISOString(), producer: p.id, product: u.id, productName: u.name, unit: u.unit, gross, tare: rand(50, 200), fire: pick([0, 0, 1, 2]), price: u.price, tescil: tes, cat: u.cat, rate: CFT.rate(u.cat, tes), cut: 0, receipt: 'MM' + String(no).padStart(6, '0'), status: 'kayit' }; purchases.push(r); no++; }
     db.data.purchases = purchases;
     const G = db.data.products.filter((x) => x.kind === 'girdi'); const sales = [];
     for (let i = 0; i < 46; i++) { const p = pick(db.data.producers); const g = pick(G); const at = addDays(new Date(), -rand(1, 160)); sales.push({ id: NS.uid(), no: 'SA' + (5000 + i), at: at.toISOString(), producer: p.id, credit: Math.random() < 0.8, due: iso(addDays(at, 150)), vat: 20, lines: [{ product: g.id, name: g.name, qty: rand(1, 12), price: g.price, unit: g.unit, cost: g.cost }], ...(g.bku ? { rxNo: 'RX' + rand(1000, 9999) } : {}), status: 'kayit' }); }

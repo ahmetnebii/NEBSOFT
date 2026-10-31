@@ -20,7 +20,7 @@ Kaynaklar ve 27 satırlık mevzuat tablosu: [arastirma/arastirma-ciftci.md](aras
 - GVK 94/11, 2009/14592 sayılı Karar ve GİB tablosu: hayvansal borsa tescilli %1, tescilsiz %2; diğer ürün borsa tescilli %2, tescilsiz %4. Oranlar **ayar** olarak tutulur.
 - VUK 235: müstahsil makbuzu iki nüsha, asgari alanlar. Numara kesintisiz, silme yok.
 - 1163 md. 38, 39: gelir-gider farkı muamele oranında dağıtılır, en az %10 yedek akçe, zararda dağıtım yok. Kanun metninde "risturn" adı geçmez, ekranda "gelir-gider farkı" denir.
-- 509 sıra no.lu VUK GT: e-Müstahsil genel olarak isteğe bağlı; HKS kapsamındaki sebze meyve tüccar ve komisyoncuları için zorunluluk bulunur.
+- 509 sıra no.lu VUK GT (düzeltildi, bağımsız denetim 31.10.2026): e-Fatura mükellefi olup müstahsil makbuzu düzenleyenler ve HKS kapsamındaki sebze meyve tüccar ve komisyoncuları için e-Müstahsil zorunludur; diğerleri için isteğe bağlıdır. Kaynak: https://ebelge.gib.gov.tr/emustahsilhakkinda.html
 - BKÜ bayi yükümlülükleri RG 13.12.2025: reçeteli ürünün reçetesiz satılmaması. ÇKS takvimi: başvuru 1 Eylül – 31 Aralık, güncelleme 15 Mart – 15 Nisan (Tarlalar ekranında dönemde görünür).
 
 ## Pazar
