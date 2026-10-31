@@ -209,6 +209,115 @@
   // Excel'den yapıştırma: sekme veya noktalı virgül ayraçlı satırlar
   H.satirlarOku = (metin, n) => String(metin || '').split(/\r?\n/).map((x) => x.trim()).filter(Boolean).map((x) => { const p = x.split(/\t|;/).map((y) => y.trim()); while (p.length < n) p.push(''); return p; });
 
+  // ---------- Türkçe metin ----------
+  H.trBuyuk = (s) => String(s == null ? '' : s).toLocaleUpperCase('tr'); H.trKucuk = (s) => String(s == null ? '' : s).toLocaleLowerCase('tr');
+  const BAGLAC = new Set(['ve', 'veya', 'ile', 'ya', 'da', 'de', 'ki', 'için']);
+  // A.Ş. ve T.C. gibi kısaltmalar büyük kalır, kesme işaretinden sonrası küçük kalır (Ankara'da), tireden sonrası büyür (Ayşe-Nur)
+  const kelimeBas = (t, ilk) => { if (/^\P{L}*\p{L}(\.\p{L})+\.?\P{L}*$/u.test(t)) return H.trBuyuk(t); const k = H.trKucuk(t); if (!ilk && BAGLAC.has(k)) return k; return k.replace(/(^|[-/(])(\P{L}*)(\p{L})/gu, (_, a, b, c) => a + b + H.trBuyuk(c)); };
+  H.kelimeBuyuk = (s) => String(s == null ? '' : s).split('\n').map((sat) => { let ilk = true; return sat.split(/(\s+)/).map((t) => { if (!t.trim()) return t; const r = kelimeBas(t, ilk); ilk = false; return r; }).join(''); }).join('\n');
+  H.cumleDuzeni = (s) => H.trKucuk(s).replace(/(^|[.!?…]\s+|\n\s*)(\P{L}*)(\p{L})/gu, (_, a, b, c) => a + b + H.trBuyuk(c));
+  const ASCII = { ç: 'c', ğ: 'g', ı: 'i', ö: 'o', ş: 's', ü: 'u', Ç: 'C', Ğ: 'G', İ: 'I', Ö: 'O', Ş: 'S', Ü: 'U' };
+  H.ascii = (s) => String(s == null ? '' : s).replace(/[çğıöşüÇĞİÖŞÜ]/g, (c) => ASCII[c]).normalize('NFD').replace(/[̀-ͯ]/g, '');
+  // UTF-8 metnin Latin harf tablosuyla okunması (Ã¼) ve Windows-1254 metnin Latin-1 sanılması (Ýstanbul, þirket) en sık iki bozulmadır
+  const BOZUK_UTF = { 'Ã§': 'ç', 'Ã\u0087': 'Ç', 'Ã‡': 'Ç', 'ÄŸ': 'ğ', 'Ä\u009f': 'ğ', 'Äž': 'Ğ', 'Ä\u009e': 'Ğ', 'Ä±': 'ı', 'Ä°': 'İ', 'Ã¶': 'ö', 'Ã–': 'Ö', 'Ã\u0096': 'Ö', 'ÅŸ': 'ş', 'Å\u009f': 'ş', 'Åž': 'Ş', 'Å\u009e': 'Ş', 'Ã¼': 'ü', 'Ãœ': 'Ü', 'Ã\u009c': 'Ü', 'Ã¢': 'â', 'Ã®': 'î', 'Ã»': 'û' };
+  const BOZUK_RE = new RegExp(Object.keys(BOZUK_UTF).join('|'), 'g'); const BOZUK_1254 = { þ: 'ş', Þ: 'Ş', ð: 'ğ', Ð: 'Ğ', ý: 'ı', Ý: 'İ' };
+  H.turkceOnar = (s) => { let onarilan = 0; const metin = String(s == null ? '' : s).replace(BOZUK_RE, (c) => { onarilan++; return BOZUK_UTF[c]; }).replace(/[þÞðÐýÝ]/g, (c) => { onarilan++; return BOZUK_1254[c]; }); return { metin, onarilan, kayip: (metin.match(/�/g) || []).length }; };
+
+  // ---------- Tablo: CSV okuma, yazma, temizleme ----------
+  H.ayracBul = (m) => { const sat = String(m).slice(0, 65536).split(/\r?\n/).filter((x) => x.trim()).slice(0, 30); let en = ';', puan = 0; [';', '\t', ',', '|'].forEach((a) => { const s = sat.map((x) => x.replace(/"[^"]*"/g, '').split(a).length - 1); if (!s[0]) return; const p = s.filter((n) => n === s[0]).length + Math.min(s[0], 20) / 100; if (p > puan) { puan = p; en = a; } }); return en; };
+  H.ayracAd = (a) => ({ ';': 'Noktalı virgül', ',': 'Virgül', '\t': 'Sekme', '|': 'Dikey çizgi' }[a] || a);
+  // RFC 4180: tırnak içinde ayraç ve satır sonu olabilir, "" tek tırnaktır
+  H.csvOku = (m, ayrac) => {
+    const t = String(m).replace(/^﻿/, ''); const S = []; let sat = [], h = '', tirnak = false, i = 0, bas = 0; const n = t.length;
+    const al = () => { h += t.slice(bas, i); }; const bit = () => { al(); sat.push(h); h = ''; };
+    while (i < n) { const c = t[i];
+      if (tirnak) { if (c === '"') { al(); if (t[i + 1] === '"') { h += '"'; i += 2; bas = i; } else { tirnak = false; i++; bas = i; } } else i++; continue; }
+      if (c === '"' && !h && i === bas) { tirnak = true; i++; bas = i; continue; }
+      if (c === ayrac) { bit(); i++; bas = i; continue; }
+      if (c === '\n' || c === '\r') { bit(); S.push(sat); sat = []; if (c === '\r' && t[i + 1] === '\n') i++; i++; bas = i; continue; }
+      i++;
+    }
+    if (bas < n || h || sat.length) { bit(); S.push(sat); } return S;
+  };
+  H.csvYaz = (S, ayrac) => S.map((r) => r.map((x) => { const y = typeof x === 'number' && ayrac !== ',' ? String(x).replace('.', ',') : String(x == null ? '' : x); return y.includes(ayrac) || /["\r\n]/.test(y) ? `"${y.replace(/"/g, '""')}"` : y; }).join(ayrac)).join('\r\n');
+  const GORUNMEZ_B = /[  -   　]/g, GORUNMEZ_S = /[​-‍⁠﻿­]/g;
+  const hucreBos = (x) => x == null || x === '';
+  H.sutunBul = (bas, ad) => { const t = String(ad || '').trim(); if (!t) return -1; const k = (x) => H.ascii(H.trKucuk(x)).trim(); const i = bas.findIndex((x) => k(x) === k(t)); if (i >= 0) return i; const n = Number(t); if (Number.isInteger(n) && n >= 1 && n <= bas.length) return n - 1; throw new Error(`"${t}" adlı sütun bulunamadı. Başlık adını veya sütun sırasını yazın.`); };
+  H.tabloTemizle = (girdi, o = {}) => {
+    if (!girdi.length) throw new Error('Tabloda veri bulunamadı'); const r = { girdiSatir: girdi.length, bosluk: 0, gorunmez: 0, onarilan: 0, kayip: 0, bosSatir: 0, bosSutun: 0, tekrar: 0, uyumsuz: [] };
+    const hucre = (x) => { if (typeof x !== 'string') return x; let s = x; if (o.onar) { const t = H.turkceOnar(s); s = t.metin; r.onarilan += t.onarilan; r.kayip += t.kayip; } if (o.bosluk) { const t = s.replace(GORUNMEZ_B, ' ').replace(GORUNMEZ_S, ''); if (t !== s) r.gorunmez++; const u = t.replace(/[ \t]+/g, ' ').trim(); if (u !== t) r.bosluk++; s = u; } return s; };
+    let S = girdi.map((x, i) => ({ h: x.map(hucre), n: i + 1 }));
+    if (o.bosSatir) { const k = S.filter((x) => x.h.some((y) => !hucreBos(y))); r.bosSatir = S.length - k.length; S = k; } if (!S.length) throw new Error('Tabloda veri bulunamadı');
+    const say = new Map(); S.forEach((x) => say.set(x.h.length, (say.get(x.h.length) || 0) + 1)); const beklenen = [...say.entries()].sort((a, b) => b[1] - a[1] || b[0] - a[0])[0][0]; const G = Math.max(...say.keys());
+    r.uyumsuz = S.filter((x) => x.h.length !== beklenen).map((x) => ({ satir: x.n, sutun: x.h.length })); r.beklenen = beklenen;
+    S.forEach((x) => { while (x.h.length < G) x.h.push(''); });
+    if (o.bosSutun) { const dolu = Array.from({ length: G }, (_, c) => S.some((x) => !hucreBos(x.h[c]))); r.bosSutun = dolu.filter((d) => !d).length; if (r.bosSutun) S.forEach((x) => { x.h = x.h.filter((_, c) => dolu[c]); }); }
+    if (o.tekrar) { const c = H.sutunBul(S[0].h, o.tekrarSutun); const gor = new Set(); const k = S.filter((x, i) => { if (i === 0) return true; const a = c >= 0 ? H.trKucuk(x.h[c]) : H.trKucuk(x.h.join('\u0001')); if (c >= 0 && !a) return true; if (gor.has(a)) { r.tekrar++; return false; } gor.add(a); return true; }); S = k; }
+    r.cikisSatir = S.length; r.sutun = S[0].h.length; return { satirlar: S.map((x) => x.h), rapor: r };
+  };
+  // Hem yapıştırılan metin hem dosya bu görünümden geçer. H.xlsxYaz yalnız tarayıcıda, dosya araçlarının saf kodundan gelir
+  H.temizGoster = (t, v, kok, ek = {}) => {
+    const r = t.rapor; const S = t.satirlar; const bicim = v.bicim === 'csv' || !H.xlsxYaz ? 'csv' : 'xlsx'; const ayrac = { noktali: ';', virgul: ',', sekme: '\t' }[v.ayrac] || ';';
+    H.dosya = bicim === 'xlsx' ? { ad: `${kok}-temiz.xlsx`, tur: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', get icerik() { return H.xlsxYaz(S); } } : { ad: `${kok}-temiz.csv`, tur: 'text/csv;charset=utf-8', get icerik() { return `﻿${H.csvYaz(S, ayrac)}`; } };
+    const sat = [['Giren satır', H.sayi(r.girdiSatir)], ['Temiz satır (başlık dahil)', H.sayi(r.cikisSatir), 1], ['Sütun', H.sayi(r.sutun)], r.onarilan ? ['Onarılan Türkçe harf', H.sayi(r.onarilan)] : null, r.bosluk ? ['Boşluğu düzeltilen hücre', H.sayi(r.bosluk)] : null, r.gorunmez ? ['Görünmez karakterli hücre', H.sayi(r.gorunmez)] : null, r.bosSatir ? ['Silinen boş satır', H.sayi(r.bosSatir)] : null, r.bosSutun ? ['Silinen boş sütun', H.sayi(r.bosSutun)] : null, r.tekrar ? ['Silinen yinelenen satır', H.sayi(r.tekrar)] : null, ek.kodlama ? ['Dosya kodlaması', H.esc(ek.kodlama)] : null, ek.ayrac ? ['Bulunan ayraç', H.esc(ek.ayrac)] : null];
+    const hepsiTemiz = !r.onarilan && !r.bosluk && !r.gorunmez && !r.bosSatir && !r.bosSutun && !r.tekrar; const IZLE = 6;
+    const on = `<div class="ar-tablo-k"><table class="ar-liste-t"><thead><tr>${S[0].map((x) => `<th>${H.esc(x)}</th>`).join('')}</tr></thead><tbody>${S.slice(1, IZLE).map((x) => `<tr>${x.map((y) => `<td>${typeof y === 'number' ? H.sayi(y, 10) : H.esc(y)}</td>`).join('')}</tr>`).join('')}</tbody></table></div>${S.length > IZLE ? `<p class="ar-bos" style="margin:8px 0 0">İlk ${IZLE - 1} satır gösteriliyor, indirilen dosyada ${H.sayi(S.length - 1)} satır var.</p>` : ''}`;
+    const ayr = r.uyumsuz.length ? H.not(`${H.sayi(r.uyumsuz.length)} satırda sütun sayısı farklı (beklenen ${r.beklenen}). Örnek: ${r.uyumsuz.slice(0, 5).map((x) => `${x.satir}. satır ${x.sutun} sütun`).join(', ')}. Araç bu satırları tahminle kaydırmaz, kaynağı kontrol edin.`, 'uyari') : '';
+    return `${H.tablo(sat)}${hepsiTemiz ? H.not('Seçili temizliklerde değişecek bir şey bulunmadı.') : ''}${ayr}${r.kayip ? H.not(`${H.sayi(r.kayip)} harf geri getirilemeyecek biçimde kaybolmuş (� işareti). Bu harfleri özgün dosyadan alın.`, 'uyari') : ''}${ek.not || ''}<div style="margin-top:12px">${on}</div>${H.eylemler(H.btn('dosya', bicim === 'xlsx' ? 'Excel olarak indir' : 'CSV olarak indir'))}`;
+  };
+
+  // ---------- Liste karşılaştırma ----------
+  H.listeSatirlari = (m, ilk) => String(m || '').split(/\r?\n/).map((x) => (ilk ? x.split(/\t|;/)[0] : x).replace(GORUNMEZ_B, ' ').replace(GORUNMEZ_S, '').trim()).filter(Boolean);
+  // tam: harfi harfine. harf: büyük küçük ve boşluk farkı yok. esnek: Türkçe harf ve noktalama da yok. telefon: başındaki 0, 90 yok
+  H.listeAnahtar = (x, kip) => { if (kip === 'tam') return x; if (kip === 'telefon') { const d = x.replace(/\D/g, '').replace(/^00/, ''); return (d.length === 12 && d.startsWith('90') ? d.slice(2) : d.length === 11 && d.startsWith('0') ? d.slice(1) : d) || x; } const k = H.trKucuk(x).replace(/\s+/g, ' '); return kip === 'esnek' ? H.ascii(k).replace(/[^\p{L}\p{N}]+/gu, ' ').trim() || k : k; };
+  H.listeKarsilastir = ({ a, b, kip = 'harf', ilk = false }) => {
+    const oku = (m) => { const l = H.listeSatirlari(m, ilk); const g = new Map(); let tekrar = 0; l.forEach((x) => { const k = H.listeAnahtar(x, kip); if (g.has(k)) tekrar++; else g.set(k, x); }); return { g, adet: l.length, tekrar }; };
+    const A = oku(a), B = oku(b); if (!A.adet && !B.adet) throw new Error('İki listeye de değer yazın'); if (!A.adet || !B.adet) throw new Error(`${A.adet ? 'İkinci' : 'Birinci'} liste boş`);
+    const yalnizA = [], yalnizB = [], ortak = []; let farkli = 0; A.g.forEach((x, k) => { if (B.g.has(k)) { ortak.push(x); if (B.g.get(k) !== x) farkli++; } else yalnizA.push(x); }); B.g.forEach((x, k) => { if (!A.g.has(k)) yalnizB.push(x); });
+    return { yalnizA, yalnizB, ortak, farkli, adetA: A.adet, adetB: B.adet, tekrarA: A.tekrar, tekrarB: B.tekrar };
+  };
+
+  // ---------- IBAN (TCMB Tebliği 2008/6, 2021/5 ile değişik: 26 karakter, MOD 97-10) ----------
+  H.ibanMod = (t) => { const r = (t.slice(4) + t.slice(0, 4)).replace(/[A-Z]/g, (c) => c.charCodeAt(0) - 55); let m = 0; for (const d of r) m = (m * 10 + Number(d)) % 97; return m; };
+  H.ibanDenetle = (s) => {
+    const t = String(s == null ? '' : s).replace(/^\s*iban\s*(no|numarası)?\s*[:.]?\s*/i, '').replace(/[\s\-.]/g, '').toLocaleUpperCase('en'); const r = (hata) => ({ iban: t, grup: (t.match(/.{1,4}/g) || []).join(' '), gecerli: !hata, hata, kod: hata ? '' : t.slice(4, 9), hesap: hata ? '' : t.slice(10) });
+    if (!t) return r('IBAN boş'); if (/[ÇĞİÖŞÜı]/.test(t)) return r('Türkçe harf içeremez'); if (/[^A-Z0-9]/.test(t)) return r('Harf ve rakam dışında karakter var'); if (!t.startsWith('TR')) return r('Bu araç yalnız TR ile başlayan IBAN denetler');
+    if (t.length !== 26) return r(`26 karakter olmalı, ${t.length} karakter var`); if (!/^TR\d{8}/.test(t)) return r('İlk 10 karakterde TR dışında harf olamaz'); if (t[9] !== '0') return r('10. karakter (rezerv alan) sıfır olmalı'); if (H.ibanMod(t) !== 1) return r('Kontrol basamağı tutmuyor, en az bir karakter yanlış'); return r('');
+  };
+  // Excel'den yapıştırılan satırda IBAN sütunu bulunur, diğer hücreler ad olarak kalır
+  H.ibanListe = (metin) => {
+    const gor = new Map(); let gecerli = 0, tekrar = 0; const satirlar = String(metin || '').split(/\r?\n/).filter((x) => x.trim()).map((x, i) => { const h = x.split(/\t|;|\|/).map((y) => y.trim()).filter(Boolean); const y = h.find((c) => /^(iban\s*(no|numarası)?\s*[:.]?\s*)?tr\s*\d/i.test(c)); const d = H.ibanDenetle(y || x); const etiket = y ? h.filter((c) => c !== y).join(' ') : ''; const onceki = d.gecerli && gor.has(d.iban) ? gor.get(d.iban) : 0; if (d.gecerli) { gecerli++; if (onceki) tekrar++; else gor.set(d.iban, i + 1); } return { ...d, satir: i + 1, etiket, onceki }; });
+    if (!satirlar.length) throw new Error('En az bir IBAN yazın'); return { satirlar, gecerli, hatali: satirlar.length - gecerli, tekrar };
+  };
+
+  // ---------- İş günü (2429 sayılı Kanun md. 1, 2; bayram tarihleri Diyanet yıl tabloları, okundu 31.10.2026) ----------
+  const AREFE = { 2026: ['2026-03-19', '2026-05-26'], 2027: ['2027-03-08', '2027-05-15'], 2028: ['2028-02-25', '2028-05-04'] };
+  H.TATIL_YILLAR = Object.keys(AREFE).map(Number);
+  const SABIT = [['01-01', 'Yılbaşı'], ['04-23', 'Ulusal Egemenlik ve Çocuk Bayramı'], ['05-01', 'Emek ve Dayanışma Günü'], ['05-19', 'Atatürk\'ü Anma, Gençlik ve Spor Bayramı'], ['07-15', 'Demokrasi ve Millî Birlik Günü'], ['08-30', 'Zafer Bayramı'], ['10-29', 'Cumhuriyet Bayramı']];
+  const isoEkle = (s, n) => new Date(H.tarihOku(s).getTime() + n * 864e5).toISOString().slice(0, 10);
+  const takvimler = {};
+  H.tatilTakvim = (yil) => {
+    if (takvimler[yil]) return takvimler[yil]; if (!AREFE[yil]) throw new Error(`Bu araçta ${H.TATIL_YILLAR.join(', ')} yıllarının resmî takvimi var. ${yil} için bayram tarihi yazılmadı.`);
+    const t = {}; const ekle = (g, ad, yarim) => { if (t[g]) t[g] = { ad: `${t[g].ad}, ${ad}`, yarim: t[g].yarim && yarim }; else t[g] = { ad, yarim }; };
+    SABIT.forEach(([g, ad]) => ekle(`${yil}-${g}`, ad, false)); ekle(`${yil}-10-28`, 'Cumhuriyet Bayramı arifesi', true);
+    [['Ramazan Bayramı', 3], ['Kurban Bayramı', 4]].forEach(([ad, n], i) => { const a = AREFE[yil][i]; ekle(a, `${ad} arifesi`, true); for (let k = 1; k <= n; k++) ekle(isoEkle(a, k), `${ad} ${k}. gün`, false); });
+    takvimler[yil] = t; return t;
+  };
+  // hafta: 'cmt' cumartesi çalışılır. yarim: 'tam' ise öğleden sonra kapalı günler bütün iş günü sayılır
+  H.gunTuru = (s, { hafta, yarim } = {}) => { const d = H.tarihOku(s).getUTCDay(); if (d === 0 || (d === 6 && hafta !== 'cmt')) return { deger: 0, tur: 'hafta' }; const t = H.tatilTakvim(Number(s.slice(0, 4)))[s]; if (!t) return { deger: 1, tur: 'is' }; if (t.yarim) return { deger: yarim === 'tam' ? 1 : 0.5, tur: 'yarim', ad: t.ad }; return { deger: 0, tur: 'tatil', ad: t.ad }; };
+  H.isGunuFark = ({ bas, bit, hafta, yarim, basDahil = true }) => {
+    const n = H.gunFark(bas, bit); if (n < 0) throw new Error('Bitiş tarihi başlangıçtan önce olamaz'); const r = { takvim: n + (basDahil ? 1 : 0), isGunu: 0, haftaSonu: 0, tatilGun: 0, yarimGun: 0, tatiller: [] };
+    for (let i = basDahil ? 0 : 1; i <= n; i++) { const g = isoEkle(bas, i); const t = H.gunTuru(g, { hafta, yarim }); r.isGunu += t.deger; if (t.tur === 'hafta') r.haftaSonu++; else if (t.tur === 'tatil') r.tatilGun++; else if (t.tur === 'yarim') r.yarimGun++; if (t.ad) r.tatiller.push({ tarih: g, ad: t.ad, yarim: t.tur === 'yarim' }); }
+    return r;
+  };
+  // Başlangıç günü sayılmaz: bugünden 1 iş günü sonrası bir sonraki iş günüdür
+  H.isGunuEkle = ({ bas, gun, yon = 1, hafta, yarim }) => {
+    if (!H.tarihOku(bas)) throw new Error('Başlangıç tarihi geçerli bir tarih olmalı'); if (!(Number.isInteger(gun) && gun >= 1 && gun <= 1000)) throw new Error('İş günü sayısı 1 ile 1000 arasında tam sayı olmalı');
+    H.tatilTakvim(Number(bas.slice(0, 4))); let say = 0, g = bas, i = 0; const tatiller = []; while (say < gun) { i++; g = isoEkle(bas, i * yon); const t = H.gunTuru(g, { hafta, yarim }); say += t.deger; if (t.ad) tatiller.push({ tarih: g, ad: t.ad, yarim: t.tur === 'yarim' }); }
+    return { tarih: g, takvim: i, tatiller };
+  };
+  H.gunAdi = (s) => ['Pazar', 'Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi'][H.tarihOku(s).getUTCDay()];
+
   // ---------- Görünüm yardımcıları (tarayıcı + test) ----------
   H.esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   H.sayi = (n, d = 2) => new Intl.NumberFormat('tr-TR', { minimumFractionDigits: 0, maximumFractionDigits: d }).format(n);

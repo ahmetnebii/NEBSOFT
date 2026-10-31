@@ -1,5 +1,5 @@
 {
-  "guncelleme": "2026-10-30",
+  "guncelleme": "2026-10-31",
   "dizin": "/araclar",
   "araclar": [
     {
@@ -246,7 +246,7 @@
       "kategori": "pdf",
       "program": "hukukburosuprogrami",
       "guncelleme": "2026-10-30",
-      "kelime": 305,
+      "kelime": 302,
       "index": true
     },
     {
@@ -377,6 +377,66 @@
       "program": "teknikservisprogrami",
       "guncelleme": "2026-10-30",
       "kelime": 242,
+      "index": true
+    },
+    {
+      "slug": "csv-excel-temizleme",
+      "yol": "/araclar/csv-excel-temizleme/",
+      "ad": "CSV ve Excel Temizleme",
+      "baslik": "CSV ve Excel Temizleme — Bozuk Karakter, Yinelenen Satır | NEBSOFT",
+      "ozet": "CSV veya Excel dosyasındaki bozuk Türkçe harfleri, fazla boşlukları, boş ve yinelenen satırları temizleyin, CSV ya da Excel olarak indirin. Dosya cihazınızda kalır.",
+      "kategori": "belge",
+      "program": "marketprogrami",
+      "guncelleme": "2026-10-31",
+      "kelime": 418,
+      "index": true
+    },
+    {
+      "slug": "liste-karsilastirma",
+      "yol": "/araclar/liste-karsilastirma/",
+      "ad": "Liste Karşılaştırma",
+      "baslik": "Liste Karşılaştırma — İki Listedeki Farkları Bulma | NEBSOFT",
+      "ozet": "İki listeyi yapıştırın, yalnız birinde olanları ve ortakları görün. Büyük küçük harf, Türkçe harf ve telefon yazım farkı eşleşmeyi bozmaz. Liste cihazınızda kalır.",
+      "kategori": "belge",
+      "program": "crmprogrami",
+      "guncelleme": "2026-10-31",
+      "kelime": 368,
+      "index": true
+    },
+    {
+      "slug": "iban-dogrulama",
+      "yol": "/araclar/iban-dogrulama/",
+      "ad": "IBAN Doğrulama",
+      "baslik": "IBAN Doğrulama — Toplu TR IBAN Kontrolü ve Hata Bulma | NEBSOFT",
+      "ozet": "Tek IBAN veya bütün ödeme listesini yapıştırın. Araç 26 karakteri, rezerv alanı ve kontrol basamağını denetler, hatanın nedenini yazar. Bilgi cihazınızdan çıkmaz.",
+      "kategori": "belge",
+      "program": "personeltakipprogrami",
+      "guncelleme": "2026-10-31",
+      "kelime": 379,
+      "index": true
+    },
+    {
+      "slug": "is-gunu-hesaplama",
+      "yol": "/araclar/is-gunu-hesaplama/",
+      "ad": "İş Günü Hesaplama",
+      "baslik": "İş Günü Hesaplama — Resmî Tatilleri Düşerek Tarih Bulma | NEBSOFT",
+      "ozet": "Bir tarihe iş günü ekleyin, geriye sayın veya iki tarih arasındaki iş gününü bulun. Hafta sonu, resmî tatil ve yarım günler 2026-2028 takvimine göre düşülür.",
+      "kategori": "belge",
+      "program": "teknikservisprogrami",
+      "guncelleme": "2026-10-31",
+      "kelime": 415,
+      "index": true
+    },
+    {
+      "slug": "turkce-metin-duzenleme",
+      "yol": "/araclar/turkce-metin-duzenleme/",
+      "ad": "Türkçe Metin Düzenleme",
+      "baslik": "Türkçe Büyük Küçük Harf Çevirme ve Karakter Düzeltme | NEBSOFT",
+      "ozet": "Metni I ve İ harflerini koruyarak büyük, küçük veya baş harfi büyük yazın. Bozuk Türkçe harfleri onarın, ş ve ğ harflerini s ve g yapın. Metin cihazınızda kalır.",
+      "kategori": "belge",
+      "program": "onmuhasebeprogrami",
+      "guncelleme": "2026-10-31",
+      "kelime": 389,
       "index": true
     },
     {

@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="connect-src 'self' blob: data:; form-action 'none'">
+<title>CSV ve Excel Temizleme — Bozuk Karakter, Yinelenen Satır | NEBSOFT</title>
+<meta name="description" content="CSV veya Excel dosyasındaki bozuk Türkçe harfleri, fazla boşlukları, boş ve yinelenen satırları temizleyin, CSV ya da Excel olarak indirin. Dosya cihazınızda kalır.">
+<meta name="robots" content="index,follow">
+<link rel="canonical" href="https://www.nebsoftapp.com/araclar/csv-excel-temizleme/">
+<meta name="theme-color" content="#1d7bf5">
+<meta property="og:type" content="website"><meta property="og:locale" content="tr_TR"><meta property="og:site_name" content="NEBSOFT">
+<meta property="og:title" content="CSV ve Excel Temizleme — Bozuk Karakter, Yinelenen Satır | NEBSOFT"><meta property="og:description" content="CSV veya Excel dosyasındaki bozuk Türkçe harfleri, fazla boşlukları, boş ve yinelenen satırları temizleyin, CSV ya da Excel olarak indirin. Dosya cihazınızda kalır."><meta property="og:url" content="https://www.nebsoftapp.com/araclar/csv-excel-temizleme/"><meta property="og:image" content="https://www.nebsoftapp.com/assets/og/og.png"><meta name="twitter:card" content="summary_large_image"><meta name="twitter:title" content="CSV ve Excel Temizleme — Bozuk Karakter, Yinelenen Satır | NEBSOFT"><meta name="twitter:description" content="CSV veya Excel dosyasındaki bozuk Türkçe harfleri, fazla boşlukları, boş ve yinelenen satırları temizleyin, CSV ya da Excel olarak indirin. Dosya cihazınızda kalır."><meta name="twitter:image" content="https://www.nebsoftapp.com/assets/og/og.png">
+<link rel="icon" href="/assets/icons/icon-32.png" sizes="32x32" type="image/png"><link rel="icon" href="/assets/favicon.svg" type="image/svg+xml"><link rel="apple-touch-icon" href="/assets/icons/apple-touch-icon.png">
+<link rel="stylesheet" href="/site/assets/site.css"><link rel="stylesheet" href="/site/assets/araclar.css">
+<style>:root{--c:#0f766e}</style>
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"WebApplication","name":"CSV ve Excel Temizleme","url":"https://www.nebsoftapp.com/araclar/csv-excel-temizleme/","description":"CSV veya Excel dosyasındaki bozuk Türkçe harfleri, fazla boşlukları, boş ve yinelenen satırları temizleyin, CSV ya da Excel olarak indirin. Dosya cihazınızda kalır.","inLanguage":"tr-TR","applicationCategory":"BusinessApplication","operatingSystem":"Web","browserRequirements":"JavaScript gerekir","isAccessibleForFree":true,"dateModified":"2026-10-31","offers":{"@type":"Offer","price":0,"priceCurrency":"TRY"},"publisher":{"@type":"Organization","name":"NEBSOFT","url":"https://www.nebsoftapp.com/"}}</script>
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"Organization","@id":"https://www.nebsoftapp.com/#kurulus","name":"NEBSOFT","url":"https://www.nebsoftapp.com/"}</script>
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"WebSite","@id":"https://www.nebsoftapp.com/#site","name":"NEBSOFT","url":"https://www.nebsoftapp.com/","inLanguage":"tr-TR","publisher":{"@id":"https://www.nebsoftapp.com/#kurulus"}}</script>
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"NEBSOFT","item":"https://www.nebsoftapp.com/"},{"@type":"ListItem","position":2,"name":"Ücretsiz Araçlar","item":"https://www.nebsoftapp.com/araclar"},{"@type":"ListItem","position":3,"name":"CSV ve Excel Temizleme","item":"https://www.nebsoftapp.com/araclar/csv-excel-temizleme/"}]}</script>
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[{"@type":"Question","name":"Excel dosyam sunucuya gidiyor mu?","acceptedAnswer":{"@type":"Answer","text":"Hayır. Dosya tarayıcınızda açılır ve işlenir, sayfa dış adrese veri göndermeyi de engeller. Müşteri ve fiyat listeleri için bu yüzden elverişlidir."}},{"@type":"Question","name":"Türkçe karakter sorunu neden çıkıyor?","acceptedAnswer":{"@type":"Answer","text":"Dosyayı yazan ve okuyan programlar farklı harf tablosu kullandığında aynı baytlar başka harfe dönüşür. Araç sık görülen iki bozulmayı geri çevirir. Yerinde � işareti görünen harfler ise dosyada kaybolmuştur, bunlar onarılamaz."}},{"@type":"Question","name":"Yinelenen satırları nasıl bulur?","acceptedAnswer":{"@type":"Answer","text":"Büyük ve küçük harf farkına bakmadan satırın tamamını karşılaştırır. Sütun adı yazarsanız yalnız o sütuna bakar ve ilk satırı bırakır. O sütunu boş olan satırlar yinelenen sayılmaz. İlk satır başlık kabul edilir ve hiç silinmez."}},{"@type":"Question","name":"Birden çok sayfası olan Excel dosyasını işler mi?","acceptedAnswer":{"@type":"Answer","text":"Her seferinde tek sayfa işlenir. Sayfa numarasını değiştirerek diğerine geçebilirsiniz, sayfa adları sonuçta listelenir."}},{"@type":"Question","name":"Kaç satıra kadar çalışır?","acceptedAnswer":{"@type":"Answer","text":"Sınır 50 MB dosyadır. Yüz binlerce satır cihazın belleğine göre birkaç saniye sürebilir."}}]}</script>
+</head>
+<body>
+<a class="skip" href="#ana">İçeriğe geç</a>
+<header class="hd mk"><div class="w">
+  <a class="logo" href="/" aria-label="NEBSOFT ana sayfa"><img src="/assets/icons/icon-64.png" alt="" width="36" height="36"><span class="wm"><b>NEB</b><i>SOFT</i></span><span class="sub">Ücretsiz Araçlar</span></a>
+  <nav class="nav" aria-label="Ana menü"><a href="/programlar">Programlar</a><a href="/paketler/">Paketler</a><a href="/araclar">Araçlar</a><a href="/fiyatlar/">Fiyatlar</a><a href="/#/sektorler">Sektörler</a><a href="/#/iletisim">İletişim</a></nav>
+  <a class="btn g" href="/#/giris">Giriş yap</a><a class="btn p" href="/#/kayit">Ücretsiz başla <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
+</div></header>
+<main id="ana">
+<div class="w ar-hero">
+  <nav class="crumb" aria-label="Konum"><a href="/">NEBSOFT</a> / <a href="/araclar">Ücretsiz Araçlar</a> / CSV ve Excel Temizleme</nav>
+  <h1>CSV ve Excel Temizleme</h1>
+  <p class="lead">CSV veya Excel dosyasındaki bozuk Türkçe harfleri, fazla boşlukları, boş ve yinelenen satırları temizleyin, CSV ya da Excel olarak indirin. Dosya cihazınızda kalır.</p>
+  <p class="ar-gizli"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg><span>Dosyanız sunucuya yüklenmez, işlem bu cihazda tarayıcınızın içinde yapılır. Sayfayı kapatınca hiçbir kopyası kalmaz.</span></p>
+</div>
+<div class="w ar-is tek">
+  <form class="ar-kart ar-form-k" id="ar-form" novalidate><h2>Bilgileri girin</h2><div class="ar-alanlar">
+<div class="ar-dosya" data-dosya="dosyalar" data-kabul=".csv,.tsv,.txt,.xlsx,.xls"><label class="ar-birak"><input type="file" accept=".csv,.tsv,.txt,.xlsx,.xls"><b>CSV veya Excel dosyası seçin</b><span>veya dosyayı buraya sürükleyin</span></label><small class="ar-dosya-u" role="alert"></small><ul class="ar-dosyalar"></ul></div>
+<div class="ar-alan genis"><label for="a-veri">Ya da tabloyu buraya yapıştırın</label><textarea id="a-veri" data-alan="veri" data-tip="cokmetin">Ürün Adı;Barkod;Fiyat;
+KÄ±rmÄ±zÄ± Ã‡aydanlÄ±k;08690000000012;149,90;
+  Bardak  Takımı ;08690000000029;89,50;
+
+KÄ±rmÄ±zÄ± Ã‡aydanlÄ±k;08690000000012;149,90;
+Þemsiye;08690000000036;210;</textarea><small>Dosya seçilince bu kutu kullanılmaz.</small></div>
+<div class="ar-alan ar-onay genis"><input id="a-onar" type="checkbox" data-alan="onar" data-tip="onay" checked><label for="a-onar">Bozuk Türkçe harfleri onar</label></div>
+<div class="ar-alan ar-onay genis"><input id="a-bosluk" type="checkbox" data-alan="bosluk" data-tip="onay" checked><label for="a-bosluk">Fazla ve görünmez boşlukları sil</label></div>
+<div class="ar-alan ar-onay genis"><input id="a-bosSatir" type="checkbox" data-alan="bosSatir" data-tip="onay" checked><label for="a-bosSatir">Boş satırları sil</label></div>
+<div class="ar-alan ar-onay genis"><input id="a-bosSutun" type="checkbox" data-alan="bosSutun" data-tip="onay" checked><label for="a-bosSutun">Boş sütunları sil</label></div>
+<div class="ar-alan ar-onay genis"><input id="a-tekrar" type="checkbox" data-alan="tekrar" data-tip="onay" checked><label for="a-tekrar">Yinelenen satırları sil</label></div>
+<div class="ar-alan" data-goster="tekrar=true" hidden><label for="a-tekrarSutun">Yineleme için bakılacak sütun</label><input id="a-tekrarSutun" type="text" autocomplete="off" data-alan="tekrarSutun" data-tip="metin" placeholder="Boşsa satırın tamamı"><small>Başlık adı veya sütun sırası. Örnek: Barkod</small></div>
+<div class="ar-alan"><label for="a-bicim">İndirme biçimi</label><select id="a-bicim" data-alan="bicim" data-tip="secim"><option value="xlsx" selected>Excel (.xlsx)</option><option value="csv">CSV</option></select></div>
+<div class="ar-alan" data-goster="bicim=csv" hidden><label for="a-ayrac">CSV ayracı</label><select id="a-ayrac" data-alan="ayrac" data-tip="secim"><option value="noktali" selected>Noktalı virgül (Türkçe Excel)</option><option value="virgul">Virgül</option><option value="sekme">Sekme</option></select></div>
+<div class="ar-alan"><label for="a-sayfa">Excel sayfa numarası</label><input id="a-sayfa" type="text" autocomplete="off" inputmode="decimal" data-alan="sayfa" data-tip="sayi" value="1"><small>Excel dosyasında birden çok sayfa varsa.</small></div>
+  </div></form>
+  <section class="ar-kart ar-sonuc" aria-live="polite"><h2>Temiz tablo</h2><div id="ar-duzen"></div><div id="sonuc"><p class="ar-bos">Aracın çalışması için tarayıcınızda JavaScript açık olmalı.</p></div></section>
+</div>
+<section class="ar-metin"><div class="w"><div class="ar-yazi">
+  <h2>Tablo dosyası neden bozulur, araç neyi düzeltir?</h2>
+  <p>Bir tabloyu başka programa aktarırken çıkan hataların çoğu verinin kendisinden değil, dosyanın taşınma biçiminden gelir. Eski bir programdan alınan CSV dosyası Windows-1254 ile yazılmış olabilir, yeni program onu UTF-8 sanınca ş ve ğ harfleri bozulur. Tersi olduğunda KÄ±rmÄ±zÄ± gibi yazılar çıkar. Web sayfasından kopyalanan hücrelerde gözle görünmeyen bölünmez boşluk bulunur; iki hücre aynı görünse de eşleşmez. Bu araç bu tür kusurları hücre hücre bulur ve kaç hücreye dokunduğunu sayıyla yazar.</p>
+  <p>Dosya seçtiğinizde kodlama, ayraç ve sütunlar otomatik okunur. CSV, TSV, TXT ve XLSX dosyaları kabul edilir. Dosya yoksa tabloyu kutuya yapıştırmanız yeterlidir. Sonuç hemen ekranda önizlenir, istediğiniz biçimde indirilir. CSV indirilirken Türkçe Excel doğru açsın diye noktalı virgül ve UTF-8 işareti kullanılır. Excel çıktısında başı sıfırlı barkodlar ve 10 haneden uzun numaralar metin olarak korunur, sayılar ve GG.AA.YYYY tarihleri gerçek sayı ve tarih olarak yazılır.</p>
+  <p>Aracın sınırlarını bilmek önemlidir. Formüllerin yalnız son hesaplanmış değeri alınır, renk ve yazı biçimi gibi görünüş ayarları ile birleştirilmiş hücreler korunmaz. Parola korumalı Excel dosyaları ve eski .xls biçimi açılmaz. Daha önce Excel&#39;e kaydedilirken baştaki sıfırı veya harfi kaybolmuş bilgi geri getirilemez, çünkü o bilgi dosyada artık yoktur. Sütun sayısı tutmayan satırlar otomatik kaydırılmaz; satır numarasıyla bildirilir ve düzeltme kararı size kalır. Bu uyarı, kayan bir fiyatın yanlış ürüne yazılmasını önlemek içindir.</p>
+  <h2>Kullanım örneği: eski programdan alınan ürün listesi</h2>
+  <p>Bir hırdavatçı, kapanan programından 4.000 satırlık ürün listesini CSV olarak alıyor. Dosyayı açınca Şemsiye yerine Þemsiye yazıyor, bazı ürünler iki kez geçiyor, sonda boş bir sütun var. Dosyayı seçtiğinde araç kodlamayı bulur, harfleri onarır. Yineleme sütununa Barkod yazınca aynı barkodlu satırların yalnız ilki kalır.</p>
+  <p>Sayfadaki örnek veride beş veri satırı var. Temizlikten sonra üç ürün kalır: boş satır ve tekrar eden Kırmızı Çaydanlık silinir, sondaki boş sütun kalkar, Bardak Takımı hücresindeki bölünmez boşluk düzeltilir. Sonucu Excel olarak indirip önce birkaç satırını kontrol etmek, ardından yeni programa aktarmak en güvenli yoldur.</p>
+  <h2>Kaynaklar ve son güncelleme</h2>
+  <p><b>Son güncelleme:</b> <time datetime="2026-10-31">31 Ekim 2026</time>. Bu araç mevzuat oranı kullanmaz; hesap girdiğiniz değerlerle yapılır.</p>
+  
+  
+  <div class="ar-prog"><p>Ürün listenizi temizledikten sonra Market programına Excel veya CSV dosyasıyla aktarabilirsiniz. Barkodlu satış, stok ve kâr raporları aynı listeden çalışır.</p><a class="btn p" href="/marketprogrami">Market programı <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a></div>
+  <h2>Sık sorulan sorular</h2>
+  <div class="faq"><details open><summary>Excel dosyam sunucuya gidiyor mu?</summary><p>Hayır. Dosya tarayıcınızda açılır ve işlenir, sayfa dış adrese veri göndermeyi de engeller. Müşteri ve fiyat listeleri için bu yüzden elverişlidir.</p></details><details><summary>Türkçe karakter sorunu neden çıkıyor?</summary><p>Dosyayı yazan ve okuyan programlar farklı harf tablosu kullandığında aynı baytlar başka harfe dönüşür. Araç sık görülen iki bozulmayı geri çevirir. Yerinde � işareti görünen harfler ise dosyada kaybolmuştur, bunlar onarılamaz.</p></details><details><summary>Yinelenen satırları nasıl bulur?</summary><p>Büyük ve küçük harf farkına bakmadan satırın tamamını karşılaştırır. Sütun adı yazarsanız yalnız o sütuna bakar ve ilk satırı bırakır. O sütunu boş olan satırlar yinelenen sayılmaz. İlk satır başlık kabul edilir ve hiç silinmez.</p></details><details><summary>Birden çok sayfası olan Excel dosyasını işler mi?</summary><p>Her seferinde tek sayfa işlenir. Sayfa numarasını değiştirerek diğerine geçebilirsiniz, sayfa adları sonuçta listelenir.</p></details><details><summary>Kaç satıra kadar çalışır?</summary><p>Sınır 50 MB dosyadır. Yüz binlerce satır cihazın belleğine göre birkaç saniye sürebilir.</p></details></div>
+</div>
+<h2 class="ar-grup">İlgili araçlar</h2><div class="ar-kartlar"><a href="/araclar/liste-karsilastirma/"><b>Liste Karşılaştırma</b><span>İki listeden yalnız birinde olanları ve ortak olanları yazım farkını yok sayarak bulun</span></a><a href="/araclar/turkce-metin-duzenleme/"><b>Türkçe Metin Düzenleme</b><span>I ve İ kuralına uygun büyük küçük harf, bozuk harf onarma ve Türkçe karakter çevirme</span></a><a href="/araclar/iban-dogrulama/"><b>IBAN Doğrulama</b><span>TR IBAN&#39;ı kontrol basamağından denetleyin, ödeme listesindeki hatalı satırları tek seferde görün</span></a><a href="/araclar/teklif-olusturucu/"><b>Teklif Oluşturucu</b><span>Kalem, iskonto ve KDV toplamlı fiyat teklifini PDF olarak hazırlayın</span></a></div>
+</div></section>
+</main>
+<footer class="ft"><div class="w">
+  <div class="cols">
+    <div><a class="logo" href="/"><img src="/assets/icons/icon-64.png" alt="" width="34" height="34"><span class="wm"><b>NEB</b><i>SOFT</i></span></a><p>Türkiye'deki işletmeler için bulut tabanlı yazılımlar ve ücretsiz iş araçları.</p><p><a href="tel:+908505550034">0850 555 00 34</a><a href="mailto:destek@nebsoft.com.tr">destek@nebsoft.com.tr</a></p></div>
+    <div><h4><a href="/programlar" style="color:inherit">Programlar</a></h4><a href="/randevusistemi">Randevu sistemi</a><a href="/klinikprogrami">Klinik programı</a><a href="/eczaneprogrami">Eczane programı</a><a href="/kuyumcuprogrami">Kuyumcu programı</a><a href="/nakliyatprogrami">Nakliyat programı</a><a href="/okulservisiprogrami">Okul servisi programı</a></div><div><h4>&nbsp;</h4><a href="/adisyonprogrami">Adisyon programı</a><a href="/emlakprogrami">Emlak programı</a><a href="/kargotakipprogrami">Kargo takip programı</a><a href="/otogaleriprogrami">Oto galeri programı</a><a href="/temizlikprogrami">Temizlik şirketi programı</a><a href="/kooperatifprogrami">Kooperatif programı</a></div><div><h4>&nbsp;</h4><a href="/marketprogrami">Market programı</a><a href="/kursprogrami">Kurs programı</a><a href="/biletsatisprogrami">Bilet satış programı</a><a href="/hukukburosuprogrami">Hukuk bürosu programı</a><a href="/mobilustaprogrami">Mobil usta programı</a><a href="/lastikciprogrami">Lastikçi programı</a></div>
+  </div>
+  <div class="copy">© 2026 NEBSOFT. Tüm hakları saklıdır. · <a href="/araclar" style="display:inline">Ücretsiz araçlar</a> · <a href="/kvkk/" style="display:inline">KVKK ve yasal metinler</a></div>
+</div></footer>
+<script src="/site/assets/araclar-hesap.js"></script>
+<script src="/site/assets/araclar-dosya-saf.js"></script>
+<script src="/site/assets/araclar-dosya.js"></script>
+<script src="/site/assets/araclar.js"></script>
+<script>AR.baslat({dosyaAdi:"csv-excel-temizleme",gerekli:[],hesap:function (v, H) {
+    if (v.dosyalar.length) return '<p class="ar-bos">Dosya okunuyor.</p>'; if (!v.veri) throw new Error('Dosya seçin veya tabloyu kutuya yapıştırın');
+    const a = H.ayracBul(v.veri); return H.temizGoster(H.tabloTemizle(H.csvOku(v.veri, a), v), v, 'tablo', { ayrac: H.ayracAd(a) });
+  },dosyaAlan:"dosyalar",canli:true,isle:async function (v, H, c) {
+    const f = v.dosyalar[0]; if (f.size > 52428800) throw new Error('Dosya 50 MB sınırını aşıyor. Tarayıcıda güvenle işlenebilmesi için dosyayı parçalara ayırın.'); if (/\.xls$/i.test(f.name)) throw new Error('Eski .xls biçimi okunamıyor. Dosyayı Excel\'de açıp .xlsx olarak kaydedin, sonra yeniden seçin.');
+    const no = v.sayfa >= 1 ? Math.floor(v.sayfa) : 1; const k = `t${/\.xlsx$/i.test(f.name) ? no : 1}`;
+    if (!c.durum[k]) { const b = await H.bayt(f); if (/\.xlsx$/i.test(f.name)) c.durum[k] = await H.xlsxOku(b, no); else { const m = H.metinCoz(b); const a = H.ayracBul(m.metin); c.durum[k] = { satirlar: H.csvOku(m.metin, a), kodlama: m.kodlama, ayrac: H.ayracAd(a) }; } }
+    if (c.iptal()) return ''; const d = c.durum[k]; const s = d.sayfalar || [];
+    const t = H.tabloTemizle(d.satirlar, v); const h = H.temizGoster(t, v, H.dosyaKok(f.name), { kodlama: d.kodlama, ayrac: d.ayrac, not: s.length > 1 ? H.not(`Dosyada ${s.length} sayfa var: ${s.map(H.esc).join(', ')}. Şu an "${H.esc(d.secili)}" işleniyor${d.gizli ? ' (gizli sayfa)' : ''}.`) : '' }); const u = H.dosya;
+    if (v.bicim === 'xlsx') { const b = await H.xlsxSikisik(t.satirlar); if (c.iptal()) return ''; H.dosya = { ad: u.ad, tur: u.tur, icerik: b }; } return h;
+  }});</script>
+</body>
+</html>
