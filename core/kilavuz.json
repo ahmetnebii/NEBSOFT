@@ -1,23 +1,352 @@
 {
+ "adisyon": {
+  "id": "adisyon",
+  "sayfa": 80,
+  "boyut": 8058563,
+  "ekran": 58,
+  "tarih": "2026-10-31"
+ },
+ "anaokulu": {
+  "id": "anaokulu",
+  "sayfa": 54,
+  "boyut": 4581574,
+  "ekran": 32,
+  "tarih": "2026-10-31"
+ },
+ "bilet": {
+  "id": "bilet",
+  "sayfa": 78,
+  "boyut": 8362119,
+  "ekran": 58,
+  "tarih": "2026-10-31"
+ },
+ "butik": {
+  "id": "butik",
+  "sayfa": 70,
+  "boyut": 6667142,
+  "ekran": 44,
+  "tarih": "2026-10-31"
+ },
+ "cicekci": {
+  "id": "cicekci",
+  "sayfa": 72,
+  "boyut": 6154074,
+  "ekran": 42,
+  "tarih": "2026-10-31"
+ },
+ "ciftci": {
+  "id": "ciftci",
+  "sayfa": 61,
+  "boyut": 5212421,
+  "ekran": 34,
+  "tarih": "2026-10-31"
+ },
+ "crm": {
+  "id": "crm",
+  "sayfa": 57,
+  "boyut": 5151459,
+  "ekran": 32,
+  "tarih": "2026-10-31"
+ },
+ "dernek": {
+  "id": "dernek",
+  "sayfa": 59,
+  "boyut": 4697261,
+  "ekran": 32,
+  "tarih": "2026-10-31"
+ },
+ "dugun": {
+  "id": "dugun",
+  "sayfa": 61,
+  "boyut": 5534971,
+  "ekran": 39,
+  "tarih": "2026-10-31"
+ },
+ "eczane": {
+  "id": "eczane",
+  "sayfa": 71,
+  "boyut": 6231360,
+  "ekran": 43,
+  "tarih": "2026-10-31"
+ },
+ "egitim": {
+  "id": "egitim",
+  "sayfa": 66,
+  "boyut": 5021891,
+  "ekran": 33,
+  "tarih": "2026-10-31"
+ },
+ "emlak": {
+  "id": "emlak",
+  "sayfa": 47,
+  "boyut": 5032136,
+  "ekran": 29,
+  "tarih": "2026-10-31"
+ },
  "eticaret": {
   "id": "eticaret",
   "sayfa": 88,
-  "boyut": 7229526,
+  "boyut": 7259268,
   "ekran": 41,
+  "tarih": "2026-10-31"
+ },
+ "fabrika": {
+  "id": "fabrika",
+  "sayfa": 144,
+  "boyut": 14067595,
+  "ekran": 91,
+  "tarih": "2026-10-31"
+ },
+ "fiyatrobotu": {
+  "id": "fiyatrobotu",
+  "sayfa": 41,
+  "boyut": 3747297,
+  "ekran": 21,
+  "tarih": "2026-10-31"
+ },
+ "fotograf": {
+  "id": "fotograf",
+  "sayfa": 50,
+  "boyut": 4630027,
+  "ekran": 31,
+  "tarih": "2026-10-31"
+ },
+ "galeri": {
+  "id": "galeri",
+  "sayfa": 49,
+  "boyut": 4455851,
+  "ekran": 27,
+  "tarih": "2026-10-31"
+ },
+ "hukuk": {
+  "id": "hukuk",
+  "sayfa": 67,
+  "boyut": 6077372,
+  "ekran": 42,
+  "tarih": "2026-10-31"
+ },
+ "ik": {
+  "id": "ik",
+  "sayfa": 44,
+  "boyut": 4090516,
+  "ekran": 24,
+  "tarih": "2026-10-31"
+ },
+ "kargo": {
+  "id": "kargo",
+  "sayfa": 62,
+  "boyut": 5238141,
+  "ekran": 32,
+  "tarih": "2026-10-31"
+ },
+ "kiralama": {
+  "id": "kiralama",
+  "sayfa": 46,
+  "boyut": 4307477,
+  "ekran": 28,
+  "tarih": "2026-10-31"
+ },
+ "klinik": {
+  "id": "klinik",
+  "sayfa": 72,
+  "boyut": 5828593,
+  "ekran": 42,
+  "tarih": "2026-10-31"
+ },
+ "kurs": {
+  "id": "kurs",
+  "sayfa": 69,
+  "boyut": 5514220,
+  "ekran": 38,
+  "tarih": "2026-10-31"
+ },
+ "kurutemizleme": {
+  "id": "kurutemizleme",
+  "sayfa": 70,
+  "boyut": 5837926,
+  "ekran": 38,
+  "tarih": "2026-10-31"
+ },
+ "kuyumcu": {
+  "id": "kuyumcu",
+  "sayfa": 53,
+  "boyut": 4876022,
+  "ekran": 33,
+  "tarih": "2026-10-31"
+ },
+ "lastik": {
+  "id": "lastik",
+  "sayfa": 62,
+  "boyut": 4953344,
+  "ekran": 31,
+  "tarih": "2026-10-31"
+ },
+ "matbaa": {
+  "id": "matbaa",
+  "sayfa": 67,
+  "boyut": 5522191,
+  "ekran": 38,
+  "tarih": "2026-10-31"
+ },
+ "mobilya": {
+  "id": "mobilya",
+  "sayfa": 65,
+  "boyut": 5662366,
+  "ekran": 35,
+  "tarih": "2026-10-31"
+ },
+ "muhasebe": {
+  "id": "muhasebe",
+  "sayfa": 84,
+  "boyut": 8328119,
+  "ekran": 53,
+  "tarih": "2026-10-31"
+ },
+ "musavir": {
+  "id": "musavir",
+  "sayfa": 70,
+  "boyut": 6695115,
+  "ekran": 45,
+  "tarih": "2026-10-31"
+ },
+ "nakliyat": {
+  "id": "nakliyat",
+  "sayfa": 77,
+  "boyut": 6521423,
+  "ekran": 48,
+  "tarih": "2026-10-31"
+ },
+ "okulservisi": {
+  "id": "okulservisi",
+  "sayfa": 60,
+  "boyut": 4919568,
+  "ekran": 33,
+  "tarih": "2026-10-31"
+ },
+ "otel": {
+  "id": "otel",
+  "sayfa": 78,
+  "boyut": 7635696,
+  "ekran": 53,
+  "tarih": "2026-10-31"
+ },
+ "oto": {
+  "id": "oto",
+  "sayfa": 48,
+  "boyut": 4164613,
+  "ekran": 29,
+  "tarih": "2026-10-31"
+ },
+ "otoservis": {
+  "id": "otoservis",
+  "sayfa": 58,
+  "boyut": 5320713,
+  "ekran": 33,
+  "tarih": "2026-10-31"
+ },
+ "oyun": {
+  "id": "oyun",
+  "sayfa": 56,
+  "boyut": 4470963,
+  "ekran": 34,
+  "tarih": "2026-10-31"
+ },
+ "pastane": {
+  "id": "pastane",
+  "sayfa": 75,
+  "boyut": 6506419,
+  "ekran": 44,
+  "tarih": "2026-10-31"
+ },
+ "pazaryeri": {
+  "id": "pazaryeri",
+  "sayfa": 57,
+  "boyut": 5258634,
+  "ekran": 33,
+  "tarih": "2026-10-31"
+ },
+ "peyzaj": {
+  "id": "peyzaj",
+  "sayfa": 76,
+  "boyut": 6301009,
+  "ekran": 48,
   "tarih": "2026-10-31"
  },
  "pos": {
   "id": "pos",
-  "sayfa": 80,
-  "boyut": 7393315,
+  "sayfa": 84,
+  "boyut": 7586533,
   "ekran": 52,
+  "tarih": "2026-10-31"
+ },
+ "randevu": {
+  "id": "randevu",
+  "sayfa": 78,
+  "boyut": 7174776,
+  "ekran": 47,
+  "tarih": "2026-10-31"
+ },
+ "servis": {
+  "id": "servis",
+  "sayfa": 52,
+  "boyut": 4674863,
+  "ekran": 31,
+  "tarih": "2026-10-31"
+ },
+ "site": {
+  "id": "site",
+  "sayfa": 93,
+  "boyut": 8261080,
+  "ekran": 57,
+  "tarih": "2026-10-31"
+ },
+ "spor": {
+  "id": "spor",
+  "sayfa": 56,
+  "boyut": 4582592,
+  "ekran": 32,
+  "tarih": "2026-10-31"
+ },
+ "temizlik": {
+  "id": "temizlik",
+  "sayfa": 76,
+  "boyut": 6216023,
+  "ekran": 47,
   "tarih": "2026-10-31"
  },
  "terzi": {
   "id": "terzi",
   "sayfa": 66,
-  "boyut": 5459833,
+  "boyut": 5478562,
   "ekran": 36,
+  "tarih": "2026-10-31"
+ },
+ "toptan": {
+  "id": "toptan",
+  "sayfa": 54,
+  "boyut": 4961393,
+  "ekran": 33,
+  "tarih": "2026-10-31"
+ },
+ "usta": {
+  "id": "usta",
+  "sayfa": 81,
+  "boyut": 6569992,
+  "ekran": 51,
+  "tarih": "2026-10-31"
+ },
+ "veteriner": {
+  "id": "veteriner",
+  "sayfa": 69,
+  "boyut": 6183517,
+  "ekran": 47,
+  "tarih": "2026-10-31"
+ },
+ "yurt": {
+  "id": "yurt",
+  "sayfa": 59,
+  "boyut": 5062762,
+  "ekran": 37,
   "tarih": "2026-10-31"
  }
 }

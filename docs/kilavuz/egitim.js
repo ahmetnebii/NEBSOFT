@@ -54,7 +54,6 @@ module.exports = (O) => ({
     O.belgeler({ tur: 'Eğitim sertifikası' }),
     O.ayarlar({ alanlar: [['En az devam (%)', 'Sertifika için gereken devam.'], ['En az not (0 = not aranmaz)', 'Sertifika için gereken not.'], ['Ödemesi bitmeyene belge verilmesin', 'Açıksa kalan borç belge üretimini engeller.'], ['Belgeyi imzalayan unvan', 'Belgedeki imza başlığı.'], ['İade ve devam koşulları metni', 'Kayıt formuna yazılır. Kurumunuzun türüne göre hukuk danışmanınız hazırlar.']] }),
     O.bildirimler(),
-    O.ebelge(),
     O.entegrasyonlar(),
   ],
 

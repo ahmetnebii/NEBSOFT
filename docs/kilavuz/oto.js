@@ -1,4 +1,6 @@
 // Oto Yıkama & Otopark kullanım kılavuzu içeriği. Biçim: docs/kilavuz/DURUM.md. Üretim: node scripts/kilavuz/uret.js oto
+// Demo kuyruğu rastgele dolar: üç sütunda da iş olması için eksik durumlar sahnede eklenir
+const KUYRUK = [['js', "(()=>{const d=NS.app.opts.db,P=d.all('packages')[0];[['bekliyor','34 KLV 101'],['yikaniyor','34 KLV 102'],['hazir','34 KLV 103']].forEach(([s,p])=>{if(!d.all('jobs').some((j)=>j.status===s))d.insert('jobs',{plate:p,pkg:P.id,price:P.price,status:s,worker:'k1',in:new Date().toISOString()},true);});d.save();location.hash='#/';})()"], ['bekle', 400], ['js', "location.hash='#/yikama'"], ['bekle', 500]];
 module.exports = (O) => {
   const ayar = O.ayarlar({ alanlar: [['Kapasite (araç)', 'Doluluk oranı ve dolu uyarısı bu sayıyla hesaplanır.'], ['Ücretsiz süre (dk)', 'Bu sürede çıkan araçtan ücret alınmaz.'], ['İlk saat (₺)', 'İlk saatin ücreti.'], ['Sonraki her saat (₺)', 'Sonraki her saatin ücreti.'], ['Günlük en fazla (₺)', 'Bir günde alınacak en yüksek ücret.'], ['Kayıp fiş ücreti (₺, yoksa 0)', 'Çıkış penceresinde **Kayıp fiş** seçilince eklenir.'], ['Oto kuaför modülü', 'Açıp sayfayı yenileyince **Oto Kuaför** menüsü çıkar.'], ['Vale modülü', 'Açıp sayfayı yenileyince **Vale** menüsü çıkar.'], ['Vale hizmet bedeli (₺)', 'Vale fişinde kullanılan ücret.'], ['Vale/garaj sigorta poliçesi bitişi', 'Vale sayfasındaki kontrol uyarısında kullanılır.'], ['Üçüncü şahıs mali mesuliyet poliçesi bitişi', 'Vale sayfasındaki kontrol uyarısında kullanılır.']] });
   ayar.gorevler = [...ayar.gorevler,
@@ -28,7 +30,7 @@ module.exports = (O) => {
 
       { id: 'yikama', ne: 'Yıkama işlerini **Sırada**, **Yıkanıyor** ve **Hazır** sütunlarında gösterir. Kartlardaki düğmelerle iş ilerler.',
         gorevler: [{ baslik: 'Yıkama işini yürütme', sahneler: [
-          { git: 'yikama', kirp: 'ana', boy: 900, adimlar: [['**Yıkama ekle (otoparksız)** otoparka girmeyen araç için iş açar.', '#nj'], ['**Başla** yıkamacı seçtirip işi başlatır.', 'button@Başla'], ['**Bitti** aracı **Hazır** sütununa alır.', 'button@Bitti'], ['**Teslim et** ödeme penceresini açar.', 'button@Teslim et']] },
+          { git: 'yikama', once: KUYRUK, kirp: 'ana', boy: 900, adimlar: [['**Yıkama ekle (otoparksız)** otoparka girmeyen araç için iş açar.', '#nj'], ['**Başla** yıkamacı seçtirip işi başlatır.', 'button@Başla'], ['**Bitti** aracı **Hazır** sütununa alır.', 'button@Bitti'], ['**Teslim et** ödeme penceresini açar.', 'button@Teslim et']] },
           { git: 'yikama', once: [['tikla', '#nj']], kirp: 'pencere', adimlar: [['**Plaka** ve **Hizmet** seçip **Kaydet** düğmesine basın.', 'button@Kaydet']] }] }],
         hatalar: [['En az bir hizmet seçin uyarısı çıkıyor.', 'Hizmet listesinden seçim yapın.'], ['Bitmemiş yıkama sorusu çıkıyor.', 'Araç çıkıyor ama iş bitmemiştir. Yıkamayı bitirin veya iptal edin.'], ['Hizmet ücreti görünmüyor.', 'Fiyatlar **Hizmet & Fiyatlar** sayfasından gelir.']] },
 

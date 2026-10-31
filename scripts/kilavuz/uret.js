@@ -98,10 +98,11 @@ async function program(id, B, ch, sira) {
 
 (async () => {
   const a = process.argv.slice(2); const ids = a.includes('--hepsi') ? fs.readdirSync(A.KAYNAK).filter((f) => /^[a-z]+\.js$/.test(f)).map((f) => f.slice(0, -3)).filter((id) => !A.YAYIN_DISI.includes(id)) : a; if (!ids.length) throw new Error('Program verin: node scripts/kilavuz/uret.js pos terzi');
-  const s = await sunucu(); const ch = await chrome(Number(process.env.KILAVUZ_CDP) || 9473); const liste = fs.existsSync(A.LISTE) ? JSON.parse(fs.readFileSync(A.LISTE, 'utf8')) : {}; let hata = 0;
+  const s = await sunucu(); const ch = await chrome(Number(process.env.KILAVUZ_CDP) || 9473); const liste = {}; let hata = 0;
   try {
     for (const id of ids) { try { const r = await program(id, s.adres, ch); if (!A.YAYIN_DISI.includes(id)) liste[id] = r; } catch (e) { hata++; console.error(e.hatali ? e.message : e); } }
-    fs.writeFileSync(A.LISTE, JSON.stringify(Object.fromEntries(Object.keys(liste).filter((k) => !A.YAYIN_DISI.includes(k)).sort().map((k) => [k, liste[k]])), null, 1) + '\n');
+    const son = { ...(fs.existsSync(A.LISTE) ? JSON.parse(fs.readFileSync(A.LISTE, 'utf8')) : {}), ...liste }; // paralel üretimde diğer sürecin kaydı ezilmez
+    fs.writeFileSync(A.LISTE, JSON.stringify(Object.fromEntries(Object.keys(son).filter((k) => !A.YAYIN_DISI.includes(k)).sort().map((k) => [k, son[k]])), null, 1) + '\n');
   } finally { await ch.kapat(); await s.kapat(); }
   if (hata) process.exit(1);
 })().then(() => process.exit(0), (e) => { console.error(e); process.exit(1); });
