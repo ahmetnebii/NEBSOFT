@@ -115,7 +115,7 @@
     const ins = (m.installments || []).slice().sort((a, b) => a.due.localeCompare(b.due));
     const pays = db.all('payments', (p) => p.member === m.id).sort((a, b) => b.at.localeCompare(a.at));
     const debt = sum(ins.filter((i) => !i.paid && i.due <= today()), (i) => i.amount);
-    return `${debt ? `<div class="tk-call" style="--c:var(--err)"><h3>${icon('alert')} Vadesi geçen ödeme: ${money(debt)}</h3><button class="btn primary mt" data-pay="due">${icon('card')} ${NS.pub ? 'Nasıl öderim?' : 'Şimdi öde'}</button></div>` : ''}
+    return `${debt ? `<div class="tk-call" style="--c:var(--err)"><h3>${icon('alert')} Vadesi geçen ödeme: ${money(debt)}</h3><button class="btn primary mt" data-pay="due">${icon('card')} ${NS.pub && !S().kartOdeme ? 'Nasıl öderim?' : 'Şimdi öde'}</button></div>` : NS.pub && S().kartOdeme && ins.some((i) => !i.paid && !i.canceled) ? `<button class="btn primary block mb" data-pay="due">${icon('card')} Taksit öde</button>` : ''}
       <section class="tk-panel"><h3>${icon('calendar')} Taksitler</h3><div class="b">${ins.map((i, k) => `<div class="cls" style="grid-template-columns:1fr auto auto"><div><b>${k + 1}. taksit</b><div class="small muted">${NS.date(i.due)}</div></div><b>${money(i.amount)}</b>${i.paid ? '<span class="badge ok">Ödendi</span>' : i.due <= today() ? '<span class="badge err">Gecikti</span>' : '<span class="badge">Bekliyor</span>'}</div>`).join('') || '<div class="small muted">Taksit yok</div>'}</div></section>
       <section class="tk-panel"><h3>${icon('receipt')} Ödeme geçmişi</h3><div class="b">${pays.map((p) => `<div class="row between small" style="padding:6px 0"><span>${NS.date(p.at)} · ${esc(p.desc || '')} · ${esc(p.type)}</span><b>${money(p.amount)}</b></div>`).join('') || '<div class="small muted">Kayıt yok</div>'}</div></section>`;
   }
@@ -169,11 +169,11 @@
       const m = me();
       if (b.dataset.pay === 'due') {
         const due = (m.installments || []).filter((i) => !i.paid && i.due <= today()); const amt = sum(due, (i) => i.amount);
-        if (NS.pub) return NS.payInfo({ amount: amt, title: 'Geciken taksit ödemesi', s: S() });
+        if (NS.pub) return NS.tahsilat.ode(db, { baslik: 'Taksit ödemesi', yedek: () => NS.payInfo({ amount: amt, title: 'Geciken taksit ödemesi', s: S() }) });
         cardPay(amt, 'Geciken taksit ödemesi', () => { db.load(); const x = db.get('members', m.id); x.installments.forEach((i) => { if (!i.paid && i.due <= today()) i.paid = true; }); db.insert('payments', { member: x.id, amount: amt, at: new Date().toISOString(), type: 'online kart', desc: 'Taksit' }, true); db.save(); toast('Ödemen alındı, teşekkürler', 'ok'); render(); });
       } else {
         const p = plan(($('input[name=pl]:checked') || {}).value);
-        if (NS.pub) return NS.payInfo({ amount: p.price, title: `${p.name} — yenileme`, s: S(), note: 'Üyeliğinizi yenilemek için ödemenizi salonumuza elden veya havale ile yapabilirsiniz. Ödeme alındığında yeni paketiniz tanımlanır.' });
+        if (NS.pub) return NS.tahsilat.ode(db, { baslik: `${p.name} — yenileme`, yenile: p.id, yedek: () => NS.payInfo({ amount: p.price, title: `${p.name} — yenileme`, s: S(), note: 'Üyeliğinizi yenilemek için ödemenizi salonumuza elden veya havale ile yapabilirsiniz. Ödeme alındığında yeni paketiniz tanımlanır.' }) });
         cardPay(p.price, `${p.name} — yenileme`, () => {
           db.load(); const x = db.get('members', m.id); const base = x.end > today() ? x.end : today();
           x.plan = p.id; x.start = x.end > today() ? x.start : today(); x.end = iso(addDays(base, p.months * 30)); if (p.sessions) x.sessionsLeft = (x.sessionsLeft || 0) + p.sessions;
@@ -189,7 +189,7 @@
     });
   }
   bind();
-  render();
+  render(); NS.tahsilat.donus(db, render);
 })();
 </script>
 </body>

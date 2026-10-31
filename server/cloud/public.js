@@ -15,7 +15,7 @@ const TOKEN_HOURS = 12;
 const FAILS = new Map();
 
 // Müşteri girişi belirteci: işletme + uygulama + kimlik, HMAC ile imzalı, 12 saat geçerli
-const signToken = (p) => { const body = Buffer.from(JSON.stringify({ ...p, e: Date.now() + TOKEN_HOURS * 3600e3 })).toString('base64url'); return body + '.' + cfg.mac(body); };
+const signToken = (p, saat = TOKEN_HOURS) => { const body = Buffer.from(JSON.stringify({ ...p, e: Date.now() + saat * 3600e3 })).toString('base64url'); return body + '.' + cfg.mac(body); };
 function readToken(tok, tenant, app) {
   if (typeof tok !== 'string' || tok.length > 600 || !tok.includes('.')) return null;
   const [body, sig] = tok.split('.');

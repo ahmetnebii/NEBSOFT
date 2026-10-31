@@ -7,6 +7,7 @@ const { SaglayiciHata } = require('./entegrasyon/ortak');
 const kurus = (n) => Math.round(Number(String(n ?? '').replace(',', '.')) * 100);
 const isl = (ad, is) => ent.bul(`payment:${ad}`).islemler[is];
 const fiyat = (n) => Number(n).toFixed(2);
+const etiket = (o) => o.etiket || `Sipariş ${o.no}`; // borç tahsilatı (tahsilat-odeme.js) sipariş biçimiyle gelir
 
 const iyzico = {
   ad: 'iyzico', tc: true,
@@ -16,7 +17,7 @@ const iyzico = {
       locale: 'tr', conversationId: o.id, price: f, paidPrice: f, currency: 'TRY', basketId: o.id, paymentGroup: 'PRODUCT', callbackUrl: `${b.geri}/api/odeme/iyzico/donus/${b.slug}/${o.id}`,
       buyer: { id: String(o.customer), name: b.ad, surname: b.soyad, identityNumber: b.tc, email: b.eposta, gsmNumber: b.gsm, registrationAddress: adr.address, ip: b.ip, city: adr.city, country: 'Turkey' },
       shippingAddress: adr, billingAddress: adr,
-      basketItems: [{ id: String(o.no), name: `Sipariş ${o.no}`, category1: 'Sipariş', itemType: 'PHYSICAL', price: f }], // tek kalem: kupon ve kargo kuruş farkı çıkarmaz, kısmi iade tek işlemden düşer
+      basketItems: [{ id: String(o.no), name: etiket(o), category1: o.sanal ? 'Hizmet' : 'Sipariş', itemType: o.sanal ? 'VIRTUAL' : 'PHYSICAL', price: f }], // tek kalem: kupon ve kargo kuruş farkı çıkarmaz, kısmi iade tek işlemden düşer
     });
     return { token: r.token, url: r.url };
   },
@@ -30,7 +31,7 @@ const paytr = {
   oid: (id) => `${String(id).replace(/[^a-zA-Z0-9]/g, '')}NEB${Date.now().toString(36)}`,
   siparisOf: (oid) => { const s = String(oid); const i = s.lastIndexOf('NEB'); return i > 0 ? s.slice(0, i) : ''; },
   async baslat(a, o, b) {
-    const oid = paytr.oid(o.id); const r = await isl('paytr', 'odeme-baslat')(a, { siparis: oid, ip: b.ip, eposta: b.eposta, tutarKurus: kurus(o.total), sepet: [[`Sipariş ${o.no}`, fiyat(o.total), 1]], enCokTaksit: 0, ad: b.adSoyad.slice(0, 60), adres: String(o.ship.address).slice(0, 400), telefon: String(o.ship.phone).slice(0, 20), okUrl: b.donus, hataUrl: b.donus });
+    const oid = paytr.oid(o.id); const r = await isl('paytr', 'odeme-baslat')(a, { siparis: oid, ip: b.ip, eposta: b.eposta, tutarKurus: kurus(o.total), sepet: [[etiket(o), fiyat(o.total), 1]], enCokTaksit: 0, ad: b.adSoyad.slice(0, 60), adres: String(o.ship.address).slice(0, 400), telefon: String(o.ship.phone).slice(0, 20), okUrl: b.donus, hataUrl: b.donus });
     return { token: r.token, iframe: r.url, oid };
   },
   // Tek sonuç nesnesi: bildirim ve durum sorgusu aynı karara gider
@@ -46,7 +47,7 @@ const paytr = {
 const papara = {
   ad: 'Papara', tc: false,
   async baslat(a, o, b) {
-    const r = await isl('papara', 'odeme-baslat')(a, { tutar: fiyat(o.total), siparis: o.id, aciklama: `Sipariş ${o.no}`, bildirimUrl: `${b.geri}/api/odeme/bildirim/papara/${b.slug}/${o.id}`, okUrl: b.donusSunucu });
+    const r = await isl('papara', 'odeme-baslat')(a, { tutar: fiyat(o.total), siparis: o.id, aciklama: etiket(o), bildirimUrl: `${b.geri}/api/odeme/bildirim/papara/${b.slug}/${o.id}`, okUrl: b.donusSunucu });
     return { token: r.id, url: r.url };
   },
   // Yönlendirme parametrelerine güvenilmez: sonuç Papara'dan sorgulanır

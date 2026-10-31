@@ -218,7 +218,7 @@
     const ss = db.all('students');
     const rows = ss.flatMap((s) => s.installments.filter((i) => !i.paid && !i.canceled).map((i) => ({ ...i, s }))).sort((a, b) => a.due.localeCompare(b.due));
     const pay30 = db.all('payments', (x) => x.at > addDays(new Date(), -30).toISOString());
-    el.innerHTML = pageHead('Taksit & Tahsilat', 'Vadesi gelen ve geciken taksitler') + `
+    el.innerHTML = pageHead('Taksit & Tahsilat', 'Vadesi gelen ve geciken taksitler', NS.tahsilat.dugme('kurs')) + `
       <div class="grid g4 mb">${kpi('Gecikmiş', money(sum(rows.filter((r) => r.due < today()), (r) => r.amount)), 'alert', 'err')}${kpi('Bu ay vadesi gelen', money(sum(rows.filter((r) => r.due.slice(0, 7) === today().slice(0, 7)), (r) => r.amount)), 'calendar', 'warn')}${kpi('30 gün tahsilat', money(sum(pay30, (x) => x.amount)), 'wallet', 'ok')}${kpi('Toplam kalan', money(sum(rows, (r) => r.amount)), 'clock', 'info')}</div>
       <div class="card">${table({ rows: rows.slice(0, 200), empty: 'Bekleyen taksit yok', columns: [{ label: 'Vade', render: (r) => `${NS.date(r.due)}${r.due < today() ? `<div class="small" style="color:var(--err)">${NS.daysBetween(r.due, new Date())} gün gecikti</div>` : ''}` }, { label: 'Öğrenci', render: (r) => `<a href="#/ogrenci/${r.s.id}"><b>${esc(r.s.name)}</b></a><div class="small faint">${esc(cls(r.s.cls).name)}</div>` }, { label: 'Veli', render: (r) => `${esc(r.s.parent)}<div class="small faint">${esc(r.s.parentPhone)}</div>` }, { label: 'Tutar', cls: 'right', render: (r) => `<b>${money(r.amount)}</b>` }], actions: [{ label: 'Tahsil et', act: 'pay' }, { icon: 'message', act: 'wa', title: 'Veliye hatırlat' }] })}</div>`;
     on(el, 'click', '[data-act]', async (e, b) => {

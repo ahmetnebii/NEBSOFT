@@ -288,7 +288,7 @@
     const next = (() => { const n = new Date(); let due = SITE.dueDate(iso(n).slice(0, 7), s().dueDay); if (n > due) { const m = new Date(n.getFullYear(), n.getMonth() + 1, 1); due = SITE.dueDate(iso(m).slice(0, 7), s().dueDay); } return due; })();
     return `<div class="bal"><div class="l"><div class="small muted">Güncel borcunuz</div><div class="amt ${d > 0 ? 'due' : 'clear'}">${money(d)}</div>
         <div class="small muted">${d > 0 ? `${fee > 0 ? `Gecikme faizi: <b>${money(fee)}</b> (aylık %${s().lateFee}) · ` : ''}` : 'Borcunuz bulunmuyor, teşekkür ederiz. · '}Sıradaki son ödeme: <b>${NS.dateLong(iso(next))}</b></div>${strip(f)}</div>
-      <div class="r">${d > 0 ? `<button class="btn primary lg block" data-pay>${icon('card')} ${NS.pub ? 'Ödeme bilgisi' : 'Kartla öde'} · ${money(d + fee)}</button>` : ''}
+      <div class="r">${d > 0 ? `<button class="btn primary lg block" data-pay>${icon('card')} ${NS.pub && !s().kartOdeme ? 'Ödeme bilgisi' : 'Kartla öde'} · ${money(d + fee)}</button>` : ''}
         <div class="small muted">veya havale / EFT: ${esc(s().bank)}</div><div class="iban"><span>${esc(s().iban)}</span><button class="btn ghost icon sm" data-copy="${esc(s().iban.replace(/\s/g, ''))}" aria-label="IBAN kopyala">${icon('copy')}</button></div>
         <div class="small muted">Açıklamaya <b>${esc(f.id)}</b> yazın; ödemeniz otomatik eşleşir.</div></div></div>`;
   }
@@ -299,7 +299,7 @@
     const open = db.all('dues', (d) => d.flat === f.id && d.amount > (d.paid || 0)).sort((a, b) => a.period.localeCompare(b.period));
     const fee = SITE.lateFee(db, f.id);
     if (!open.length) return toast('Ödenecek borcunuz yok');
-    if (NS.pub) return NS.payInfo({ amount: sum(open, (d) => d.amount - (d.paid || 0)) + (fee > 0 ? fee : 0), title: 'Aidat ödemesi', s: s(), note: `Aidatınızı yönetimin banka hesabına havale ile veya yönetim ofisine elden ödeyebilirsiniz. Havale açıklamasına "${f.block} Blok ${f.no}" yazın. Ödemeniz işlendiğinde bu sayfada görünür.` });
+    if (NS.pub) return NS.tahsilat.ode(db, { baslik: 'Aidat ödemesi', yedek: () => NS.payInfo({ amount: sum(open, (d) => d.amount - (d.paid || 0)) + (fee > 0 ? fee : 0), title: 'Aidat ödemesi', s: s(), note: `Aidatınızı yönetimin banka hesabına havale ile veya yönetim ofisine elden ödeyebilirsiniz. Havale açıklamasına "${f.block} Blok ${f.no}" yazın. Ödemeniz işlendiğinde bu sayfada görünür.` }) });
     const m = NS.modal({
       title: 'Kartla aidat ödemesi', body: `<div class="mb">${open.map((d) => `<label class="row2" style="cursor:pointer"><input type="checkbox" checked data-d="${d.id}"><span class="g"><span class="t">${esc(d.desc)}</span><span class="m" style="display:block">${perName(d.period)}</span></span><b class="num">${money(d.amount - (d.paid || 0))}</b></label>`).join('')}
         ${fee > 0 ? `<div class="row2"><span class="g"><span class="t">Gecikme faizi</span><span class="m" style="display:block">Seçili borçlar tamamen ödenirse alınır</span></span><b class="num" id="fe">${money(fee)}</b></div>` : ''}</div>
@@ -493,7 +493,7 @@
   };
 
   window.addEventListener('hashchange', render);
-  render();
+  render(); NS.tahsilat.donus(db, render);
 })();
 </script>
 </body>
