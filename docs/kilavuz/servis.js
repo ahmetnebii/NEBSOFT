@@ -62,7 +62,7 @@ module.exports = (O) => ({
   yazdirma: { ne: 'Belgeler kayıt ekranından yazdırılır. İki belgede de müşteri imzası ekranda alınır.', belgeler: [['Servis kabul formu', 'Cihaz kabulde **Kaydet ve fiş yazdır**. Sonradan kayıttaki **Kabul fişi** düğmesi.'], ['Teslim ve garanti belgesi', 'Kayıtta **Müşteriye teslim et** adımının sonunda açılır.']] },
 
   entegrasyon: {
-    callerid: { kapali: { '*': 'Bu sürümde desteklenmiyor.' }, degisir: ['Bu sürümde santral bağlantısı yoktur. **Gelen çağrı** düğmesi numarayı size sorar, siz yazarsınız.'], sorun: ['Numarayı yazınca müşteri bulunmuyorsa kayıttaki telefonu kontrol edin.'] },
+    callerid: { kapali: { '*': 'NEBSOFT ile iletişime geçerek açtırılır.' }, degisir: ['Santral bağlantısı NEBSOFT ile iletişime geçerek açtırılır.', 'Bağlantı açılana kadar **Gelen çağrı** düğmesi numarayı size sorar, siz yazarsınız.'], sorun: ['Numarayı yazınca müşteri bulunmuyorsa kayıttaki telefonu kontrol edin.'] },
     sms: { degisir: ['Fiyat teklifi, parça bekleniyor ve teslime hazır durumlarında müşteriye gerçek SMS gider. Mesajda takip adresi bulunur.', 'Özet sayfasındaki teslim hatırlatması da SMS gönderir.', 'Gönderimler **SMS Bildirimleri** sayfasına işlenir. Bağlantı yokken **TEST — gönderilmedi** görünür, müşteriye bir şey gitmez.'], sorun: ['SMS gönderilemezse program WhatsApp ile göndermeyi önerir.', 'Sağlayıcı panelindeki krediyi ve onaylı başlığı kontrol edin.'] },
     whatsapp: O.E.whatsappLink('SMS gönderilemediğinde çıkan **WhatsApp ile gönder** seçeneği'),
     backup: O.E.backup(),
