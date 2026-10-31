@@ -1,6 +1,6 @@
 # Birleştirme raporu: `birlesik/hepsi`
 
-Tarih: 2026-10-31. Son `npm test` ve SEO denetimi Kılavuz 2 eki ve `sw.js` `nebsoft-v3-97` commit'i üstünde koştu. Bu rapor ayrı bir belge commit'idir. Bu oturum `devir/hepsi` dalına yazmadı, push yapmadı. Yerel `devir/hepsi` bu dala ileri sarıldı, `origin/devir/hepsi` hâlâ `d5f4e06`, push yapılmadı.
+Tarih: 2026-10-31. Son `npm test` ve SEO denetimi Kılavuz 2 eki ve `sw.js` `nebsoft-v3-98` commit'i üstünde koştu. Bu rapor ayrı bir belge commit'idir. Bu oturum `devir/hepsi` dalına yazmadı, push yapmadı. Yerel `devir/hepsi` bu dala ileri sarıldı, `origin/devir/hepsi` hâlâ `d5f4e06`, push yapılmadı.
 
 ## CANLIYA ÇIKMAYI ENGELLEYENLER
 
@@ -8,12 +8,12 @@ Tarih: 2026-10-31. Son `npm test` ve SEO denetimi Kılavuz 2 eki ve `sw.js` `neb
 
 1. **Kılavuz PDF'leri depoda değil.** 50 PDF yalnız bu çalışma kopyasının `indir/kilavuz/` klasöründe, 282 MB. Ana klasöre kopyalanmazsa `seo-denetim` 50 kesin hata verir, `hosting-paketi.js` durur. Barındırma planı bu boyutu taşımalı.
 2. **Hiçbir sağlayıcı gerçek test hesabıyla denenmedi.** Ödeme dahil. Canlı kart kilitleri kapalı.
-3. **Destek telefonu ve e-postası teyit bekliyor.** Kılavuzda `site/src/site.config.js` değerleri yazar, logo da kesin değil. Değişirse kılavuzlar yeniden üretilir.
+3. **Destek telefonu ve e-postası teyit bekliyor.** Kılavuzda `site/src/site.config.js` değerleri yazar. Logo kararı verildi: mevcut logolar kullanılacak. Değişirse kılavuzlar yeniden üretilir.
 4. **Gerçek telefon denemesi yok.** iOS Safari çalıştırılmadı, Android uygulaması derlenmedi. Ayrıntı `docs/test/telefon.md`.
 
 ### Bu iki birleştirmede kapanan
 
-- `sw.js` sürümü yükseltildi, son değer `nebsoft-v3-97` (saha E9).
+- `sw.js` sürümü yükseltildi, son değer `nebsoft-v3-98` (saha E9).
 - Gece kırılan `bilet-kural.test.js` (ticaret 8 ve üç rapor).
 - Panelden açılan iyzico kilidi birleşik kodda çalışıyor, borç tahsilatı süresi panelden okunuyor.
 - Paraşüt notu kodla uyumlu, `core/integ-guides.js`.
