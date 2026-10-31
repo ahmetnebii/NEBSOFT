@@ -1,4 +1,6 @@
-# E-ticaret kart ödemesi (iyzico Checkout Form)
+# E-ticaret kart ödemesi
+
+Güncelleme 31.10.2026: Vitrin iyzico dışında PayTR, Papara, Paynet ve Craftgate ile de çalışır (`server/cloud/odeme-saglayici.js`). Ödeme ancak Bağlantıyı dene geçince açılır. PayTR bildirimi `/api/odeme/paytr/bildirim/<işletme>`, Papara ve Paynet `/api/odeme/bildirim/<sağlayıcı>/<işletme>/<sipariş>`, dönüş `/api/odeme/donus/<işletme>/<sipariş>`. Canlı kilitler ve açık noktalar `docs/ENTEGRASYON-ENVANTERI.md`. Aşağısı iyzico akışıdır.
 
 Durum: kod tamam, sahte iyzico sunucusuyla test edildi. Gerçek iyzico test hesabıyla denenmedi. Canlı mod kapalı.
 

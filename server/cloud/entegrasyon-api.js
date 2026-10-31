@@ -34,7 +34,7 @@ route('POST', '/api/entegrasyon/dene', { auth: 'user', limit: ['entdene', 30, 60
   const s = ent.bul(`${tur}:${sag}`); if (!s) throw err(404, 'Bu sağlayıcı için bağlantı kurulamıyor');
   const r = await ent.dene(`${tur}:${sag}`, birlestir(s, c.body.alanlar, await kayitli(c.user.tenant_id, tur)));
   await durumYaz(c.user.tenant_id, tur, sag, r); if (!r.ok) log.uygulama.hata('entegrasyon.dene', `${tur}:${sag} ${r.kod}`);
-  const { parmak, ...acik } = r; return { ...acik, sonDeneme: new Date().toISOString() };
+  const { parmak, ...acik } = r; if (r.ok && sag === 'paytr') { const t = await db.one('SELECT slug FROM tenants WHERE id=?', [c.user.tenant_id]); acik.mesaj += ` Bildirim URL olarak PayTR paneline yazın: ${await require('./eticaret-odeme').geriAdres(c)}/api/odeme/paytr/bildirim/${t.slug}`; } return { ...acik, sonDeneme: new Date().toISOString() };
 });
 route('GET', '/api/entegrasyon/durum', { auth: 'user' }, async (c) => {
   if (!c.user.tenant_id) throw err(400, 'İşletme hesabı gerekli');

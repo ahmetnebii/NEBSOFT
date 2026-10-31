@@ -6,7 +6,7 @@ const { SaglayiciHata, istek, jsonBekle, durumHata, ozel } = require('./ortak');
 const AD = 'iyzico'; const YOL = '/payment/bin/check';
 async function dene(k) {
   const a = { apiKey: k.apiKey, secret: k.secret, test: !!k.sandbox }; const govde = JSON.stringify({ locale: 'tr', conversationId: 'nebsoft-deneme', binNumber: '535805' });
-  const r = await istek(AD, (ozel() ? `${ozel()}/iyzico` : iyz.adres(a.test)) + YOL, { yontem: 'POST', baslik: iyz.baslik(a, YOL, govde), govde });
+  const r = await istek(AD, (ozel() && !process.env.IYZICO_API_BASE ? `${ozel()}/iyzico` : iyz.adres(a.test)) + YOL, { yontem: 'POST', baslik: iyz.baslik(a, YOL, govde), govde });
   if (!r.json && !r.ok) throw durumHata(AD, r); const j = jsonBekle(AD, r);
   if (j.status !== 'success') throw new SaglayiciHata(String(j.errorCode) === '1001' ? 'iyzico API anahtarlarını kabul etmedi. Test ve canlı anahtarları ayrıdır.' : String(j.errorMessage || 'iyzico isteği reddetti').slice(0, 200), { kod: String(j.errorCode) === '1001' ? 'yetki' : 'saglayici' });
   return { mesaj: `iyzico anahtarları doğrulandı (${a.test ? 'sandbox' : 'canlı'}).${!a.test && process.env.IYZICO_CANLI !== '1' ? ' Canlı ödeme bu sunucuda kapalı.' : ''}`, test: a.test };

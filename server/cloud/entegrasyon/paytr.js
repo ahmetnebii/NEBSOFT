@@ -23,13 +23,13 @@ async function baslat(k, v) {
   const h = k.merchantId + v.ip + v.siparis + v.eposta + v.tutarKurus + sepet + taksitsiz + enCok + para + test;
   const j = await post('/odeme/api/get-token', { merchant_id: k.merchantId, user_ip: v.ip, merchant_oid: v.siparis, email: v.eposta, payment_amount: v.tutarKurus, user_basket: sepet, no_installment: taksitsiz, max_installment: enCok, paytr_token: imza(k, h), user_name: v.ad, user_address: v.adres, user_phone: v.telefon, merchant_ok_url: v.okUrl, merchant_fail_url: v.hataUrl, currency: para, test_mode: test, debug_on: 0, lang: 'tr' });
   if (j.status !== 'success' || !j.token) throw new SaglayiciHata(String(j.reason || 'PayTR ödeme başlatamadı').slice(0, 200));
-  return { token: String(j.token), url: `https://www.paytr.com/odeme/guvenli/${j.token}`, test: !!k.sandbox };
+  return { token: String(j.token), url: `${base()}/odeme/guvenli/${j.token}`, test: !!k.sandbox };
 }
 // Bildirim doğrulama: imza tutmadan sipariş ödenmiş sayılmaz. Sabit zamanlı karşılaştırılır
 function bildirimGecerli(k, b) { const x = Buffer.from(crypto.createHmac('sha256', k.merchantKey).update(`${b.merchant_oid}${k.merchantSalt}${b.status}${b.total_amount}`).digest('base64')); const y = Buffer.from(String(b.hash || '')); return x.length === y.length && crypto.timingSafeEqual(x, y); }
 async function sorgu(k, v) {
   const j = await post('/odeme/durum-sorgu', { merchant_id: k.merchantId, merchant_oid: v.siparis, paytr_token: imza(k, k.merchantId + v.siparis) });
-  if (j.status !== 'success') throw new SaglayiciHata(String(j.err_msg || 'PayTR sorgusu başarısız').slice(0, 200)); return j;
+  if (j.status !== 'success') throw new SaglayiciHata(String(j.err_msg || 'PayTR sorgusu başarısız').slice(0, 200), { kod: j.err_no === '004' ? 'bulunamadi' : 'saglayici' }); return j;
 }
 async function iade(k, v) {
   const tutar = Number(v.tutar).toFixed(2); kilit('PAYTR', AD, !!k.sandbox);
