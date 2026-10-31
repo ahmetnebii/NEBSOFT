@@ -3,7 +3,7 @@
 const assert = require('assert'); const R = require('../cloud/public-rules').bilet;
 let n = 0; const ok = (m) => { n++; console.log('✓ ' + m); };
 const iso = (d) => new Date(d).toISOString().slice(0, 10);
-const day = (k) => iso(Date.now() + k * 864e5);
+const day = (k) => iso(Date.now() + 3 * 3600e3 + k * 864e5); // sunucunun x.today'i gibi Türkiye tarihi
 const mk = (over = {}) => {
   const doc = {
     _settings: { serviceFee: 15, resHours: 48 },
@@ -23,7 +23,8 @@ ok('%100 / gişe / kullanım hakkı dolmuş / süresi geçmiş / başka etkinlik
 assert.throws(() => buy(mk({ event: { salesStart: new Date(Date.now() + 864e5).toISOString().slice(0, 16) } })()), /henüz başlamadı/);
 assert.throws(() => buy(mk({ event: { salesEnd: new Date(Date.now() - 3600e3).toISOString() } })()), /kapandı/);
 ok('Satış penceresi: başlamadan ve bittikten sonra online rezervasyon yok');
-{ const x = mk({ event: { date: day(0), time: '23:59' } })(); const t = buy(x); assert.ok(t.holdUntil <= Date.parse(`${day(0)}T23:59:00+03:00`) - 2 * 3600e3 + 15 * 60e3 + 1000); ok('Ödeme son anı en geç etkinlikten 2 saat önce'); }
+// Yarın 23:59 günün her saatinde 2 saat sınırını 48 saatten önceye ve 15 dakikalık tabandan sonraya düşürür: sonuç saatten bağımsız, tam bu andır
+{ const g = day(1); const x = mk({ event: { date: g, time: '23:59' } })(); const t = buy(x); assert.strictEqual(t.holdUntil, Date.parse(`${g}T23:59:00+03:00`) - 2 * 3600e3); ok('Ödeme son anı en geç etkinlikten 2 saat önce'); }
 { const x = mk()(); const t = ins({ event: 'e1', cat: 'gen', buyer: { name: 'Ali', phone: '05321112233' }, fee: 0, holdUntil: 9e15, paid: 0 }, x); assert.strictEqual(t.fee, 15); assert.strictEqual(t.paid, 200); assert.ok(t.holdUntil < 9e15); ok('İstemcinin gönderdiği ücret / ödeme alanları yok sayılır'); }
 // Koltuk, tür ve erken kuş
 const mkSeat = (ev = {}, vn = {}) => { const doc = { _settings: { serviceFee: 15 }, venues: [{ id: 'v1', type: 'seated', seatsPerRow: 4, rows: [{ r: 'A', cat: 'vip' }, { r: 'B', cat: 'gen' }], cats: { vip: 'VIP', gen: 'Genel' }, ...vn }], events: [{ id: 'e1', venue: 'v1', date: day(10), time: '20:00', status: 'satista', prices: { vip: 1000, gen: 400 }, ...ev }], tickets: [], codes: [], waitlist: [] }; const col = (k) => (doc[k] = doc[k] || []); return { doc, q: {}, today: day(0), col, get: (k, id) => col(k).find((r) => r.id === id), seq: () => 'B1' }; };
