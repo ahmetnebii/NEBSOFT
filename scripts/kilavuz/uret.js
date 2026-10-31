@@ -5,7 +5,7 @@
 // Seçici bulunamazsa, işaretli element görünmüyorsa, anlatılan ad kodda veya ekranda yoksa, menü modülü atlanmışsa üretim hata verir ve PDF yazılmaz.
 // Çıktı: indir/kilavuz/<id>.pdf + core/kilavuz.json (bağlantılar bu listeye bakar). Ayar: scripts/kilavuz/ayar.js. İçerik: docs/kilavuz/<id>.js. Rehber: docs/kilavuz/DURUM.md
 const fs = require('fs'); const os = require('os'); const path = require('path'); const { execSync } = require('child_process');
-const { chrome, sunucu, wait, ROOT } = require('./cdp'); const A = require('./ayar'); const S = require('./sablon'); const DN = require('./denetim'); const { oku } = require('./pdfoku'); const Ort = require('./ortak');
+const { chrome, sunucu, wait, ROOT } = require('./cdp'); const A = require('./ayar'); const { ekranBoyu } = require('./cizim'); const S = require('./sablon'); const DN = require('./denetim'); const { oku } = require('./pdfoku'); const Ort = require('./ortak');
 const YARDIM = fs.readFileSync(path.join(__dirname, 'sayfa.js'), 'utf8');
 const STIL = `.ns-toasts,.nsd,#nsdroot,.nsd-w,.ns-demo-bar{display:none!important}*{caret-color:transparent!important;animation:none!important;transition:none!important}`;
 const dizge = JSON.stringify;
@@ -21,7 +21,7 @@ function rect(kes, vw, vh) { const x = Math.max(0, kes.x); const y = Math.max(0,
 
 // Sahne çekimi: sayfa baştan açılır, ön eylemler yapılır, seçiciler çözülür, kişi verisi bulanıklaşır, görüntü alınır
 async function cek(p, B, id, s, ctx) {
-  const yer = `${id} / ${ctx.yer}`; const H = ctx.hatalar; const boy = s.boy || A.EKRAN.boy; const en = s.en || A.EKRAN.en;
+  const yer = `${id} / ${ctx.yer}`; const H = ctx.hatalar; let boy = s.boy || A.EKRAN.boy; const en = s.en || A.EKRAN.en; let uzadi = false;
   if (s.boy || s.en) await p.boyut(en, boy);
   try {
     const url = s.adres ? `${B}/apps/${id}/${s.adres}` : `${B}/apps/${id}/?demo=1#/${s.git || ''}`;
@@ -35,6 +35,8 @@ async function cek(p, B, id, s, ctx) {
     }
     await wait(s.son || 260);
     const isaretli = s.adimlar.filter((a) => a.sec);
+    // İşaretli öğe ekranın altında kalıyorsa pencere içeriğe göre uzar: sahneye boy yazmak gerekmez
+    const gerekli = ekranBoyu(await p.calistir(`${dizge(isaretli.map((a) => a.sec))}.map((x)=>__k.kutu(x)).filter(Boolean)`), boy); if (gerekli > boy) { boy = gerekli; uzadi = true; await p.boyut(en, boy); await wait(250); }
     if (isaretli.length) await p.calistir(`(()=>{const e=__k.bul(${dizge(isaretli[0].sec)});if(e){const r=e.getBoundingClientRect();if(r.bottom>innerHeight-10||r.top<0)e.scrollIntoView({block:'center'});}})()`);
     await wait(120);
     const kirp = s.kirp === 'tam' ? null : await p.calistir(`(()=>{const e=${s.kirp === 'pencere' ? `document.querySelector('.ns-overlay [role=dialog],.ns-overlay .modal,.ns-overlay>*')` : s.kirp && s.kirp !== 'ana' ? `__k.bul(${dizge(s.kirp)})` : `document.querySelector('.ns-main')||document.body`};if(!e)return null;const r=e.getBoundingClientRect();return{x:r.left,y:r.top,w:r.width,h:r.height}})()`);
@@ -57,7 +59,7 @@ async function cek(p, B, id, s, ctx) {
     const dosya = path.join(ctx.dir, `e${String(++ctx.no).padStart(3, '0')}.jpg`); fs.writeFileSync(dosya, j); ctx.bayt += j.length;
     s.cekim = { dosya: 'file:///' + dosya.replace(/\\/g, '/'), w: Math.round(alan.width), h: Math.round(alan.height) };
     return s;
-  } finally { if (s.boy || s.en) await p.boyut(A.EKRAN.en, A.EKRAN.boy); }
+  } finally { if (s.boy || s.en || uzadi) await p.boyut(A.EKRAN.en, A.EKRAN.boy); }
 }
 
 // Dizi biçimli adımlar nesneye çevrilir: ['metin', 'seçici', 'ok']
