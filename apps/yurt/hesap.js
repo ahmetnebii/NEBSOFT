@@ -41,14 +41,18 @@
   const gecenAy = (k, gun) => { const [a, b, c] = String(k.from).split('-').map(Number); const [x, y, z] = String(gun).split('-').map(Number); return Math.max(0, (x - a) * 12 + (y - b) - (z < c ? 1 : 0)) + 1; };
   function ayrilisOneri(k, ayrilis, payments, ayarlar = {}) {
     const top = r2(sum(k.plan, (t) => t.amount)); const ay = aySayisi(k); const aylik = r2(top / ay); const rejim = REJIM[ayarlar.rejim] ? ayarlar.rejim : 'gsb'; const pct = ayarlar.leavePct === undefined || ayarlar.leavePct === '' ? REJIM[rejim].pct : Number(ayarlar.leavePct) || 0;
-    const kalinan = Math.min(ay, gecenAy(k, ayrilis)); const kalanAy = Math.max(0, ay - kalinan); const erken = ayrilis <= `${String(k.from).slice(0, 4)}-09-15`; let hak, kural;
+    const kalinan = Math.min(ay, gecenAy(k, ayrilis)); const kalanAy = Math.max(0, ay - kalinan); const e15 = `${String(k.from).slice(0, 4)}-09-15`; const erken = ayrilis <= e15 && String(k.to) > e15; let hak, kural; // 15 Eylül kuralı yalnız o tarihi kapsayan yıllık kayıtta: bahar veya yaz kaydı bir aylık ücrete düşmez
     if (ayarlar.cezasiz) { hak = r2(aylik * kalinan); kural = 'Cezasız ayrılış: yalnızca kalınan aylar'; } else if (erken) { hak = rejim === 'gsb' ? aylik : r2(top * 0.1); kural = rejim === 'gsb' ? `15 Eylül'e kadar: bir aylık ücret` : `15 Eylül'e kadar: yıllık ücretin %10'u`; } else { hak = r2(aylik * kalinan + (aylik * kalanAy * pct) / 100); kural = `Kalınan ${kalinan} ay + kalan ${kalanAy} ay için yüzde ${pct}`; }
     hak = Math.min(top, hak); const odenen = odeme(k, payments, ayrilis).odenen; return { top, ay, aylik, rejim, kalinan, kalanAy, kural, hak, odenen, iade: r2(Math.max(0, odenen - hak)), borc: r2(Math.max(0, hak - odenen)) };
   }
+  // Telefon aynı kaldıkça veli kodu korunur; telefon değişirse eski kod yeni kişiye geçmez, yeni kod üretilir
+  const veliGuncel = (eski, yeni) => { const d = (x) => String(x || '').replace(/\D/g, '').slice(-10); return eski && eski.portalCode && d(eski.phone) === d(yeni.phone) ? { ...yeni, portalCode: eski.portalCode } : yeni; };
+  // Son giriş saati geçti mi: gece yarısından sonra da geçmiş sayılır (sabah 06.00'ya kadar)
+  const geceMi = (saat, son) => { const s = son || '23:00'; return s >= '12:00' ? saat >= s || saat < '06:00' : saat >= s && saat < '06:00'; };
   const depozitoFazla = (tutar, aylik) => Number(tutar) > Number(aylik) && Number(aylik) > 0;
   // Giriş-çıkış: son hareket durumu verir. Kapanış saatinden sonra dönmeyen ve izni olmayan öğrenci geç listesine girer.
   const sonHareket = (moves, ogr) => { let s = null; (moves || []).forEach((m) => { if (m && m.student === ogr && (!s || m.at > s.at)) s = m; }); return s; };
   const disarida = (moves, ogr) => { const s = sonHareket(moves, ogr); return !!s && s.type === 'cikis'; };
   const izinli = (leaves, ogr, gun) => (leaves || []).find((l) => l && l.student === ogr && l.status === 'onay' && l.from <= gun && gun <= l.to) || null;
-  return { r2, sum, gunFark, addDay, ayEkle, yas, resit, resitDegil, veliPaylasir, aktif, yatakDolu, odaDoluluk, yerlesimHata, taksitler, odeme, depoAlinan, depoIade, ayrilisOneri, REJIM, aySayisi, depozitoFazla, sonHareket, disarida, izinli };
+  return { r2, sum, gunFark, addDay, ayEkle, yas, resit, resitDegil, veliPaylasir, aktif, yatakDolu, odaDoluluk, yerlesimHata, taksitler, odeme, depoAlinan, depoIade, ayrilisOneri, REJIM, aySayisi, veliGuncel, geceMi, depozitoFazla, sonHareket, disarida, izinli };
 }));

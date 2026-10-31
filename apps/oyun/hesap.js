@@ -38,11 +38,16 @@
   const kalanDk = (s, simdi) => Math.ceil(Number(s.paidMin) - netDakika(s, simdi));
   // Doğum günü: aynı alan ve tarihte, temizlik payıyla çakışan rezervasyon alınamaz
   const canliRez = (b) => !!b && !['iptal', 'red'].includes(b.status);
+  const bitis = (x) => { const s = toMin(x.start), e = toMin(x.end); return e <= s ? e + 1440 : e; }; // gece yarısını aşan parti
   function cakisan(bookings, r, tampon, selfId) {
-    const a = toMin(r.start), z = toMin(r.end), t = Number(tampon) || 0;
-    return (bookings || []).find((b) => canliRez(b) && b.id !== selfId && b.date === r.date && b.area === r.area && a < toMin(b.end) + t && toMin(b.start) < z + t) || null;
+    const a = toMin(r.start), z = bitis(r), t = Number(tampon) || 0;
+    return (bookings || []).find((b) => canliRez(b) && b.id !== selfId && b.date === r.date && b.area === r.area && a < bitis(b) + t && toMin(b.start) < z + t) || null;
   }
   const rezTutar = (p, cocuk, ekstra) => { if (!p) return 0; const n = Math.max(Number(cocuk) || 0, Number(p.minKids) || 0); return r2((Number(p.price) || 0) + (n > (Number(p.kids) || 0) ? (n - (Number(p.kids) || 0)) * (Number(p.extraKid) || 0) : 0) + (Number(ekstra) || 0)); };
+  // Düzenlemede paket ve çocuk sayısı aynıysa fiyat kayıtta kalır, yalnız ek tutar farkı yansır
+  const rezKorunur = (b, y) => !!b && b.pkg === y.pkg && Number(b.kids) === Number(y.kids);
+  // Stok alanı boşsa ürün stok takibinde değildir, satışa kapanmaz
+  const stokBitti = (m) => m.stock !== '' && m.stock !== undefined && m.stock !== null && Number(m.stock) <= 0;
   const yas = (birth, bugun) => { if (!birth) return null; const [y, m, d] = String(birth).slice(0, 10).split('-').map(Number); const [a, b, c] = String(bugun).slice(0, 10).split('-').map(Number); return a - y - (b < m || (b === m && c < d) ? 1 : 0); };
-  return { r2, sum, toMin, netDakika, saatlik, sureUcret, kalemToplam, adisyon, bakiye, bonusOran, yukle, teslimUygun, sureBitti, kalanDk, canliRez, cakisan, rezTutar, yas, gunDk };
+  return { r2, sum, toMin, netDakika, saatlik, sureUcret, kalemToplam, adisyon, bakiye, bonusOran, yukle, teslimUygun, sureBitti, kalanDk, canliRez, cakisan, rezTutar, rezKorunur, stokBitti, yas, gunDk };
 }));

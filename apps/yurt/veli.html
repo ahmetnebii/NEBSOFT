@@ -35,7 +35,7 @@
       <p class="small muted mt">Reşit öğrencinin bilgileri veliyle yalnızca öğrencinin izniyle paylaşılır.</p>`;
     const go = () => {
       const ph = $('#ph').value, cd = $('#cd').value.trim().toUpperCase();
-      if (db.pub) { if (!db.lookup({ phone: ph, code: cd })) return; const s = db.all('students')[0]; if (!s) return toast('Bilgiler eşleşmedi', 'err'); oturum = { kim: digits(s.phone) === digits(ph) ? 's' : 'v', id: s.id }; return panel(); }
+      if (db.pub) { if (!db.lookup({ phone: ph, code: cd })) return toast('Bilgiler eşleşmedi veya öğrenci veli paylaşımına izin vermedi', 'err'); const s = db.all('students')[0]; if (!s) return toast('Bilgiler eşleşmedi', 'err'); oturum = { kim: digits(s.phone) === digits(ph) ? 's' : 'v', id: s.id }; return panel(); }
       const s = db.all('students').find((x) => digits(x.phone) === digits(ph) && String(x.portalCode || '').toUpperCase() === cd); if (s) { oturum = { kim: 's', id: s.id }; return panel(); }
       const v = db.all('students').find((x) => digits(x.guardian.phone) === digits(ph) && String(x.guardian.portalCode || '').toUpperCase() === cd && H.veliPaylasir(x, today())); if (v) { oturum = { kim: 'v', id: v.id }; return panel(); } toast('Bilgiler eşleşmedi veya öğrenci veli paylaşımına izin vermedi', 'err');
     };

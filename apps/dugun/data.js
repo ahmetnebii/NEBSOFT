@@ -22,7 +22,7 @@ window.DUGUN = {
     for (let i = 0; i < 44; i++) {
       const date = iso(addDays(new Date(), i < 12 ? -rand(3, 90) : rand(3, 300))); const hall = pick(salonlar); const seans = pick(['aksam', 'aksam', 'gunduz']); const r = { hall: hall.id, date, seans };
       if (H.cakisan(db.data.events, r, bugun)) continue;
-      const pkg = pick(db.data.packages); const guests = rand(120, hall.capacity); const pkgPrice = H.paketFiyat(pkg, { guests, date, seasons: db.data.seasons }); const extras = [pick(db.data.extras), pick(db.data.extras)].filter((x, k, a) => a.indexOf(x) === k).map((x) => ({ id: NS.uid(), name: x.name, qty: 1, price: x.price }));
+      const pkg = pick(db.data.packages); const guests = rand(120, hall.capacity); const pkgPrice = H.paketFiyat(pkg, { guests, date, seasons: db.data.seasons }); const extras = [pick(db.data.extras), pick(db.data.extras)].filter((x, k, a) => a.indexOf(x) === k).map((x) => ({ id: NS.uid(), ref: x.id, name: x.name, qty: 1, price: x.price }));
       const c = db.data.customers[i % db.data.customers.length]; const status = date < bugun ? 'tamam' : i % 6 === 0 ? 'opsiyon' : 'kesin'; const id = 'ev' + i;
       const e = { id, no: db.nextNo('events', 'DGN'), customer: c.id, hall: hall.id, date, seans, type: pkg.id === 'p4' ? pick(['Nişan', 'Kına']) : pick(H.TUR.slice(0, 5)), guests, pkg: pkg.id, pkgName: pkg.name, pkgPrice, extras, discount: 0, status, holdUntil: status === 'opsiyon' ? iso(addDays(new Date(), rand(-1, 7))) : '', note: '', tasks: H.hazirlik(date), log: [], addenda: [], created: addDays(new Date(), -rand(10, 200)).toISOString() };
       const genel = H.toplam(e).genel; const dep = status === 'opsiyon' ? 0 : H.r2(genel * 0.2);
