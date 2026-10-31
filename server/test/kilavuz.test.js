@@ -29,6 +29,11 @@ assert.strictEqual(O.durum(e, { value: 'x', g: { status: 'dogrulandi' } }, { kap
 assert.strictEqual(D.vaat({ moduller: [{ ne: 'Bu bağlantı henüz kullanılamıyor' }] }).length, 1); assert.strictEqual(D.vaat({ moduller: [{ ne: 'Bu entegrasyon kesin çalışır' }] }).length, 1);
 ok('Kapalı sağlayıcı "NEBSOFT ile iletişime geçerek açtırılır" yazılır, eski ifade ve kesinlik iddiası yakalanır');
 
+// Akış görüntüsü: tek sağlayıcılı kart seçilmez, düğme adı ekrandan gelir, bilinmeyen ad reddedilir
+const G = (ad) => ({ value: ad, label: ad, g: { status: 'dogrulandi', testVar: true, sunucu: true, fields: [{ name: 'a', required: true }] } });
+assert.strictEqual(O.ornekSec({ entegrasyon: {} }, { ent: [{ k: 'webhook', provs: [G('http')] }] }), null); assert.strictEqual(O.ornekSec({ entegrasyon: {} }, { ent: [{ k: 'webhook', provs: [G('http')] }, { k: 'sms', provs: [{ value: 'sim' }, G('netgsm')] }] }).p.value, 'netgsm');
+assert.strictEqual(D.dugmeYaz('Karttaki **{dugme}** düğmesine', 'Yönet'), 'Karttaki **Yönet** düğmesine'); assert.strictEqual(D.dugmeYaz('Karttaki **{dugme}** düğmesine', 'Sil'), null); ok('Tek sağlayıcılı kart atlanır, düğme adı ekrandan gelir, yanlış düğme yakalanır');
+
 // PDF okuma: içindekiler sayfa numarası buradan gelir
 const pdf = Buffer.from('%PDF-1.4\n1 0 obj\n<</Type/Catalog/Pages 2 0 R/Dests 5 0 R>>\nendobj\n2 0 obj\n<</Type/Pages/Kids[3 0 R 4 0 R]/Count 2>>\nendobj\n3 0 obj\n<</Type/Page/Parent 2 0 R>>\nendobj\n4 0 obj\n<</Type/Page/Parent 2 0 R>>\nendobj\n5 0 obj\n<</Names[(m-a)[3 0 R/XYZ 0 0 0](m-b)[4 0 R/XYZ 0 0 0]]>>\nendobj\n');
 const p = oku(pdf); assert.strictEqual(p.sayfa, 2); assert.deepStrictEqual([p.hedef['m-a'], p.hedef['m-b']], [1, 2]); ok('PDF sayfa sayısı ve hedefleri okunur');
