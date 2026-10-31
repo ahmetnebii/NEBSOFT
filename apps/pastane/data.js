@@ -13,9 +13,9 @@ window.PASTANE = {
     db.data.recipes = [
       { id: 'r0', name: 'Çikolatalı yaş pasta', cat: 'Yaş pasta', yield: 1, items: [{ ing: 'm0', qty: 0.5 }, { ing: 'm1', qty: 0.3 }, { ing: 'm2', qty: 6 }, { ing: 'm5', qty: 0.5 }, { ing: 'm6', qty: 0.3 }] },
       { id: 'r1', name: 'Çilekli yaş pasta', cat: 'Yaş pasta', yield: 1, items: [{ ing: 'm0', qty: 0.5 }, { ing: 'm1', qty: 0.3 }, { ing: 'm2', qty: 6 }, { ing: 'm5', qty: 0.5 }, { ing: 'm7', qty: 0.4 }] },
-      { id: 'r2', name: 'Kurabiye', cat: 'Kuru pasta', yield: 40, items: [{ ing: 'm0', qty: 1 }, { ing: 'm1', qty: 0.3 }, { ing: 'm4', qty: 0.4 }, { ing: 'm2', qty: 2 }] },
+      { id: 'r2', name: 'Kurabiye', cat: 'Kuru pasta', yield: 2, items: [{ ing: 'm0', qty: 1 }, { ing: 'm1', qty: 0.3 }, { ing: 'm4', qty: 0.4 }, { ing: 'm2', qty: 2 }] },
     ];
-    db.data.plans = [{ id: 'p0', date: NS.today(), rc: 'r2', qty: 80, done: false }]; db.data.waste = [{ id: 'w0', at: new Date().toISOString(), name: 'Kurabiye', rc: 'r2', qty: 12, reason: 'Bayat', cost: 0 }];
+    db.data.plans = [{ id: 'p0', date: NS.today(), rc: 'r2', qty: 8, done: false }]; db.data.waste = [{ id: 'w0', at: new Date().toISOString(), name: 'Kurabiye', rc: 'r2', qty: 1, reason: 'Bayat', cost: 102.8 }];
     window.SIPTOHUM(db, {
       prefix: 'PS', akis: ['alindi', 'uretim', 'susleme', 'hazir'], adres: true,
       ayar: { bizName: 'Örnek Pastane', bizPhone: '0216 000 00 00', bizAddress: 'Moda, İstanbul', defaultDays: 2, smsHazir: true, autoPrint: false, iptalKosul: '' },

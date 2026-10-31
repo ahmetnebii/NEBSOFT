@@ -4,7 +4,7 @@
   'use strict';
   const { esc, $, on, icon, toast, confirm, badge } = NS;
   // Parça listesi: adetli satırda adet kadar, m² satırında tek parça. İşaretler kod üzerinden korunur.
-  const parcalar = (o) => { const eski = new Map((o.pieces || []).map((p) => [p.k, p])); let i = 0; const L = []; (o.lines || []).forEach((l) => { const n = l.unit === 'm²' ? 1 : Math.max(1, Math.round(Number(l.qty) || 1)); for (let j = 0; j < n; j++) { const k = `${o.no}-${++i}`; L.push({ k, name: l.name, ok: !!(eski.get(k) || {}).ok }); } }); return L; };
+  const parcalar = (o) => { const eski = new Map((o.pieces || []).map((p) => [p.k, p])); let i = 0; const L = []; (o.lines || []).forEach((l) => { const n = window.SIPHESAP.parcaAdet(l); for (let j = 0; j < n; j++) { const k = `${o.no}-${++i}`; L.push({ k, name: l.name, ok: !!(eski.get(k) || {}).ok }); } }); return L; };
   const ROLES = { admin: 'Yönetici', tezgah: 'Tezgâh', kurye: 'Şoför' };
   window.SIPARIS.kur({
     menu: [{ id: 'pano', label: 'İş Panosu' }, { id: 'siparisler', label: 'Fişler' }, { id: 'fiyatlar', label: 'Fiyat Listesi' }, { id: 'personel', label: 'Personel' }, { id: 'dagitim', label: 'Dağıtım' }],
@@ -14,7 +14,7 @@
     hazirMetni: (o, s) => `${s.bizName}: ${o.no} numaralı fişiniz hazır. Takip kodu: ${o.code}`,
     docInfo: (o) => (o.shelf ? [['Raf', o.shelf]] : []),
     docNote: () => { const g = Number(NS.app.db.settings().beklemeGun) || 0; return g ? `Teslim alınmayan eşya ${g} gün saklanır.` : ''; },
-    docs: [['etiket', { label: 'Parça etiketi', defaults: { paper: '58mm' }, data: (o) => ({ title: 'Parça etiketleri', no: o.no, date: o.at, lines: parcalar(o).map((p) => ({ name: `${p.k} ${p.name}`, qty: 1, price: 0, total: 0 })) }) }]],
+    docs: [['etiket', { label: 'Parça etiketi', sade: true, defaults: { paper: '58mm' }, data: (o) => ({ title: 'Parça etiketleri', no: o.no, date: o.at, money: () => '', lines: parcalar(o).map((p) => ({ name: `${p.k} ${p.name}`, qty: 1, price: 0, total: 0 })) }) }]],
     beforeTeslim: async (o, ctx) => { o.pieces = parcalar(o); const E = o.pieces.filter((p) => !p.ok); if (!E.length) return true; if (!(await confirm(`${E.length} parça sayılmadı: ${E.map((p) => p.k).slice(0, 6).join(', ')}. Yine de teslim edilsin mi?`, { title: 'Parça sayımı', ok: 'Yine de teslim et' }))) return false; ctx.addLog(o, o.status, `Sayılmadan teslim edilen parça: ${E.map((p) => p.k).join(', ')}`); return true; },
     cards: (o) => { const L = parcalar(o); const n = L.filter((p) => p.ok).length; return `<div class="card"><div class="card-h"><h3>${icon('tag')} Parçalar ${badge(`${n}/${L.length}`, n === L.length ? 'ok' : 'warn')}</h3><div class="row nw"><label class="small muted" for="sh">Raf</label><input class="input sm" id="sh" style="max-width:90px" value="${esc(o.shelf || '')}"></div></div><div class="card-b sp-grid">${L.map((p) => `<label class="check small"><input type="checkbox" data-pc="${esc(p.k)}" ${p.ok ? 'checked' : ''}> ${esc(p.k)}<br><span class="faint">${esc(p.name)}</span></label>`).join('')}</div></div>`; },
     bind: (el, o, ctx) => { $('#sh', el).onchange = (e) => { o.shelf = e.target.value.trim(); ctx.addLog(o, o.status, `Raf: ${o.shelf || '-'}`); ctx.db.save(); toast('Raf kaydedildi', 'ok'); };

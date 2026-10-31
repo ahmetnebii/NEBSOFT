@@ -11,6 +11,18 @@
   const odenen = (o) => r2(dizi(o.payments).reduce((t, p) => t + n(p.amount), 0)); // iade eksi tutarla yazılır
   const kapora = (o) => r2(dizi(o.payments).filter((p) => p.kind === 'kapora').reduce((t, p) => t + n(p.amount), 0));
   const kalan = (o) => r2(toplam(o) - odenen(o));
+  const borc = (o) => (o.status === 'iptal' ? 0 : Math.max(0, kalan(o))); // iptal kayıtta müşteriden alacak yoktur
+  // Tahsilat tutarı denetimi: boş metin geçerli demektir. Fazla ödeme ve eksi tutar sessizce kayda geçmesin (iade ayrı akıştır)
+  const tahsilHata = (o, v) => { const a = r2(v), k = borc(o); if (a <= 0) return 'Tutar sıfırdan büyük olmalı'; if (a > k) return `Tutar kalan borcu aşamaz (kalan ${String(k).replace('.', ',')} ₺)`; return ''; };
+  const sayi = (v) => String(v == null ? '' : v).replace('.', ','); // ekranda ve belgede Türkçe ondalık
+  // Etiket ve sayımdaki parça adedi: adet ve takım sayılır; m² ve kg satırı tek parçadır. Yanlış girilen dev miktar ekranı dondurmasın diye üst sınır var
+  const parcaAdet = (l) => (['adet', 'takım'].includes(l.unit || 'adet') ? Math.min(500, Math.max(1, Math.round(n(l.qty) || 1))) : 1);
+  // e-Belge satırları: KDV dahil tutarlar. İndirim satırlara orantılı dağıtılır, teslimat ayrı satırdır; toplamları kayıt toplamına kuruşu kuruşuna eşittir
+  function efSatirlar(o, vat = 20) {
+    const L = dizi(o.lines).map((l) => ({ name: l.name, qty: n(l.qty) || 1, t: satir(l) })).filter((l) => l.t > 0); const a = araToplam(o); const hedef = r2(a - Math.min(a, Math.max(0, n(o.disc))));
+    let kalanT = hedef; const R = L.map((l, i) => { const t = i === L.length - 1 ? r2(kalanT) : r2(a ? (l.t * hedef) / a : 0); kalanT = r2(kalanT - t); return { name: l.name, qty: l.qty, total: t, vat }; }).filter((l) => l.total > 0);
+    if (n(o.fee) > 0) R.push({ name: 'Teslimat', qty: 1, total: r2(o.fee), vat }); return R;
+  }
   const m2 = (en, boy) => r2(Math.max(0, n(en)) * Math.max(0, n(boy)));
   // Teslim sırası: tarih, sonra saat aralığının başı; saati olmayan gün sonuna
   const saatBas = (s) => { const m = /(\d{1,2})[:.](\d{2})/.exec(String(s || '')); return m ? Number(m[1]) * 60 + Number(m[2]) : 1440; };
@@ -29,5 +41,5 @@
     dizi(plan).forEach((p) => { const rc = R.get(p.rc); if (!rc) return; const k = n(p.qty) / Math.max(1, n(rc.yield) || 1); dizi(rc.items).forEach((i) => T.set(i.ing, (T.get(i.ing) || 0) + n(i.qty) * k)); });
     return [...T.entries()].map(([id, q]) => { const m = M.get(id) || { name: id, stock: 0, unit: '' }; const gerek = Math.round(q * 1000) / 1000; return { id, name: m.name, unit: m.unit || '', gerek, stok: n(m.stock), acik: Math.max(0, Math.round((gerek - n(m.stock)) * 1000) / 1000) }; }).sort((a, b) => b.acik - a.acik || String(a.name).localeCompare(String(b.name), 'tr'));
   }
-  return { n, r2, satir, araToplam, toplam, odenen, kapora, kalan, m2, saatBas, sira, geciktiMi, receteMaliyet, ihtiyac };
+  return { n, r2, satir, araToplam, toplam, odenen, kapora, kalan, borc, tahsilHata, sayi, parcaAdet, efSatirlar, m2, saatBas, sira, geciktiMi, receteMaliyet, ihtiyac };
 }));
