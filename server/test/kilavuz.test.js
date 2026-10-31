@@ -55,4 +55,6 @@ assert.ok(fs.readFileSync(path.join(ROOT, 'scripts', 'hosting-paketi.js'), 'utf8
 const L = JSON.parse(fs.readFileSync(A.LISTE, 'utf8')); const PR = require(path.join(ROOT, 'site', 'src', 'products.js'));
 for (const q of PR) { const h = path.join(ROOT, 'site', q.slug, 'index.html'); if (!fs.existsSync(h)) continue; assert.strictEqual(fs.readFileSync(h, 'utf8').includes(`/indir/kilavuz/${q.id}.pdf`), !!L[q.id], `${q.id}: bağlantı listeyle uyuşmuyor`); }
 ok('Tanıtım sayfasındaki bağlantı core/kilavuz.json ile uyuşuyor');
+for (const id of A.YAYIN_DISI) assert.ok(!L[id], `${id}: satışa kapalı programın indirme kaydı olmaz`); assert.ok(A.YAYIN_DISI.includes('danisan')); const U = fs.readFileSync(path.join(ROOT, 'scripts', 'kilavuz', 'uret.js'), 'utf8'); assert.ok(U.includes('!A.YAYIN_DISI.includes(id)) : a') && U.includes('filter((k) => !A.YAYIN_DISI.includes(k))'), 'toplu üretim ve liste yayın dışı programı atlamalı');
+ok('Satışa kapalı program toplu üretime ve indirme listesine girmez');
 console.log(`\nKılavuz testi tamam: ${n} kontrol`);

@@ -216,7 +216,7 @@
   // ---------- Paraşüt (apidocs.parasut.com, API v4) ----------
   add({
     key: 'efatura:parasut', name: 'Paraşüt', mark: 'P', color: '#0bb07b', status: 'dogrulandi', method: 'oauth', verified: '2026-10-27',
-    limit: 'Bağlantı ve yetki doğrulanır, bilgiler saklanır. Faturanın Paraşüt üzerinden e-Fatura / e-Arşiv olarak gönderilmesi bu sürümde henüz yok; satışta fatura kesilmez ve sistem bunu açıkça bildirir.',
+    limit: 'Bağlantı ve yetki doğrulanır. Fatura Paraşüt’te satış faturası olarak açılır, alıcı e-Fatura mükellefiyse e-Fatura, değilse e-Arşiv olarak resmileştirilir. Tevkifatlı fatura ve e-İrsaliye bu yolla gönderilmez, bir faturada tek istisna kodu kullanılır.',
     summary: 'Paraşüt API v4 OAuth2 ile çalışır. NEBSOFT “password” yöntemini kullanır: uygulama kimliği (client id / secret) ve Paraşüt e-posta / şifrenizle 2 saat geçerli bir erişim jetonu alınır. İstekler https://api.parasut.com/v4/<firma_no> altına yapılır; 10 saniyede en fazla 10 istek kabul edilir.',
     sources: [{ label: 'Paraşüt API v4 dokümanı', url: 'https://apidocs.parasut.com/' }],
     prereq: ['Paraşüt hesabı ve e-Fatura / e-Arşiv hizmeti', '<b>CLIENT_ID</b> ve <b>CLIENT_SECRET</b>: Paraşüt’e <a href="mailto:destek@parasut.com">destek@parasut.com</a> adresinden e-posta atarak alınır', 'Paraşüt’e giriş yaptığınız e-posta ve şifre (jeton almak için)'],

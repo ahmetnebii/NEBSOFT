@@ -10,6 +10,7 @@ module.exports = {
   ADRES: '/indir/kilavuz/', // herkese açık adres
   LISTE: path.join(ROOT, 'core', 'kilavuz.json'), // hangi programın kılavuzu var: site ve program buna bakar
   KAYNAK: path.join(ROOT, 'docs', 'kilavuz'), // program başına içerik dosyası: <id>.js
+  YAYIN_DISI: ['danisan'], // satışa kapalı program: --hepsi üretmez, core/kilavuz.json listesine girmez, indirme bağlantısı çıkmaz
   SINIR_MB: 15,
   RENK: { isaret: '#e11d48', yazi: '#ffffff' },
 };
