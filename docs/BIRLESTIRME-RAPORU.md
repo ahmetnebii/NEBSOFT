@@ -1,6 +1,6 @@
 # Birleştirme raporu: `birlesik/hepsi`
 
-Tarih: 2026-10-31. Kod ve üretim son commit: `97137b9`, son `npm test` bunun üstünde koştu. Bu rapor ayrı bir belge commit'idir. `devir/hepsi` (`d5f4e06`) güncellenmedi, push yapılmadı.
+Tarih: 2026-10-31. Kod ve üretim son commit: `97137b9`, son `npm test` bunun üstünde koştu. Bu rapor ayrı bir belge commit'idir. Bu oturum `devir/hepsi` dalına yazmadı, push yapmadı. Yerel `devir/hepsi` ilk birleştirmeden sonra 13.27'de bu oturum dışında `2fb3fb2` hâline alınmış, `origin/devir/hepsi` hâlâ `d5f4e06`.
 
 ## CANLIYA ÇIKMAYI ENGELLEYENLER
 
