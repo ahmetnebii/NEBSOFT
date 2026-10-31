@@ -101,7 +101,7 @@
             if (rec.waitId) db.update('waitlist', rec.waitId, { status: 'randevu', appt: first.id });
           } else db.update('appointments', v.id, data);
           // Google / Outlook takvimine personel takvimi olarak yazılır
-          if (NS.integ && NS.integ.isOn('takvim')) NS.integ.call('takvim', isNew ? 'etkinlik-ekle' : 'etkinlik-guncelle', { ref: v.id || '', calendar: staff(data.staff).name, title: `${cust(data.customer).name} — ${svc(data.service).name}`, start: `${data.date}T${data.start}`, minutes: data.duration, phone: cust(data.customer).phone }, { silent: true });
+          if (isNew && NS.integ && NS.integ.isOn('takvim')) NS.integ.call('takvim', 'etkinlik-ekle', { ref: '', calendar: staff(data.staff).name, title: `${cust(data.customer).name} — ${svc(data.service).name}`, start: `${data.date}T${data.start}`, minutes: data.duration, phone: cust(data.customer).phone }, { silent: true });
           close(); toast((isNew ? 'Randevu oluşturuldu' : 'Randevu güncellendi') + extra, 'ok');
           done ? done() : app.refresh();
         },
@@ -153,7 +153,7 @@
     const pk = pkFor(a.customer, a.service);
     formModal({
       title: 'Ödeme al', submitLabel: 'Tamamla',
-      fields: [{ name: 'payType', label: 'Ödeme şekli', type: 'select', options: Object.entries(PAY).filter(([k]) => k !== 'paket' || pk.length).map(([value, label]) => ({ value, label })), value: pk.length ? 'paket' : 'kart' }, { name: 'price', label: 'Hizmet ücreti (₺)', type: 'number', value: a.price }, { name: 'discount', label: 'İndirim (₺)', type: 'number', value: 0 }, { name: 'tip', label: 'Bahşiş (₺)', type: 'number', value: 0, hint: 'Personele aktarılır' }, { name: 'product', label: 'Ürün satışı (₺)', type: 'number', value: 0, hint: 'Şampuan, bakım ürünü vb.' }, { name: 'doc', label: 'Belge', type: 'select', options: [{ value: '', label: 'Belge kesme' }, { value: 'okc', label: 'Yazarkasa fişi (ÖKC)' }, { value: 'efatura', label: 'e-Arşiv fatura' }, { value: 'esmm', label: 'e-SMM (serbest meslek)' }] }],
+      fields: [{ name: 'payType', label: 'Ödeme şekli', type: 'select', options: Object.entries(PAY).filter(([k]) => k !== 'paket' || pk.length).map(([value, label]) => ({ value, label })), value: pk.length ? 'paket' : 'kart' }, { name: 'price', label: 'Hizmet ücreti (₺)', type: 'number', value: a.price }, { name: 'discount', label: 'İndirim (₺)', type: 'number', value: 0 }, { name: 'tip', label: 'Bahşiş (₺)', type: 'number', value: 0, hint: 'Personele aktarılır' }, { name: 'product', label: 'Ürün satışı (₺)', type: 'number', value: 0, hint: 'Şampuan, bakım ürünü vb.' }, { name: 'doc', label: 'Belge', type: 'select', options: [{ value: '', label: 'Belge kesme' }, { value: 'efatura', label: 'e-Arşiv fatura' }] }],
     }).then(async (v) => {
       if (!v) return;
       if (v.payType === 'kart' && NS.integ) { const amt = Math.max(0, (v.price || 0) - (v.discount || 0)) + (v.product || 0) + (v.tip || 0); if (amt > 0) { const r = await NS.integ.cardPayment(amt); if (!r.ok) return toast('Kart ödemesi alınamadı: ' + (r.error || ''), 'err'); } }

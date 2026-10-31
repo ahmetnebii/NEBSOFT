@@ -66,7 +66,8 @@ module.exports = (O) => {
       okc: { kapali: { '*': 'NEBSOFT ile iletişime geçerek açtırılır.' }, degisir: ['Yazarkasa bağlantısı NEBSOFT ile iletişime geçerek açtırılır. Bağlantı olmadan program mali fiş kesmez.', 'Mali fişi yazarkasanızdan kesin.'], sorun: ['Bu bağlantı üretici anlaşması ve cihaz gerektirir.'] },
       printer: { degisir: ['Tarayıcı modunda fiş yazdırma penceresiyle basılır. USB, seri veya ağ yazıcısı seçilirse giriş fişi ve gün sonu doğrudan yazıcıya gider.', 'Nakit tahsilatta para çekmecesi yazıcı üzerinden açılır.'], sorun: ['Ağ yazıcısında IP adresini ve 9100 portunu kontrol edin.', 'Yazıcı yanıt vermezse tarayıcı moduna dönüp işe devam edin.'] },
       pos: { degisir: ['Kart seçilen tahsilatlarda tutar POS bağlantısına gönderilir. Otopark çıkışı, yıkama teslimi ve abonelik uzatma bu yolu kullanır.', 'Elle modda cihazdan ayrıca çekim yaparsınız, program yalnız kaydeder.'], sorun: ['Kart ödemesi alınamadı uyarısında çekimi cihazdan kontrol edin, aynı tutarı yeniden göndermeden önce doğrulayın.'] },
-      backup: O.E.backup(),
+      sms: { degisir: ['Yıkama hazır olunca, abone bitiş hatırlatmasında ve **Oto Kuaför** işlerinde müşteriye gerçek SMS gider.', 'Bağlantı yokken mesaj gitmez.'], sorun: ['Sağlayıcı panelindeki krediyi ve onaylı başlığı kontrol edin.', 'Kayıttaki telefon numarasını kontrol edin.'] },
+    backup: O.E.backup(),
     },
   };
 };

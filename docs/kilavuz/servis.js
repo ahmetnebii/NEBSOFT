@@ -50,7 +50,7 @@ module.exports = (O) => ({
 
     O.belgeler({ tur: 'Servis kabul formu' }),
     O.ayarlar({ alanlar: [['Garanti süresi (gün; boşsa müşteriye gösterilmez)', 'Teslimde garanti bitiş tarihi bu süreyle hesaplanır.'], ['Onarılamayan cihazda tespit ücreti (₺, yoksa 0)', 'Müşteri teklifi reddederse veya cihaz onarılamazsa alınacak ücret.'], ['Kabul formu koşulları', 'Kabul fişine basılan metin. Metni işletmeniz belirler.']] }),
-    { ...O.ebelge(), not: 'Bu programın Entegrasyonlar sayfasında e-Fatura kartı yoktur. Bu yüzden entegratör buradan bağlanamaz, teslim penceresindeki fatura seçeneği çıkmaz ve bu sayfada oluşan belgeler TEST kalır.' },
+    O.ebelge(),
     O.entegrasyonlar(),
   ],
 
@@ -65,6 +65,7 @@ module.exports = (O) => ({
     callerid: { kapali: { '*': 'NEBSOFT ile iletişime geçerek açtırılır.' }, degisir: ['Santral bağlantısı NEBSOFT ile iletişime geçerek açtırılır.', 'Bağlantı açılana kadar **Gelen çağrı** düğmesi numarayı size sorar, siz yazarsınız.'], sorun: ['Numarayı yazınca müşteri bulunmuyorsa kayıttaki telefonu kontrol edin.'] },
     sms: { degisir: ['Fiyat teklifi, parça bekleniyor ve teslime hazır durumlarında müşteriye gerçek SMS gider. Mesajda takip adresi bulunur.', 'Özet sayfasındaki teslim hatırlatması da SMS gönderir.', 'Gönderimler **SMS Bildirimleri** sayfasına işlenir. Bağlantı yokken **TEST — gönderilmedi** görünür, müşteriye bir şey gitmez.'], sorun: ['SMS gönderilemezse program WhatsApp ile göndermeyi önerir.', 'Sağlayıcı panelindeki krediyi ve onaylı başlığı kontrol edin.'] },
     whatsapp: O.E.whatsappLink('SMS gönderilemediğinde çıkan **WhatsApp ile gönder** seçeneği'),
+    efatura: { degisir: ['Bağlantı açıkken teslim penceresinde **e-Arşiv / e-Fatura kes** seçeneği çıkar.', 'Kesilen belgeler **e-Belgeler** sayfasında görünür. Sağlayıcının altındaki sınırı okuyun.', 'Simülasyonda belge TEST etiketi taşır, GİB’e gitmez.'], sorun: ['Belge kesilmezse **e-Belgeler** sayfasındaki hata ayrıntısına bakın.'] },
     backup: O.E.backup(),
   },
 });

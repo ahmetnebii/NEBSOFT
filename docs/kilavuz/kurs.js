@@ -61,7 +61,7 @@ module.exports = (O) => ({
     O.imzali(),
     O.belgeler({ tur: 'Kayıt sözleşmesi' }),
     O.ayarlar({ alanlar: [['Eğitim dönemi', 'Ekranlarda görünen dönem adı.'], ['Dönem başlangıcı', 'İade hesabında kullanılır.'], ['Dönem bitişi', 'İade hesabında kullanılır.'], ['Öğrenim ücreti', '**Dönemlik (iade güne göre)** veya **Ders saati (iade ders saatine göre)**.'], ['Devamsızlıkta veliye otomatik SMS', 'Açıksa yoklamada yok yazılan öğrencinin velisine mesaj denenir.']] }),
-    { ...O.ebelge(), not: 'Bu programın Entegrasyonlar sayfasında e-Fatura kartı yoktur. Bu sayfada oluşan belgeler TEST kalır.' },
+    O.ebelge(),
     O.entegrasyonlar(),
   ],
 
@@ -78,6 +78,7 @@ module.exports = (O) => ({
     payment: { degisir: ['Bu programda online tahsilat ekranı yoktur. Online ödeme kartı e-ticaret vitrininde kullanılır.', 'Veli portalı ödeme bilgisini gösterir, tahsilatı **Taksit & Tahsilat** sayfasına siz girersiniz.'], sorun: ['Taksit açık görünüyorsa **Tahsil et** ile kaydedin.'] },
     sms: { degisir: ['Devamsızlık bildirimi, **Online ders** bağlantısı ve **Veli İletişimi** yanıtları gerçek SMS olarak gider.', 'Gönderimler **Veli İletişimi** sayfasına işlenir. Bağlantı yokken müşteriye bir şey gitmez.'], sorun: ['Sağlayıcı panelindeki krediyi ve onaylı başlığı kontrol edin.', 'Öğrenci kaydındaki veli telefonunu kontrol edin.'] },
     whatsapp: O.E.whatsappLink('**Taksit & Tahsilat** sayfasındaki **Veliye hatırlat** düğmesi'),
+    efatura: { degisir: ['Belgeyi **e-Belgeler** sayfasındaki **Manuel e-Arşiv** ile keserseniz entegratöre gider. Tahsilat ekranında fatura düğmesi yoktur.', 'Kesilen belgeler **e-Belgeler** sayfasında görünür. Sağlayıcının altındaki sınırı okuyun.', 'Simülasyonda belge TEST etiketi taşır, GİB’e gitmez.'], sorun: ['Belge kesilmezse **e-Belgeler** sayfasındaki hata ayrıntısına bakın.'] },
     backup: O.E.backup(),
   },
 });

@@ -50,7 +50,7 @@ module.exports = (O) => ({
     O.belgeler({ tur: 'Üyelik sözleşmesi' }),
     O.ayarlar({ alanlar: [['Üyelik başına toplam dondurma hakkı (gün)', 'Bir üyeliğin en çok kaç gün dondurulabileceği.'], ['Üyelik iptal bedeli (₺, yoksa boş)', 'İptal penceresinde kullanılan bedel.']] }),
     O.bildirimler(),
-    { ...O.ebelge(), not: 'Bu programın Entegrasyonlar sayfasında e-Fatura kartı yoktur. Bu sayfada oluşan belgeler TEST kalır.' },
+    O.ebelge(),
     O.entegrasyonlar(),
   ],
 
@@ -65,6 +65,8 @@ module.exports = (O) => ({
     turnike: { kapali: { '*': KAP }, degisir: [`Turnike ve kart okuyucu bağlantısı ${KAP}`, 'Bağlantı olmadan kapı açılmaz. **Giriş Kontrol** ekranı girişi kaydeder, kapıyı siz açarsınız.'], sorun: ['USB kart okuyucu klavye gibi çalışır, imleç giriş kutusundayken okutun.'] },
     payment: { degisir: ['Bu programda online tahsilat ekranı yoktur. Online ödeme kartı e-ticaret vitrininde kullanılır.', 'Üye portalı ödeme bilgisini gösterir, üye salonda veya havaleyle öder.'], sorun: ['Tahsilatı **Tahsilat & Satış** sayfasına veya üye kartına kendiniz işleyin.'] },
     whatsapp: O.E.whatsappLink('Üye kartındaki **WhatsApp hatırlatma** düğmesi'),
+    sms: { degisir: ['**Raporlar** sayfasındaki kayıp riski listesinden gelmeyen üyelere gerçek SMS gider.', 'Bağlantı yokken mesaj gitmez.'], sorun: ['Sağlayıcı panelindeki krediyi ve onaylı başlığı kontrol edin.', 'Kayıttaki telefon numarasını kontrol edin.'] },
+    efatura: { degisir: ['Belgeyi **e-Belgeler** sayfasındaki **Manuel e-Arşiv** ile keserseniz entegratöre gider. Tahsilat ekranında fatura düğmesi yoktur.', 'Kesilen belgeler **e-Belgeler** sayfasında görünür. Sağlayıcının altındaki sınırı okuyun.', 'Simülasyonda belge TEST etiketi taşır, GİB’e gitmez.'], sorun: ['Belge kesilmezse **e-Belgeler** sayfasındaki hata ayrıntısına bakın.'] },
     backup: O.E.backup(),
   },
 });
