@@ -31,7 +31,7 @@ window.MUHBEYAN = (function () {
   function page(el, p, app) {
     let ym = prevYm(today().slice(0, 7)), tab = 'kdv';
     const draw = () => {
-      X.db.load();
+      if (!X.db.cloud) X.db.load(); // bulutta load sunucudan okur, henüz gönderilmemiş kaydı siler; başka oturumun değişikliğini izleme getirir
       const v = vatChain(ym);
       const ba = babs(ym, 'alis'), bs = babs(ym, 'satis');
       // Son gün: dönemden "ahead" ay sonrasının "day". günü (son gün ayda yoksa ayın son günü); hafta sonuna denk gelirse

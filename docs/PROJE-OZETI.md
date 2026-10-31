@@ -108,6 +108,7 @@ node scripts/hosting-paketi.js
 - PUT öncesi sıra önemli: rol geri koyma, PIN özetleme, gizli bilgi mührü, şifreleme.
 - `cat.product()` yalnız satıştaki ürünü döner; lisanslı ama kapalı ürün için `cat.kayitli()`.
 - Yeni alan eski kayıtlarda eksik olabilir.
+- Bulutta `db.load()` sunucudan okur, 350 ms içinde gönderilmemiş kaydı siler. `save` ile aynı akışta `load` yazılmaz; ayrıntı `docs/BULUT-LOAD-DENETIMI.md`.
 - Tek satırlı test satırına `//` yorum eklemek satırın kalanını yutar.
 - Dosyalarda CRLF olabilir, yamadan önce satır sonunu kontrol et.
 - Tarayıcı panelinde service worker kaydı hata verir; bu hata panele özgü görünüyor, gerçek Chrome'da doğrulanmadı.

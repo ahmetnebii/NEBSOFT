@@ -113,7 +113,7 @@
       if ($('#ev', el)) $('#ev', el).onchange = (x) => { id = x.target.value; draw(); };
       if ($('#fs', el)) $('#fs', el).onclick = () => { const r = el.requestFullscreen && el.requestFullscreen(); if (r && r.catch) r.catch(() => toast('Tam ekran açılamadı', 'warn')); };
     };
-    draw(); clearInterval(window.__tvPoll); window.__tvPoll = setInterval(() => { if (app.route !== 'canli') return clearInterval(window.__tvPoll); if (!document.querySelector('.ns-overlay')) { db.load(); draw(); } }, 4000);
+    draw(); clearInterval(window.__tvPoll); window.__tvPoll = setInterval(() => { if (app.route !== 'canli') return clearInterval(window.__tvPoll); if (!document.querySelector('.ns-overlay')) { if (!db._dirty && !db._flight) db.load(); draw(); } }, 4000);
   }
   B.ek = { blocksModal, inviteModal, venueEdit, gaVenue, waitCard, waitBind, dayTab, settleTab, livePage, daySales };
 })();

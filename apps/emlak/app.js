@@ -224,7 +224,7 @@
   function leadsPage(el) {
     let kind = '';
     const draw = () => {
-      db.load();
+      if (!db.cloud) db.load(); // bulutta load sunucudan okur, henüz gönderilmemiş kaydı siler; başka oturumun değişikliğini izleme getirir
       const all = db.all('leads').sort((a, b) => b.at.localeCompare(a.at)); const rows = all.filter((l) => !kind || l.kind === kind);
       const wk = all.filter((l) => l.at >= addDays(new Date(), -7).toISOString());
       el.innerHTML = pageHead('Web Başvuruları', 'İlan sitesinden gelen formlar, randevu ve değerleme talepleri', `<a class="btn" href="ilan.html" target="_blank">${icon('globe')} Siteyi aç</a>`) + `<div class="grid g4 mb">${kpi('Yeni başvuru', all.filter((l) => l.status === 'yeni').length, 'bell', 'err')}${kpi('Son 7 gün', wk.length, 'trend')}${kpi('Yer gösterme', all.filter((l) => l.kind === 'gosterim').length, 'calendar', 'acc')}${kpi('Dönüşüm', all.length ? '%' + Math.round((all.filter((l) => l.status === 'donustu').length / all.length) * 100) : '-', 'zap', 'ok')}</div>
