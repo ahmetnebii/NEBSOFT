@@ -15,7 +15,7 @@
   .mode { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; padding: 12px 14px; border-bottom: 1px solid var(--border); }
   .mode button.on { background: var(--accent); color: #fff; border-color: var(--accent); }
   .pay-split { padding: 12px 14px; background: var(--surface-2); border-top: 1px solid var(--border); }
-  @media (max-width: 1000px) { .sale { grid-template-columns: 1fr; } }
+  @media (max-width: 1000px) { .sale { grid-template-columns: minmax(0, 1fr); } }
 </style>
 </head>
 <body>

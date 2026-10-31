@@ -13,7 +13,9 @@
   .steps span { padding: 6px 14px; border-radius: 99px; background: var(--bg-2); font-size: 13px; font-weight: 600; color: var(--text-3); }
   .steps span.on { background: var(--accent); color: #fff; }
   pre.sql { background: #0f172a; color: #e2e8f0; padding: 14px; border-radius: 12px; overflow: auto; font-size: 12.5px; line-height: 1.55; white-space: pre-wrap; }
-  .kv { display: grid; grid-template-columns: 160px 1fr; gap: 6px 14px; font-size: 14px; }
+  .kv { display: grid; grid-template-columns: 160px minmax(0, 1fr); gap: 6px 14px; font-size: 14px; }
+  .kv > * { min-width: 0; overflow-wrap: anywhere; }
+  @media (max-width: 760px) { .kv { grid-template-columns: minmax(0, 1fr); gap: 2px 0; } }
   .kv b { color: var(--text-2); font-weight: 600; }
 </style>
 </head>

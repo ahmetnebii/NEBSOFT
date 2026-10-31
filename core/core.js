@@ -658,6 +658,25 @@
       ${iban ? `<div class="card pad small" style="line-height:1.7"><div><span class="muted">Alıcı</span> <b>${esc(s.bankHolder || s.accountName || s.bizName || '')}</b></div>${s.bankName || s.bank ? `<div><span class="muted">Banka</span> ${esc(s.bankName || s.bank)}</div>` : ''}<div><span class="muted">IBAN</span> <b class="mono">${esc(iban)}</b></div><div class="muted">Açıklamaya adınızı yazın.</div></div>` : ''}`,
       actions: [{ label: 'Kapat' }, ...(tel ? [{ label: 'İşletmeyi ara', cls: 'primary', icon: 'phone', onClick: () => { location.href = 'tel:' + tel; } }] : [])] });
   }
+  // Telefonun geri tuşu: açık modal ve menü önce kapanır, sayfa değişmez. Her katman geçmişe bir kayıt ekler.
+  // Kapanış düğmeyle olursa kayıt setTimeout ile geri alınır: aynı anda yönlendirme yapılmışsa geçmiş bozulmasın diye durum kimliği sınanır.
+  const geriYigin = []; let geriNo = 0;
+  // Klavye açılınca görünen alan küçülür: modal bu ölçüye sığar, odaklanan alan ortalanır
+  if (window.visualViewport) { const vv = window.visualViewport; const olc = () => { const s = document.documentElement.style; s.setProperty('--vvh', vv.height + 'px'); s.setProperty('--vvt', vv.offsetTop + 'px'); }; vv.addEventListener('resize', olc); vv.addEventListener('scroll', olc); olc(); }
+  document.addEventListener('focusin', (e) => { const t = e.target; if (!t.matches || !t.matches('input,select,textarea') || !matchMedia('(pointer: coarse)').matches) return; setTimeout(() => { if (document.activeElement === t) t.scrollIntoView({ block: 'center', behavior: 'smooth' }); }, 300); });
+  function geriKayit(kapat, kilitli) {
+    const k = { id: ++geriNo + Date.now() * 1000, kapat, kilitli };
+    try { history.pushState({ nsGeri: k.id }, ''); } catch (e) { return () => {}; }
+    geriYigin.push(k);
+    return () => { const i = geriYigin.indexOf(k); if (i < 0) return; geriYigin.splice(i, 1); setTimeout(() => { if (history.state && history.state.nsGeri === k.id) history.back(); }, 0); };
+  }
+  window.addEventListener('popstate', () => {
+    const sid = (history.state && history.state.nsGeri) || 0; const k = geriYigin[geriYigin.length - 1];
+    if (!k) { if (sid) history.back(); return; } // kapanmış katmandan kalan kayıt: bir basış boşa gitmesin
+    if (sid >= k.id) return;
+    if (k.kilitli) { try { history.pushState({ nsGeri: k.id }, ''); } catch (e) { /* yok */ } return; }
+    geriYigin.pop(); k.kapat();
+  });
   function modal({ title = '', body = '', size = '', actions = [], onOpen, onClose, closable = true } = {}) {
     const ov = document.createElement('div');
     ov.className = 'ns-overlay';
@@ -668,11 +687,14 @@
     </div>`;
     const b = $('.ns-modal-b', ov);
     if (typeof body === 'string') b.innerHTML = body; else b.appendChild(body);
-    const close = () => { ov.remove(); document.removeEventListener('keydown', key); onClose && onClose(); };
+    let birak = () => {};
+    const close = () => { ov.remove(); document.removeEventListener('keydown', key); birak(); onClose && onClose(); };
+    // Hızlı çift dokunmanın ikincisi yeni açılan pencerenin düğmesine gelmesin: dokunmatikte ilk anda pencere girdi almaz
+    let kilit = matchMedia('(pointer: coarse)').matches; if (kilit) { ov.classList.add('nv-kilit'); setTimeout(() => { kilit = false; ov.classList.remove('nv-kilit'); }, 350); }
     const key = (e) => { if (e.key === 'Escape' && closable) close(); };
     document.addEventListener('keydown', key);
     if (closable) {
-      ov.addEventListener('mousedown', (e) => { if (e.target === ov) close(); });
+      ov.addEventListener('mousedown', (e) => { if (e.target === ov && !kilit) close(); });
       $('[data-x]', ov).onclick = close;
     }
     const f = $('.ns-modal-f', ov);
@@ -680,12 +702,16 @@
       const btn = document.createElement('button');
       btn.className = 'btn ' + (a.cls || '');
       btn.innerHTML = (a.icon ? icon(a.icon) : '') + esc(a.label);
-      btn.onclick = () => (a.onClick ? a.onClick(close, b) : close());
+      // Hızlı çift dokunma: işlem bitmeden ikinci basış çalışmaz (uzun süren işlemde söz bitene kadar)
+      let mesgul = false;
+      btn.onclick = () => { if (mesgul) return undefined; mesgul = true; const r = a.onClick ? a.onClick(close, b) : close(); if (r && r.then) { const bitti = () => { mesgul = false; }; r.then(bitti, bitti); } else setTimeout(() => { mesgul = false; }, 400); return r; };
       f.appendChild(btn);
     });
     document.body.appendChild(ov);
+    birak = geriKayit(close, !closable);
+    // Dokunmatik ekranda otomatik odak klavyeyi açıp formu örter; alana kullanıcı dokunur
     const first = $('input:not([type=hidden]),select,textarea', b);
-    if (first) setTimeout(() => first.focus(), 30);
+    if (first && !matchMedia('(pointer: coarse)').matches) setTimeout(() => first.focus(), 30);
     onOpen && onOpen(b, close);
     return { root: b, close };
   }
@@ -1045,7 +1071,7 @@
           <aside class="ns-side" id="side">
             <div class="ns-brand"><a class="nv-brand-mark" href="#/" title="${esc(opts.name)}">${logoMark(opts.accent, 30)}</a><div class="nv-brand-t"><b>${esc(opts.name)}</b><small><span class="wm"><b>NEB</b><i>SOFT</i></span>${opts.tagline ? ` · ${esc(opts.tagline)}` : ''}</small></div><button class="nv-mini-btn" type="button" data-mini title="Menüyü daralt / genişlet" aria-label="Menüyü daralt"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="M9 4v16"/></svg></button></div>
             <nav class="ns-nav">${navHtml}</nav>
-            <div class="ns-side-foot"><a class="btn ghost block" style="justify-content:flex-start" id="nskl" target="_blank" rel="noopener" hidden>${icon('file')} Kullanım kılavuzu (PDF)</a>
+            <div class="ns-side-foot"><button class="btn ghost block nv-tema-tel" style="justify-content:flex-start" type="button" data-theme>${icon('moon')} Açık / koyu tema</button><a class="btn ghost block" style="justify-content:flex-start" id="nskl" target="_blank" rel="noopener" hidden>${icon('file')} Kullanım kılavuzu (PDF)</a>
               ${/[?&]demo=1/.test(location.search) ? `<a class="btn ghost block" style="justify-content:flex-start" href="${opts.backUrl || '../../index.html'}" target="_top">${icon('store')} NEBSOFT Pazar</a>`
                 : `<a class="btn ghost block" style="justify-content:flex-start" href="${CLOUD ? '/' : opts.backUrl || '../../index.html'}#/programlarim" target="_top">${icon('grid')} Programlarım</a><a class="btn ghost block" style="justify-content:flex-start" href="${CLOUD ? '/' : opts.backUrl || '../../index.html'}#/hesabim" target="_top">${icon('user')} Hesabım</a>`}
             </div>
@@ -1063,6 +1089,7 @@
             </header>
             <section class="ns-content" id="view"></section>
           </main>
+          <div class="nv-scrim" id="nvscrim" aria-hidden="true"></div>
           <nav class="nv-tabbar" id="nvtab" aria-label="Hızlı menü"></nav>
         </div>`;
       kilavuzAdres(opts.id).then((k) => { const a = $('#nskl'); if (a && k) { a.href = k.url; a.hidden = false; } });
@@ -1071,10 +1098,15 @@
       on(document.body, 'click', '[data-theme]', toggleTheme);
       // Menü düğmesi: telefonda menüyü açar/kapatır; masaüstünde kenar çubuğunu simgelere küçültür / büyütür (tercih hatırlanır)
       const toggleMini = () => { const on2 = !document.documentElement.classList.contains('nv-mini'); document.documentElement.classList.toggle('nv-mini', on2); try { localStorage.setItem('nebsoft:navmini', on2 ? '1' : ''); } catch (x) { /* yok */ } $$('[data-burger]').forEach((b) => { b.setAttribute('aria-expanded', String(!on2)); b.title = on2 ? 'Menüyü genişlet' : 'Menüyü daralt'; }); };
-      on(document.body, 'click', '[data-burger]', () => (matchMedia('(min-width: 901px)').matches ? toggleMini() : $('#side').classList.toggle('open')));
+      // Telefonda menü: dışarı dokununca ve geri tuşuyla kapanır
+      let menuBirak = null;
+      const menuKapat = () => { $('#side').classList.remove('open'); $('#nvscrim').classList.remove('open'); if (menuBirak) { const b = menuBirak; menuBirak = null; b(); } };
+      const menuAc = () => { $('#side').classList.add('open'); $('#nvscrim').classList.add('open'); menuBirak = geriKayit(menuKapat); };
+      on(document.body, 'click', '[data-burger]', () => (matchMedia('(min-width: 901px)').matches ? toggleMini() : ($('#side').classList.contains('open') ? menuKapat() : menuAc())));
+      on(document.body, 'click', '#nvscrim', menuKapat);
       on(document.body, 'click', '[data-grp-t]', (e, b) => { const g = b.closest('.nv-grp'); const open = !g.classList.contains('open'); g.classList.toggle('open', open); b.setAttribute('aria-expanded', open); const k = 'nebsoft:navclosed:' + opts.id; let c = []; try { c = JSON.parse(localStorage.getItem(k)) || []; } catch (x) { c = []; } c = open ? c.filter((s) => s !== g.dataset.grp) : [...new Set([...c, g.dataset.grp])]; try { localStorage.setItem(k, JSON.stringify(c)); } catch (x) { /* yok */ } });
       on(document.body, 'click', '[data-mini]', toggleMini);
-      on(document.body, 'click', '.ns-nav a', () => $('#side').classList.remove('open'));
+      on(document.body, 'click', '.ns-nav a', menuKapat);
       on(document.body, 'click', '[data-clear]', async (e) => {
         e.preventDefault();
         if (await confirm('Örnek kayıtlar (satışlar, müşteriler, ürünler vb.) silinecek; ayarlarınız ve kullanıcılarınız kalacak. Bu işlem geri alınamaz. Devam edilsin mi?')) { app.db.reset(); toast('Örnek veriler temizlendi — kendi kayıtlarınızı girebilirsiniz', 'ok'); layout(); render(); }
@@ -1766,13 +1798,21 @@
 
   // ---------- Çoklu seçim ----------
   const selectable = (t) => t.tBodies[0] && t.tBodies[0].querySelector('tr[data-id] button[data-act]') && !t.tBodies[0].querySelector('input[type=checkbox]') && t.closest('.ns-content') && !t.closest('.ns-modal');
+  // Telefonda satır kartı: sütun başlığı hücreye yazılır, CSS dar ekranda alt alta dizer. Çok sütunlu tablolar yatay kaydırmada kalır
+  function yiginHazirla(t) {
+    const ths = [...t.tHead.rows[0].cells]; if (ths.length > 10 || ths.some((c) => c.colSpan > 1)) return;
+    const etiket = ths.map((c) => c.textContent.trim());
+    [...t.tBodies].forEach((tb) => [...tb.rows].forEach((r) => { if (r.cells.length !== ths.length) { r.classList.add('ns-yigin-tam'); return; } [...r.cells].forEach((c, i) => { if (etiket[i]) c.dataset.l = etiket[i]; }); }));
+    t.classList.add('ns-yigin'); if (t.dataset.nsSel) t.classList.add('ns-yigin-sec');
+  }
   function enhanceTable(t) {
     if (t._nsT || !t.tHead || !t.tHead.rows[0]) return; t._nsT = true;
     if (selectable(t)) {
       t.dataset.nsSel = '1';
-      const th = document.createElement('th'); th.className = 'ns-selc'; th.innerHTML = '<input type="checkbox" class="ns-asel" title="Tümünü seç">'; t.tHead.rows[0].prepend(th);
-      [...t.tBodies[0].rows].forEach((r) => { const td = document.createElement('td'); td.className = 'ns-selc'; td.innerHTML = r.dataset.id ? `<input type="checkbox" class="ns-rsel" value="${esc(r.dataset.id)}">` : ''; r.prepend(td); });
+      const th = document.createElement('th'); th.className = 'ns-selc'; th.innerHTML = '<label class="ns-selh"><input type="checkbox" class="ns-asel" title="Tümünü seç"></label>'; t.tHead.rows[0].prepend(th);
+      [...t.tBodies[0].rows].forEach((r) => { const td = document.createElement('td'); td.className = 'ns-selc'; td.innerHTML = r.dataset.id ? `<label class="ns-selh"><input type="checkbox" class="ns-rsel" value="${esc(r.dataset.id)}"></label>` : ''; r.prepend(td); });
     }
+    if (matchMedia('(max-width: 700px)').matches) yiginHazirla(t); // geniş ekranda gereksiz: binlerce hücreye yazılmaz
     const wrap = t.closest('.tbl-wrap');
     if (wrap && !wrap.querySelector(':scope > [data-tmenu]')) { const b = document.createElement('button'); b.className = 'btn sm ghost icon ns-tmenu'; b.dataset.tmenu = '1'; b.title = 'Sütunlar, Excel, yazdır'; b.innerHTML = icon('settings'); wrap.style.position = 'relative'; wrap.appendChild(b); b.onclick = (e) => { e.stopPropagation(); tableMenu(t, b); }; }
     applyCols(t);

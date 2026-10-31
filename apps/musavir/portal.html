@@ -18,7 +18,7 @@
   .stat3 b { display: block; font-size: 20px; font-variant-numeric: tabular-nums; }
   .stat3 span { font-size: 12px; color: var(--text-3); }
   .up { border: 2px dashed var(--border); border-radius: 12px; padding: 18px; text-align: center; cursor: pointer; display: block; }
-  @media (max-width: 600px) { .stat3 { grid-template-columns: 1fr; } }
+  @media (max-width: 600px) { .stat3 { grid-template-columns: minmax(0, 1fr); } }
 </style>
 </head>
 <body>
@@ -73,7 +73,7 @@
   function mesaj(c) {
     const ms = db.all('messages', (m) => m.client === c.id).sort((a, b) => b.at.localeCompare(a.at));
     return `<section class="tk-panel"><h3>${icon('message')} Müşavirinize yazın</h3><div class="b"><textarea class="input" id="mx" rows="4" placeholder="Sorunuz veya notunuz"></textarea><button class="btn primary mt" id="ms">${icon('send')} Gönder</button></div></section>
-      <section class="tk-panel"><h3>${icon('list')} Yazışmalar</h3><div class="b">${ms.map((m) => `<div class="ln" style="grid-template-columns:1fr"><span><b>${m.from === 'mukellef' ? 'Siz' : esc(S().bizName)}</b> <span class="small muted">${NS.dt(m.at)}</span><div>${esc(m.text)}</div>${m.file ? `<div class="small">${icon('file')} ${esc(m.file)}</div>` : ''}</span></div>`).join('') || '<span class="small muted">Henüz yazışma yok</span>'}</div></section>`;
+      <section class="tk-panel"><h3>${icon('list')} Yazışmalar</h3><div class="b">${ms.map((m) => `<div class="ln" style="grid-template-columns: minmax(0, 1fr)"><span><b>${m.from === 'mukellef' ? 'Siz' : esc(S().bizName)}</b> <span class="small muted">${NS.dt(m.at)}</span><div>${esc(m.text)}</div>${m.file ? `<div class="small">${icon('file')} ${esc(m.file)}</div>` : ''}</span></div>`).join('') || '<span class="small muted">Henüz yazışma yok</span>'}</div></section>`;
   }
   function render() {
     db.load(); const c = db.get('clients', sget()); if (!c) return login();

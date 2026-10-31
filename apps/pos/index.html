@@ -14,6 +14,7 @@
   .cat-tabs { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 8px; margin-bottom: 4px; }
   .cat-tabs button { border: 1px solid var(--border); background: var(--surface); padding: 8px 14px; border-radius: 99px; font: 600 12.5px var(--font); color: var(--text-2); cursor: pointer; white-space: nowrap; }
   .cat-tabs button.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+  @media (max-width: 760px) { .cat-tabs button { min-height: 44px; flex: none; } }
   .quick { flex: 1; overflow-y: auto; display: grid; grid-template-columns: repeat(auto-fill, minmax(132px, 1fr)); gap: 10px; align-content: start; padding: 2px; }
   .qp { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 12px; text-align: left; cursor: pointer; font-family: var(--font); color: var(--text); display: flex; flex-direction: column; gap: 6px; min-height: 96px; transition: .12s; position: relative; }
   .qp:hover { border-color: var(--accent); transform: translateY(-1px); box-shadow: var(--shadow); }
@@ -51,7 +52,7 @@
   .label-sheet { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; }
   .label { border: 1px dashed var(--border); border-radius: 8px; padding: 10px; background: #fff; color: #000; text-align: center; }
   .label .p { font-size: 22px; font-weight: 800; }
-  @media (max-width: 1100px) { .pos { grid-template-columns: 1fr; height: auto; } .quick { max-height: 360px; } .cart { min-height: 480px; } }
+  @media (max-width: 1100px) { .pos { grid-template-columns: minmax(0, 1fr); height: auto; } .quick { max-height: 360px; } .cart { min-height: 480px; } }
   @media (max-width: 600px) { .scan .btn.lg:not(.icon) { display: none; } .scan .input { font-size: 15px; height: 46px; } .quick { grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); } .paybtns .btn small { display: none; } }
 </style>
 </head>

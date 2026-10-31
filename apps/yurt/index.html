@@ -24,8 +24,8 @@
   .gate-s.cikis { background: var(--warn); color: #fff; border-color: var(--warn); }
   .plan-sat { display: grid; grid-template-columns: 1fr auto auto; gap: 10px; align-items: center; padding: 9px 0; border-bottom: 1px solid var(--border); }
   .plan-sat:last-child { border-bottom: 0; }
-  @media (max-width: 900px) { .gate { grid-template-columns: 1fr; } }
-  @media (max-width: 700px) { .plan-sat { grid-template-columns: 1fr auto; } .yatak { min-height: 40px; } .tbl .seg button { min-height: 40px; min-width: 52px; } } /* nöbetçi telefonla kullanır */
+  @media (max-width: 900px) { .gate { grid-template-columns: minmax(0, 1fr); } }
+  @media (max-width: 700px) { .plan-sat { grid-template-columns: 1fr auto; } .yatak { min-height: 44px; } .tbl .seg button { min-height: 44px; min-width: 52px; } } /* nöbetçi telefonla kullanır */
 </style>
 </head>
 <body>

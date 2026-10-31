@@ -6,7 +6,7 @@
   if (!window.NS) return;
   const NS = window.NS; const { esc, icon, toast } = NS;
   const sor = async (code, o = {}) => { try { return (await NS.api('GET', `/api/katalog/barkod/${encodeURIComponent(code)}${o.okutma ? '?okutma=1' : ''}`)).item; } catch (e) { return null; } };
-  const oner = (items) => { const L = (items || []).filter((x) => x && x.source !== 'off').map((x) => ({ gtin: x.gtin || x.barcode, ad: x.ad || x.name, marka: x.marka || x.brand || '', kategori: x.kategori || x.category || '' })); if (L.length) NS.api('POST', '/api/katalog/oneri', { items: L }).catch(() => {}); };
+  const oner = (items) => { const L = (items || []).filter((x) => x && x.source !== 'off').map((x) => ({ gtin: x.gtin || x.barcode, ad: x.ad || x.name, marka: x.marka || x.brand || '', kategori: x.kategori || x.category || '' })); if (L.length && NS.cloud) NS.api('POST', '/api/katalog/oneri', { items: L }).catch(() => {}); };
   // Open Food Facts kaydı gösterilen her yerde kaynak ve lisans bağlantısı görünür
   const atif = (it) => { const a = it && it.atif; if (!a) return ''; const l = (u, t) => (/^https:\/\//.test(u || '') ? `<a href="${esc(u)}" target="_blank" rel="noopener noreferrer">${esc(t)}</a>` : esc(t)); return `<span class="small faint ns-atif">Kaynak: ${l(a.kaynak_url, a.kaynak)} · ${l(a.lisans_url, a.lisans)}${a.gorsel_lisans ? ` · görsel ${l(a.gorsel_lisans_url, a.gorsel_lisans)}` : ''}</span>`; };
   const katSec = (sel, ad) => { if (!sel || !ad) return; const n = NS.sablon ? NS.sablon.norm(ad) : ad; const o = [...sel.options].find((x) => (NS.sablon ? NS.sablon.norm(x.textContent) : x.textContent) === n); if (o) sel.value = o.value; };
