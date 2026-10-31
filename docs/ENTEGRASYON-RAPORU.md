@@ -21,7 +21,7 @@ Her programda yalnızca o programın kodunda kullanılan türler gösterilir (`U
 | Barkod | Klavye (HID) okuyucu; kamera (`core/scan.js`). |
 | POS terminali | Manuel, kullanıcı tanımlı "terminal servis adresi" veya demo. **Üretici entegrasyonu yok.** |
 | e-Fatura | Yalnızca simülasyon ve "Özel API". Paraşüt/Uyumsoft/Logo/Sovos/Mysoft/EDM seçildiğinde fatura **gönderilmiyordu ama "kuyruğa alındı" diye başarılı gösteriliyordu** → düzeltildi (artık başarısız döner ve açıkça söyler). |
-| Online ödeme (iyzico, PayTR, Param, Stripe) | Yalnızca anahtar saklama; ödeme oluşturan sunucu kodu yok. |
+| Online ödeme (iyzico, PayTR, Param, Stripe) | iyzico: E-ticaret vitrininde Checkout Form var, canlı mod test hesabıyla doğrulanana kadar kapalı (`docs/urun/ETICARET-ODEME.md`). PayTR, Param, Stripe: yalnızca anahtar saklama, ödeme kodu yok. |
 | 41 sektörel bağlayıcı | "Simülasyon" veya kullanıcının verdiği ara servis adresine `{action, payload}` JSON. **Firmaya özel adaptör yok.** |
 
 **Bağlantı yöntemleri:** REST (köprü `/api/istek`), ham TCP (`/api/yazdir`, yeni `/api/tcp-test`), Web Serial (yalnızca Chromium), HID klavye, kamera, webhook gelen kutusu (`/api/webhook/<kanal>`), masaüstü uygulamasında yerel köprü (`nebsoftDesktop.bridge` → 127.0.0.1:5051'de `server.js`).
@@ -176,3 +176,7 @@ Durum sayıları: doğrulandı 10 · kısmen doğrulandı 26 · standart protoko
 | Google Takvim / Outlook | İmzalı iCal aboneliği; artık Randevu + Klinik (hekim bazında) + CRM görevleri | `server/test/takvim.test.js` (Randevu imzası eskisiyle aynı, iptaller hariç, telefon yok, yanlış imza 404) | Tek yönlü; yenileme sıklığını takvim uygulaması belirler |
 
 Ayrıca: iCal / Google / Outlook seçiliyken randevu kaydında görülen “servis adresi tanımlı değil” hatası giderildi (takvim akışla çalışır, ayrıca gönderim yapılmaz). Online ders API'si başarısız olursa artık başka bir bağlantı sessizce gönderilmez.
+
+## 12. Güncelleme — 31.10.2026 (8. tur: sunucu istemcileri)
+
+Kullanıcı kararı: müşteri API'yi kendi hesabıyla bağlar. 38 sağlayıcı anahtarı için `server/cloud/entegrasyon/` altında sunucu istemcisi yazıldı, tek akış Entegre et → Bağlantıyı dene oldu. Güncel durum, engelleyenler ve tam liste: `docs/ENTEGRASYON-ENVANTERI.md`. Bu dosyanın önceki bölümleri o günün durumudur.

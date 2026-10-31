@@ -1,6 +1,6 @@
 // Tüm programlarda aynı olan bölümler. Program içeriği (docs/kilavuz/<id>.js) buradaki modülleri çağırır, kendi modüllerini yazar.
 // Entegrasyon bölümü çekirdekten üretilir: bağlantı listesi NS.integ.USED, doğrulama durumu UNVERIFIED ve core/integ-guides.js kayıtlarıdır; elle kopyalanmaz.
-const { md, esc, tablo, liste, gorevHtml, modulHtml } = require('./sablon');
+const { md, esc, tablo, liste, gorevHtml, modulHtml, bolumBas } = require('./sablon');
 const ham = (s) => esc(String(s ?? '').replace(/<a\b[^>]*>|<\/a>/g, '')).replace(/&lt;(\/?)b&gt;/g, '<$1b>').replace(/&lt;code&gt;|&lt;\/code&gt;/g, '').replace(/&amp;(\w+);/g, '&$1;');
 const TEMEL = new Set(['sim', 'none', 'demo', 'manual']);
 
@@ -40,71 +40,78 @@ const E = {
 };
 
 // ---------- Entegrasyon sınıflandırma ----------
-// x: programın entegrasyon içeriği. kapali listesindeki sağlayıcı bu programda çalışmaz (koddan doğrulanır, nedeni yanında yazılır)
+// Sınıf çekirdekteki sihirbazla aynıdır (core/integ-wizard.js, kapali). Sözleşme gereken sağlayıcı için kısa ve dürüst tek cümle kullanılır.
+const ILETISIM = 'NEBSOFT ile iletişime geçerek açtırılır';
+// x: programın entegrasyon içeriği. kapali listesindeki sağlayıcı bu programda doğrudan bağlanmaz (koddan doğrulanır)
 function durum(e, p, x) {
   const g = p.g;
-  const kap = x && x.kapali && (x.kapali[p.value] || x.kapali['*']); if (kap && !TEMEL.has(p.value) && p.value !== 'custom') return ['no', 'Henüz kullanılamıyor', kap];
-  if (e.kilit && !TEMEL.has(p.value)) return ['no', 'Henüz kullanılamıyor', 'Resmî, herkese açık doküman doğrulanmadı. Yalnız simülasyon seçilebilir.'];
-  if (TEMEL.has(p.value)) return ['ki', 'Temel mod', 'Dış servise bağlanmaz.'];
-  if (g && (g.status === 'yakinda' || g.status === 'desteklenmiyor')) return ['no', 'Henüz kullanılamıyor', g.status === 'yakinda' ? 'Yazılım onayı bekleniyor.' : 'Bu sürümde desteklenmiyor.'];
-  if (g && g.limit && g.status !== 'erisim') return ['ki', 'Sınırlı', 'Bu sürümde bir bölümü çalışır, sınırı aşağıda yazar.'];
-  if (g && g.status === 'dogrulandi') return ['ok', 'Hazır', `Resmî dokümanla doğrulandı (${g.verified || 'tarih yok'}).`];
-  if (g && g.status === 'genel') return ['ok', 'Hazır', 'Standart protokol. Markaya özel menü yolu doğrulanmadı.'];
-  if (g && g.status === 'erisim') return ['ki', 'Kısmen doğrulandı', 'Resmî dokümanın tamamına erişilemedi. Sağlayıcınızla deneyin.'];
+  if (TEMEL.has(p.value)) return ['ki', 'TEST veya temel mod', 'Dış servise bağlanmaz, gönderim yapılmaz.'];
+  const kap = x && x.kapali && (x.kapali[p.value] || x.kapali['*']); if (kap && p.value !== 'custom') return ['no', ILETISIM, ''];
   if (p.value === 'custom') return ['ki', 'Özel servis', 'Kendi servisinizi veya çözüm ortağınızı bağlamak içindir, teknik bilgi gerekir.'];
-  return ['no', 'Henüz kullanılamıyor', 'Bu sağlayıcı için doğrulanmış kurulum rehberi yok.'];
+  if (e.kilit || !g || ['desteklenmiyor', 'yakinda'].includes(g.status) || (g.status === 'erisim' && !g.testVar)) return ['no', ILETISIM, ''];
+  return ['ok', 'Entegre et', g.test || 'Bağlantı denenerek kurulur.'];
 }
 const kullanilir = (d) => d[0] === 'ok' || d[0] === 'ki';
 
-// Sihirbaz görüntüsü: her bağlantı için bir sahne. Tüm bağlantılar kilitliyse bile ayar ekranının gerçek hâli gösterilir.
+// Akış görüntüsü için alanları doldurulabilen ilk sağlayıcı seçilir; deneme düğmesine basılmaz, hiçbir yere istek gitmez
+// Yarım kalan kurulum taslağı sihirbazı ortadan açtırmasın
+const TASLAK = ['js', `(()=>{const d=new NS.DB('entegrasyon-kurulum');d.load();d.data.drafts={};d.save();})()`];
+const ornekSec = (K, R) => { for (const e of R.ent) for (const p of e.provs) { if (durum(e, p, K.entegrasyon[e.k])[0] !== 'ok' || !p.g || !p.g.sunucu) continue; const zorunlu = p.g.fields.filter((f) => f.required); if (zorunlu.length && zorunlu.every((f) => !f.pattern && f.type !== 'select')) return { e, p, zorunlu }; } return null; };
 function entegrasyonHazirla(K, R) {
-  K.entSahne = [{ git: 'entegrasyonlar', kirp: 'ana', adimlar: [['Sol menüden **Entegrasyonlar** sayfasını açın. Üstteki kutular kaç bağlantının bağlı, hatalı veya kurulum beklediğini gösterir.', '.ic-kpi'], ['Bağlantıyı bulmak için arama kutusunu veya kategorileri kullanın.', '#icq'], ['Kurmak istediğiniz kartta **Kur** düğmesine basın. Kurulum sihirbazı açılır.', '[data-wz]']] }];
-  R.ent.forEach((e) => { const x = K.entegrasyon[e.k] = K.entegrasyon[e.k] || {}; x.sahneler = x.sahneler || [{ git: 'entegrasyonlar', once: [['tikla', `[data-wz="${e.k}"]`]], kirp: 'pencere', adimlar: [['Sihirbazın üstünde kurulum adımları görünür: **Sağlayıcı**, **Ön koşullar**, **Bilgiler nereden?**, **Bağlantı ayarları**, **Bağlantı testi**, **Kaydet**.', '.wz-steps']] }]; });
+  K.entSahne = [{ git: 'entegrasyonlar', kirp: 'ana', adimlar: [['Sol menüden **Entegrasyonlar** sayfasını açın. Üstteki kutular kaç bağlantının **Bağlı** olduğunu, hata verdiğini veya beklediğini gösterir.', '.ic-kpi'], ['Bağlantıyı bulmak için arama kutusunu veya kategorileri kullanın.', '#icq'], ['Bağlamak istediğiniz kartta **Entegre et** düğmesine basın.', 'button[data-wz]@Entegre et']] }];
+  const o = ornekSec(K, R);
+  if (o) { const ac = [TASLAK, ['tikla', `[data-wz="${o.e.k}"]`], ['tikla', `[data-prov="${o.p.value}"]`], ['tikla', '[data-nav=next]']]; const doldur = o.zorunlu.map((f) => ['yaz', `[data-f="${f.name}"]`, 'ornek']);
+    K.entSahne.push({ git: 'entegrasyonlar', once: ac, kirp: 'pencere', boy: 980, baslik: `${o.e.title} · ${o.p.label}`, adimlar: [['Sihirbazın üstünde üç adım görünür: **Sağlayıcı**, **Bilgiler**, **Bağlantıyı dene**. Sağlayıcıyı seçtikten sonra **Bilgiler** adımına geçersiniz.', '.wz-steps'], ['Bilgileri girin. Alanların yanındaki **?** simgesi bilginin ne olduğunu ve nereden alınacağını açıklar.', '.wz-body h2']] },
+      { git: 'entegrasyonlar', once: [...ac, ...doldur, ['tikla', '[data-nav=next]']], kirp: 'pencere', boy: 980, baslik: `${o.e.title} · ${o.p.label}`, adimlar: [['Son adımda **Bağlantıyı dene** düğmesine basın. Sunucu sağlayıcıya zararsız bir istek atar, sonuç ekrana yazılır. Kart yalnız deneme geçerse **Bağlı** olur.', '#wzt']] }); }
+  R.ent.forEach((e) => { const x = K.entegrasyon[e.k] = K.entegrasyon[e.k] || {}; x.sahneler = x.sahneler || [{ git: 'entegrasyonlar', once: [TASLAK, ['tikla', `[data-wz="${e.k}"]`]], kirp: 'pencere', baslik: e.title, adimlar: [['Sihirbaz bu pencereyle açılır. Sağlayıcınızı seçip **Bilgiler** adımına geçin.', '.wz-steps']] }]; });
   return null;
 }
 function entegrasyonBolum(K, R, baslangic) {
   const alt = R.ent.map((e) => ({ capa: `ent-${e.k}`, baslik: e.title }));
-  const ozet = tablo(['Bağlantı', 'Durum'], R.ent.map((e) => { const D = e.provs.map((p) => durum(e, p, K.entegrasyon[e.k])); const var_ = D.some((d) => d[0] === 'ok'); const kis = D.some((d) => d[0] === 'ki' && !['Temel mod', 'Özel servis'].includes(d[1])); return [e.title, !e.provs.length ? 'Hazır' : var_ ? 'Hazır sağlayıcı var' : kis ? 'Sınırlı veya kısmen doğrulandı' : 'Henüz kullanılamıyor']; }));
+  const ozetDurum = (e) => { const x = K.entegrasyon[e.k]; const D = e.provs.map((p) => durum(e, p, x)); if (!e.provs.length || D.some((d) => d[0] === 'ok')) return 'Entegre et ile kurulur'; if (D.some((d) => d[1] === 'Temel mod' || d[1] === 'TEST veya temel mod') && !D.some((d) => d[0] === 'no')) return 'Temel modda çalışır'; return ILETISIM; };
   const parca = R.ent.map((e) => {
-    const x = K.entegrasyon[e.k]; const satir = e.provs.map((p) => { const d = durum(e, p, x); return `<tr><td>${esc(p.label)}</td><td><span class="etk ${d[0]}">${esc(d[1])}</span></td><td>${esc(d[2])}</td></tr>`; }).join('');
-    const uy = e.provs.filter((p) => kullanilir(durum(e, p, x)) && p.g).filter((p) => !TEMEL.has(p.value));
+    const x = K.entegrasyon[e.k]; const L = e.provs.map((p) => ({ p, d: durum(e, p, x) }));
+    const acik = L.filter((y) => y.d[0] !== 'no'); const kap = L.filter((y) => y.d[0] === 'no');
+    const satir = acik.map(({ p, d }) => `<tr><td>${esc(p.label)}</td><td><span class="etk ${d[0]}">${esc(d[1])}</span></td><td>${ham(d[2])}</td></tr>`).join('');
+    const uy = acik.filter(({ p }) => p.g && !TEMEL.has(p.value)).map((y) => y.p);
     // Aynı kurulum metnini paylaşan sağlayıcılar tek başlıkta toplanır (POS cihaz markaları gibi)
-    const grup = new Map(); uy.forEach((p) => { const a = JSON.stringify([p.g.prereq, p.g.where, p.g.fields, p.g.test, p.g.errors, p.g.limit]); if (!grup.has(a)) grup.set(a, []); grup.get(a).push(p); });
-    const prov = [...grup.values()].map((L) => { const p = L[0]; const g = p.g; return `<h4>${esc(L.map((x) => x.label).join(', '))}</h4>${g.summary && L.length === 1 ? `<p>${ham(g.summary)}</p>` : ''}${g.limit ? `<div class="uy"><b>Bu sürümdeki sınır:</b> ${ham(g.limit)}</div>` : ''}
-      ${g.prereq.length ? `<p><b>Ön koşullar</b></p><ul>${g.prereq.map((y) => `<li>${ham(y)}</li>`).join('')}</ul>` : ''}${g.where.length ? `<p><b>Bilgiler nereden alınır</b></p><ol>${g.where.map((y) => `<li>${ham(y)}</li>`).join('')}</ol>` : ''}
-      ${g.fields.length ? `<p><b>Nasıl girilir</b></p><table><thead><tr><th>Alan</th><th>Nereden alınır</th></tr></thead><tbody>${g.fields.map((f) => `<tr><td>${esc(f.label)}${f.required ? ' *' : ''}</td><td>${ham(f.nereden || f.ne || '')}</td></tr>`).join('')}</tbody></table>` : ''}
-      ${g.test ? `<p><b>Nasıl test edilir:</b> ${ham(g.test)}</p>` : ''}${g.errors.length ? `<p><b>Sorun çıkarsa</b></p><table><thead><tr><th>Hata</th><th>Çözüm</th></tr></thead><tbody>${g.errors.map((h) => `<tr><td>${ham(h.title)}</td><td>${ham(h.fix)}</td></tr>`).join('')}</tbody></table>` : ''}
-      ${g.sources.length ? `<p><b>Resmî kaynak:</b> ${g.sources.map((s) => `<a href="${esc(s.url)}">${esc(s.label)}</a>`).join(' · ')}</p>` : ''}`; }).join('');
-    const hic = e.kilit || (e.provs.length && !e.provs.some((p) => !TEMEL.has(p.value) && p.value !== 'custom' && kullanilir(durum(e, p, x))));
-    return `<section class="alt" id="ent-${e.k}"><h3>${esc(e.title)}</h3><p class="bag">${esc(e.desc)}.</p>${hic ? `<div class="yok"><b>Henüz kullanılamıyor.</b> ${e.kilit ? 'Bu bağlantının resmî, herkese açık dokümanı doğrulanmadı. Canlı bağlantı seçilemez, yalnız simülasyon çalışır ve hiçbir şey gönderilmez.' : 'Bu bağlantı için bu sürümde desteklenen sağlayıcı yoktur. Yalnız simülasyon veya kendi özel servisiniz seçilebilir.'}</div>` : ''}
-      ${gorevHtml({ baslik: 'Nereden açılır', ne: `**Entegrasyonlar** sayfasında **${e.title}** kartının **Kur** düğmesine basın.`, sahneler: x.sahneler })}
-      ${satir ? `<h4>Sağlayıcılar</h4><table><thead><tr><th>Sağlayıcı</th><th>Durum</th><th>Açıklama</th></tr></thead><tbody>${satir}</tbody></table>` : ''}
+    const grup = new Map(); uy.forEach((p) => { const a = JSON.stringify([p.g.prereq, p.g.where, p.g.fields.map((f) => [f.label, f.nereden]), p.g.test, p.g.errors, p.g.limit]); if (!grup.has(a)) grup.set(a, []); grup.get(a).push(p); });
+    const prov = [...grup.values()].map((G) => { const p = G[0]; const g = p.g; return `<h4>${esc(G.map((y) => y.label).join(', '))}</h4>${g.summary && G.length === 1 ? `<p>${ham(g.summary)}</p>` : ''}${g.limit ? `<div class="not"><b>Kapsam:</b> ${ham(g.limit)}</div>` : ''}
+      ${g.prereq.length ? `<p class="bag"><b>Başlamadan önce</b></p><ul>${g.prereq.map((y) => `<li>${ham(y)}</li>`).join('')}</ul>` : ''}${g.where.length ? `<p class="bag"><b>Bilgiler sağlayıcıda nereden alınır</b></p><ol>${g.where.map((y) => `<li>${ham(y)}</li>`).join('')}</ol>` : ''}
+      ${g.fields.length ? `<p class="bag"><b>Alanlar</b></p><table><thead><tr><th>Alan</th><th>Nereden alınır</th></tr></thead><tbody>${g.fields.map((f) => `<tr><td>${esc(f.label)}${f.required ? ' *' : ''}</td><td>${ham(f.nereden || f.ne || '')}</td></tr>`).join('')}</tbody></table>` : ''}
+      ${g.test ? `<p><b>Bağlantıyı dene:</b> ${ham(g.test)}</p>` : ''}${g.errors.length ? `<p class="bag"><b>Hata ve çözümü</b></p><table><thead><tr><th>Hata</th><th>Çözüm</th></tr></thead><tbody>${g.errors.map((h) => `<tr><td>${ham(h.title)}</td><td>${ham(h.fix)}</td></tr>`).join('')}</tbody></table>` : ''}
+      ${g.sources.length ? `<p><b>Sağlayıcının resmî dokümanı:</b> ${g.sources.map((s) => `<a href="${esc(s.url)}">${esc(s.label)}</a>`).join(' · ')}</p>` : ''}`; }).join('');
+    const kapSatir = kap.length ? `<div class="yok"><b>${esc(ILETISIM)}:</b> ${kap.map(({ p }) => esc(p.label)).join(', ')}. Bu sağlayıcıların dokümanı herkese açık değildir veya bağlantı için sözleşme gerekir. Kartta **İletişim talebi** düğmesiyle talep bırakın.</div>`.replace('**İletişim talebi**', '<b class="ad">İletişim talebi</b>') : '';
+    return `<section class="alt" id="ent-${e.k}"><h3 class="alt">${esc(e.title)}</h3><p class="bag">${esc(e.desc)}.</p>
+      ${gorevHtml({ baslik: 'Nereden açılır', ne: `**Entegrasyonlar** sayfasında **${e.title}** kartındaki düğmeye basın.`, sahneler: x.sahneler })}
+      ${satir ? `<h4>Sağlayıcılar</h4><table><thead><tr><th>Sağlayıcı</th><th>Kurulum</th><th>Bağlantıyı dene ne yapar</th></tr></thead><tbody>${satir}</tbody></table>` : ''}${kapSatir}
       <h4>Bağlandıktan sonra bu programda ne değişir</h4>${liste(x.degisir)}${x.sorun ? `<h4>Sorun çıkarsa ne yapılır</h4>${liste(x.sorun)}` : ''}${prov}</section>`;
   }).join('');
-  return { capa: 'entegrasyon', baslik: 'Entegrasyonlar', alt, html: `<section class="b" id="entegrasyon"><h2>${baslangic}. Entegrasyonlar</h2>
-    <p>Bağlantılar sihirbazla kurulur: sağlayıcıyı seçersiniz, ön koşulları okursunuz, bilgileri girersiniz, testi yaparsınız ve kaydedersiniz. Bu bölümde yalnız bu programda kullanılan bağlantılar anlatılır. Bir sağlayıcıyı canlıya almadan önce sağlayıcının test hesabıyla deneyin: resmî dokümana uygun olması canlı testin yerini tutmaz.</p>
-    ${gorevHtml({ baslik: 'Entegrasyon Merkezi', sahneler: K.entSahne })}
-    <h3>Bu programdaki bağlantılar</h3>${ozet}
-    <div class="not">Durum sözcükleri: <b>Hazır</b> resmî dokümanla doğrulanmış veya standart protokolle çalışan sağlayıcıdır. <b>Sınırlı</b> sağlayıcının yalnız bir bölümü çalışır, sınır o sağlayıcının altında yazar. <b>Kısmen doğrulandı</b> dokümanın bir bölümüne erişilemeyen sağlayıcıdır, canlıya almadan önce sağlayıcınızla deneyin. <b>Henüz kullanılamıyor</b> canlıda kullanılamayan veya doğrulanmamış seçenektir.</div>
+  return { capa: 'entegrasyon', baslik: 'Entegrasyonlar', alt, html: `<section class="b" id="entegrasyon">${bolumBas(baslangic, 'Entegrasyonlar', 'Servisleri kendi hesabınızla bağlarsınız. Bu bölümde yalnız bu programda kullanılan bağlantılar anlatılır.')}
+    ${gorevHtml({ baslik: 'Tek akış: Entegre et, Bağlantıyı dene, Bağlı', sahneler: K.entSahne })}
+    <div class="uy">Kart yalnız <b>Bağlantıyı dene</b> geçince <b>Bağlı</b> görünür. Deneme sunucudan sağlayıcıya zararsız bir istek atar: bakiye, hesap bilgisi veya kimlik jetonu. İleti gönderilmez, para çekilmez. Bilgileri değiştirirseniz bağlantı yeniden denenene kadar iş akışı durur.</div>
+    <div class="not">Entegrasyon desteklenir, kendi hesabınızla bağlarsınız. Sonuç sağlayıcı hesabınıza bağlıdır. İlk gerçek işlemde sağlayıcı panelinden kontrol edin.</div>
+    <h3>Bu programdaki bağlantılar</h3>${tablo(['Bağlantı', 'Durum'], R.ent.map((e) => [e.title, ozetDurum(e)]))}
     ${parca}</section>` };
 }
 
 // ---------- Bölümler ----------
+const KIS = { bas: { ad: 'Başlarken', ne: 'Programın ne işe yaradığı, ekranın bölümleri ve ilk kurulum sırası.' }, mod: { ad: 'Modüller', ne: 'Menüdeki her sayfa için ne işe yaradığı, adım adım kullanımı, alanların anlamı ve sık hatalar.' }, yon: { ad: 'Yönetim ve belgeler', ne: 'Kullanıcı yetkileri, müşterinin gördüğü sayfalar, yazdırma ve yedekleme.' }, ent: { ad: 'Entegrasyonlar', ne: 'Kendi hesabınızla bağlayacağınız servisler. Entegre et, bilgileri girin, Bağlantıyı dene.' }, des: { ad: 'Destek', ne: 'Sık sorulan sorular ve bize ulaşma yolları.' } };
 function bolumler(K, R, X) {
   const nav = Object.fromEntries(R.navHepsi); const B = []; let no = 0; const yeni = (b) => { no++; B.push(typeof b === 'function' ? b(no) : b); };
-  yeni((n) => ({ capa: 'tanitim', baslik: `${X.urun.name} programını tanıyın`, html: `<section class="b" id="tanitim"><h2>${n}. ${esc(X.urun.name)} programını tanıyın</h2><h3>Ne işe yarar</h3><p>${md(K.ne)}</p><h3>Kimler için</h3><p>${md(K.kimler)}</p>
+  yeni((n) => ({ kisim: KIS.bas, capa: 'tanitim', baslik: `${X.urun.name} programını tanıyın`, html: `<section class="b" id="tanitim">${bolumBas(n, `${X.urun.name} programını tanıyın`, md(K.ne))}<h3>Kimler için</h3><p>${md(K.kimler)}</p>
     ${gorevHtml({ baslik: 'Ekranı tanıyın', sahneler: K.ekrantanitim })}
     <h3>İlk kurulum adımları</h3><p>Programı ilk açtığınızda şu sırayla ilerleyin. Yeni hesaplar örnek veriyle açılır. Ürünü tanıdıktan sonra örnekleri temizleyip kendi kayıtlarınızı girin.</p>
     <ol>${X.kurulum.map((s) => `<li><b>${esc(s.t)}.</b> ${esc(s.d)} <span style="color:#6b7280">(${esc(nav[s.go] || s.go)} sayfası)</span></li>`).join('')}</ol>${K.ilkNot ? `<div class="not">${md(K.ilkNot)}</div>` : ''}</section>` }));
-  K.moduller.filter((m) => m.id !== 'entegrasyonlar').forEach((m) => { m.baslik = m.baslik || nav[m.id] || m.id; m.capa = `m-${m.id}`; yeni((n) => ({ capa: m.capa, baslik: m.baslik, html: modulHtml(m, n) })); });
+  K.moduller.filter((m) => m.id !== 'entegrasyonlar').forEach((m) => { m.baslik = m.baslik || nav[m.id] || m.id; m.capa = `m-${m.id}`; yeni((n) => ({ kisim: KIS.mod, capa: m.capa, baslik: m.baslik, html: modulHtml(m, n) })); });
   yeni((n) => { const rol = Object.entries(R.roles); const mu = (N, r) => !N.roles || r === 'admin' || N.roles.includes(r);
-    return { capa: 'roller', baslik: 'Roller ve yetkiler', html: `<section class="b" id="roller"><h2>${n}. Roller ve yetkiler</h2><p>Her kullanıcının bir rolü vardır. Rol, menüde hangi bölümlerin görüneceğini belirler. Kullanıcıları ${md('**Ayarlar**')} sayfasından eklersiniz. Yetkisiz kullanıcı o bölümü menüde görmez.</p>
+    return { kisim: KIS.yon, capa: 'roller', baslik: 'Roller ve yetkiler', html: `<section class="b" id="roller">${bolumBas(n, 'Roller ve yetkiler', `Her kullanıcının bir rolü vardır. Rol, menüde hangi bölümlerin görüneceğini belirler. Kullanıcıları ${md('**Ayarlar**')} sayfasından eklersiniz. Yetkisiz kullanıcı o bölümü menüde görmez.`)}
     <table><thead><tr><th>Menü</th>${rol.map(([, ad]) => `<th>${esc(ad)}</th>`).join('')}</tr></thead><tbody>${R.nav.filter((N) => nav[N.id]).map((N) => `<tr><td>${esc(nav[N.id])}</td>${rol.map(([r]) => `<td>${mu(N, r) ? 'Görür' : '-'}</td>`).join('')}</tr>`).join('')}</tbody></table>${K.roller ? `<div class="not">${md(K.roller)}</div>` : ''}</section>` }; });
-  yeni((n) => ({ capa: 'musteri', baslik: 'Müşteriye açık sayfalar', html: `<section class="b" id="musteri"><h2>${n}. Müşteriye açık sayfalar</h2>${(K.musteri || []).length ? (K.musteri).map((m) => `<h3>${esc(m.ad)}</h3><p>${md(m.ne)}</p>${m.sahneler ? gorevHtml({ baslik: 'Sayfanın görünümü', sahneler: m.sahneler }) : ''}${m.not ? `<div class="not">${md(m.not)}</div>` : ''}`).join('') : `<p>${md(K.musteriYok || 'Bu programda müşterinin kendisinin açtığı bir sayfa yoktur.')}</p>`}</section>` }));
-  yeni((n) => ({ capa: 'yazdirma', baslik: 'Yazdırma ve belge işlemleri', html: `<section class="b" id="yazdirma"><h2>${n}. Yazdırma ve belge işlemleri</h2><p>${md(K.yazdirma.ne)}</p>${tablo(['Belge', 'Nereden yazdırılır'], K.yazdirma.belgeler)}<div class="not">Yazdırma tarayıcının yazdırma penceresiyle yapılır. Bu pencereden yazıcıyı seçer veya belgeyi PDF olarak kaydedersiniz. Görünümü **Belge şablonları** sayfasından ayarlarsınız.</div></section>`.replace('**Belge şablonları**', '<b class="ad">Belge şablonları</b>') }));
-  yeni((n) => ({ capa: 'yedek', baslik: 'Yedekleme', html: `<section class="b" id="yedek"><h2>${n}. Yedekleme</h2><p>Verilerinizi düzenli olarak dosyaya alın. Yedek dosyası işletme verilerinizi içerir, güvenli bir yerde saklayın.</p><ol><li>${md('**Ayarlar** sayfasını açın.')}</li><li>${md('**Veri Yönetimi** kartında **Yedek al** düğmesine basın. JSON dosyası bilgisayarınıza iner.')}</li><li>${md('Dosyayı başka bir diske veya güvendiğiniz bir depolama alanına kopyalayın.')}</li></ol><h3>Yedekten geri dönme</h3><p>${md('**Yedekten yükle** seçilen dosyadaki veriyi programa yazar, mevcut verinin yerine geçer. Bu düğme bulut hesabında rolü sunucuda atanmış kullanıcılarda görünmez.')}</p><div class="uy">${md('**Demoyu sıfırla** tüm verileri siler ve örnek verileri yükler. Gerçek verilerle çalışırken bu düğmeyi kullanmayın, önce yedek alın.')}</div></section>` }));
-  yeni((n) => entegrasyonBolum(K, R, n));
-  yeni((n) => { const sss = [...(X.yardim ? X.yardim.sss : []), ...(X.urun.faq || []), ...(K.sss || [])].filter(([q]) => !(K.sssHaric || []).includes(q)); return { capa: 'sss', baslik: 'Sık sorulan sorular ve destek', html: `<section class="b" id="sss"><h2>${n}. Sık sorulan sorular ve destek</h2>${sss.map(([q, a]) => `<h4>${esc(q)}</h4><p>${md(a)}</p>`).join('')}<h3>Destek</h3><p>Takıldığınız yerde programın sağ altındaki destek balonuna yazabilir veya bize ulaşabilirsiniz.</p><ul><li>Telefon: ${esc(X.CFG.phone)}</li><li>E-posta: ${esc(X.CFG.email)}</li><li>Yardım merkezi: <a href="${X.CFG.domain}/#/yardim/${X.id}">${X.CFG.domain.replace('https://', '')}/#/yardim/${X.id}</a></li></ul></section>` }; });
+  yeni((n) => ({ kisim: KIS.yon, capa: 'musteri', baslik: 'Müşteriye açık sayfalar', html: `<section class="b" id="musteri">${bolumBas(n, 'Müşteriye açık sayfalar')}${(K.musteri || []).length ? (K.musteri).map((m) => `<h3>${esc(m.ad)}</h3><p>${md(m.ne)}</p>${m.sahneler ? gorevHtml({ baslik: 'Sayfanın görünümü', sahneler: m.sahneler }) : ''}${m.not ? `<div class="not">${md(m.not)}</div>` : ''}`).join('') : `<p>${md(K.musteriYok || 'Bu programda müşterinin kendisinin açtığı bir sayfa yoktur.')}</p>`}</section>` }));
+  yeni((n) => ({ kisim: KIS.yon, capa: 'yazdirma', baslik: 'Yazdırma ve belge işlemleri', html: `<section class="b" id="yazdirma">${bolumBas(n, 'Yazdırma ve belge işlemleri', md(K.yazdirma.ne))}${tablo(['Belge', 'Nereden yazdırılır'], K.yazdirma.belgeler)}<div class="not">Yazdırma tarayıcının yazdırma penceresiyle yapılır. Bu pencereden yazıcıyı seçer veya belgeyi PDF olarak kaydedersiniz. Görünümü **Belge şablonları** sayfasından ayarlarsınız.</div></section>`.replace('**Belge şablonları**', '<b class="ad">Belge şablonları</b>') }));
+  yeni((n) => ({ kisim: KIS.yon, capa: 'yedek', baslik: 'Yedekleme', html: `<section class="b" id="yedek">${bolumBas(n, 'Yedekleme', 'Verilerinizi düzenli olarak dosyaya alın. Yedek dosyası işletme verilerinizi içerir, güvenli bir yerde saklayın.')}<ol><li>${md('**Ayarlar** sayfasını açın.')}</li><li>${md('**Veri Yönetimi** kartında **Yedek al** düğmesine basın. JSON dosyası bilgisayarınıza iner.')}</li><li>${md('Dosyayı başka bir diske veya güvendiğiniz bir depolama alanına kopyalayın.')}</li></ol><h3>Yedekten geri dönme</h3><p>${md('**Yedekten yükle** seçilen dosyadaki veriyi programa yazar, mevcut verinin yerine geçer. Bu düğme bulut hesabında rolü sunucuda atanmış kullanıcılarda görünmez.')}</p><div class="uy">${md('**Demoyu sıfırla** tüm verileri siler ve örnek verileri yükler. Gerçek verilerle çalışırken bu düğmeyi kullanmayın, önce yedek alın.')}</div></section>` }));
+  yeni((n) => ({ kisim: KIS.ent, ...entegrasyonBolum(K, R, n) }));
+  yeni((n) => { const sss = [...(X.yardim ? X.yardim.sss : []), ...(X.urun.faq || []), ...(K.sss || [])].filter(([q]) => !(K.sssHaric || []).includes(q)); return { kisim: KIS.des, capa: 'sss', baslik: 'Sık sorulan sorular ve destek', html: `<section class="b" id="sss">${bolumBas(n, 'Sık sorulan sorular ve destek')}${sss.map(([q, a]) => `<h4>${esc(q)}</h4><p>${md(a)}</p>`).join('')}<h3>Destek</h3><p>Takıldığınız yerde programın sağ altındaki destek balonuna yazabilir veya bize ulaşabilirsiniz.</p><ul><li>Telefon: ${esc(X.CFG.phone)}</li><li>E-posta: ${esc(X.CFG.email)}</li><li>Yardım merkezi: <a href="${X.CFG.domain}/#/yardim/${X.id}">${X.CFG.domain.replace('https://', '')}/#/yardim/${X.id}</a></li></ul></section>` }; });
   return B;
 }
 module.exports = { belgeler, ebelge, entegrasyonlar, bildirimler, imzali, ayarlar, E, durum, entegrasyonHazirla, entegrasyonBolum, bolumler };
