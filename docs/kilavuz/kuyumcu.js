@@ -79,7 +79,7 @@ module.exports = (O) => {
       sahneler: [{ adres: 'ekran.html', ilk: 900, kirp: 'tam', adimlar: [['Fiyatlar kayıtlı kurdan hesaplanır.', null]] }] }],
     yazdirma: { ne: 'Belgeler işlem sırasında veya raporlardan yazdırılır.', belgeler: [['Satış fişi ve alış makbuzu', 'İşlem bitince veya listedeki **Fiş** düğmesi.'], ['Etiketler', '**Stok** sayfasında **Etiket bas**.'], ['Gün sonu raporu', '**Kasa** sayfasında **Gün sonu**.'], ['Altın hesabı teslim tutanağı', '**Altın hesabını kapat** sırasında.'], ['Tahsilat makbuzu', '**Cari tahsilat** sırasında.']] },
     entegrasyon: {
-      sms: { degisir: ['Entegre et ile sağlayıcıyı seçip bilgileri girersiniz. Bağlantıyı dene hesap bakiyesini okur, ileti göndermez. Bağlı yazısı görünmeden SMS gönderilmez.', '**Sipariş & Tamir** sayfasındaki **"Hazır" SMS** ve **Hazırlara SMS** gerçek mesaj gönderir. Bağlantı yokken kayıt TEST olur, müşteriye gitmez.'], sorun: ['Kayıt hata gösteriyorsa sağlayıcı panelindeki kredi ve onaylı başlık bilgisini kontrol edin.', 'Müşteri kartında telefon olduğunu kontrol edin.'] },
+      sms: { degisir: ['**Entegre et** ile sağlayıcıyı seçip bilgileri girersiniz. **Bağlantıyı dene** hesap bakiyesini okur, ileti göndermez. **Bağlı** yazısı görünmeden SMS gönderilmez.', '**Sipariş & Tamir** sayfasındaki **"Hazır" SMS** ve **Hazırlara SMS** gerçek mesaj gönderir. Bağlantı yokken kayıt TEST olur, müşteriye gitmez.'], sorun: ['Kayıt hata gösteriyorsa sağlayıcı panelindeki kredi ve onaylı başlık bilgisini kontrol edin.', 'Müşteri kartında telefon olduğunu kontrol edin.'] },
       backup: O.E.backup(),
     },
   };

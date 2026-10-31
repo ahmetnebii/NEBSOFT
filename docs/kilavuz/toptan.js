@@ -76,7 +76,7 @@ module.exports = (O) => {
       sahneler: [{ adres: 'bayi.html', ilk: 900, kirp: 'tam', adimlar: [['Bayi telefon numarasını buraya yazar.', '#ph']] }] }],
     yazdirma: { ne: 'Belgeler sipariş ve cari ekranlarından yazdırılır.', belgeler: [['Sipariş / sevk fişi', 'Sipariş detayında **Yazdır**, sevkte otomatik.'], ['Yükleme listesi', '**Sevkiyat** sayfasında **Yükleme listesi**.'], ['Tahsilat makbuzu', 'Tahsilat kaydedilince.'], ['Cari hesap ekstresi', '**Cariler** sayfasında **Ekstre**.']] },
     entegrasyon: {
-      sms: { degisir: ['Entegre et ile sağlayıcıyı seçip bilgileri girersiniz. Bağlantıyı dene hesap bakiyesini okur, ileti göndermez. Bağlı yazısı görünmeden SMS gönderilmez.', '**Bayi portalı bilgisini gönder** bayiye gerçek SMS yollar. Bağlantı yokken kayıt TEST olur, bayiye gitmez.'], sorun: ['Kayıt hata gösteriyorsa sağlayıcı panelindeki kredi ve onaylı başlık bilgisini kontrol edin.', 'Carinin telefonunu kontrol edin.'] },
+      sms: { degisir: ['**Entegre et** ile sağlayıcıyı seçip bilgileri girersiniz. **Bağlantıyı dene** hesap bakiyesini okur, ileti göndermez. **Bağlı** yazısı görünmeden SMS gönderilmez.', '**Bayi portalı bilgisini gönder** bayiye gerçek SMS yollar. Bağlantı yokken kayıt TEST olur, bayiye gitmez.'], sorun: ['Kayıt hata gösteriyorsa sağlayıcı panelindeki kredi ve onaylı başlık bilgisini kontrol edin.', 'Carinin telefonunu kontrol edin.'] },
       backup: O.E.backup(),
     },
   };
