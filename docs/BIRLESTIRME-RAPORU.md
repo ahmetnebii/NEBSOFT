@@ -1,10 +1,43 @@
 # Birleştirme raporu: `birlesik/hepsi`
 
-Tarih: 2026-10-31. Taban: `devir/hepsi` `d5f4e06`. `devir/hepsi` güncellenmedi, push yapılmadı. `claude/grup-*` alınmadı.
+Tarih: 2026-10-31. Kod ve üretim son commit: `97137b9`, son `npm test` bunun üstünde koştu. Bu rapor ayrı bir belge commit'idir. `devir/hepsi` (`d5f4e06`) güncellenmedi, push yapılmadı.
 
 ## CANLIYA ÇIKMAYI ENGELLEYENLER
 
-Beş test raporundaki (`docs/test/*.md`) kod maddeleri tek listede. Kontrol biçimi: ticaret 4.1-4.3 ve üyelik 1-6 birleşik hâlde `npm test` çıktısında `AÇIK` satırıyla göründü. `belge.js` ve `integrations.js` maddeleri kodda arandı. Rezervasyon ve saha rol maddeleri için `rol-kural.js` farkı okundu, o kurallara dokunan değişiklik yok; bu maddeler ayrıca çalıştırılmadı. Program içi eksikler (`apps/nakliyat`, `apps/ciftci`, `market/catalog.js`) rapordan taşındı, yeniden denenmedi.
+### Yayın için gereken
+
+1. **Kılavuz PDF'leri depoda değil.** 50 PDF yalnız bu çalışma kopyasının `indir/kilavuz/` klasöründe, 282 MB. Ana klasöre kopyalanmazsa `seo-denetim` 50 kesin hata verir, `hosting-paketi.js` durur. Barındırma planı bu boyutu taşımalı.
+2. **Hiçbir sağlayıcı gerçek test hesabıyla denenmedi.** Ödeme dahil. Canlı kart kilitleri kapalı.
+3. **Destek telefonu ve e-postası teyit bekliyor.** Kılavuzda `site/src/site.config.js` değerleri yazar, logo da kesin değil. Değişirse kılavuzlar yeniden üretilir.
+4. **Gerçek telefon denemesi yok.** iOS Safari çalıştırılmadı, Android uygulaması derlenmedi. Ayrıntı `docs/test/telefon.md`.
+
+### Bu iki birleştirmede kapanan
+
+- `sw.js` sürümü yükseltildi, son değer `nebsoft-v3-96` (saha E9).
+- Gece kırılan `bilet-kural.test.js` (ticaret 8 ve üç rapor).
+- Panelden açılan iyzico kilidi birleşik kodda çalışıyor, borç tahsilatı süresi panelden okunuyor.
+- Paraşüt notu kodla uyumlu, `core/integ-guides.js`.
+- Kılavuzlarda eski sihirbaz ve "Henüz kullanılamıyor" kalmadı. `danisan` yayın dışı.
+- Telefon denetiminin kod maddeleri (`docs/test/telefon.md`: "Bu turda kodda açık engel kalmadı").
+
+### Kılavuz oturumlarının bildirdiği sahte başarı ve yanlış kayıt
+
+Tam liste `docs/kilavuz/PROGRAM-HATALARI.md`. Bu maddeler kod okumasıdır, burada yeniden denenmedi. CLAUDE.md §1 kapsamında olduğu için öne alındı:
+
+- `apps/site/sakin.html`: yerelde her 16 haneli kart kabul edilir, kalıcı makbuz oluşur.
+- `apps/musavir/portal.html`: yalnız dosya adı kaydedilir ama "iletildi" yazar.
+- `apps/otel/app.js`: POS TEST sonucu folyoya ödeme yazar. HotelRunner bağlayıcısı programla uyumsuz.
+- `apps/bilet/app.js`: kapı açılmasa da bilet kullanıldı sayılır, `turnike` `UNVERIFIED` listesinde yok.
+- `apps/klinik`, `apps/otel`: e-Fatura eski `sendEInvoice` yolundan gider, `NS.ebelge.create` kullanmaz (CLAUDE.md §4).
+- `apps/randevu`, `apps/adisyon`, `apps/butik`, `apps/toptan`, `apps/kuyumcu`, `apps/kargo`, `apps/crm`, `apps/servis`, `apps/kiralama`, `apps/galeri`, `apps/spor`, `apps/kurs`, `apps/anaokulu`, `apps/emlak`: e-Belgeler menüde, `efatura` `USED` listesinde yok. Entegratör bağlanamaz, fatura TEST kalır. Liste notlardan alındı, satır satır yeniden doğrulanmadı.
+- `core/integ-guides.js` `PAYLIMIT`: müşteriye açık kart ödemesi "henüz yoktur" diyor. iyzico, PayTR, Papara, Paynet, Craftgate için `integ-guides-sunucu.js` üstüne yazar, kalan sağlayıcılar için metin geçerli olabilir, denetlenmeli.
+- `docs/kilavuz`: e-SMM kartı kılavuzda "açtırılır" der, kodda Paraşüt doğrudan gönderimi var, sihirbaz "desteklenmiyor" gösterir. UYUMSUZ, karar gerekli.
+
+### Test raporlarından açık kalan kod maddeleri
+
+Aşağıdaki listeler ilk birleştirmedendir. İkinci birleştirmede `server/cloud/rol-kural.js`, `belge.js`, `dosya.js` ve `market/catalog.js` hiç değişmedi, `core/integrations.js` içinde `UNVERIFIED`, `EFAT_OK` ve WhatsApp isteği aynı kaldı. `npm test` çıktısında `AÇIK` satırı yine 9 tanedir.
+
+İlk birleştirmede beş test raporundaki (`docs/test/*.md`) kod maddeleri tek listede. Kontrol biçimi: ticaret 4.1-4.3 ve üyelik 1-6 birleşik hâlde `npm test` çıktısında `AÇIK` satırıyla göründü. `belge.js` ve `integrations.js` maddeleri kodda arandı. Rezervasyon ve saha rol maddeleri için `rol-kural.js` farkı okundu, o kurallara dokunan değişiklik yok; bu maddeler ayrıca çalıştırılmadı. Program içi eksikler (`apps/nakliyat`, `apps/ciftci`, `market/catalog.js`) rapordan taşındı, yeniden denenmedi.
 
 ### Düzeltilmemiş, sunucu rol kuralı (`server/cloud/rol-kural.js`)
 
@@ -45,7 +78,47 @@ Kod dışı maddeler (test hesabı, avukat, mevzuat metni, fiyat onayı, KDV kar
 - saha E9: `sw.js` `V` artırıldı, son değer `nebsoft-v3-94`.
 - ticaret 8 ve üç raporda geçen gece kırılan `bilet-kural.test.js`: `test/bilet-saat-bagimsiz` ile çözüldü.
 
-## Dallar
+## İkinci birleştirme
+
+| # | Dal | Sonuç | Çakışma |
+|---|---|---|---|
+| 1 | `claude/sunucu-tanimlari-cffcb8` (`73715d9`) | alındı | `package.json`, `sw.js`, `eticaret-odeme.js`, `index.js` |
+| 2 | `claude/altyapi-83e71a` (`8c56112`) | alındı | `sw.js` |
+| 3 | `claude/tasarim-butunluk` (`996e684`) | alındı | `package.json`, `sw.js` |
+| 4 | `claude/telefon-183ca2` (`3e72e63`) | alındı | `package.json`, `sw.js` |
+| 5 | `claude/grup-1-e70de7` … `claude/grup-5-202f1c` | beşi de alındı | yok |
+
+Düzeltmeler:
+
+- `server/cloud/tahsilat-odeme.js` ödeme süresini ortam değişkeninden okuyordu, kurulum paneline bağlandı. Çakışma görünmüyordu.
+- `kurs`, `spor`, `site`, `egitim` kılavuzları online tahsilattan önceki durumu anlatıyordu, dördü de gerçek akışa getirildi. `site` için sağlayıcılar kapalı yazılıydı, açıldı.
+- `egitim` kılavuzu kaldırılmış e-Belge modülünü anlatıyordu, üretici durdurdu, modül çıkarıldı.
+- `oto` sahnesi rastgele demo kuyruğuna bağlıydı, sahne eksik durumları kendi ekliyor.
+- `danisan` için `scripts/kilavuz/ayar.js` `YAYIN_DISI` eklendi, `server/test/kilavuz.test.js` bunu sınıyor.
+- `uret.js` liste dosyasını yazarken paralel koşunun kaydını artık ezmiyor. Bu üretimde liste günlüklerden kuruldu, 50 kayıt ve 50 PDF eşleşti.
+
+Sonuç:
+
+- **`npm test`:** 83 dosya geçti, çıkış kodu 0, 1783 denetim. XSD çalıştı, atlanmadı. Veritabanı `nebsoft_test_b1`. Paralel oturumlarla çakışmasın diye testlerin kendi port değişkenleri verildi.
+- **SEO:** 210 sayfa, kesin hata 0, uyarı 100 (`baslik-60` 94, `yetim` 2, `baslik-kalip` 2, `ayni-niyet` 1, `hiz-js` 1).
+- **Kılavuz:** 50 PDF, 282,0 MB, 3332 sayfa, 1991 ekran. En büyüğü `fabrika` 13,4 MB, 15 MB sınırını aşan yok. `danisan` üretilmedi, adresi 404, listede yok. PDF metni 3332 sayfada taranarak "Henüz kullanılamıyor" dahil beş eski ifade aranıp 0 bulundu; yöntem yeni metinleri bularak sınandı.
+- **Tarayıcı:** ana sayfa, `/paketler/`, `/fiyatlar/`, `/rehber/`, `/araclar/`, `/marketprogrami/` kılavuz bağlantısı (`pos.pdf` 200, `application/pdf`, `noindex`), `pos`, `egitim`, `dugun` tüm menü sayfaları, `/admin/#/kurulum`. 375 genişlikte yatay taşma yok, koyu temada arka plan ve üst menü her sayfada aynı, üst menü 65 px. Konsol ve sunucu günlüğü temiz. Kurulum sayfası yalnız bulut kipinde yüklenir, geçici veritabanıyla açıldı, veritabanı sonra silindi.
+
+## Sayfaları gözle okunmamış kılavuzlar
+
+**50 kılavuzun son baskısı sayfa sayfa okunmadı.** Bu turda yalnız üretici denetimi ve metin taraması geçti. Kılavuz oturumlarında önceki baskılardan okunan bölümler:
+
+| Durum | Programlar |
+|---|---|
+| Önceki baskısı tümüyle okundu | `pos`, `terzi`, `eticaret` (ilk örnekler), `fotograf` (düzeltme öncesi), `klinik` (ilk baskı) |
+| Kısmen okundu | `matbaa` (9-20, 33-36), `oyun` (25-32, 41-46 hariç), `mobilya`, `okulservisi`, `ciftci`, `lastik`, `dernek`, `egitim` (modül ve müşteri sayfaları) |
+| İnceleme tamamlanmadı | `eczane` |
+| Okunduğuna dair kayıt yok | Kalan 36 program |
+| Bu turda metni değişti, okunmadı | `egitim`, `kurs`, `spor`, `site`, `oto` |
+
+Ortak bölümler (Ayarlar, Bildirimler, Belge şablonları, sağlayıcı rehberleri) hiçbir programda son baskıda okunmadı.
+
+## İlk birleştirme: dallar
 
 | # | Dal | Sonuç | Çakışma |
 |---|---|---|---|

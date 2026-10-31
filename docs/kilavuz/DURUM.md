@@ -1,6 +1,6 @@
 # PDF kullanım kılavuzu: durum raporu
 
-Tarih: 2026-10-31. Durum: üretici kuruldu, üç örnek çıktı, kullanıcı onayı bekleniyor. Kalan 48 program onaydan sonra üretilecek.
+Tarih: 2026-10-31. Durum: 50 program üretildi, 282 MB. `danisan` satışa kapalı olduğu için yayın dışı. Son baskılar sayfa sayfa okunmadı, ayrıntı `docs/BIRLESTIRME-RAPORU.md`. Program hataları `docs/kilavuz/PROGRAM-HATALARI.md`.
 
 ## CANLIYA ÇIKMAYI ENGELLEYENLER
 
@@ -8,7 +8,7 @@ Tarih: 2026-10-31. Durum: üretici kuruldu, üç örnek çıktı, kullanıcı on
 2. **Destek bilgileri teyit bekliyor.** Kılavuzda telefon `0850 555 00 34`, e-posta `destek@nebsoft.com.tr` yazar (`site/src/site.config.js`). Alan adı `nebsoftapp.com`, e-posta alanı `nebsoft.com.tr`. Gerçek olduğu kullanıcıdan doğrulanmalı.
 3. **Logo kesin değil.** Şimdilik `assets/nebsoft-logo.webp`. Kesinleşince `scripts/kilavuz/ayar.js` içindeki `LOGO` değişir, kılavuzlar yeniden üretilir.
 4. **Entegrasyonlar gerçek hesapla denenmedi.** Kılavuz `claude/sunucu-tanimlari-cffcb8` akışını anlatır: Entegre et, Bağlantıyı dene, Bağlı. "Bağlı" yalnız deneme geçince görünür. Açık kararlar `docs/ENTEGRASYON-ENVANTERI.md` başındadır (canlı ödeme kilidi, Yurtiçi düz http, Param, Stripe).
-5. **Canlı kart ödemesi kapalı.** Sunucuda `IYZICO_CANLI=1` yoksa işletme test kutusunu kaldırsa bile kart seçeneği mağazada görünmez. Kılavuz böyle yazar.
+5. **Canlı kart ödemesi kapalı.** Süper yönetici panelden açmadıkça veya sunucuda `IYZICO_CANLI=1` yoksa işletme test kutusunu kaldırsa bile kart seçeneği mağazada görünmez. Kılavuz böyle yazar.
 6. **Katalog SSS metinleri eski (`market/catalog.js`).** `sssHaric` ile çıkarıldı: eticaret fotoğraf, kartla ödeme, Trendyol/Hepsiburada; pos Getir ve Yazarkasa. Katalog düzeltilmeli, site sayfalarında hâlâ eski metin var.
 7. **E-ticaret e-İrsaliye kartı:** programda e-İrsaliye kesen çağrı yoktur, kılavuz böyle yazar.
 

@@ -8,7 +8,7 @@ Hiçbir sağlayıcıya gerçek hesapla istek atılmadı, gerçek ileti gönderil
 
 **Karar bekleyenler**
 
-1. **Canlı ödeme kilidi.** `IYZICO_CANLI` açılmadı. `PAYTR_CANLI`, `PAPARA_CANLI`, `PAYNET_CANLI`, `CRAFTGATE_CANLI`, `STRIPE_CANLI` kilidi de var. Açılmadan gerçek kart çekilmez. Seçenek: ilk gerçek hesapta test modu geçince kilit sağlayıcı bazında açılır. Tümünü kaldırmak önerilmez.
+1. **Canlı ödeme kilidi.** `IYZICO_CANLI` ve panel kilidi (`/admin/#/kurulum`) açılmadı. `PAYTR_CANLI`, `PAPARA_CANLI`, `PAYNET_CANLI`, `CRAFTGATE_CANLI`, `STRIPE_CANLI` kilidi de var. Açılmadan gerçek kart çekilmez. Seçenek: ilk gerçek hesapta test modu geçince kilit sağlayıcı bazında açılır. Tümünü kaldırmak önerilmez.
 2. **`CLAUDE.md` §1 metni.** Dosya değiştirilmedi, önerilen metin aşağıda.
 3. **Yurtiçi Kargo düz http.** WSDL'deki adres `http://webservices.yurticikargo.com:8080`. Kullanıcı adı ve şifre şifresiz gider, https adresi yayımlanmamış. Rehberde yazılı. Yurtiçi'nden https adresi istenmeli, verilmezse seçenek kapatılmalı.
 4. **Param.** `dev.param.com.tr` bu ağdan 403 verdi. Hash formülü, test adresi ve dönüş doğrulaması okunamadı. Kod yazılmadı, ekranda iletişim talebi çıkar. Dokümanı PDF olarak alabilirseniz yazılır.
