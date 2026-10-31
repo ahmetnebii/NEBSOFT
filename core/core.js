@@ -8,7 +8,7 @@
   const base = me.src.replace(/core\.js(\?.*)?$/, '');
   window.__NB_ASSETS = base.replace(/core\/$/, 'assets/');
   try { const p = localStorage.getItem('nebsoft:palette') || (!localStorage.getItem('nebsoft:theme') && !/\/apps\/adisyon\//.test(location.pathname) ? 'kurumsal' : ''); if (p) document.documentElement.setAttribute('data-palette', p); if (localStorage.getItem('nebsoft:navmini') === '1') document.documentElement.classList.add('nv-mini'); } catch (e) { /* yok */ }
-  if (document.readyState === 'loading') ['auth.js', 'notify.js', 'docs.js', 'forms.js', 'sablon.js', 'katalog.js', 'pwa.js', 'scan.js', 'labels.js', 'support.js', 'integ-guides.js', 'integ-guides-ek.js', 'integ-guides-sunucu.js', 'integ-wizard.js'].forEach((f) => document.write(`<script src="${base}${f}"><\/script>`));
+  if (document.readyState === 'loading') ['auth.js', 'notify.js', 'docs.js', 'forms.js', 'sablon.js', 'katalog.js', 'pwa.js', 'scan.js', 'labels.js', 'support.js', 'integ-guides.js', 'integ-guides-ek.js', 'integ-guides-sunucu.js', 'integ-wizard.js', 'tahsilat.js'].forEach((f) => document.write(`<script src="${base}${f}"><\/script>`));
   const page = /\/apps\/[a-z0-9]+\/(?!index\.html)[^/]+\.html$/.test(location.pathname) ? null : (location.pathname.match(/\/apps\/([a-z0-9]+)\//) || [])[1] || 'site';
   let seen = true; try { seen = sessionStorage.getItem('nv:splash:' + page) === '1'; sessionStorage.setItem('nv:splash:' + page, '1'); } catch (e) { /* yok */ }
   if (!page || seen || window.top !== window || /[?&](print|nosplash|embed)=1/.test(location.search) || matchMedia('print').matches) return;
@@ -376,7 +376,7 @@
     pubQuery(x) { if (!this.pub) return; this._pubX = x; this._pubLoad(); }
     pubLogout() { if (!this.pub) return; pubToken(null); this._pubLoad(); }
     // Program özel müşteri ucu (ör. ödeme başlatma): oturum belirteci sunucuda doğrulanır
-    pubCall(yol, govde) { if (!this.pub) return null; const r = syncJ('POST', `${PUB.api}/${yol}`, { ...(govde || {}), token: pubToken() }); return { status: r.status, ...r.j }; }
+    pubCall(yol, govde) { if (!this.pub) return null; const r = syncJ('POST', `${PUB.api}/${yol}`, { token: pubToken(), ...(govde || {}) }); return { status: r.status, ...r.j }; }
     // Değişiklikleri kayıt düzeyinde işlemlere çevir: ekle / alan güncelle / sil
     _pubDiff() {
       const base = JSON.parse(this._base || '{}'); const cur = this.data; const ops = [];

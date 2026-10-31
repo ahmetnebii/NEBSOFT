@@ -2,6 +2,8 @@
 
 Güncelleme 31.10.2026: Vitrin iyzico dışında PayTR, Papara, Paynet ve Craftgate ile de çalışır (`server/cloud/odeme-saglayici.js`). Ödeme ancak Bağlantıyı dene geçince açılır. PayTR bildirimi `/api/odeme/paytr/bildirim/<işletme>`, Papara ve Paynet `/api/odeme/bildirim/<sağlayıcı>/<işletme>/<sipariş>`, dönüş `/api/odeme/donus/<işletme>/<sipariş>`. Canlı kilitler ve açık noktalar `docs/ENTEGRASYON-ENVANTERI.md`. Aşağısı iyzico akışıdır.
 
+Borç tahsilatı (kurs, spor, site, eğitim) aynı sağlayıcı katmanını ve aynı geri çağrı uçlarını kullanır: `server/cloud/tahsilat-odeme.js`, `core/tahsilat.js`, `apps/egitim/odeme.html`. Durum `online_tahsilat` tablosundadır, kişisel bilgi tutulmaz. Test ödemesi borç kapatmaz. Vitrinden farkı: iade yalnız tam tutar, sipariş değil borç kalemi kapanır.
+
 Durum: kod tamam, sahte iyzico sunucusuyla test edildi. Gerçek iyzico test hesabıyla denenmedi. Canlı mod kapalı.
 
 ## CANLIYA ÇIKMAYI ENGELLEYENLER

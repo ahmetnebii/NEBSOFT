@@ -20,6 +20,8 @@ const { route, err, site, hesapRolu, valid } = require('./routes');
 const { readToken } = require('./public');
 const APP = 'eticaret'; const J = (s) => { try { return JSON.parse(s); } catch (e) { return null; } };
 const TTL = () => Number(process.env.ETICARET_ODEME_TTL_MS) || 30 * 60e3;
+const tah = () => require('./tahsilat-odeme'); // borç tahsilatı aynı geri çağrı uçlarını kullanır, kayıt kimliği hangi tarafa ait olduğunu söyler
+const isle = async (tid, id, hazir) => ((await tah().kayit(tid, id)) ? tah().tamamla(tid, id, hazir) : tamamla(tid, id, hazir));
 const sgOf = (o) => TUM[(o.payment && o.payment.provider) || 'iyzico'];
 const hataKapat = (e, on) => { if (e instanceof iyz.IyzicoHata || e.name === 'SaglayiciHata') throw err(502, `${on}${e.message}`); throw e; };
 const trGun = (d) => new Date(new Date(d).getTime() + 3 * 3600e3).toISOString().slice(0, 10);
@@ -112,11 +114,13 @@ route('POST', '/api/public/:slug/eticaret/odeme/baslat', { auth: 'none', limit: 
   return { ok: true, ...(f.iframe ? { iframe: f.iframe } : { url: f.url }) };
 });
 
-const yonlen = (t, no) => { const u = `/t/${t.slug}/apps/${APP}/magaza.html#/tesekkurler/${encodeURIComponent(no || '')}`; return { __raw: true, type: 'text/html; charset=utf-8', body: `<!doctype html><html lang="tr"><head><meta charset="utf-8"><meta name="robots" content="noindex"><meta http-equiv="refresh" content="0;url=${u}"><title>Ödeme sonucu</title></head><body><p><a href="${u}">Siparişinize dönün</a></p></body></html>` }; };
+const yonlen = (t, no) => htmlYon(`/t/${t.slug}/apps/${APP}/magaza.html#/tesekkurler/${encodeURIComponent(no || '')}`);
+const htmlYon = (u) => { return { __raw: true, type: 'text/html; charset=utf-8', body: `<!doctype html><html lang="tr"><head><meta charset="utf-8"><meta name="robots" content="noindex"><meta http-equiv="refresh" content="0;url=${u}"><title>Ödeme sonucu</title></head><body><p><a href="${u}">Sayfaya dönün</a></p></body></html>` }; };
 // Sağlayıcı müşteriyi buraya döndürür. Gövdeye ve adres parametrelerine güvenilmez, sonuç kayıtlı belirteçle sorgulanır
 const donus = async (c) => {
   const t = await isletme(c.params.slug); if (!t) throw err(404, 'İşletme bulunamadı');
-  try { await tamamla(t.id, c.params.id); } catch (e) { log.uygulama.hata('odeme.donus', e.message); }
+  try { await isle(t.id, c.params.id); } catch (e) { log.uygulama.hata('odeme.donus', e.message); }
+  const h = await tah().kayit(t.id, c.params.id); if (h) return htmlYon(tah().sayfa(t, h));
   const { o } = await siparisOku(t.id, c.params.id); return yonlen(t, o && o.no);
 };
 const DONUS = { auth: 'none', csrf: false, raw: true, bodyMax: 8e3, limit: ['iyzdonus', 120, 60e3] };
@@ -124,21 +128,21 @@ route('POST', '/api/odeme/iyzico/donus/:slug/:id', DONUS, donus);
 route('POST', '/api/odeme/donus/:slug/:id', DONUS, donus); route('GET', '/api/odeme/donus/:slug/:id', DONUS, donus);
 // Papara ve Paynet bildirimi yalnız tetikler, 200 dönülmezse sağlayıcı yeniden dener
 route('POST', '/api/odeme/bildirim/:saglayici/:slug/:id', { auth: 'none', csrf: false, raw: true, bodyMax: 16e3, limit: ['iyzwh', 600, 60e3] }, async (c) => {
-  const t = await isletme(c.params.slug); if (t) { try { await tamamla(t.id, c.params.id); } catch (e) { log.uygulama.hata('odeme.bildirim', e.message); } } return { ok: true };
+  const t = await isletme(c.params.slug); if (t) { try { await isle(t.id, c.params.id); } catch (e) { log.uygulama.hata('odeme.bildirim', e.message); } } return { ok: true };
 });
 // PayTR bildirimi panelde tanımlanan tek adrese gelir. İmza doğrulanır, yanıt yalnız OK olur: OK alınmazsa PayTR yeniden dener
 const duz = (m) => ({ __raw: true, type: 'text/plain; charset=utf-8', body: m });
 route('POST', '/api/odeme/paytr/bildirim/:slug', { auth: 'none', csrf: false, raw: true, bodyMax: 8e3, limit: ['iyzwh', 600, 60e3] }, async (c) => {
   const t = await isletme(c.params.slug); if (!t) return duz('HATA'); const b = Object.fromEntries(new URLSearchParams(c.raw.toString('utf8')));
   const a = await ayar(t.id); if (!a || a.saglayici !== 'paytr' || !ent.bul('payment:paytr').bildirimGecerli(a, b)) { log.uygulama.hata('paytr.bildirim', 'imza veya ayar tutmadı'); return duz('HATA'); }
-  const id = paytr.siparisOf(b.merchant_oid); const { o } = await siparisOku(t.id, id); if (!o || !o.payment || o.payment.oid !== b.merchant_oid) return duz('OK'); // eski deneme: işlenmez, tekrar gönderilmesin
-  if (b.status === 'success') await tamamla(t.id, id, paytr.karar(o, { payment_amount: Number(b.payment_amount) / 100, payment_total: Number(b.total_amount) / 100, test_mode: b.test_mode })); else await tamamla(t.id, id, { durum: 'basarisiz', neden: String(b.failed_reason_msg || 'Ödeme tamamlanamadı').slice(0, 200) }); // bildirimde tutar kuruştur
+  const id = paytr.siparisOf(b.merchant_oid); const h = await tah().kayit(t.id, id); const o = h ? tah().nesne(h) : (await siparisOku(t.id, id)).o; if (!o || !o.payment || o.payment.oid !== b.merchant_oid) return duz('OK'); // eski deneme: işlenmez, tekrar gönderilmesin
+  if (b.status === 'success') await isle(t.id, id, paytr.karar(o, { payment_amount: Number(b.payment_amount) / 100, payment_total: Number(b.total_amount) / 100, test_mode: b.test_mode })); else await isle(t.id, id, { durum: 'basarisiz', neden: String(b.failed_reason_msg || 'Ödeme tamamlanamadı').slice(0, 200) }); // bildirimde tutar kuruştur
   return duz('OK');
 });
 // Webhook yalnız tetikler: müşteri dönmeden sekmeyi kapatsa da ödeme yakalanır
 route('POST', '/api/odeme/iyzico/webhook/:slug', { auth: 'none', csrf: false, raw: true, bodyMax: 16e3, limit: ['iyzwh', 600, 60e3] }, async (c) => {
   const t = await isletme(c.params.slug); if (!t) return { ok: true }; const b = J(c.raw.toString('utf8')); const id = b && String(b.paymentConversationId || '').slice(0, 40);
-  if (id) { try { await tamamla(t.id, id); } catch (e) { log.uygulama.hata('iyzico.webhook', e.message); } } return { ok: true };
+  if (id) { try { await isle(t.id, id); } catch (e) { log.uygulama.hata('iyzico.webhook', e.message); } } return { ok: true };
 });
 
 // Yönetici iadesi: aynı gün ve tam tutarsa iptal, diğerinde iade. Çift tıklama iki iade açmasın diye satır kilitlenir
@@ -161,4 +165,4 @@ route('POST', '/api/eticaret/siparis/:id/iade', { auth: 'user', limit: ['iyziade
 // Panelde gösterilecek bağlantı durumu
 route('GET', '/api/eticaret/odeme/durum', { auth: 'user' }, async (c) => { const t = await db.one('SELECT slug FROM tenants WHERE id=?', [c.user.tenant_id]); const a = await ayar(c.user.tenant_id); return { ok: true, bagli: !!a, test: a ? a.test : null, canli: !!a && canliAcik(a.saglayici.toUpperCase()), saglayici: a ? a.saglayici : '', webhook: t ? `${await geriAdres(c)}/api/odeme/iyzico/webhook/${t.slug}` : '', paytrBildirim: t ? `${await geriAdres(c)}/api/odeme/paytr/bildirim/${t.slug}` : '' }; });
 
-module.exports = { gorunum, kayitSonrasi, islemOncesi, tara, tamamla, ayar, geriAdres };
+module.exports = { gorunum, kayitSonrasi, islemOncesi, tara, tamamla, ayar, geriAdres, isletme, hataKapat };

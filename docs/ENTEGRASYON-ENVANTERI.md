@@ -17,7 +17,7 @@ Hiçbir sağlayıcıya gerçek hesapla istek atılmadı, gerçek ileti gönderil
 
 **Kod yazıldı, gerçek hesapla bakılacaklar**
 
-7. **Vitrin ödemesi.** iyzico, PayTR, Papara, Paynet ve Craftgate e-ticaret vitrinine bağlandı. Moka ve Sipay yalnız Bağlantıyı dene: Moka dönüş imzasının algoritması, Sipay ödeme hash alanları dokümanda yok. PayTR'de işletme verilen Bildirim URL'sini panele yazmalı, yazmazsa sonuç durum sorgusuyla geç gelir. Paynet iadesi panelden yapılır, Craftgate iadesi yalnız tam tutar. `kurs`, `spor`, `site`, `egitim` programlarında Online ödeme kartı var ama online tahsilat ekranı yok, kart "e-ticaret vitrininde alınır" der.
+7. **Online ödeme.** iyzico, PayTR, Papara, Paynet ve Craftgate e-ticaret vitrinine, kurs, spor ve site portalına, eğitim ödeme bağlantısına bağlandı. Moka ve Sipay yalnız Bağlantıyı dene: Moka dönüş imzasının algoritması, Sipay ödeme hash alanları dokümanda yok. PayTR'de işletme verilen Bildirim URL'sini panele yazmalı, yazmazsa sonuç durum sorgusuyla geç gelir. Paynet iadesi panelden yapılır, Craftgate iadesi yalnız tam tutar. Borç tahsilatında iade yalnız tam tutar ve program içinden yapılır; kısmi iade sağlayıcı panelinden yapılır ve programa elle işlenir. iyzico borç tahsilatında adres alanı işletme adresiyle, şehir "Türkiye" ile gider: gerçek test hesabında kabul edildiğine bakılmalı.
 8. **Mevcut müşteriler.** Sunucu istemcisi olan bir sağlayıcıyı önceden kurmuş işletme, Bağlantıyı dene adımını bir kez yapana kadar SMS, WhatsApp, e-posta, Nilvera/Paraşüt faturası, webhook ve vitrin kart ödemesi kullanamaz, açık hata alır. Bu bilinçli: deneme geçmeden iş akışı çalışmaz.
 9. **Uyumsoft.** Bu turda sunucuya taşınmadı. WSDL `BasicIntegration` kimliği gövdede `userInfo` ile ister, kod `Integration` ucu ve WS-Security kullanıyor. Test hesabıyla bakılmalı, deneme tarayıcı akışında kaldı.
 10. **Dokümanda tam yazmayan noktalar.** Her dosyanın başında işaretli: PayTR dönüş adresinin çerçeveden çıkışı, Paynet tutar biçimi ve `xact_id`, Craftgate sonuç alan adları, İdefix `vendor` alanı, Paynet Basic biçimi, Yurtiçi `keyType`, Trendyol Go Base64 yazımı, DHL canlıda 404 varsayımı, Microsoft UTC saat dilimi, Google servis hesabı paylaşımı, Aras DataSet sütunları, Geliver şehir kodu (`cityCode` program kaydında yok).
@@ -36,6 +36,7 @@ Sırayla, her sağlayıcı için bir kez:
 5. Sunucu çıkış IP'si: Verimor zorunlu, Sipay ve Paynet sabit IP ister. Bulut sunucunun IP'si müşteriye yazılı verilmeli.
 6. Log'da anahtar olmadığına bakılmalı.
 7. PayTR'de Bildirim URL yazılı mı, ödeme sonrası sipariş "Ödeme alındı" oldu mu, dönüşte sayfa çerçeveden çıktı mı bakılmalı.
+8. Borç tahsilatında tek taksit öde: taksit kapanmalı, panelde Online ödemeler listesinde görünmeli, iade edince taksit yeniden açılmalı.
 
 ## Özet
 
@@ -54,8 +55,9 @@ Sırayla, her sağlayıcı için bir kez:
 - `server/test/entegrasyon-bulut.test.js`: 12 test geçti (MariaDB + sahte Netgsm).
 - `server/test/odeme-saglayici.test.js`: 20 kontrol geçti (MariaDB + sahte PayTR, Papara, Paynet, Craftgate): imza, tutar, TEST işareti, tekrar bildirim, iade, canlı kilit.
 - `server/test/eticaret-odeme.test.js`: iyzico akışı yeni katmanda geçti.
-- Test dosyaları tek tek çalıştırıldı: 69 dosyanın 69'u geçti, atlanan yok.
-- Tarayıcı: yerel sunucu 5131 + sahte Netgsm. SMS akışı baştan sona. E-ticarette Online ödeme kartı, sağlayıcı listesi, PayTR alanları. Sözleşme gerektiren sağlayıcıda iletişim talebi. Vitrin sayfası açıldı. Kart ödemesinin tarayıcıdan uçtan ucu denenmedi: bulut kipi gerekir, sunucu tarafı testle sınandı, PayTR çerçevesi tarayıcıda görülmedi. Konsolda kaynağı bulunamayan bir 404 satırı var.
+- `server/test/tahsilat-odeme.test.js`: 29 kontrol geçti (MariaDB + sahte PayTR, Papara): sahiplik, sunucu tutarı, TEST borç kapatmaz, sahte imza, tekrar bildirim, çift ödeme, tutar uyuşmazlığı, tam iade, spor yenileme, site tazminatı, eğitim bağlantısı, kişisel bilgi ve anahtar sızıntısı. Süresi dolan ödemenin taraması bu testte denenmedi.
+- Test dosyaları tek tek çalıştırıldı: 70 dosyanın 70'i geçti, atlanan yok.
+- Tarayıcı: yerel sunucu 5131 + sahte Netgsm. SMS akışı baştan sona. E-ticarette Online ödeme kartı, sağlayıcı listesi, PayTR alanları. Sözleşme gerektiren sağlayıcıda iletişim talebi. Vitrin sayfası açıldı. Kart ödemesinin tarayıcıdan uçtan ucu denenmedi: bulut kipi gerekir, sunucu tarafı testle sınandı, PayTR çerçevesi tarayıcıda görülmedi. Kurs portalı ve eğitim bağlantısı yerel bulut kipinde ve sahte Papara ile baştan sona tarayıcıda denendi (telefon genişliği, koyu tema dahil). Site ve spor penceresi açıldı, tutarlar doğru, son ödeme adımı bu ikisinde yalnız sunucu testinde denendi. Konsoldaki 404 satırı `/favicon.ico`; deneme bölmesinde servis çalışanı kaydı da hata veriyor (`sw.js` 200 dönüyor, sözdizimi temiz), gerçek tarayıcıda bakılmalı.
 - Bu sonuçlar dokümana uyumu gösterir, gerçek çalışmayı kanıtlamaz.
 
 ## Nasıl çalışır

@@ -110,7 +110,7 @@
     const debt = sum(ins.filter((i) => !i.paid && i.due <= today()), (i) => i.amount);
     const paid = sum(ins.filter((i) => i.paid), (i) => i.amount);
     return `<div class="stat3"><div><b>${money(s.fee)}</b><span>Dönem ücreti</span></div><div><b>${money(paid)}</b><span>Ödenen</span></div><div><b style="color:${debt ? 'var(--err)' : 'inherit'}">${money(debt)}</b><span>Vadesi geçen</span></div></div>
-      ${debt ? `<button class="btn primary lg block mb" data-pay>${icon('card')} ${NS.pub ? `Geciken ${money(debt)} — ödeme bilgisi` : `Geciken ${money(debt)} tutarı kartla öde`}</button>` : ''}
+      ${debt || (NS.pub && S().kartOdeme && ins.some((i) => !i.paid && !i.canceled)) ? `<button class="btn primary lg block mb" data-pay>${icon('card')} ${NS.pub && !S().kartOdeme ? `Geciken ${money(debt)} — ödeme bilgisi` : debt ? `Geciken ${money(debt)} tutarı kartla öde` : 'Taksit öde'}</button>` : ''}
       <section class="tk-panel"><h3>${icon('calendar')} Taksit planı</h3><div class="b">${ins.map((i, k) => `<div class="ln" style="grid-template-columns:1fr auto auto"><span><b>${k + 1}. taksit</b><div class="small muted">${NS.date(i.due)}</div></span><b>${money(i.amount)}</b>${i.paid ? NS.badge('Ödendi', 'ok') : i.due <= today() ? NS.badge('Gecikti', 'err') : NS.badge('Bekliyor')}</div>`).join('')}</div></section>
       <p class="small muted">Havale/EFT için açıklamaya öğrenci no <b>${esc(s.no)}</b> yazınız.</p>`;
   }
@@ -148,7 +148,7 @@
   });
   on(root, 'click', '[data-pay]', () => {
     db.load(); const s = db.get('students', kid); const due = s.installments.filter((i) => !i.paid && i.due <= today()); const amt = sum(due, (i) => i.amount);
-    if (NS.pub) return NS.payInfo({ amount: amt, title: 'Taksit ödemesi', s: S() });
+    if (NS.pub) return NS.tahsilat.ode(db, { baslik: 'Taksit ödemesi', yedek: () => NS.payInfo({ amount: amt, title: 'Taksit ödemesi', s: S() }) });
     const md = NS.modal({ title: `Taksit ödemesi · ${money(amt)}`, body: `<div class="form-grid"><div class="field full"><label>Kart numarası</label><input class="input mono" id="cc" inputmode="numeric" placeholder="0000 0000 0000 0000" autocomplete="cc-number"></div><div class="field"><label>Son kullanma</label><input class="input mono" id="ce" placeholder="AA/YY" autocomplete="cc-exp"></div><div class="field"><label>CVC</label><input class="input mono" id="cv" maxlength="4" placeholder="•••" autocomplete="cc-csc"></div></div><p class="small faint mt">Demo: gerçek ödeme alınmaz.</p>`,
       actions: [{ label: 'Vazgeç' }, { label: 'Öde', cls: 'primary', icon: 'lock', onClick: (close, b) => {
         if ($('#cc', b).value.replace(/\D/g, '').length !== 16 || $('#cv', b).value.length < 3) return toast('Kart bilgilerini kontrol edin', 'err');
@@ -156,7 +156,7 @@
       } }] });
     $('#cc', md.root).oninput = (e) => { e.target.value = e.target.value.replace(/\D/g, '').slice(0, 16).replace(/(\d{4})(?=\d)/g, '$1 '); };
   });
-  render();
+  render(); NS.tahsilat.donus(db, render);
 })();
 </script>
 </body>

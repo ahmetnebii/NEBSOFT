@@ -370,6 +370,7 @@ RULES.spor = {
     trainers: { fields: ['id', 'name', 'color', 'title', 'photo', 'branch'] },
     bookings: { where: (r, x) => r.date >= x.today, fields: ['id', 'cls', 'date'] }, // doluluk için (üye bilgisi olmadan)
   },
+  gorunumEki: (t) => require('./eticaret-odeme').gorunum(t),
   login: ownerOf('members'), loginError: 'Telefon veya giriş kodu hatalı',
   view: (x) => {
     const m = x.get('members', me(x, 'o')); if (!m) return {};
@@ -412,6 +413,7 @@ RULES.spor = {
 // Deneme sonuçlarında diğer öğrencilerin kimliği gizlenir (sıra ve sınıf ortalaması için puanlar anonim gider)
 const anonScores = (e, own) => { let n = 0; const sc = {}; Object.entries(e.scores || {}).forEach(([k, v]) => { sc[own.has(k) ? k : 'x' + (++n)] = v; }); return { ...e, scores: sc }; };
 RULES.kurs = {
+  gorunumEki: (t) => require('./eticaret-odeme').gorunum(t),
   pub: { classes: true, lessons: true, teachers: { fields: ['id', 'name', 'color', 'branch', 'title'] } },
   login: (x, q) => { const d = digits(q.phone); const code = norm(q.code); return code && d.length === 10 && x.col('students').some((s) => digits(s.parentPhone) === d && s.portalCode && norm(s.portalCode) === code) ? { k: 'p', i: d } : null; },
   loginError: 'Bu numarayla kayıtlı öğrenci bulunamadı',
@@ -435,6 +437,7 @@ RULES.kurs = {
 const SITE_FAC = { tenis: { slots: ['08:00', '09:00', '10:00', '11:00', '17:00', '18:00', '19:00', '20:00'], max: 2 }, toplanti: { slots: ['10:00', '12:00', '14:00', '16:00', '18:00', '20:00'], max: 4 }, barbeku: { slots: ['12:00', '15:00', '18:00'], max: 1 }, fitness: { slots: ['07:00', '08:00', '19:00', '20:00', '21:00'], max: 3 } };
 const anonVotes = (p, own) => { let n = 0; const v = {}; Object.entries(p.votes || {}).forEach(([k, x]) => { v[k === own ? k : 'x' + (++n)] = x; }); return { ...p, votes: v }; };
 RULES.site = {
+  gorunumEki: (t) => require('./eticaret-odeme').gorunum(t),
   pub: {
     flats: { fields: ['id', 'block', 'no', 'floor'] },
     announcements: true,
@@ -1223,6 +1226,7 @@ RULES.dernek = {
 // ---------- Eğitim: sertifika doğrulama (dogrula.html) — yalnız tahmin edilemez kodla, tek belge, kişisel iletişim bilgisi yok ----------
 const EGT_ALAN = ['id', 'no', 'code', 'name', 'course', 'hours', 'date', 'validUntil', 'status'];
 RULES.egitim = {
+  gorunumEki: (t) => require('./eticaret-odeme').gorunum(t),
   settings: ['bizName', 'bizPhone', 'bizAddress'],
   pub: {},
   login: (x, q) => { const k = norm(q.kod); const c = k.length >= 8 && x.col('certs').find((r) => r.code && norm(r.code) === k); return c ? { k: 'c', i: c.id } : null; }, loginError: 'Kayıt bulunamadı',

@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Eğitim ödemesi</title>
+<link rel="stylesheet" href="../../core/core.css">
+<link rel="stylesheet" href="../../core/track.css">
+<style>
+  :root { --app-accent: #4f46e5; --app-accent-soft: #e0e7ff; --app-accent-soft-dark: #1e1b4b; }
+</style>
+</head>
+<body>
+<header class="tk-bar"><div class="in" id="bar"></div></header>
+<main class="tk-wrap" id="root" style="max-width:640px"></main>
+<script src="../../core/core.js"></script>
+<script>
+(function () {
+  const { esc, $, icon, money } = NS;
+  const db = new NS.DB('egitim');
+  const S = () => db.settings({});
+  const KEY = 'nebsoft:egitim:odeme';
+  const tut = (v) => { try { if (v) sessionStorage.setItem(KEY, v); return sessionStorage.getItem(KEY) || ''; } catch (e) { return v || ''; } };
+  // Belirteç adres çubuğunda ve geçmişte kalmaz: dönüşte aynı sekmeden okunur
+  const token = tut(location.hash.slice(1)); if (location.hash) history.replaceState(null, '', location.pathname + location.search);
+  $('#bar').innerHTML = `<div class="tk-mark">${icon('wallet')}</div><div class="grow"><b>${esc(S().bizName || 'Eğitim Merkezi')}</b><span>Eğitim ödemesi</span></div><button class="btn ghost icon" id="th" data-theme-ico aria-label="Tema">${icon(NS.getTheme() === 'dark' ? 'sun' : 'moon')}</button>`;
+  $('#th').onclick = NS.toggleTheme;
+  const yaz = (b, m, ek) => { $('#root').innerHTML = `<div class="tk-view"><div class="tk-intro"><h1>${esc(b)}</h1><p>${esc(m)}</p></div>${ek || ''}</div>`; };
+  const ac = () => NS.tahsilat.ode(db, { baslik: 'Eğitim ödemesi', token });
+  function goster() {
+    if (!NS.pub) return yaz('Ödeme bağlantısı', 'Bu sayfa kurumun gönderdiği bağlantıyla açılır.');
+    if (!token) return yaz('Ödeme bağlantısı bulunamadı', 'Kurumun gönderdiği bağlantıyı yeniden açın.');
+    const r = db.pubCall('tahsilat/borc', { token });
+    if (!r || r.status !== 200 || !r.ok) return yaz('Ödeme açılamadı', (r && r.error) || 'Biraz sonra yeniden deneyin.');
+    if (!r.kalemler.length) return yaz('Ödenecek borcunuz yok', 'Bu kayıtta bekleyen taksit görünmüyor.');
+    if (!r.kart) return yaz('Kartla ödeme şu anda kapalı', `Kuruma ${S().bizPhone || ''} numarasından ulaşabilirsiniz.`);
+    const t = r.kalemler.reduce((n, x) => n + x.tutar, 0);
+    yaz(r.kisi.ad || 'Eğitim ödemesi', `${r.kalemler.length} taksit bekliyor, toplam ${money(t)}.`, `<button class="btn primary lg block mt" id="ac">${icon('card')} Ödemeye geç</button>`);
+    $('#ac').onclick = ac;
+  }
+  goster(); if (!NS.tahsilat.donus(db, goster) && $('#ac')) ac();
+})();
+</script>
+</body>
+</html>
