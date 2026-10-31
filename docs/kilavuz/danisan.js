@@ -3,8 +3,8 @@
 const KART = [['tikla', '[data-act=v]']]; // Listedeki ilk danışan: demo verisinde diyetisyene bağlıdır
 // Pazar günü demo randevusu yoktur: takvim bekleyen randevusu olan ilk güne alınır
 const BEKLEYEN = [['js', "(()=>{const a=NS.app.opts.db.all('appts').filter((x)=>x.status==='bekliyor').sort((x,y)=>x.date.localeCompare(y.date))[0];const i=document.querySelector('#dd');i.value=a.date;i.dispatchEvent(new Event('change',{bubbles:true}));})()"], ['bekle', 300]];
-const AKIS = (kart, deneme) => `**Entegrasyonlar** sayfasında ${kart} kartında Entegre et düğmesine basın, sağlayıcınızı seçin, ekranda nereden alınacağı yazan bilgileri girin, Bağlantıyı dene ile deneyin. ${deneme} Sonuç başarılıysa kart Bağlı görünür.`;
-const DENEME_HATA = ['Deneme hata verirse ekrandaki iletiyi okuyun, bilgileri sağlayıcı panelinden yeniden kopyalayın.', 'Bilgileri değiştirirseniz Bağlantıyı dene adımını yeniden yapın, deneme geçene kadar işlem durur.'];
+const AKIS = (kart, deneme) => `**Entegrasyonlar** sayfasında ${kart} kartında **Entegre et** düğmesine basın, sağlayıcınızı seçin, ekranda nereden alınacağı yazan bilgileri girin, **Bağlantıyı dene** ile deneyin. ${deneme} Sonuç başarılıysa kart **Bağlı** görünür.`;
+const DENEME_HATA = ['Deneme hata verirse ekrandaki iletiyi okuyun, bilgileri sağlayıcı panelinden yeniden kopyalayın.', 'Bilgileri değiştirirseniz **Bağlantıyı dene** adımını yeniden yapın, deneme geçene kadar işlem durur.'];
 module.exports = (O) => ({
   ne: 'Danışan Takibi, diyetisyen, psikolog ve fizyoterapist gibi uzmanların randevusunu, danışan kartını, seans notunu, ölçümünü, planını ve ödemesini tutar. Program bir sağlık bilgi sistemi değildir: e-Nabız, reçete ve tanı kodu yoktur, program değerlendirme veya öneri üretmez. Kayıtları uzman kendi mesleki kararıyla girer.',
   kimler: 'Diyetisyen, psikolog ve fizyoterapist çalışan danışmanlık merkezleri ve serbest çalışan uzmanlar.',

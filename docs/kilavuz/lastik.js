@@ -5,8 +5,8 @@ const ACIK = [['js', "(()=>{const d=NS.app.opts.db;let j=d.all('jobs').find((x)=
 const YARDIM = require('fs').readFileSync(require('path').join(__dirname, '..', '..', 'scripts', 'kilavuz', 'sayfa.js'), 'utf8');
 const LASTIGIM = [['js', "(()=>{const h=NS.app.opts.db.all('hotels').find((x)=>x.status==='depoda');location.href='lastigim.html?k='+h.key;})()"], ['bekle', 1400], ['js', YARDIM + ";(()=>{const t=document.createElement('style');t.textContent='.nsd,#nsdroot,.nsd-w{display:none!important}';document.head.append(t)})()"]];
 const ILETISIM = 'NEBSOFT ile iletişime geçerek açtırılır.';
-const AKIS = (kart, deneme) => `**Entegrasyonlar** sayfasında ${kart} kartında Entegre et düğmesine basın, sağlayıcınızı seçin, ekranda nereden alınacağı yazan bilgileri girin, Bağlantıyı dene ile deneyin. ${deneme} Sonuç başarılıysa kart Bağlı görünür.`;
-const DENEME_HATA = ['Deneme hata verirse ekrandaki iletiyi okuyun, bilgileri sağlayıcı panelinden yeniden kopyalayın.', 'Bilgileri değiştirirseniz Bağlantıyı dene adımını yeniden yapın, deneme geçene kadar işlem durur.'];
+const AKIS = (kart, deneme) => `**Entegrasyonlar** sayfasında ${kart} kartında **Entegre et** düğmesine basın, sağlayıcınızı seçin, ekranda nereden alınacağı yazan bilgileri girin, **Bağlantıyı dene** ile deneyin. ${deneme} Sonuç başarılıysa kart **Bağlı** görünür.`;
+const DENEME_HATA = ['Deneme hata verirse ekrandaki iletiyi okuyun, bilgileri sağlayıcı panelinden yeniden kopyalayın.', 'Bilgileri değiştirirseniz **Bağlantıyı dene** adımını yeniden yapın, deneme geçene kadar işlem durur.'];
 module.exports = (O) => ({
   ne: 'Lastikçi & Yedek Parça, lastik otelini, ebat ve DOT bilgili stoğu, montaj ve rot-balans iş emirlerini, plakadan araç geçmişini, cari hesapları, eski lastik defterini ve garanti kayıtlarını tek programda toplar.',
   kimler: 'Lastikçiler, rot-balans atölyeleri, lastik oteli işletenler ve oto yedek parça satanlar.',

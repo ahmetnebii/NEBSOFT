@@ -2,8 +2,8 @@
 const GRUP = [['tikla', '[data-act=v]']]; // Süren grupların ilki
 const BITEN = [['tikla', '[data-f=bit]'], ['tikla', '[data-act=v]'], ['tikla', '[data-tab=belge]']];
 const ILETISIM = 'NEBSOFT ile iletişime geçerek açtırılır.';
-const AKIS = (kart, deneme) => `**Entegrasyonlar** sayfasında ${kart} kartında Entegre et düğmesine basın, sağlayıcınızı seçin, ekranda nereden alınacağı yazan bilgileri girin, Bağlantıyı dene ile deneyin. ${deneme} Sonuç başarılıysa kart Bağlı görünür.`;
-const DENEME_HATA = ['Deneme hata verirse ekrandaki iletiyi okuyun, bilgileri sağlayıcı panelinden yeniden kopyalayın.', 'Bilgileri değiştirirseniz Bağlantıyı dene adımını yeniden yapın, deneme geçene kadar işlem durur.'];
+const AKIS = (kart, deneme) => `**Entegrasyonlar** sayfasında ${kart} kartında **Entegre et** düğmesine basın, sağlayıcınızı seçin, ekranda nereden alınacağı yazan bilgileri girin, **Bağlantıyı dene** ile deneyin. ${deneme} Sonuç başarılıysa kart **Bağlı** görünür.`;
+const DENEME_HATA = ['Deneme hata verirse ekrandaki iletiyi okuyun, bilgileri sağlayıcı panelinden yeniden kopyalayın.', 'Bilgileri değiştirirseniz **Bağlantıyı dene** adımını yeniden yapın, deneme geçene kadar işlem durur.'];
 module.exports = (O) => ({
   ne: 'Eğitim & Sertifika, kısa dönemli eğitimlerin kataloğunu, gruplarını, kursiyerlerini, yoklamasını, notunu, taksitini ve sertifikasını yönetir. Üretilen belge kurumun kendi belgesidir, doğrulama sayfası yalnız kurum kaydını gösterir.',
   kimler: 'Mesleki eğitim merkezleri, seminer ve sertifikalı kurs veren kurumlar. Sınıf ve deneme sınavı odaklı kurumlar için Kurs & Etüt programı daha uygundur.',
@@ -69,7 +69,7 @@ module.exports = (O) => ({
     sms: { degisir: [AKIS('SMS', 'Deneme hesap bakiyesini okur, ileti göndermez, kredi harcamaz.'), 'Bağlandıktan sonra **Gecikenlere hatırlat** ve sertifika üretimi kursiyere SMS gönderir.', 'Bağlantı yokken gönderim **TEST** kalır, kursiyere bir şey gitmez.'], sorun: [...DENEME_HATA, 'Hata görünüyorsa sağlayıcı panelindeki kredi ve onaylı başlık bilgisini kontrol edin.'] },
     whatsapp: { degisir: [AKIS('WhatsApp', 'Deneme numara bilgisini okur, mesaj göndermez.'), 'Bu programın ekranlarında WhatsApp gönderen düğme yoktur. Kursiyere bildirim SMS ile gider.'], sorun: DENEME_HATA },
     email: { degisir: [AKIS('E-posta', 'Deneme hesap bilgisini okur, e-posta göndermez.'), 'Bu programın iş ekranlarında e-posta gönderen düğme yoktur. Ayar **e-Belgeler** sayfasındaki belgeyi e-postayla göndermede kullanılır.'], sorun: DENEME_HATA },
-    payment: { kapali: { param: ILETISIM, payu: ILETISIM, lidio: ILETISIM }, degisir: [AKIS('Online ödeme', 'Deneme para çekmez.'), 'Bağlandıktan sonra taksit için ödeme bağlantısı oluşturulur. Bağlantıyı kursiyere siz iletirsiniz, program kendiliğinden ileti atmaz. Bağlantı 7 gün geçerlidir, yalnız o kaydın taksitlerini açar.', 'Kursiyer kartla ödeyince taksit kapanır, ödemeler Online ödemeler listesinde görünür.', 'Moka United ve Sipay için yalnız Bağlantıyı dene çalışır, ödeme başlatılmaz.', 'Test modunda para çekilmez, borç kapanmaz, sonuç TEST görünür.'], sorun: [...DENEME_HATA, 'PayTR’de verilen Bildirim URL’sini panele yazın. Yazmazsanız sonuç geç gelir.', 'Kısmi iadeyi sağlayıcı panelinden yapıp programa elle işleyin.'] },
+    payment: { kapali: { param: ILETISIM, payu: ILETISIM, lidio: ILETISIM }, degisir: [AKIS('Online ödeme', 'Deneme para çekmez.'), 'Bu programın ekranlarında kartla ödeme düğmesi yoktur. Taksitleri **Taksit & Tahsilat** sayfasındaki **Tahsil et** ile kaydedersiniz.', 'Kartla alınan ödemeyi siz cihazınızdan veya bankadan alırsınız, program yalnız kaydeder.'], sorun: DENEME_HATA },
     printer: { degisir: ['Belgeler tarayıcının yazdırma penceresiyle basılır, yazıcı orada seçilir.', 'Bu ayardaki deneme yazıcının çalıştığını görmenizi sağlar.'], sorun: ['Kâğıt boyu yanlışsa **Belge şablonları** sayfasından değiştirin.'] },
     backup: O.E.backup(),
   },

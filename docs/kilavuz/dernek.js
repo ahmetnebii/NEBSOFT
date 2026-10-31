@@ -1,6 +1,6 @@
 // Dernek, Vakıf & Muhtarlık kullanım kılavuzu içeriği. Biçim: docs/kilavuz/DURUM.md. Üretim: node scripts/kilavuz/uret.js dernek
-const AKIS = (kart, deneme) => `**Entegrasyonlar** sayfasında ${kart} kartında Entegre et düğmesine basın, sağlayıcınızı seçin, ekranda nereden alınacağı yazan bilgileri girin, Bağlantıyı dene ile deneyin. ${deneme} Sonuç başarılıysa kart Bağlı görünür.`;
-const DENEME_HATA = ['Deneme hata verirse ekrandaki iletiyi okuyun, bilgileri sağlayıcı panelinden yeniden kopyalayın.', 'Bilgileri değiştirirseniz Bağlantıyı dene adımını yeniden yapın, deneme geçene kadar işlem durur.'];
+const AKIS = (kart, deneme) => `**Entegrasyonlar** sayfasında ${kart} kartında **Entegre et** düğmesine basın, sağlayıcınızı seçin, ekranda nereden alınacağı yazan bilgileri girin, **Bağlantıyı dene** ile deneyin. ${deneme} Sonuç başarılıysa kart **Bağlı** görünür.`;
+const DENEME_HATA = ['Deneme hata verirse ekrandaki iletiyi okuyun, bilgileri sağlayıcı panelinden yeniden kopyalayın.', 'Bilgileri değiştirirseniz **Bağlantıyı dene** adımını yeniden yapın, deneme geçene kadar işlem durur.'];
 module.exports = (O) => ({
   ne: 'Dernek & Vakıf, üye kayıtlarını, aidat ve tahsilatı, gelir ve gideri, toplantıları, kararları, evrakı ve duyuruları tek yerde tutar. Bu program yardımcı kayıttır: tasdikli defterlerinizin ve basılı alındı belgelerinizin yerine geçmez.',
   kimler: 'Dernekler, vakıflar ve muhtarlıklar. Muhtarlıkta aidat ekranları kapanır, kişi, toplantı, evrak ve duyuru bölümleri kullanılır.',

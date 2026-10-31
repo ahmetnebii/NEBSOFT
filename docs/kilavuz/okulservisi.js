@@ -3,8 +3,8 @@
 const YARDIM = require('fs').readFileSync(require('path').join(__dirname, '..', '..', 'scripts', 'kilavuz', 'sayfa.js'), 'utf8');
 const VELI = [['js', "(()=>{const s=NS.app.opts.db.all('students').find((x)=>x.portalCode);sessionStorage.setItem('__g',JSON.stringify([s.parentPhone,s.portalCode]));location.href='veli.html';})()"], ['bekle', 1400], ['js', YARDIM + ";(()=>{const t=document.createElement('style');t.textContent='.nsd,#nsdroot,.nsd-w{display:none!important}';document.head.append(t);const g=JSON.parse(sessionStorage.getItem('__g'));__k.yaz('#ph',g[0]);__k.yaz('#cd',g[1]);__k.tikla('#go');})()"], ['bekle', 500]];
 const ILETISIM = 'NEBSOFT ile iletişime geçerek açtırılır.';
-const AKIS = (kart, deneme) => `**Entegrasyonlar** sayfasında ${kart} kartında Entegre et düğmesine basın, sağlayıcınızı seçin, ekranda nereden alınacağı yazan bilgileri girin, Bağlantıyı dene ile deneyin. ${deneme} Sonuç başarılıysa kart Bağlı görünür.`;
-const DENEME_HATA = ['Deneme hata verirse ekrandaki iletiyi okuyun, bilgileri sağlayıcı panelinden yeniden kopyalayın.', 'Bilgileri değiştirirseniz Bağlantıyı dene adımını yeniden yapın, deneme geçene kadar işlem durur.'];
+const AKIS = (kart, deneme) => `**Entegrasyonlar** sayfasında ${kart} kartında **Entegre et** düğmesine basın, sağlayıcınızı seçin, ekranda nereden alınacağı yazan bilgileri girin, **Bağlantıyı dene** ile deneyin. ${deneme} Sonuç başarılıysa kart **Bağlı** görünür.`;
+const DENEME_HATA = ['Deneme hata verirse ekrandaki iletiyi okuyun, bilgileri sağlayıcı panelinden yeniden kopyalayın.', 'Bilgileri değiştirirseniz **Bağlantıyı dene** adımını yeniden yapın, deneme geçene kadar işlem durur.'];
 module.exports = (O) => ({
   ne: 'Servis & Okul Taşımacılığı, güzergâhları, öğrencileri, sefer yoklamasını, aylık ücretleri ve araç ile şoför belgelerinin bitiş tarihlerini tek yerde tutar. Şoför telefondan yoklama alır, veli sefer durumunu ve ödemesini kendi sayfasından görür. Program konum toplamaz.',
   kimler: 'Okul servisi işletmeleri ve personel servisi çalıştıran taşımacılar. Tek araçla da, birden çok güzergâhla da kullanılır.',

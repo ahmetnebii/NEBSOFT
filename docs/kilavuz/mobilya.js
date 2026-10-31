@@ -5,8 +5,8 @@ const IS = (n) => [['tikla', `#kb>div:nth-child(${n}) [data-j]`]];
 const YARDIM = require('fs').readFileSync(require('path').join(__dirname, '..', '..', 'scripts', 'kilavuz', 'sayfa.js'), 'utf8');
 const TAKIP = [['js', "(()=>{const L=NS.app.opts.db.all('jobs');const j=L.find((x)=>x.status==='teklif'&&x.quoteSent)||L.find((x)=>x.status==='uretim');location.href='takip.html?k='+j.key;})()"], ['bekle', 1400], ['js', YARDIM + ";(()=>{const t=document.createElement('style');t.textContent='.nsd,#nsdroot,.nsd-w{display:none!important}';document.head.append(t)})()"]];
 const ILETISIM = 'NEBSOFT ile iletişime geçerek açtırılır.';
-const AKIS = (kart, deneme) => `**Entegrasyonlar** sayfasında ${kart} kartında Entegre et düğmesine basın, sağlayıcınızı seçin, ekranda nereden alınacağı yazan bilgileri girin, Bağlantıyı dene ile deneyin. ${deneme} Sonuç başarılıysa kart Bağlı görünür.`;
-const DENEME_HATA = ['Deneme hata verirse ekrandaki iletiyi okuyun, bilgileri sağlayıcı panelinden yeniden kopyalayın.', 'Bilgileri değiştirirseniz Bağlantıyı dene adımını yeniden yapın, deneme geçene kadar işlem durur.'];
+const AKIS = (kart, deneme) => `**Entegrasyonlar** sayfasında ${kart} kartında **Entegre et** düğmesine basın, sağlayıcınızı seçin, ekranda nereden alınacağı yazan bilgileri girin, **Bağlantıyı dene** ile deneyin. ${deneme} Sonuç başarılıysa kart **Bağlı** görünür.`;
+const DENEME_HATA = ['Deneme hata verirse ekrandaki iletiyi okuyun, bilgileri sağlayıcı panelinden yeniden kopyalayın.', 'Bilgileri değiştirirseniz **Bağlantıyı dene** adımını yeniden yapın, deneme geçene kadar işlem durur.'];
 module.exports = (O) => ({
   ne: 'Mobilya & Özel İmalat, işi talepten teslime kadar tek kartta izlemenizi sağlar. Yerinde alınan ölçüyü müşteriye imzalatır, teklifi hazırlar, onaylanan teklifi kilitler, kaporayı alıp işi atölyeye gönderir, üretim aşamalarını ve montaj takvimini gösterir, teslim sonrası ayıp ve servis kayıtlarını tutar.',
   kimler: 'Mutfak dolabı, gardırop, banyo dolabı ve özel ölçü mobilya yapan atölyeler. Tek ustalı atölyede de, ofis, usta ve montaj ekibi ayrı çalışan işletmede de kullanılır.',
