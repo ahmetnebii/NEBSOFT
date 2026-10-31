@@ -72,7 +72,7 @@
   .gal { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; } .gal a { aspect-ratio: 1; overflow: hidden; position: relative; } .gal img { width: 100%; height: 100%; object-fit: cover; transition: .5s; } .gal a:hover img { transform: scale(1.08); filter: brightness(.8); }
   .news { background: #141414; color: #f4f1ec; padding: 70px 0; text-align: center; margin-top: 70px; }
   .news h2 { font-size: 44px; color: #f4f1ec; }
-  .news form { display: flex; max-width: 480px; margin: 22px auto 0; } .news input { flex: 1; height: 52px; border: 1px solid #555; background: transparent; color: #fff; padding: 0 16px; font: 500 14px Inter; outline: 0; }
+  .news form { display: flex; max-width: 480px; margin: 22px auto 0; } .news input { flex: 1; min-width: 0; height: 52px; border: 1px solid #555; background: transparent; color: #fff; padding: 0 16px; font: 500 14px Inter; outline: 0; }
   /* Ürün kartı */
   .pg { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 30px 18px; }
   .pc { position: relative; }
@@ -144,11 +144,11 @@
     .w { padding: 0 16px; } nav.mn { display: none; } .hdr { height: 60px; } .logo { font-size: 24px; } .srch { display: none; }
     .usp { grid-template-columns: repeat(2, 1fr); } .usp div { justify-content: flex-start; padding: 14px 10px; }
     .pg { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px 12px; } .rail { grid-auto-columns: 62%; } .cats6 { grid-template-columns: repeat(2, 1fr); }
-    .split { grid-template-columns: 1fr; } .split img { height: 380px; } .split > div { padding: 36px 22px; }
-    .gal { grid-template-columns: repeat(3, 1fr); } .lay { grid-template-columns: 1fr; } .flt { display: none; } .flt.open { display: block; position: fixed; inset: 0; z-index: 95; background: #fff; overflow: auto; padding: 20px; } .mf { display: inline-flex; }
-    .pdp { grid-template-columns: 1fr; gap: 26px; } .gl { position: static; grid-template-columns: 1fr; } .gl .th { flex-direction: row; order: 2; overflow-x: auto; } .gl .th img { width: 64px; }
-    .rv { grid-template-columns: 1fr; gap: 20px; } .co { grid-template-columns: 1fr; } .fg { grid-template-columns: 1fr 1fr; } .stk { display: flex; } .lh h1 { font-size: 34px; } .qa { display: none; }
-    .hero { height: 72vh; } .slide .cap { padding-bottom: 50px; }
+    .split { grid-template-columns: minmax(0, 1fr); } .split img { height: 380px; } .split > div { padding: 36px 22px; }
+    .gal { grid-template-columns: repeat(3, 1fr); } .lay { grid-template-columns: minmax(0, 1fr); } .flt { display: none; } .flt.open { display: block; position: fixed; inset: 0; z-index: 95; background: #fff; overflow: auto; padding: 20px; } .mf { display: inline-flex; }
+    .pdp { grid-template-columns: minmax(0, 1fr); gap: 26px; } .gl { position: static; grid-template-columns: minmax(0, 1fr); } .gl .th { flex-direction: row; order: 2; overflow-x: auto; } .gl .th img { width: 64px; }
+    .rv { grid-template-columns: minmax(0, 1fr); gap: 20px; } .co { grid-template-columns: minmax(0, 1fr); } .fg { grid-template-columns: 1fr 1fr; } .stk { display: flex; } .lh h1 { font-size: 34px; } .qa { display: none; }
+    .hero { height: 72vh; } .slide .cap { padding-bottom: 50px; } .bt { padding: 0 20px; max-width: 100%; letter-spacing: .06em; } .ib { width: 44px; height: 44px; }
   }
 </style>
 </head>

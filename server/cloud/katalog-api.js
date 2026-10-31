@@ -4,6 +4,7 @@ const auth = require('./auth');
 const log = require('./log');
 const katalog = require('./katalog');
 const sablon = require('./sablon');
+const cat = require('./catalog');
 const { route, A, err, audit } = require('./routes');
 
 // Demo ve yerel modda veritabanı yoktur: 503 yerine açık bir ileti dönsün diye oturum burada denetlenir
@@ -35,7 +36,7 @@ A('POST', '/katalog/tedarikci', async (c) => { const r = await katalog.tedarikci
 
 // ---------- Şablon kütüphanesi ----------
 // Şablonlar gizli değildir ve işletme verisi içermez; demo ve yerel modda da açılır
-route('GET', '/api/sablon/:program', { ...O, limit: ['sbl', 120, 60e3] }, async (c) => { if (!sablon.programVar(c.params.program)) throw err(404, 'Program bulunamadı'); return { ok: true, sablonlar: sablon.liste(c.params.program) }; });
+route('GET', '/api/sablon/:program', { ...O, limit: ['sbl', 120, 60e3] }, async (c) => { const p = c.params.program; if (!sablon.programVar(p) && !cat.kayitli(p)) throw err(404, 'Program bulunamadı'); return { ok: true, sablonlar: sablon.liste(p) }; }); // şablonu olmayan program boş liste alır, ayarlar sayfası konsola 404 düşürmez
 // İçe aktarma tarayıcıda işletmenin kendi verisinde yapılır; sunucu yalnız olayı kaydeder
 route('POST', '/api/sablon/olay', { ...O, bodyMax: 2048, limit: ['sblo', 60, 60e3] }, async (c) => {
   const u = db.ready() ? await auth.current(c.req).catch(() => null) : null; const b = c.body || {};

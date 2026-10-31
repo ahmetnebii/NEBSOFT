@@ -21,7 +21,7 @@
   .stat3 div { border: 1px solid var(--border); border-radius: 12px; background: var(--surface); padding: 12px 14px; }
   .stat3 b { display: block; font-size: 20px; font-variant-numeric: tabular-nums; }
   .stat3 span { font-size: 12px; color: var(--text-3); }
-  @media (max-width: 760px) { .prod { grid-template-columns: 1fr; } .stat3 b { font-size: 16px; } }
+  @media (max-width: 760px) { .prod { grid-template-columns: minmax(0, 1fr); } .stat3 b { font-size: 16px; } }
 </style>
 </head>
 <body>

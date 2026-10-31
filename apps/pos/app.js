@@ -565,7 +565,7 @@
     const load = async (reset) => {
       if (busy) return; busy = true; if (reset) { page = 1; items = []; }
       const g = $('#kg', B); if (reset && g) g.innerHTML = '<div class="kgrid">' + '<div class="skel" style="height:96px;border-radius:14px"></div>'.repeat(9) + '</div>';
-      try { const r = await NS.api('GET', `/api/katalog/ara?${new URLSearchParams({ q, kat, sayfa: page })}`); items = items.concat(r.items.filter((x) => !items.some((y) => y.barcode === x.barcode))); more = r.more; }
+      try { if (!NS.cloud) throw new Error('Ürün kataloğu oturum açmış işletmelere açıktır. Demoda ürünü elle ekleyin.'); const r = await NS.api('GET', `/api/katalog/ara?${new URLSearchParams({ q, kat, sayfa: page })}`); items = items.concat(r.items.filter((x) => !items.some((y) => y.barcode === x.barcode))); more = r.more; }
       catch (e) { busy = false; if (g) g.innerHTML = `<div class="empty">${icon('alert')}<div>${esc(e.message)}</div><button class="btn mt" id="kre">Tekrar dene</button></div>`; const re = $('#kre', B); if (re) re.onclick = () => load(true); return; }
       busy = false; grid();
     };

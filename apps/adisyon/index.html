@@ -29,6 +29,7 @@
   .mcats { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 10px; }
   .mcats button { border: 1px solid var(--border); background: var(--surface); padding: 9px 14px; border-radius: 10px; font: 600 13px var(--font); color: var(--text-2); cursor: pointer; white-space: nowrap; }
   .mcats button.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+  @media (max-width: 760px) { .mcats button { min-height: 44px; flex: none; } }
   .mgrid { flex: 1; overflow-y: auto; display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; align-content: start; }
   .mi { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 14px 12px; cursor: pointer; text-align: left; font-family: var(--font); color: var(--text); min-height: 92px; display: flex; flex-direction: column; gap: 6px; }
   .mi:hover { border-color: var(--accent); box-shadow: var(--shadow); }
@@ -51,7 +52,7 @@
   .ticket .ti { padding: 8px 12px; border-top: 1px solid var(--border); display: flex; gap: 8px; align-items: flex-start; cursor: pointer; }
   .ticket .ti.done { text-decoration: line-through; opacity: .5; }
   .ticket .tf { padding: 8px 12px; border-top: 1px solid var(--border); display: flex; gap: 6px; }
-  @media (max-width: 1100px) { .order { grid-template-columns: 1fr; height: auto; } .mgrid { max-height: 420px; } .kds { grid-template-columns: 1fr; } }
+  @media (max-width: 1100px) { .order { grid-template-columns: minmax(0, 1fr); height: auto; } .mgrid { max-height: 420px; } .kds { grid-template-columns: minmax(0, 1fr); } }
 </style>
 </head>
 <body>

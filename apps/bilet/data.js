@@ -109,6 +109,7 @@ window.BILET = {
     .seat{width:26px;height:24px;border-radius:6px 6px 3px 3px;border:0;font:700 9px var(--font);cursor:pointer;background:color-mix(in srgb,var(--c) 22%,transparent);color:var(--c);box-shadow:inset 0 -3px 0 color-mix(in srgb,var(--c) 45%,transparent);padding:0}
     .seat.gap{margin-left:14px}.seat:hover{background:var(--c);color:#fff}.seat.sel{background:var(--c);color:#fff;transform:scale(1.08)}.seat.sold{background:var(--border);color:transparent;box-shadow:none;cursor:not-allowed}
     .seat.held{background:repeating-linear-gradient(45deg,#9993 0 3px,transparent 3px 6px);color:transparent;cursor:not-allowed}
+    @media(max-width:760px){.srow{justify-content:flex-start;width:max-content;min-width:100%}.seat{width:44px;height:44px;font-size:12px}.stage{position:sticky;left:0}}
     .seat.off{display:inline-block;background:transparent;box-shadow:inset 0 0 0 1px var(--border);opacity:.5}.seat.blk{background:var(--text);color:var(--bg)}
     .tv{min-height:calc(100vh - 120px);display:flex;flex-direction:column;gap:18px}.tv .big{font-size:clamp(64px,16vw,190px);font-weight:900;line-height:1}.tv .tvg{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px}
     .tix{display:grid;grid-template-columns:1fr auto;border-radius:16px;overflow:hidden;border:1px solid var(--border);background:var(--surface)}.tix .l{padding:16px;color:#fff}.tix .r{padding:12px;display:grid;place-items:center;border-left:2px dashed var(--border);background:var(--surface)}`,

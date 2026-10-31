@@ -14,7 +14,7 @@
   .stat3 div { border: 1px solid var(--border); border-radius: 12px; background: var(--surface); padding: 12px 14px; }
   .stat3 b { display: block; font-size: 20px; }
   .stat3 span { font-size: 12px; color: var(--text-3); }
-  @media (max-width: 600px) { .stat3 { grid-template-columns: 1fr; } }
+  @media (max-width: 600px) { .stat3 { grid-template-columns: minmax(0, 1fr); } }
 </style>
 </head>
 <body>
@@ -56,9 +56,9 @@
       ${bal < 0 ? `<div class="tk-call"><h3>${icon('alert')} Masraf avansı gerekiyor</h3><p>Dosya masrafları yatırdığınız avansı ${money(-bal)} aştı. Havale: ${esc(S().iban || '')}</p></div>` : ''}
       <section class="tk-panel"><h3>${icon('calendar')} Yaklaşan duruşmalar</h3><div class="b">${next.map((h) => { const f = fileOf(h.file); return `<div class="ln"><span><b>${NS.dateLong(new Date(h.date + 'T12:00'))} · ${esc(h.time)}</b><div class="small muted">${esc(f.court)} · ${esc(f.esas)} · ${esc(h.kind)}</div></span><span class="small">${esc(f.subject)}</span></div>`; }).join('') || '<span class="small muted">Planlanmış duruşma yok</span>'}</div></section>
       <section class="tk-panel"><h3>${icon('file')} Dosyalarım</h3><div class="b">${F.map((f) => `<div class="ln"><span><b>${esc(f.subject)}</b><div class="small muted">${esc(H.TYPES[f.type])} · ${esc(f.court)} · ${esc(f.esas)} · karşı taraf ${esc(f.opponent || '-')}</div></span>${NS.badge(H.ST[f.status][0], H.ST[f.status][1])}</div>`).join('')}</div></section>
-      ${past.length ? `<section class="tk-panel"><h3>${icon('list')} Son duruşma sonuçları</h3><div class="b">${past.slice(0, 5).map((h) => `<div class="ln" style="grid-template-columns:1fr"><span><b>${NS.date(h.date)}</b> · ${esc(fileOf(h.file).esas || '')}<div class="small">${esc(h.result)}</div></span></div>`).join('')}</div></section>` : ''}
+      ${past.length ? `<section class="tk-panel"><h3>${icon('list')} Son duruşma sonuçları</h3><div class="b">${past.slice(0, 5).map((h) => `<div class="ln" style="grid-template-columns: minmax(0, 1fr)"><span><b>${NS.date(h.date)}</b> · ${esc(fileOf(h.file).esas || '')}<div class="small">${esc(h.result)}</div></span></div>`).join('')}</div></section>` : ''}
       <section class="tk-panel"><h3>${icon('wallet')} Masraf dökümü</h3><div class="b"><div class="ln"><span>Yatırılan avans</span><b>${money(adv)}</b></div>${exp.map((e) => `<div class="ln"><span>${esc(e.type)}<div class="small muted">${NS.date(e.at)} · ${esc(fileOf(e.file).esas || '')}</div></span><span>−${money(e.amount)}</span></div>`).join('')}</div></section>
-      <section class="tk-panel" id="msg"><h3>${icon('message')} Avukatınıza yazın</h3><div class="b"><textarea class="input" id="mx" rows="3" placeholder="Sorunuz"></textarea><button class="btn primary mt" id="ms">${icon('send')} Gönder</button>${msgs.map((m) => `<div class="ln" style="grid-template-columns:1fr"><span><b>${m.from === 'muvekkil' ? 'Siz' : 'Büro'}</b> <span class="small muted">${NS.dt(m.at)}</span><div>${esc(m.text)}</div></span></div>`).join('')}</div></section>`;
+      <section class="tk-panel" id="msg"><h3>${icon('message')} Avukatınıza yazın</h3><div class="b"><textarea class="input" id="mx" rows="3" placeholder="Sorunuz"></textarea><button class="btn primary mt" id="ms">${icon('send')} Gönder</button>${msgs.map((m) => `<div class="ln" style="grid-template-columns: minmax(0, 1fr)"><span><b>${m.from === 'muvekkil' ? 'Siz' : 'Büro'}</b> <span class="small muted">${NS.dt(m.at)}</span><div>${esc(m.text)}</div></span></div>`).join('')}</div></section>`;
     $('#ms').onclick = () => { const t = $('#mx').value.trim(); if (!t) return; db.insert('messages', { client: c.id, at: new Date().toISOString(), from: 'muvekkil', text: t }); toast('Mesajınız iletildi', 'ok'); render(); };
   }
   render();

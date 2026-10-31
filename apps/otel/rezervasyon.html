@@ -61,8 +61,8 @@
   @media (prefers-reduced-motion: reduce) { .view { animation: none; } }
   @media (max-width: 860px) {
     .hero { min-height: 520px; } .sbar { grid-template-columns: 1fr 1fr; } .sbar button { grid-column: 1 / -1; justify-content: center; padding: 14px; }
-    .room { grid-template-columns: 1fr; } .room .ph { min-height: 200px; } .room .bd { grid-template-columns: 1fr; } .price { text-align: left; } .save { align-self: flex-start; }
-    .book { grid-template-columns: 1fr; } .top .hide-sm { display: none; }
+    .room { grid-template-columns: minmax(0, 1fr); } .room .ph { min-height: 200px; } .room .bd { grid-template-columns: minmax(0, 1fr); } .price { text-align: left; } .save { align-self: flex-start; }
+    .book { grid-template-columns: minmax(0, 1fr); } .top .hide-sm { display: none; }
   }
 </style>
 </head>

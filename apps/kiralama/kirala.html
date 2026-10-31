@@ -57,7 +57,7 @@
   .none { border: 1px dashed var(--border); border-radius: 16px; padding: 30px; text-align: center; color: var(--text-2); }
   .view { animation: in .25s ease-out; } @keyframes in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
   @media (prefers-reduced-motion: reduce) { .view { animation: none; } }
-  @media (max-width: 860px) { .sbar { grid-template-columns: 1fr 1fr; } .sbar .full { grid-column: 1 / -1; } .sbar button { grid-column: 1 / -1; padding: 14px; justify-content: center; } .book { grid-template-columns: 1fr; } .hide-sm { display: none; } .grid3 { grid-template-columns: 1fr; } }
+  @media (max-width: 860px) { .sbar { grid-template-columns: 1fr 1fr; } .sbar .full { grid-column: 1 / -1; } .sbar button { grid-column: 1 / -1; padding: 14px; justify-content: center; } .book { grid-template-columns: minmax(0, 1fr); } .hide-sm { display: none; } .grid3 { grid-template-columns: minmax(0, 1fr); } }
 </style>
 </head>
 <body>

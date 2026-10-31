@@ -23,7 +23,7 @@
   .panel { background: linear-gradient(180deg, #19140a, #110e07); border: 1px solid #2b2414; border-radius: 22px; padding: clamp(10px, 1.4vw, 22px); }
   footer { display: flex; flex-wrap: wrap; gap: 8px 24px; font-size: clamp(13px, 1.3vw, 20px); color: #b9a77a; }
   footer b { color: #f5ecd7; }
-  @media (max-width: 760px) { .board { grid-template-columns: 1fr; } }
+  @media (max-width: 760px) { .board { grid-template-columns: minmax(0, 1fr); } }
 </style>
 </head>
 <body>
