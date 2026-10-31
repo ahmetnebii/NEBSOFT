@@ -40,7 +40,7 @@ const E = {
 };
 
 // ---------- Entegrasyon sınıflandırma ----------
-// Sınıf çekirdekteki sihirbazla aynıdır (core/integ-wizard.js, kapali). Sözleşme gereken sağlayıcı için kısa ve dürüst tek cümle kullanılır.
+// Sınıf çekirdekten gelir: NB_GUIDES.kapali (sihirbaz da bunu kullanır) ve NS.integ.unverified. Sözleşme gereken sağlayıcı için kısa ve dürüst tek cümle kullanılır.
 const ILETISIM = 'NEBSOFT ile iletişime geçerek açtırılır';
 // x: programın entegrasyon içeriği. kapali listesindeki sağlayıcı bu programda doğrudan bağlanmaz (koddan doğrulanır)
 function durum(e, p, x) {
@@ -48,7 +48,7 @@ function durum(e, p, x) {
   if (TEMEL.has(p.value)) return ['ki', 'TEST veya temel mod', 'Dış servise bağlanmaz, gönderim yapılmaz.'];
   const kap = x && x.kapali && (x.kapali[p.value] || x.kapali['*']); if (kap && p.value !== 'custom') return ['no', ILETISIM, ''];
   if (p.value === 'custom') return ['ki', 'Özel servis', 'Kendi servisinizi veya çözüm ortağınızı bağlamak içindir, teknik bilgi gerekir.'];
-  if (e.kilit || !g || ['desteklenmiyor', 'yakinda'].includes(g.status) || (g.status === 'erisim' && !g.testVar)) return ['no', ILETISIM, ''];
+  if (p.kilit || !g || g.kapali) return ['no', ILETISIM, ''];
   return ['ok', 'Entegre et', g.test || 'Bağlantı denenerek kurulur.'];
 }
 const kullanilir = (d) => d[0] === 'ok' || d[0] === 'ki';

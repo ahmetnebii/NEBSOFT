@@ -887,7 +887,7 @@
     draw();
   }
 
-  NS.integ = { ent, entVar, nvCall, nvPayer, prsSession, ubl, uyCall, readPlc, trackUrl, trackShipment, trackOf, TRACK, meetingLinkOk, createMeeting, zoomToken, htmlToLines, cfg, setCfg, sms, whatsapp, email, printReceipt, openDrawer, printLabels, parseScaleBarcode, readScale, readKantar, parseWeight, cardPayment, sendEInvoice, emit, backupAll, restoreAll, page, bridgeStatus, log, DEFS, normPhone, call, isOn, SECTOR, CONN, USED, UNVERIFIED, http: httpCall };
+  NS.integ = { ent, entVar, nvCall, nvPayer, prsSession, ubl, uyCall, readPlc, trackUrl, trackShipment, trackOf, TRACK, meetingLinkOk, createMeeting, zoomToken, htmlToLines, cfg, setCfg, sms, whatsapp, email, printReceipt, openDrawer, printLabels, parseScaleBarcode, readScale, readKantar, parseWeight, cardPayment, sendEInvoice, emit, backupAll, restoreAll, page, bridgeStatus, log, DEFS, normPhone, call, isOn, SECTOR, CONN, USED, UNVERIFIED, unverified, http: httpCall };
 })();
 
 /* ===== e-Belge merkezi: e-Fatura, e-Arşiv, e-İrsaliye giden/gelen kutusu =====
