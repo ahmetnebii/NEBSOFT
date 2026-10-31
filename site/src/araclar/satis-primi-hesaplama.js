@@ -3,7 +3,7 @@ module.exports = {
   slug: 'satis-primi-hesaplama', kategori: 'calisma', sira: 4, renk: '#a21caf', guncelleme: GUNCELLEME, ilgili: ['fazla-mesai-hesaplama', 'kar-marji-hesaplama'],
   ad: 'Satış Primi Hesaplama', kisa: 'Kademeli veya tek oranlı prim planınızı deneyin, ödeme tutarını görün',
   baslik: 'Satış Primi Hesaplama — Kademeli Prim ve Hedef Planı | NEBSOFT',
-  ozet: 'Satış personeli için kademeli prim hesaplayın: eşikleri ve oranları kendiniz belirleyin, her dilimin ödemesini görün, iki prim sistemini aynı satış üzerinde karşılaştırın.',
+  ozet: 'Satış personeli için kademeli prim hesaplayın: eşik ve oranları belirleyin, her dilimin ödemesini görün, iki prim sistemini aynı satışta karşılaştırın.',
   program: { slug: 'butikprogrami', metin: 'Mağazada satışları danışman bazında kaydediyorsanız Butik programı dönem sonunda her danışmanın primini satışlardan kendisi çıkarır.' },
   alanlar: [
     { ad: 'satis', etiket: 'Dönem satışı (₺)', tip: 'para', deger: '320000', gerekli: true }, { ad: 'sabit', etiket: 'Sabit prim / ek ödeme (₺)', tip: 'para' },

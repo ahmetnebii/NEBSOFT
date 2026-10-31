@@ -2,8 +2,8 @@ const { GUNCELLEME, TBK, TUIK } = require('./_kaynak');
 module.exports = {
   slug: 'kira-artis-hesaplama', kategori: 'emlak', sira: 1, mevzuat: true, renk: '#047857', guncelleme: GUNCELLEME, kaynaklar: [TBK, TUIK], ilgili: ['kira-makbuzu-olusturucu', 'aidat-paylasimi-hesaplama'],
   ad: 'Kira Artış Hesaplama', kisa: 'TÜİK’in açıkladığı TÜFE oranıyla yeni kira tavanını hesaplayın',
-  baslik: 'Kira Artış Oranı Hesaplama — TÜFE On İki Aylık Ortalama, TBK 344 | NEBSOFT',
-  ozet: 'Mevcut kiranızı ve kira döneminiz için TÜİK’in açıkladığı on iki aylık ortalama TÜFE değişimini girin; TBK md. 344 sınırına göre yeni kirayı ve aylık farkı hesaplayın.',
+  baslik: 'Kira Artış Oranı Hesaplama — TÜFE Ortalaması, TBK 344 | NEBSOFT',
+  ozet: 'Mevcut kiranızı ve TÜİK’in açıkladığı on iki aylık ortalama TÜFE değişimini girin; TBK md. 344 sınırına göre yeni kirayı ve aylık farkı hesaplayın.',
   uyari: 'Araç genel kuralı uygular. Beş yılı aşan kiralar, yabancı para kira ve sözleşmenizdeki özel hükümler farklı sonuç verebilir. Uyuşmazlıkta avukata danışın.',
   program: { slug: 'emlakprogrami', metin: 'Portföyünüzdeki kira sözleşmelerinin artış tarihini Emlak programı takip eder, yaklaşan yenilemeleri önünüze getirir.' },
   alanlar: [

@@ -2,7 +2,7 @@ const { GUNCELLEME } = require('./_kaynak');
 module.exports = {
   slug: 'urun-etiketi-olusturucu', kategori: 'kod', sira: 4, tek: true, renk: '#be185d', guncelleme: GUNCELLEME,
   ad: 'Ürün ve Raf Etiketi Oluşturucu', kisa: 'Excel listesini yapıştırın, barkodlu fiyat etiketlerini A4 kâğıda yazdırın',
-  baslik: 'Ücretsiz Raf ve Fiyat Etiketi Oluşturucu — Barkodlu A4 Etiket | NEBSOFT',
+  baslik: 'Ücretsiz Raf ve Fiyat Etiketi Oluşturucu — Barkodlu A4 | NEBSOFT',
   ozet: 'Ürün adı, barkod ve fiyatı Excel’den yapıştırın; barkodlu fiyat etiketlerini A4 sayfaya dizip yazdırın. Hatalı barkodlar satır satır gösterilir, üyelik gerekmez.',
   sonucBaslik: 'Etiketler',
   program: { slug: 'butikprogrami', metin: 'Beden, renk ve indirimli fiyat taşıyan etiketleri kendi tasarımınızla ürün kartından basmak için Butik programındaki etiket tasarımcısını kullanabilirsiniz.' },

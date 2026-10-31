@@ -3,7 +3,7 @@ module.exports = {
   slug: 'teklif-olusturucu', kategori: 'belge', sira: 1, tek: true, renk: '#1d4ed8', guncelleme: GUNCELLEME, kaynaklar: [GIB_KDV],
   ad: 'Teklif Oluşturucu', kisa: 'Kalem, iskonto ve KDV toplamlı fiyat teklifini PDF olarak hazırlayın',
   baslik: 'Ücretsiz Fiyat Teklifi Hazırlama — Online Teklif Formu, PDF | NEBSOFT',
-  ozet: 'Müşterinize göndereceğiniz fiyat teklifini kalem kalem hazırlayın: iskonto, KDV dökümü ve geçerlilik tarihi otomatik işlenir, PDF olarak kaydedip e-postayla iletebilirsiniz.',
+  ozet: 'Fiyat teklifini kalem kalem hazırlayın: iskonto, KDV dökümü ve geçerlilik tarihi otomatik işlenir, PDF olarak kaydedip e-postayla iletebilirsiniz.',
   sonucBaslik: 'Teklif önizlemesi',
   program: { slug: 'crmprogrami', metin: 'Teklifleriniz çoğaldıysa CRM programında müşterinin online onayladığı teklif linki, takip hatırlatması ve satış hunisi aynı ekrandadır.' },
   alanlar: [

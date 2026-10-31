@@ -43,17 +43,22 @@ const browser = (src, alt, url, eager) => `<div class="browser"><div class="bar"
 const phone = (src, alt) => `<div class="phone">${img(src, alt, 780, 1688)}</div>`;
 
 // Ana siteyle aynı üst menü ve alt bilgi (tüm statik sayfalar)
+// Yeni satışa kapalı program liste ve bağlantılarda görünmez, sayfası noindex kalır
+const AKTIF = PRODUCTS.filter((x) => !x.satisDisi);
+// Programla ilgili ücretsiz araçlar (build-araclar.js önce çalışır): yalnız dizine açık olanlar
+const ARACLAR = (() => { try { return JSON.parse(fs.readFileSync(path.join(SITE_SRC, 'araclar', 'liste.json'), 'utf8')).araclar.filter((x) => x.index); } catch (e) { return []; } })();
+const aracBolum = (slug, baslik, n = 4) => { const L = ARACLAR.filter((x) => x.program === slug).slice(0, n); return L.length ? `<section class="s"><div class="w"><div class="sh"><span class="eyebrow">Ücretsiz araçlar</span><h2>${esc(baslik)}</h2></div><div class="rel">${L.map((x) => `<a href="${x.yol}"><b>${esc(x.ad)}</b><span>${esc(x.kisa || x.ozet)}</span></a>`).join('')}</div></div></section>` : ''; };
 const SITEHEAD = (sub, extra = '') => `<header class="hd mk"><div class="w">
   <a class="logo" href="/" aria-label="${CFG.brand} ana sayfa"><img src="/assets/icons/icon-64.png" alt="" width="36" height="36"><span class="wm"><b>NEB</b><i>SOFT</i></span>${sub ? `<span class="sub">${esc(sub)}</span>` : ''}</a>
-  <nav class="nav" aria-label="Ana menü"><a href="/programlar">Programlar</a><a href="/paketler/">Paketler</a><a href="/fiyatlar/">Fiyatlar</a><a href="/rehber/">Rehber</a><a href="/#/sektorler">Sektörler</a><a href="/#/indir">Masaüstü &amp; Mobil</a><a href="/#/iletisim">İletişim</a></nav>
+  <nav class="nav" aria-label="Ana menü"><a href="/programlar">Programlar</a><a href="/paketler/">Paketler</a><a href="/araclar">Araçlar</a><a href="/fiyatlar/">Fiyatlar</a><a href="/rehber/">Rehber</a><a href="/#/sektorler">Sektörler</a><a href="/#/indir">Masaüstü &amp; Mobil</a><a href="/#/iletisim">İletişim</a></nav>
   <a class="btn g" href="/#/giris">Giriş yap</a><a class="btn p" href="/#/kayit">Ücretsiz başla ${I.arrow}</a>
 </div>${extra ? `<div class="subnav"><div class="w">${extra}</div></div>` : ''}</header>`;
 const SITEFOOT = () => `<footer class="ft"><div class="w">
   <div class="cols">
     <div><a class="logo" href="/"><img src="/assets/icons/icon-64.png" alt="" width="34" height="34"><span class="wm"><b>NEB</b><i>SOFT</i></span></a><p>Türkiye'deki işletmeler için bulut tabanlı yazılımlar ve pazaryeri entegrasyonları. Kurulum yok, taahhüt yok.</p><p><a href="${telHref}">${esc(CFG.phone)}</a><a href="mailto:${CFG.email}">${esc(CFG.email)}</a></p></div>
-    ${[0, 1, 2].map((k) => `<div><h4>${['<a href="/programlar" style="color:inherit">Programlar</a>', '&nbsp;', '&nbsp;'][k]}</h4>${PRODUCTS.filter((_, i) => i % 3 === k).map((x) => `<a href="/${x.slug}">${esc(bas(x.kw))}</a>`).join('')}</div>`).join('')}
+    ${[0, 1, 2].map((k) => `<div><h4>${['<a href="/programlar" style="color:inherit">Programlar</a>', '&nbsp;', '&nbsp;'][k]}</h4>${AKTIF.filter((_, i) => i % 3 === k).map((x) => `<a href="/${x.slug}">${esc(bas(x.kw))}</a>`).join('')}</div>`).join('')}
   </div>
-  <div class="copy">© ${new Date().getFullYear()} ${CFG.brand}. Tüm hakları saklıdır. ${[['/paketler/', 'Hazır paketler'], ['/fiyatlar/', 'Fiyatlar'], ['/rehber/', 'Rehber'], ['/kvkk/', 'KVKK'], ['/gizlilik/', 'Gizlilik'], ['/mesafeli-satis/', 'Mesafeli satış'], ['/iade/', 'İptal ve iade'], ['/cerez/', 'Çerez politikası'], ['/#/indir', 'Masaüstü sürümünü indir'], ['/veri-tasima/', 'Veri taşıma'], ['/bayilik/', 'Bayilik ve mali müşavir'], ['/sistem-durumu/', 'Sistem durumu'], ['/yenilikler/', 'Yenilikler'], ['/yol-haritasi/', 'Yol haritası ve öneri']].map(([u, t]) => `· <a href="${u}" style="display:inline">${t}</a>`).join(' ')}</div>
+  <div class="copy">© ${new Date().getFullYear()} ${CFG.brand}. Tüm hakları saklıdır. ${[['/paketler/', 'Hazır paketler'], ['/araclar', 'Ücretsiz araçlar'], ['/fiyatlar/', 'Fiyatlar'], ['/rehber/', 'Rehber'], ['/kvkk/', 'KVKK'], ['/gizlilik/', 'Gizlilik'], ['/mesafeli-satis/', 'Mesafeli satış'], ['/iade/', 'İptal ve iade'], ['/cerez/', 'Çerez politikası'], ['/#/indir', 'Masaüstü sürümünü indir'], ['/veri-tasima/', 'Veri taşıma'], ['/bayilik/', 'Bayilik ve mali müşavir'], ['/sistem-durumu/', 'Sistem durumu'], ['/yenilikler/', 'Yenilikler'], ['/yol-haritasi/', 'Yol haritası ve öneri']].map(([u, t]) => `· <a href="${u}" style="display:inline">${t}</a>`).join(' ')}</div>
 </div></footer>`;
 
 // ---------- Ortak sayfa başı ve şemalar ----------
@@ -90,7 +95,6 @@ const faqHtml = (L, baslik, alt = true) => (L.length ? `<section class="s${alt ?
 const mdOku = (f) => { try { return onBilgi(fs.readFileSync(f, 'utf8')); } catch (e) { return null; } };
 const TARIH = /^\d{4}-\d{2}-\d{2}$/;
 // Yeni satışa kapalı program liste ve bağlantılarda görünmez, sayfası noindex kalır
-const AKTIF = PRODUCTS.filter((x) => !x.satisDisi);
 function rehberleriOku() {
   const dir = path.join(MD_DIR, 'rehber'); if (!fs.existsSync(dir)) return [];
   const L = [];
@@ -181,6 +185,8 @@ ${faqHtml(faq, `${kwTitle} hakkında merak edilenler`)}
 
 ${rehber.length ? `<section class="s"><div class="w"><div class="sh"><span class="eyebrow">Rehber</span><h2>${esc(kwTitle)} seçerken okuyun</h2></div><div class="rel">${rehber.map((r) => `<a href="/rehber/${r.slug}/"><b>${esc(r.title)}</b><span>${esc(r.desc)}</span></a>`).join('')}</div></div></section>` : ''}
 
+${aracBolum(p.slug, `${kwTitle} yanında ücretsiz araçlar`)}
+
 <section class="s"><div class="w">
   <div class="final"><div><h2>${esc(c.name)} programını bugün kullanmaya başlayın</h2><p>Kayıt olmadan canlı demoyu açın ya da ${CFG.trialDays} günlük ücretsiz denemeyi başlatın. Kurulumu ve veri aktarımını birlikte yapalım.</p></div>
   <div class="cta" style="margin:0"><a class="btn p" href="${buy}">Ücretsiz dene ${I.arrow}</a><a class="btn" href="${telHref}">${I.phone} ${esc(CFG.phone)}</a></div></div>
@@ -207,8 +213,8 @@ ${SITEFOOT()}
 
 // ---------- Program merkez sayfası (/programlar) ----------
 function hub() {
-  const url = `${D}/programlar`; const title = `İşletme Programları — ${CFG.brand} | ${PRODUCTS.length} Bulut Yazılım, Ücretsiz Hesap`;
-  const desc = `Market, restoran, kuaför, otel, servis, eczane, emlak ve daha fazlası için ${PRODUCTS.length} bulut işletme programı. Kurulum yok; ücretsiz hesap açın, her programı ${CFG.trialDays} gün ücretsiz deneyin, havale ile ödeyin.`;
+  const url = `${D}/programlar`; const title = `İşletme Programları — ${CFG.brand} | ${AKTIF.length} Bulut Yazılım, Ücretsiz Hesap`;
+  const desc = `Market, restoran, kuaför, otel, servis, emlak ve daha fazlası için ${AKTIF.length} bulut işletme programı. Kurulum yok, her programı ${CFG.trialDays} gün ücretsiz deneyin.`;
   const groups = CAT.categories.map((k) => ({ k, list: AKTIF.map((x) => ({ x, c: CAT.products.find((y) => y.id === x.id) })).filter(({ c }) => c && c.cat === k.id) })).filter((g) => g.list.length);
   const schema = [
     KIRINTI([[CFG.brand, D + '/'], ['Programlar', url]]),
@@ -223,7 +229,7 @@ ${SITEHEAD('')}
 <section class="s"><div class="w">
   <nav class="crumb" aria-label="Konum"><a href="/">${CFG.brand}</a> / Programlar</nav>
   <h1>İşletmeniz için bulut programlar</h1>
-  <p class="lead">${esc(desc)}</p>
+  <p class="lead">${esc(desc)} Hesap açmak ücretsizdir, ödemeyi havale ile yaparsınız.</p>
   ${groups.map((g) => `<h2>${esc(g.k.name)}</h2><div class="hubgrid">${g.list.map(kart).join('')}</div>`).join('\n  ')}
   <div class="final" style="margin-top:72px"><div><h2>Hangisi size uygun, emin değil misiniz?</h2><p>Bizi arayın; işletmenize uygun programı birlikte seçelim, kurulumu ve veri aktarımını ücretsiz yapalım.</p></div>
   <div class="cta" style="margin:0"><a class="btn p" href="/fiyatlar/">Fiyatları karşılaştır ${I.arrow}</a><a class="btn" href="${telHref}">${I.phone} ${esc(CFG.phone)}</a></div></div>
@@ -282,7 +288,7 @@ function yasalSayfa(y) {
 // ---------- Fiyatlar ----------
 function fiyatlar() {
   const url = `${D}/fiyatlar/`; const title = `Fiyatlar — ${CFG.brand} İşletme Programları Aylık Ücretleri`;
-  const desc = `${PRODUCTS.length} NEBSOFT programının Başlangıç, Profesyonel ve Kurumsal aylık fiyatları. KDV hariç, taahhüt yok, her programda ${CFG.trialDays} gün ücretsiz deneme.`;
+  const desc = `${AKTIF.length} NEBSOFT programının Başlangıç, Profesyonel ve Kurumsal aylık fiyatları. KDV hariç, taahhüt yok, her programda ${CFG.trialDays} gün ücretsiz deneme.`;
   const sor = ['Kurulum gerekiyor mu?', 'Ücretsiz deneme var mı?', 'Birden fazla ürünü birlikte kullanabilir miyim?', 'İptal edebilir miyim?'];
   const faq = [...CAT.faq.filter(([q]) => sor.includes(q)), ['Ödemeyi nasıl yaparım?', 'Sipariş verdikten sonra havale veya EFT ile ödersiniz. Ödemeniz onaylanınca lisansınız açılır veya uzar.']];
   const gr = CAT.categories.map((k) => ({ k, L: AKTIF.map((x) => ({ x, c: CAT.products.find((y) => y.id === x.id) })).filter(({ c }) => c && c.cat === k.id) })).filter((g) => g.L.length);
@@ -313,7 +319,7 @@ function rehberSayfa(r) {
   ];
   const diger = REHBER.filter((x) => x !== r && p && x.prog === p).slice(0, 4);
   const sonra = `${faqHtml(r.faq, 'Sık sorulan sorular', false)}
-${p ? `<section class="s alt"><div class="w"><div class="final"><div><h2>${esc(bas(p.kw))} arıyorsanız</h2><p>${esc(c.tagline)}. Kayıt olmadan canlı demoyu açın ya da ${CFG.trialDays} gün ücretsiz deneyin.</p></div><div class="cta" style="margin:0"><a class="btn p" href="/${p.slug}">${esc(bas(p.kw))} ${I.arrow}</a></div></div>${diger.length ? `<div class="sh" style="margin:60px 0 20px"><h2>İlgili yazılar</h2></div><div class="rel">${diger.map((x) => `<a href="/rehber/${x.slug}/"><b>${esc(x.title)}</b><span>${esc(x.desc)}</span></a>`).join('')}</div>` : ''}</div></section>` : ''}`;
+${p && !p.satisDisi ? `<section class="s alt"><div class="w"><div class="final"><div><h2>${esc(bas(p.kw))} arıyorsanız</h2><p>${esc(c.tagline)}. Kayıt olmadan canlı demoyu açın ya da ${CFG.trialDays} gün ücretsiz deneyin.</p></div><div class="cta" style="margin:0"><a class="btn p" href="/${p.slug}">${esc(bas(p.kw))} ${I.arrow}</a></div></div>${diger.length ? `<div class="sh" style="margin:60px 0 20px"><h2>İlgili yazılar</h2></div><div class="rel">${diger.map((x) => `<a href="/rehber/${x.slug}/"><b>${esc(x.title)}</b><span>${esc(x.desc)}</span></a>`).join('')}</div>` : ''}</div></section>` : ''}${p ? aracBolum(p.slug, 'Bu konuda ücretsiz araçlar', 3) : ''}`;
   return DOC({ title: `${r.title} | ${CFG.brand}`, desc: r.desc, url, image, ogType: 'article', h1: r.title, kirinti: [[CFG.brand, D + '/'], ['Rehber', `${D}/rehber/`], [r.title, url]], govde: `${r.updated ? `<p class="note">Güncelleme: <time datetime="${r.updated}">${tarihTr(r.updated)}</time></p>` : ''}${r.html}`, schema, sonra });
 }
 
@@ -533,11 +539,11 @@ for (const r of REHBER) yaz(`/rehber/${r.slug}/`, path.join('rehber', r.slug), r
 {
   const f = path.join(ROOT, 'index.html'); let h = fs.readFileSync(f, 'utf8');
   const title = `${CFG.brand} — İşletme Yazılımları | Ücretsiz Hesap Açın`;
-  const desc = `Market POS, restoran adisyon, randevu, otel, teknik servis, eczane, emlak ve ${PRODUCTS.length} bulut işletme programı. Kurulum yok; ücretsiz hesap açın, her programı ${CFG.trialDays} gün ücretsiz deneyin.`;
+  const desc = `Market, restoran, randevu, otel, teknik servis, emlak ve daha fazlası için ${AKTIF.length} bulut işletme programı. Kurulum yok, her programı ${CFG.trialDays} gün ücretsiz deneyin.`;
   const head = `<meta property="og:type" content="website"><meta property="og:locale" content="tr_TR"><meta property="og:site_name" content="${CFG.brand}"><meta property="og:title" content="${esc(title)}"><meta property="og:description" content="${esc(desc)}"><meta property="og:url" content="${D}/"><meta property="og:image" content="${D}/assets/og/og.png"><meta property="og:image:width" content="1200"><meta property="og:image:height" content="630"><meta name="twitter:card" content="summary_large_image"><meta name="twitter:title" content="${esc(title)}"><meta name="twitter:description" content="${esc(desc)}"><meta name="twitter:image" content="${D}/assets/og/og.png">
 ${ld(ORG)}
 ${ld(WEBSITE)}`;
-  const body = `<main class="seo-static" style="max-width:900px;margin:0 auto;padding:24px;font-family:system-ui,sans-serif"><h1>${esc(title)}</h1><p>${esc(desc)}</p><ul>${PRODUCTS.map((x) => `<li><a href="/${x.slug}">${esc(bas(x.kw))}</a></li>`).join('')}</ul><p><a href="/programlar">Tüm programlar</a> · <a href="/paketler/">Hazır paketler</a> · <a href="/fiyatlar/">Fiyatlar</a> · <a href="/rehber/">Rehber</a> · <a href="/veri-tasima/">Veri taşıma</a> · <a href="/bayilik/">Bayilik</a> · <a href="/sistem-durumu/">Sistem durumu</a> · <a href="/yenilikler/">Yenilikler</a> · <a href="/yol-haritasi/">Yol haritası</a> · <a href="/kvkk/">KVKK</a> · <a href="/gizlilik/">Gizlilik</a> · <a href="/mesafeli-satis/">Mesafeli satış</a> · <a href="/iade/">İptal ve iade</a> · <a href="/cerez/">Çerez politikası</a></p></main>`;
+  const body = `<main class="seo-static" style="max-width:900px;margin:0 auto;padding:24px;font-family:system-ui,sans-serif"><h1>Türkiye'deki işletmeler için bulut programlar</h1><p>${esc(desc)}</p><ul>${AKTIF.map((x) => `<li><a href="/${x.slug}">${esc(bas(x.kw))}</a></li>`).join('')}</ul><p><a href="/programlar">Tüm programlar</a> · <a href="/paketler/">Hazır paketler</a> · <a href="/araclar">Ücretsiz araçlar</a> · <a href="/fiyatlar/">Fiyatlar</a> · <a href="/rehber/">Rehber</a> · <a href="/veri-tasima/">Veri taşıma</a> · <a href="/bayilik/">Bayilik</a> · <a href="/sistem-durumu/">Sistem durumu</a> · <a href="/yenilikler/">Yenilikler</a> · <a href="/yol-haritasi/">Yol haritası</a> · <a href="/kvkk/">KVKK</a> · <a href="/gizlilik/">Gizlilik</a> · <a href="/mesafeli-satis/">Mesafeli satış</a> · <a href="/iade/">İptal ve iade</a> · <a href="/cerez/">Çerez politikası</a></p></main>`;
   h = h.replace(/<title>[^<]*<\/title>/, `<title>${esc(title)}</title>`).replace(/<meta name="description" content="[^"]*">/, `<meta name="description" content="${esc(desc)}">`)
     .replace(/<!-- seo:head -->[\s\S]*?<!-- \/seo:head -->/, () => `<!-- seo:head -->\n${head}\n<!-- /seo:head -->`).replace(/<!-- seo:body -->[\s\S]*?<!-- \/seo:body -->/, () => `<!-- seo:body -->${body}<!-- /seo:body -->`);
   fs.mkdirSync(OUT, { recursive: true }); fs.writeFileSync(path.join(OUT, 'index.html'), h);

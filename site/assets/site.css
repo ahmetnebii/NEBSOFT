@@ -44,7 +44,7 @@ h3 { font-size: 20px; letter-spacing: -.01em; }
 .browser .bar { height: 34px; display: flex; align-items: center; gap: 7px; padding: 0 14px; background: var(--bg2); border-bottom: 1px solid var(--line); }
 .browser .bar i { width: 10px; height: 10px; border-radius: 50%; background: #e2e5ee; }
 .browser .bar i:nth-child(1) { background: #ff6159; } .browser .bar i:nth-child(2) { background: #ffbd2e; } .browser .bar i:nth-child(3) { background: #28c941; }
-.browser .bar b { margin-left: 12px; font: 500 12px var(--txt); color: var(--ink3); background: var(--card); border-radius: 6px; padding: 3px 12px; flex: 1; max-width: 340px; }
+.browser .bar b { margin-left: 12px; font: 500 12px var(--txt); color: var(--ink3); background: var(--card); border-radius: 6px; padding: 3px 12px; flex: 1; min-width: 0; max-width: 340px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .phone { width: 31%; max-width: 240px; border-radius: 34px; padding: 9px; background: #0b0d12; box-shadow: 0 26px 60px rgba(15, 23, 42, .35); }
 .phone img { border-radius: 26px; }
 .stage .phone { position: absolute; right: -14px; bottom: 0; }
@@ -63,6 +63,7 @@ section.alt { background: var(--bg2); }
 .tabs button { border: 1px solid var(--line); background: var(--card); color: var(--ink2); border-radius: 99px; padding: 9px 16px; font: 600 14px var(--dis); cursor: pointer; }
 .tabs button[aria-selected="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
 .gal { display: grid; grid-template-columns: 1fr 250px; gap: 28px; align-items: start; }
+.gal > * { min-width: 0; } /* uzun adres satırı telefonda sütunu genişletmesin */
 .gal figure { margin: 0; }
 .gal figcaption { font-size: 14px; color: var(--ink3); margin-top: 12px; text-align: center; }
 .slide[hidden] { display: none; }

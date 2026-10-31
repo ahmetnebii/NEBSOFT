@@ -3,7 +3,7 @@ module.exports = {
   slug: 'altin-ayar-hesaplama', kategori: 'emlak', sira: 4, renk: '#a16207', guncelleme: GUNCELLEME,
   ad: 'Altın Ayar ve Has Hesaplama', kisa: 'Gram ve ayardan has altını, güncel fiyatınızla değerini bulun',
   baslik: 'Altın Ayar Hesaplama — Gramdan Has Altın, Milyem ve Değer | NEBSOFT',
-  ozet: 'Altının gramını ve ayarını girin, saf altın miktarını bulun; has gram fiyatınızı ve işçiliği ekleyerek değeri hesaplayın. Damgada yazan milyemi de doğrudan kullanabilirsiniz.',
+  ozet: 'Gramı ve ayarı girin, saf altın miktarını bulun; has gram fiyatı ve işçilikle değeri hesaplayın. Damgadaki milyemi de doğrudan kullanabilirsiniz.',
   uyari: 'Fiyat bilgisi içermez; has gram fiyatını kendiniz girersiniz. Gerçek alış ve satış tutarı kuyumcunun kesintisine, işçiliğe ve ürünün durumuna göre değişir. Yatırım tavsiyesi değildir.',
   program: { slug: 'kuyumcuprogrami', metin: 'Kuyumcuysanız Kuyumcu programı kur tablosunu, ayar fiyatlarını, gramlı satışı ve hurda alışını has üzerinden tek ekranda yürütür.' },
   alanlar: [

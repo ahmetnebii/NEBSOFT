@@ -3,7 +3,7 @@ module.exports = {
   slug: 'kira-makbuzu-olusturucu', kategori: 'belge', sira: 3, renk: '#047857', guncelleme: GUNCELLEME,
   ad: 'Kira Makbuzu Oluşturucu', kisa: 'Kira ödemesi için yazdırılabilir, tutarı yazıyla da gösteren makbuz',
   baslik: 'Kira Makbuzu Örneği Oluşturucu — Ücretsiz, Yazdırılabilir | NEBSOFT',
-  ozet: 'Kiracı, ev sahibi, dönem ve tutarı girin; tutarı yazıyla da gösteren iki nüsha kira makbuzunu yazdırın veya PDF kaydedin. Vergi belgesi değildir, ödeme kaydı içindir.',
+  ozet: 'Kiracı, ev sahibi, dönem ve tutarı girin; tutarı yazıyla gösteren iki nüsha kira makbuzunu yazdırın, PDF kaydedin. Vergi belgesi değil, ödeme kaydıdır.',
   sonucBaslik: 'Makbuz',
   uyari: 'Bu makbuz taraflar arası ödeme kaydıdır; fatura, serbest meslek makbuzu veya banka dekontu yerine geçmez. Kira ödemesinin banka yoluyla yapılması ve beyanname gibi konularda mali müşavirinize danışın.',
   program: { slug: 'emlakprogrami', metin: 'Birden çok daire yönetiyorsanız Emlak programı kiracı, sözleşme ve kira tahsilatını tek ekranda tutar, geciken ödemeyi önünüze getirir.' },

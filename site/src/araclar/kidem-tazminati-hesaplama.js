@@ -2,8 +2,8 @@ const { GUNCELLEME, K1475, GVK, DAMGA, TAVAN } = require('./_kaynak');
 module.exports = {
   slug: 'kidem-tazminati-hesaplama', kategori: 'calisma', sira: 1, mevzuat: true, renk: '#b91c1c', guncelleme: GUNCELLEME, kaynaklar: [K1475, TAVAN, GVK, DAMGA], ilgili: ['ihbar-tazminati-hesaplama', 'yillik-izin-hesaplama', 'fazla-mesai-hesaplama'],
   ad: 'Kıdem Tazminatı Hesaplama', kisa: 'Çalışma süresi ve brüt ücretten dönem tavanlı kıdem tazminatını hesaplayın',
-  baslik: 'Kıdem Tazminatı Hesaplama 2026 — Tavan, Damga Vergisi, Net Tutar | NEBSOFT',
-  ozet: 'İşe giriş ve çıkış tarihi ile giydirilmiş brüt ücrete göre kıdem tazminatını hesaplayın. 2026 dönem tavanı ÇSGB tablosundan seçilir, damga vergisi düşülerek net tutar gösterilir.',
+  baslik: 'Kıdem Tazminatı Hesaplama 2026 — Tavan ve Net Tutar | NEBSOFT',
+  ozet: 'Giriş ve çıkış tarihi ile giydirilmiş brüt ücrete göre kıdem tazminatını hesaplayın. 2026 tavanı ÇSGB tablosundan seçilir, damga vergisi düşülür.',
   uyari: 'Araç tutarı hesaplar, hak kazanıp kazanmadığınızı değerlendirmez. Kıdem tazminatına hak kazanma, fesih nedenine bağlıdır. Sonuç bilgilendirme amaçlıdır; kesin tutar için avukat, mali müşavir veya bordro uzmanına danışın.',
   program: { slug: 'personeltakipprogrami', metin: 'Personel programında giriş tarihi ve ücret kayıtlı olduğu için kıdem ve ihbar karşılığını her çalışan için tek tıkla görebilirsiniz; aynı ekranda puantaj ve bordro da vardır.' },
   alanlar: [

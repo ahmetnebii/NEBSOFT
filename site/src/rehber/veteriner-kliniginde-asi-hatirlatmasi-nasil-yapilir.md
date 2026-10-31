@@ -1,5 +1,5 @@
 ---
-title: Veteriner kliniğinde aşı hatırlatması nasıl düzenli yürütülür?
+title: Veteriner kliniğinde aşı hatırlatması nasıl yürütülür?
 description: Aşı tarihi yaklaşan hastaları kaçırmamak için tür bazlı takvim, doğru mesaj ve vefat kaydıyla düzenli bir hatırlatma rutini kurun.
 program: veteriner
 keywords: aşı hatırlatma, veteriner aşı takibi, veteriner kliniğinde aşı hatırlatması nasıl yapılır

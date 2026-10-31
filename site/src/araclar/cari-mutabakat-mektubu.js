@@ -3,7 +3,7 @@ module.exports = {
   slug: 'cari-mutabakat-mektubu', kategori: 'belge', sira: 5, renk: '#7c3aed', guncelleme: GUNCELLEME,
   ad: 'Cari Mutabakat Mektubu', kisa: 'Dönem sonu bakiye teyidi için imzalı mutabakat formu hazırlayın',
   baslik: 'Cari Mutabakat Mektubu Örneği — Ücretsiz Form Oluşturucu | NEBSOFT',
-  ozet: 'Müşteri ve tedarikçilerle dönem sonu bakiye teyidi için cari mutabakat mektubu hazırlayın: borç ya da alacak, tarih ve yanıt süresi metne işlenir, imzaya hazır çıktı alın.',
+  ozet: 'Dönem sonu bakiye teyidi için cari mutabakat mektubu hazırlayın: borç ya da alacak, tarih ve yanıt süresi metne işlenir, imzaya hazır çıktı alın.',
   sonucBaslik: 'Mektup önizlemesi',
   program: { slug: 'onmuhasebeprogrami', metin: 'Ön Muhasebe programındaki cari portalında müşteriniz ekstreyi görür, mutabakatı onaylar veya itiraz eder; kâğıt dolaşmaz.' },
   alanlar: [

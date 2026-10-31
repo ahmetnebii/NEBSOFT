@@ -38,7 +38,7 @@ const vaka = { biz: 'Örnek Ltd', title: 'Gelmeyen randevu takibi', problem: 'Ra
 
   // Depo geneli: kaynaklarda doğrulanmamış şema, sahte puan veya kaldırılan iddia kalmadı
   const tara = (d, out = []) => { for (const f of fs.readdirSync(path.join(ROOT, d))) { const p = path.join(d, f); if (fs.statSync(path.join(ROOT, p)).isDirectory()) { if (!/^(node_modules|vendor)$/.test(f)) tara(p, out); } else if (/\.(js|html)$/.test(f) && !/\.test\.js$/.test(f)) out.push(p); } return out; };
-  const K = ['index.html', ...tara('market'), ...tara('site'), ...tara('server/cloud')].filter((f) => !/guven\.js$/.test(f)); const metin = K.map((f) => [f, fs.readFileSync(path.join(ROOT, f), 'utf8')]);
+  const K = ['index.html', ...tara('market'), ...tara('site'), ...tara('server/cloud')].filter((f) => !/(guven|seo-denetim)\.js$/.test(f)); const metin = K.map((f) => [f, fs.readFileSync(path.join(ROOT, f), 'utf8')]);
   metin.forEach(([f, s]) => assert.ok(!/AggregateRating|aggregateRating|"@type":\s*"Review"|@type':\s*'Review'/.test(s), f + ' şema içeriyor')); ok('Site kaynaklarında Review/AggregateRating yok');
   const cat = fs.readFileSync(path.join(ROOT, 'market/catalog.js'), 'utf8'); assert.ok(!/\brating:|\breviews:|\busers: \d|testimonials/.test(cat)); ok('Katalogda elle yazılmış puan, kullanıcı sayısı ve yorum yok');
   const Y = /belirgin şekilde düşer|sıfır overbooking|Veri kaybı yok|hiçbir sipariş unutulmaz|En çok tercih edilen|256-bit SSL|Türkiye.de barındırılır/;

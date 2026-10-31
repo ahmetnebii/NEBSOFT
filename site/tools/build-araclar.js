@@ -2,12 +2,15 @@
 // Kaynak: site/src/araclar/<slug>.js → site/araclar/<slug>/index.html, site/araclar/index.html, site/araclar/liste.json, site/assets/araclar-hesap.js
 // build-sites.js'ten bağımsızdır (onu çağırmaz, sitemap'e dokunmaz). Sitemap'e ekleme liste.json üzerinden yapılır: yalnız index:true olanlar.
 // Sunucu: /araclar dizini SITES ile çalışır; araç sayfaları sonda / ile açılır, bu yüzden canonical da /araclar/<slug>/ biçimindedir.
-const fs = require('fs'); const path = require('path');
+const fs = require('fs'); const path = require('path'); const crypto = require('crypto');
 const ROOT = path.join(__dirname, '..', '..'); const SITE = path.join(ROOT, 'site'); const CIKTI = path.join(SITE, 'araclar'); const KAYNAK = path.join(SITE, 'src', 'araclar');
 const CFG = require('../src/site.config'); const PRODUCTS = require('../src/products');
 
 const D = CFG.domain.replace(/\/$/, ''); const tel = CFG.phone.replace(/\D/g, '');
 const ASG_KELIME = 200;
+const cssV = (a) => crypto.createHash('sha1').update(fs.readFileSync(path.join(SITE, 'assets', a))).digest('hex').slice(0, 10); // adres içerikle değişir, sunucu uzun önbellek verir
+const CSS = `<link rel="stylesheet" href="/site/assets/site.css?v=${cssV('site.css')}"><link rel="stylesheet" href="/site/assets/araclar.css?v=${cssV('araclar.css')}">`;
+const OGOLCU = '<meta property="og:image:width" content="1200"><meta property="og:image:height" content="630">';
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const ORGW = [{ '@context': 'https://schema.org', '@type': 'Organization', '@id': `${CFG.domain}/#kurulus`, name: CFG.brand, url: `${CFG.domain}/` }, { '@context': 'https://schema.org', '@type': 'WebSite', '@id': `${CFG.domain}/#site`, name: CFG.brand, url: `${CFG.domain}/`, inLanguage: 'tr-TR', publisher: { '@id': `${CFG.domain}/#kurulus` } }];
 const ld = (o) => `<script type="application/ld+json">${JSON.stringify(o).replace(/</g, '\\u003c')}</script>`;
@@ -22,13 +25,13 @@ const I = {
 // Ana siteyle aynı üst menü ve alt bilgi
 const USTBAR = () => `<header class="hd mk"><div class="w">
   <a class="logo" href="/" aria-label="${CFG.brand} ana sayfa"><img src="/assets/icons/icon-64.png" alt="" width="36" height="36"><span class="wm"><b>NEB</b><i>SOFT</i></span><span class="sub">Ücretsiz Araçlar</span></a>
-  <nav class="nav" aria-label="Ana menü"><a href="/programlar">Programlar</a><a href="/paketler/">Paketler</a><a href="/araclar">Araçlar</a><a href="/fiyatlar/">Fiyatlar</a><a href="/#/sektorler">Sektörler</a><a href="/#/iletisim">İletişim</a></nav>
+  <nav class="nav" aria-label="Ana menü"><a href="/programlar">Programlar</a><a href="/paketler/">Paketler</a><a href="/araclar">Araçlar</a><a href="/fiyatlar/">Fiyatlar</a><a href="/rehber/">Rehber</a><a href="/#/sektorler">Sektörler</a><a href="/#/iletisim">İletişim</a></nav>
   <a class="btn g" href="/#/giris">Giriş yap</a><a class="btn p" href="/#/kayit">Ücretsiz başla ${I.arrow}</a>
 </div></header>`;
 const ALTBAR = () => `<footer class="ft"><div class="w">
   <div class="cols">
     <div><a class="logo" href="/"><img src="/assets/icons/icon-64.png" alt="" width="34" height="34"><span class="wm"><b>NEB</b><i>SOFT</i></span></a><p>Türkiye'deki işletmeler için bulut tabanlı yazılımlar ve ücretsiz iş araçları.</p><p><a href="tel:+90${tel.replace(/^0/, '')}">${esc(CFG.phone)}</a><a href="mailto:${CFG.email}">${esc(CFG.email)}</a></p></div>
-    ${[0, 1, 2].map((k) => `<div><h4>${['<a href="/programlar" style="color:inherit">Programlar</a>', '&nbsp;', '&nbsp;'][k]}</h4>${PRODUCTS.filter((_, i) => i % 9 === k).map((x) => `<a href="/${x.slug}">${esc(x.kw[0].toLocaleUpperCase('tr') + x.kw.slice(1))}</a>`).join('')}</div>`).join('')}
+    ${[0, 1, 2].map((k) => `<div><h4>${['<a href="/programlar" style="color:inherit">Programlar</a>', '&nbsp;', '&nbsp;'][k]}</h4>${PRODUCTS.filter((x) => !x.satisDisi).filter((_, i) => i % 9 === k).map((x) => `<a href="/${x.slug}">${esc(x.kw[0].toLocaleUpperCase('tr') + x.kw.slice(1))}</a>`).join('')}</div>`).join('')}
   </div>
   <div class="copy">© ${new Date().getFullYear()} ${CFG.brand}. Tüm hakları saklıdır. · <a href="/araclar" style="display:inline">Ücretsiz araçlar</a> · <a href="/kvkk/" style="display:inline">KVKK ve yasal metinler</a></div>
 </div></footer>`;
@@ -101,9 +104,9 @@ ${dosyali(a) ? `<meta http-equiv="Content-Security-Policy" content="connect-src 
 <link rel="canonical" href="${url}">
 <meta name="theme-color" content="#1d7bf5">
 <meta property="og:type" content="website"><meta property="og:locale" content="tr_TR"><meta property="og:site_name" content="${CFG.brand}">
-<meta property="og:title" content="${esc(a.baslik)}"><meta property="og:description" content="${esc(a.ozet)}"><meta property="og:url" content="${url}"><meta property="og:image" content="${D}/assets/og/og.png"><meta name="twitter:card" content="summary_large_image"><meta name="twitter:title" content="${esc(a.baslik)}"><meta name="twitter:description" content="${esc(a.ozet)}"><meta name="twitter:image" content="${D}/assets/og/og.png">
+<meta property="og:title" content="${esc(a.baslik)}"><meta property="og:description" content="${esc(a.ozet)}"><meta property="og:url" content="${url}"><meta property="og:image" content="${D}/assets/og/og.png">${OGOLCU}<meta name="twitter:card" content="summary_large_image"><meta name="twitter:title" content="${esc(a.baslik)}"><meta name="twitter:description" content="${esc(a.ozet)}"><meta name="twitter:image" content="${D}/assets/og/og.png">
 <link rel="icon" href="/assets/icons/icon-32.png" sizes="32x32" type="image/png"><link rel="icon" href="/assets/favicon.svg" type="image/svg+xml"><link rel="apple-touch-icon" href="/assets/icons/apple-touch-icon.png">
-<link rel="stylesheet" href="/site/assets/site.css"><link rel="stylesheet" href="/site/assets/araclar.css">
+${CSS}
 <style>:root{--c:${a.renk || '#1d7bf5'}}</style>
 ${schema.map(ld).join('\n')}
 </head>
@@ -163,9 +166,9 @@ function dizin(hepsi) {
 <title>${esc(title)}</title>
 <meta name="description" content="${esc(desc)}">
 <link rel="canonical" href="${url}">
-<meta property="og:type" content="website"><meta property="og:locale" content="tr_TR"><meta property="og:site_name" content="${CFG.brand}"><meta property="og:title" content="${esc(title)}"><meta property="og:description" content="${esc(desc)}"><meta property="og:url" content="${url}"><meta property="og:image" content="${D}/assets/og/og.png"><meta name="twitter:card" content="summary_large_image"><meta name="twitter:title" content="${esc(title)}"><meta name="twitter:description" content="${esc(desc)}"><meta name="twitter:image" content="${D}/assets/og/og.png">
+<meta property="og:type" content="website"><meta property="og:locale" content="tr_TR"><meta property="og:site_name" content="${CFG.brand}"><meta property="og:title" content="${esc(title)}"><meta property="og:description" content="${esc(desc)}"><meta property="og:url" content="${url}"><meta property="og:image" content="${D}/assets/og/og.png">${OGOLCU}<meta name="twitter:card" content="summary_large_image"><meta name="twitter:title" content="${esc(title)}"><meta name="twitter:description" content="${esc(desc)}"><meta name="twitter:image" content="${D}/assets/og/og.png">
 <link rel="icon" href="/assets/icons/icon-32.png" sizes="32x32" type="image/png"><link rel="icon" href="/assets/favicon.svg" type="image/svg+xml"><link rel="apple-touch-icon" href="/assets/icons/apple-touch-icon.png">
-<link rel="stylesheet" href="/site/assets/site.css"><link rel="stylesheet" href="/site/assets/araclar.css">
+${CSS}
 <style>:root{--c:#1d7bf5}</style>
 ${schema.map(ld).join('\n')}
 </head>
@@ -206,7 +209,7 @@ function uret() {
   const liste = hepsi.map((a) => {
     const dir = path.join(CIKTI, a.slug); fs.mkdirSync(dir, { recursive: true }); fs.writeFileSync(path.join(dir, 'index.html'), sayfa(a, hepsi));
     const kelime = ozgunKelime(a, hepsi); const index = indekslenir(a, hepsi); if (!index) console.warn(`! noindex: ${a.slug} (${kelime} özgün kelime)`);
-    return { slug: a.slug, yol: `/araclar/${a.slug}/`, ad: a.ad, baslik: a.baslik, ozet: a.ozet, kategori: a.kategori, program: a.program.slug, guncelleme: a.guncelleme, kelime, index };
+    return { slug: a.slug, yol: `/araclar/${a.slug}/`, ad: a.ad, kisa: a.kisa, baslik: a.baslik, ozet: a.ozet, kategori: a.kategori, program: a.program.slug, guncelleme: a.guncelleme, kelime, index };
   });
   fs.writeFileSync(path.join(CIKTI, 'index.html'), dizin(hepsi));
   fs.writeFileSync(path.join(CIKTI, 'liste.json'), JSON.stringify({ guncelleme: hepsi.map((a) => a.guncelleme).sort().pop(), dizin: '/araclar', araclar: liste }, null, 2) + '\n');

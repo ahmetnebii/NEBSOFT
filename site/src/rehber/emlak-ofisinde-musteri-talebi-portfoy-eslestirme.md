@@ -1,5 +1,5 @@
 ---
-title: Emlak ofisinde müşteri talebi ile portföy nasıl eşleştirilir?
+title: Emlak ofisinde talep ile portföy nasıl eşleştirilir?
 description: Bütçesi, bölgesi ve aradığı ev belli olan müşteri unutulursa satış kaçar. Talep kaydı, eşleştirme ve geri arama düzeniyle fırsatları değerlendirin.
 program: emlak
 keywords: müşteri talebi eşleştirme, emlak portföy eşleştirme, emlak ofisinde müşteri talebi nasıl takip edilir

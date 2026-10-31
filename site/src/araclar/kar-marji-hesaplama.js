@@ -2,8 +2,8 @@ const { GUNCELLEME } = require('./_kaynak');
 module.exports = {
   slug: 'kar-marji-hesaplama', kategori: 'ticaret', sira: 3, renk: '#15803d', guncelleme: GUNCELLEME, ilgili: ['pazaryeri-komisyon-hesaplama', 'recete-maliyeti-hesaplama'],
   ad: 'Kâr Marjı ve Başabaş Hesaplama', kisa: 'Marj ile kârlılık farkını, hedef fiyatı ve başabaş adedini bulun',
-  baslik: 'Kâr Marjı Hesaplama — Maliyetten Satış Fiyatı, Başabaş Noktası | NEBSOFT',
-  ozet: 'Maliyet ve satış fiyatından kâr marjını ve maliyet üzerine kârı hesaplayın, hedef marja göre fiyat bulun, sabit giderinizi karşılamak için kaç adet satmanız gerektiğini görün.',
+  baslik: 'Kâr Marjı Hesaplama — Satış Fiyatı ve Başabaş Noktası | NEBSOFT',
+  ozet: 'Maliyet ve satış fiyatından kâr marjını hesaplayın, hedef marja göre fiyat bulun, sabit giderinizi karşılamak için kaç adet satmanız gerektiğini görün.',
   program: { slug: 'onmuhasebeprogrami', metin: 'Ürün bazında gerçek kârlılığı alış ve satış kayıtlarından görmek için Ön Muhasebe programındaki analiz ekranlarını kullanabilirsiniz.' },
   alanlar: [
     { ad: 'mod', etiket: 'Ne hesaplanacak?', tip: 'secim', deger: 'marj', genis: true, secenekler: [['marj', 'Marj: maliyet ve fiyat biliniyor'], ['hedef', 'Fiyat: hedef marj biliniyor'], ['basabas', 'Başabaş: kaç adet satmalıyım?']] },

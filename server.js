@@ -205,7 +205,7 @@ function serve(req, res, p) {
   const q = req.url.includes('?') ? req.url.slice(req.url.indexOf('?')) : '';
   // Aynı sayfanın /site/... kopyası ayrı adres olarak görünmesin
   const dup = /^\/site\/([a-z0-9-]+)\/(?:([a-z0-9-]+)\/)?(index\.html)?$/.exec(p);
-  if (dup && SITES.has(dup[1]) && (!dup[2] || dup[1] === 'rehber' || dup[1] === 'paketler')) { res.writeHead(301, { Location: `/${dup[1]}${dup[2] ? '/' + dup[2] : ''}${SLASHED.has(dup[1]) ? '/' : ''}${q}` }); return res.end(); }
+  if (dup && SITES.has(dup[1]) && (!dup[2] || dup[1] === 'rehber' || dup[1] === 'paketler' || dup[1] === 'araclar')) { res.writeHead(301, { Location: `/${dup[1]}${dup[2] ? '/' + dup[2] : ''}${SLASHED.has(dup[1]) || (dup[1] === 'araclar' && dup[2]) ? '/' : ''}${q}` }); return res.end(); }
   if (SLASHED.has(seg) && SITES.has(seg)) {
     if (p === '/' + seg || /^\/(rehber|paketler)\/[a-z0-9-]+$/.test(p)) { res.writeHead(301, { Location: p + '/' + q }); return res.end(); }
     p = '/site' + p;
