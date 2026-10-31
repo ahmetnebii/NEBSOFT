@@ -43,10 +43,9 @@ module.exports = (O) => ({
     { id: 'kiralar', ne: 'Yönetimdeki kiralık mülkleri, aylık tahsilatı, geciken kiraları ve sözleşme tarihlerini gösterir.',
       gorevler: [
         { baslik: 'Kira tahsilatı', sahneler: [
-          { git: 'kiralar', kirp: 'ana', en: 1450, adimlar: [['**Biten sözleşmeler** süresi dolanları gösterir.', 'a@Biten sözleşmeler'], ['**Tahsil** kira ödemesi alır ve makbuz yazdırır.', 'button@Tahsil'], ['**Kira artışı** yasal oranı kontrol ederek yeni kirayı kaydeder.', 'button@Kira artışı'], ['**Mal sahibi ekstresi** mal sahibine verilen dökümü hazırlar. **Hatırlat** WhatsApp’ı açar.', 'button@Mal sahibi ekstresi'], ['**Sözleşmeyi bitir** tahliye ve güvence iadesini kaydeder.', 'button@Sözleşmeyi bitir']] },
+          { git: 'kiralar', kirp: 'ana', en: 1450, adimlar: [['**Gecikenlere SMS** gecikmiş kiracılara mesaj gönderir.', '#sm'], ['**Biten sözleşmeler** süresi dolanları gösterir.', 'a@Biten sözleşmeler'], ['**Tahsil** kira ödemesi alır ve makbuz yazdırır.', 'button@Tahsil'], ['**Kira artışı** yasal oranı kontrol ederek yeni kirayı kaydeder.', 'button@Kira artışı'], ['**Mal sahibi ekstresi** mal sahibine verilen dökümü hazırlar. **Hatırlat** WhatsApp’ı açar.', 'button@Mal sahibi ekstresi'], ['**Sözleşmeyi bitir** tahliye ve güvence iadesini kaydeder.', 'button@Sözleşmeyi bitir']] },
           { git: 'kiralar', once: [['tikla', 'button@Tahsil']], kirp: 'pencere', adimlar: [['**Dönem** seçin. **Tutar (boş = dönemin kalanı)** boşsa kalan tutar alınır.', '.field@Dönem'], ['**Ödeme** seçip **Tahsil et** düğmesine basın.', 'button@Tahsil et']] }] },
         { baslik: 'Kira artışı', ne: 'TÜİK’in açıkladığı on iki aylık ortalama TÜFE oranını yazın. Program yeni kirayı kontrol eder.', sahneler: [{ git: 'kiralar', once: [['tikla', 'button@Kira artışı']], kirp: 'pencere', adimlar: [['**Yeni aylık kira** ve **Geçerli olduğu tarih** alanlarını doldurup **Kontrol et ve kaydet** düğmesine basın.', 'button@Kontrol et ve kaydet']] }] }],
-      not: '**Gecikenlere SMS** düğmesi gerçek gönderim için SMS bağlantısı ister. Bu programın Entegrasyonlar sayfasında SMS kartı yoktur, mesaj bu yüzden kiracıya gitmez. Hatırlatmayı **Hatırlat** düğmesiyle WhatsApp üzerinden yapın.',
       hatalar: [['Kesinti gerekçesi yazın uyarısı çıkıyor.', 'Güvence bedelinden kesinti yapıyorsanız **Kesinti gerekçesi** alanını doldurun.']] },
 
     { id: 'islemler', ne: 'Kapanan satış ve kiralamaları, hizmet bedeli tahsilatını ve danışman hakedişlerini gösterir. Bu sayfayı yalnız yönetici görür.',
@@ -59,7 +58,7 @@ module.exports = (O) => ({
     O.belgeler({ tur: 'Taşınmaz gösterme belgesi' }),
     O.ayarlar({ alanlar: [['Taşınmaz ticareti yetki belgesi no', 'Belgelere basılır, zorunludur.'], ['Sorumlu emlak danışmanı (ad soyad)', 'Belgelere yazılır.'], ['Satış hizmet bedeli % (taraf başı, KDV hariç; toplam en çok %4)', 'Komisyon hesabında kullanılır.'], ['Kira hizmet bedeli (kiranın %si, KDV hariç; en çok %100)', 'Kiralama komisyonu hesabında kullanılır.'], ['Kira yönetim bedeli %', 'Yönetim hizmeti bedeli.'], ['KDV oranı % (faturada)', 'Faturada kullanılan oran.'], ['İlan sayfası WhatsApp numarası', 'İlan sitesindeki WhatsApp düğmesinin numarası.']] }),
     O.bildirimler(),
-    { ...O.ebelge(), not: 'Bu programın Entegrasyonlar sayfasında e-Fatura kartı yoktur. **Satış & Komisyon** sayfasındaki **Fatura** düğmesi bu yüzden TEST belge oluşturur.' },
+    O.ebelge(),
     O.entegrasyonlar(),
   ],
 
@@ -71,6 +70,8 @@ module.exports = (O) => ({
   entegrasyon: {
     ilan: { kapali: { '*': KAP }, degisir: [`İlan portalları bağlantısı ${KAP}`, 'Bağlantı olmadan ilan portala otomatik gitmez. Yayını portalda yapıp **İlan Portalları** sayfasındaki **Elle kaydet** ile numarasını yazarsınız.', 'Simülasyonda sonuç TEST görünür, portalda bir şey değişmez.'], sorun: ['Portal kotası veya süresi için **Portal ayarları** değerlerini kontrol edin.'] },
     whatsapp: O.E.whatsappLink('**Kira Takibi** sayfasındaki **Hatırlat** düğmesi'),
+    sms: { degisir: ['**Kira Takibi** sayfasındaki **Gecikenlere SMS** ve ilan detayındaki uygun müşterilere SMS düğmesi gerçek gönderim yapar.', 'Bağlantı yokken mesaj gitmez.'], sorun: ['Sağlayıcı panelindeki krediyi ve onaylı başlığı kontrol edin.', 'Kayıttaki telefon numarasını kontrol edin.'] },
+    efatura: { degisir: ['**Satış & Komisyon** sayfasındaki **Fatura** düğmesi belgeyi entegratöre gönderir.', 'Kesilen belgeler **e-Belgeler** sayfasında görünür. Sağlayıcının altındaki sınırı okuyun.', 'Simülasyonda belge TEST etiketi taşır, GİB’e gitmez.'], sorun: ['Belge kesilmezse **e-Belgeler** sayfasındaki hata ayrıntısına bakın.'] },
     backup: O.E.backup(),
   },
 });

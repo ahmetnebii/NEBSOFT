@@ -60,7 +60,7 @@ module.exports = (O) => ({
     O.belgeler({ tur: 'Kayıt sözleşmesi' }),
     O.ayarlar({ alanlar: [['Varsayılan aylık ücret', 'Yeni öğrencide kullanılan ücret.'], ['Kardeş indirimi %', 'Kardeşlere uygulanan oran.'], ['Ödeme günü (ayın)', 'Aidatın vade günü.'], ['IBAN', 'Velilere gösterilen ödeme bilgisi.'], ['Eğitim yılı başlangıcı', 'Ayrılış iadesinde kullanılır.'], ['Eğitim yılı bitişi', 'Ayrılış iadesinde kullanılır.']] }),
     O.bildirimler(),
-    { ...O.ebelge(), not: 'Bu programın Entegrasyonlar sayfasında e-Fatura kartı yoktur. Bu sayfada oluşan belgeler TEST kalır.' },
+    O.ebelge(),
     O.entegrasyonlar(),
   ],
 
@@ -73,6 +73,7 @@ module.exports = (O) => ({
 
   entegrasyon: {
     sms: { degisir: ['Yeni duyuruda **Velilere SMS ile bildir** işaretlenirse velilere gerçek SMS gider.', '**Velilere bildir**, **Hatırlat** ve portal bilgisi gönderimi de aynı bağlantıyı kullanır.', 'Bağlantı yokken veliye bir şey gitmez.'], sorun: ['Sağlayıcı panelindeki krediyi ve onaylı başlığı kontrol edin.', 'Öğrenci kartındaki **1. veli telefon** alanını kontrol edin.'] },
+    efatura: { degisir: ['Belgeyi **e-Belgeler** sayfasındaki **Manuel e-Arşiv** ile keserseniz entegratöre gider. Tahsilat ekranında fatura düğmesi yoktur.', 'Kesilen belgeler **e-Belgeler** sayfasında görünür. Sağlayıcının altındaki sınırı okuyun.', 'Simülasyonda belge TEST etiketi taşır, GİB’e gitmez.'], sorun: ['Belge kesilmezse **e-Belgeler** sayfasındaki hata ayrıntısına bakın.'] },
     backup: O.E.backup(),
   },
 });

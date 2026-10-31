@@ -37,7 +37,7 @@ module.exports = (O) => ({
     O.belgeler({ tur: 'Araç satış sözleşmesi' }),
     O.ayarlar({ alanlar: [['Uzun bekleme uyarısı (gün)', 'Bu süreyi geçen araç uyarıda görünür.'], ['Aylık sermaye maliyeti % (finansman/kasko)', 'Bekleyen aracın maliyetini tahmin etmede kullanılır.']] }),
     O.bildirimler(),
-    { ...O.ebelge(), not: 'Bu programın Entegrasyonlar sayfasında e-Fatura kartı yoktur. Bu sayfada oluşan belgeler TEST kalır.' },
+    O.ebelge(),
     O.entegrasyonlar(),
   ],
 
@@ -50,6 +50,7 @@ module.exports = (O) => ({
     ilan: { kapali: { '*': KAP }, degisir: [`İlan portalları bağlantısı ${KAP}`, 'Bağlantı olmadan ilan otomatik gitmez. Araç penceresindeki **İlan** ekranından metni kopyalayıp portala yapıştırır, numarasını kaydedersiniz.'], sorun: ['İlan numarası kaydedilmezse listede **İlan** sütunu **yok** görünür.'] },
     sms: { degisir: ['**Uygun araçları gönder** müşteriye gerçek SMS gönderir. **Eşleşen talepler** penceresindeki **SMS ile haber ver** de aynı yolu kullanır.', 'Konsinye araç satılınca araç sahibine satış bilgisi SMS ile gider.', 'Bağlantı yokken mesaj gitmez, program WhatsApp ile göndermeyi önerir.'], sorun: ['Sağlayıcı panelindeki krediyi ve onaylı başlığı kontrol edin.', 'Müşteri kaydındaki telefonu kontrol edin.'] },
     whatsapp: O.E.whatsappLink('SMS gönderilemediğinde çıkan **WhatsApp ile gönder** seçeneği'),
+    efatura: { degisir: ['Belgeyi **e-Belgeler** sayfasındaki **Manuel e-Arşiv** ile keserseniz entegratöre gider. Satış ekranında fatura düğmesi yoktur.', 'Kesilen belgeler **e-Belgeler** sayfasında görünür. Sağlayıcının altındaki sınırı okuyun.', 'Simülasyonda belge TEST etiketi taşır, GİB’e gitmez.'], sorun: ['Belge kesilmezse **e-Belgeler** sayfasındaki hata ayrıntısına bakın.'] },
     backup: O.E.backup(),
   },
 });

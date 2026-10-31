@@ -48,7 +48,7 @@ module.exports = (O) => ({
     O.belgeler({ tur: 'Kiralama sözleşmesi' }),
     O.ayarlar({ alanlar: [['Günlük km limiti', 'Aşan km için ücret alınır.'], ['Aşım km ücreti (₺)', 'Limit üstü her km ücreti.'], ['Çeyrek depo yakıt ücreti (₺)', 'Eksik yakıtta uygulanır.'], ['Minimum yaş', 'Online rezervasyonda kontrol edilir.'], ['Minimum ehliyet yılı', 'Online rezervasyonda kontrol edilir.'], ['Geç iade toleransı (saat)', 'Bu sürenin üstü geç iade sayılır.'], ['Uzun kiralama günü', 'İndirimin başladığı gün sayısı.'], ['Uzun kiralama indirimi %', 'Uzun kiralamada uygulanan oran.'], ['Ücretsiz iptal (saat önce)', 'Müşterinin ücretsiz iptal süresi.'], ['KDV oranı % (fiyatlar KDV dahil)', 'Belgelerde kullanılan oran.']] }),
     O.bildirimler(),
-    { ...O.ebelge(), not: 'Bu programın Entegrasyonlar sayfasında e-Fatura kartı yoktur. Tamamlanan kiralamadaki **Fatura kes** düğmesi bu yüzden TEST belge oluşturur.' },
+    O.ebelge(),
     O.entegrasyonlar(),
   ],
 
@@ -62,6 +62,8 @@ module.exports = (O) => ({
     aracbildirim: { kapali: { '*': KAP }, degisir: [`Emniyet kiralık araç bildirimi ${KAP}`, 'Bu bağlantı olmadan bildirim programdan gitmez. Bildirimi yetkili sistemden kendiniz yapın, numarasını kiralama penceresindeki **Bildirim kaydı** ile yazın.'], sorun: ['Yetkili sistemden aldığınız numarayı **Bildirim numarası (yetkili sistemden)** alanına yazın.'] },
     hgs: { kapali: { '*': KAP }, degisir: [`HGS ve OGS geçiş sorgusu ${KAP}`, 'Bağlantı olmadan geçiş sorgulanmaz. Geçiş ücretlerini **Masraf ekle** ile elle girin.'], sorun: ['Geçiş bilgisini kendi HGS kanalınızdan alıp masraf olarak yazın.'] },
     gps: { kapali: { '*': KAP }, degisir: [`Araç takip bağlantısı ${KAP}`, 'Bağlantı olmadan iade km değerini siz yazarsınız.'], sorun: ['Km değerini araç göstergesinden okuyun.'] },
+    sms: { degisir: ['**Özet** sayfasındaki hatırlatma düğmesi yarınki alış ve iadeler için müşteriye gerçek SMS gönderir.', 'Bağlantı yokken mesaj gitmez.'], sorun: ['Sağlayıcı panelindeki krediyi ve onaylı başlığı kontrol edin.', 'Kayıttaki telefon numarasını kontrol edin.'] },
+    efatura: { degisir: ['Tamamlanan kiralamadaki **Fatura kes** düğmesi belgeyi entegratöre gönderir.', 'Kesilen belgeler **e-Belgeler** sayfasında görünür. Sağlayıcının altındaki sınırı okuyun.', 'Simülasyonda belge TEST etiketi taşır, GİB’e gitmez.'], sorun: ['Belge kesilmezse **e-Belgeler** sayfasındaki hata ayrıntısına bakın.'] },
     backup: O.E.backup(),
   },
 });

@@ -61,7 +61,7 @@ module.exports = (O) => ({
     O.imzali(),
     O.belgeler({ tur: 'Kayıt sözleşmesi' }),
     O.ayarlar({ alanlar: [['Eğitim dönemi', 'Ekranlarda görünen dönem adı.'], ['Dönem başlangıcı', 'İade hesabında kullanılır.'], ['Dönem bitişi', 'İade hesabında kullanılır.'], ['Öğrenim ücreti', '**Dönemlik (iade güne göre)** veya **Ders saati (iade ders saatine göre)**.'], ['Devamsızlıkta veliye otomatik SMS', 'Açıksa yoklamada yok yazılan öğrencinin velisine mesaj denenir.']] }),
-    { ...O.ebelge(), not: 'Bu programın Entegrasyonlar sayfasında e-Fatura kartı yoktur. Bu sayfada oluşan belgeler TEST kalır.' },
+    O.ebelge(),
     O.entegrasyonlar(),
   ],
 
@@ -78,6 +78,7 @@ module.exports = (O) => ({
     payment: { degisir: ['**Entegrasyonlar** sayfasında Online ödeme kartında **Entegre et** düğmesine basın, sağlayıcınızı seçin, ekranda nereden alınacağı yazan bilgileri girin, **Bağlantıyı dene** ile deneyin. Deneme para çekmez. Sonuç başarılıysa kart **Bağlı** görünür.', 'Veli portalında **Taksit öde** veya gecikmiş tutar düğmesi kartla ödemeyi açar. Veli taksitleri seçer, kart bilgisini sağlayıcının güvenli sayfasına girer. Ödeme sağlayıcıdan doğrulanınca taksit ödenmiş görünür.', 'Bulut hesabında **Taksit & Tahsilat** sayfasındaki **Online ödemeler** düğmesi gelen ödemeleri listeler, kart iadesi buradan yapılır. Elden veya havaleyle alınan taksiti **Tahsil et** ile kaydedersiniz.', 'Kart bağlı değilse veli ödeme bilgisini görür.', 'Test modunda para çekilmez, borç kapanmaz. Canlı ödeme sunucu kilidi açılınca çalışır.'], sorun: ['Veli portalında kart seçeneği görünmüyorsa kartın **Bağlı** olduğuna bakın. Bilgiler değişince **Bağlantıyı dene** yeniden yapılmalıdır.', 'Yarım kalan ödemede kişi yeniden ödemeden önce sonucu bekler, sonuç sağlayıcıdan sorulur.'] },
     sms: { degisir: ['Devamsızlık bildirimi, **Online ders** bağlantısı ve **Veli İletişimi** yanıtları gerçek SMS olarak gider.', 'Gönderimler **Veli İletişimi** sayfasına işlenir. Bağlantı yokken müşteriye bir şey gitmez.'], sorun: ['Sağlayıcı panelindeki krediyi ve onaylı başlığı kontrol edin.', 'Öğrenci kaydındaki veli telefonunu kontrol edin.'] },
     whatsapp: O.E.whatsappLink('**Taksit & Tahsilat** sayfasındaki **Veliye hatırlat** düğmesi'),
+    efatura: { degisir: ['Belgeyi **e-Belgeler** sayfasındaki **Manuel e-Arşiv** ile keserseniz entegratöre gider. Tahsilat ekranında fatura düğmesi yoktur.', 'Kesilen belgeler **e-Belgeler** sayfasında görünür. Sağlayıcının altındaki sınırı okuyun.', 'Simülasyonda belge TEST etiketi taşır, GİB’e gitmez.'], sorun: ['Belge kesilmezse **e-Belgeler** sayfasındaki hata ayrıntısına bakın.'] },
     backup: O.E.backup(),
   },
 });
