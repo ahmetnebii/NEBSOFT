@@ -84,7 +84,7 @@ async function yasalKayit(ad) {
 async function yasalYaz(text, req) {
   const m = /^\/(kvkk|gizlilik|mesafeli-satis|iade|cerez)\/(?:index\.html)?(?:\?|$)/.exec(String(req.url || '')); if (!m || !db.ready()) return text;
   const r = await yasalKayit(m[1]); if (!r || !r.onay || !r.metin) return text;
-  const a = text.indexOf('<div class="doc">'); const b = text.search(/<\/div>\r?\n<\/div><\/section>/); if (a < 0 || b < a) return text;
+  const a = text.indexOf('<div class="doc">'); const b = a < 0 ? -1 : a + text.slice(a).search(/<\/div>\r?\n<\/div><\/section>/); if (a < 0 || b < a) return text; // kahraman bölümü de aynı kalıpla biter, arama metin bloğundan başlar
   const html = md(r.metin) + (r.at ? `<p class="note">Son güncelleme: ${esc(new Date(r.at).toLocaleDateString('tr-TR', { timeZone: 'Europe/Istanbul' }))}</p>` : '');
   return (text.slice(0, a) + '<div class="doc">' + html + text.slice(b)).replace(/<meta name="robots" content="noindex[^"]*">/, '<meta name="robots" content="index,follow">');
 }

@@ -30,7 +30,10 @@ Derleme sonrası: `node site/tools/seo-denetim.js` kesin hata vermemeli, ardınd
 | Yenilikler | `site/src/yenilikler.json` (her kayıt bir commit'e bağlı) |
 | Yol haritası | `site/src/yol-haritasi.json` (tarih verilmez) |
 | Bayilik, veri taşıma, sistem durumu | `site/tools/guven-sayfalari.js` |
-| Son değişiklik tarihi | `site/src/lastmod.json` (üretici yazar, elle değiştirmeyin) |
+| Son değişiklik tarihi | `site/src/lastmod.json` (üretici yazar, elle değiştirmeyin). Özet görünen metinden alınır, tasarım değişikliği tarihi oynatmaz |
+| Üst menü, alt bilgi | `market/kabuk.js`, `market/kabuk.css` (ana sayfa ve statik sayfalar aynı parçayı kullanır) |
+| Statik sayfa stili | `site/src/tasarim.css`, `site/assets/site.css` üretilir, elle değiştirmeyin |
+| Kart görselleri | `site/tools/gorsel.js`, ayrıntı `docs/TASARIM-BUTUNLUK.md` |
 
 Rehber dosyası biçimi:
 
@@ -80,10 +83,11 @@ Yayından önce sırayla:
 3. `baslik` en çok 70, `ozet` en çok 165 karakter mi? Hazır kalıp değil, sayfanın yaptığı iş mi yazıyor?
 4. Metin elle yazıldı mı, sınırı söylüyor mu? En az 200 özgün kelime kuralını geçiyor mu? Yapay zekâ taslağı kullanıldıysa başlık, açıklama ve şema dahil bir insan kontrol etti mi?
 5. Mevzuat varsa resmî kaynak, adres ve okunma tarihi yazılı mı?
-6. SSS gerçek davranışı mı anlatıyor? Yorum, puan, müşteri sayısı yok mu?
-7. `program` alanı gerçekten ilgili programı mı gösteriyor? Program sayfasına bağlantı buradan kurulur.
-8. Sırayla: `node site/tools/build-araclar.js`, `node site/tools/build-sites.js`, `node site/tools/seo-denetim.js`, `node server/test/araclar.test.js`. Kesin hata 0 olmalı, yeni `ayni-niyet` veya `benzer` uyarısının kararı yazılmalı.
-9. 375 genişlikte ve koyu temada denendi mi?
+6. `site/tools/gorsel.js` içine aracın işini gösteren sahne yazıldı mı?
+7. SSS gerçek davranışı mı anlatıyor? Yorum, puan, müşteri sayısı yok mu?
+8. `program` alanı gerçekten ilgili programı mı gösteriyor? Program sayfasına bağlantı buradan kurulur.
+9. Sırayla: `node site/tools/build-araclar.js`, `node site/tools/build-sites.js`, `node site/tools/seo-denetim.js`, `node server/test/araclar.test.js`. Kesin hata 0 olmalı, yeni `ayni-niyet` veya `benzer` uyarısının kararı yazılmalı.
+10. 375 genişlikte ve koyu temada denendi mi?
 
 ### Aynı anda kaç araç yayınlanmalı
 

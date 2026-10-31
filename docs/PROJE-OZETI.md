@@ -71,6 +71,7 @@ Yazma yolları:
 | Dış istek köprüsü | `server/cloud/bridge.js`, `/api/istek` |
 | Hazır paketler | `market/paketler.js`, `market/paket-ek.js`, `server/cloud/paket.js`, `site/src/paketler.js`, rapor `docs/HAZIR-PAKETLER.md` |
 | SEO | `site/tools/build-sites.js`, `site/src/products.js`, `server/cloud/seo.js`, `docs/SEO-KURALLARI.md`, denetleyici `site/tools/seo-denetim.js`, rapor `docs/SEO-DENETIM.md` |
+| Site kabuğu, statik sayfa tasarımı, kart görselleri | `market/kabuk.js`, `market/kabuk.css`, `site/tools/ortak.js`, `site/tools/gorsel.js`, `site/src/tasarim.css`, `docs/TASARIM-BUTUNLUK.md` |
 | Ücretsiz araçlar | `site/src/araclar/<slug>.js`, `site/tools/build-araclar.js`, görsel ve PDF altyapısı `docs/ARACLAR-DOSYA.md` |
 | Rehber yazıları | `site/src/rehber/*.md` |
 | Bayilik, veri taşıma, sistem durumu, yenilikler, yol haritası, WhatsApp | `server/cloud/vitrin.js`, `site/tools/guven-sayfalari.js`, `admin/panel-guven.js`, `docs/GUVEN-SAYFALARI.md` |

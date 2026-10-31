@@ -1,9 +1,7 @@
 /* NEBSOFT ücretsiz araçlar — site.css üstüne. Açık/koyu tema site.css değişkenlerinden gelir; basılan belge her iki temada beyaz kâğıttır. */
-.ar-hero { padding-top: 8px; padding-bottom: 26px; }
-.ar-hero h1 { font-size: clamp(30px, 4.4vw, 48px); margin: 16px 0 12px; }
-.ar-gizli { display: flex; gap: 8px; align-items: flex-start; font-size: 14px; color: var(--ink2); margin: 14px 0 0; }
-.ar-gizli svg { width: 18px; height: 18px; flex: none; margin-top: 2px; color: var(--c); }
-.ar-is { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 22px; align-items: start; padding-bottom: 40px; }
+.ar-gizli { display: flex; gap: 8px; align-items: flex-start; font-size: 14px; color: #b9bad0; margin: 18px 0 0; max-width: 620px; }
+.ar-gizli svg { width: 18px; height: 18px; flex: none; margin-top: 2px; color: #67e8f9; }
+.ar-is { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 22px; align-items: start; padding-top: 36px; padding-bottom: 40px; }
 .ar-is.tek { grid-template-columns: minmax(0, 1fr); }
 .ar-kart { background: var(--card); border: 1px solid var(--line); border-radius: var(--r); padding: 22px; min-width: 0; }
 .ar-kart > h2 { font-size: 19px; letter-spacing: -.01em; margin-bottom: 14px; }
@@ -26,7 +24,7 @@
 .ar-sil { width: 36px; height: 44px; border: 1px solid var(--line); border-radius: 10px; background: transparent; color: var(--ink2); cursor: pointer; font-size: 18px; line-height: 1; }
 .ar-ekle { background: transparent; border: 1px dashed var(--line); border-radius: 10px; height: 40px; padding: 0 14px; font: 600 14px var(--txt); color: var(--ink); cursor: pointer; }
 .ar-ekle:hover, .ar-sil:hover { border-color: var(--c); color: var(--c); }
-.ar-sonuc { position: sticky; top: 84px; }
+.ar-sonuc { position: sticky; top: 92px; }
 .ar-is.tek .ar-sonuc { position: static; }
 .ar-sonuc-t { width: 100%; border-collapse: collapse; }
 .ar-sonuc-t th { text-align: left; font-weight: 400; color: var(--ink2); padding: 9px 12px 9px 0; border-bottom: 1px solid var(--line); }
@@ -56,12 +54,7 @@
 .ar-kaynak a { color: var(--c); }
 .ar-prog { display: flex; flex-wrap: wrap; gap: 16px; align-items: center; justify-content: space-between; background: var(--soft); border: 1px solid var(--line); border-radius: var(--r); padding: 22px; margin: 32px 0; max-width: 780px; }
 .ar-prog p { margin: 0; flex: 1 1 320px; color: var(--ink); }
-.ar-grup { margin: 40px 0 16px; font-size: clamp(22px, 2.4vw, 28px); }
-.ar-kartlar { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px; }
-.ar-kartlar a { display: block; text-decoration: none; background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 18px; transition: border-color .15s, transform .15s; }
-.ar-kartlar a:hover { border-color: var(--c); transform: translateY(-2px); }
-.ar-kartlar b { display: block; font-family: var(--dis); margin-bottom: 4px; }
-.ar-kartlar span { font-size: 14px; color: var(--ink2); line-height: 1.45; display: block; }
+.ar-grup { margin: 44px 0 18px; font-size: clamp(22px, 2.4vw, 28px); }
 
 .ar-dosya { grid-column: 1 / -1; min-width: 0; }
 .ar-birak { display: flex; flex-direction: column; align-items: center; gap: 4px; text-align: center; padding: 26px 16px; border: 2px dashed var(--line); border-radius: 12px; cursor: pointer; background: var(--bg); position: relative; }
@@ -148,7 +141,7 @@
   /* Koyu temada yazdırırken de kâğıt renkleri */
   :root { --ink: #000; --ink2: #222; --ink3: #444; --bg: #fff; --bg2: #fff; --card: #fff; --line: #999; color-scheme: light; }
   html, body { background: #fff !important; color: #000 !important; }
-  .hd, .ft, .ar-hero, .ar-form-k, .ar-metin, .ar-eylem, .ar-not, .skip, .ar-basma, .ar-kart > h2, .sticky-cta { display: none !important; }
+  .mk-nav, .mk-foot, .hero, .ar-form-k, .ar-metin, .ar-eylem, .ar-not, .skip, .ar-basma, .ar-kart > h2, .sticky-cta { display: none !important; }
   .ar-is, .ar-is.tek { display: block; padding: 0; } .ar-kart { border: 0; padding: 0; background: #fff; } .ar-sonuc { position: static; } .w { max-width: none; padding: 0; }
   .belge { padding: 0; box-shadow: none; font-size: 12pt; } .ar-sonuc-t td, .ar-sonuc-t th { color: #000 !important; }
   .etiketler, .masa-k { gap: 0; }
