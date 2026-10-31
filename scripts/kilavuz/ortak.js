@@ -40,7 +40,7 @@ const E = {
 };
 
 // ---------- Entegrasyon sınıflandırma ----------
-// Sınıf çekirdekteki sihirbazla aynıdır (core/integ-wizard.js, kapali). Sözleşme gereken sağlayıcı için kısa ve dürüst tek cümle kullanılır.
+// Sınıf çekirdekten gelir: NB_GUIDES.kapali (sihirbaz da bunu kullanır) ve NS.integ.unverified. Sözleşme gereken sağlayıcı için kısa ve dürüst tek cümle kullanılır.
 const ILETISIM = 'NEBSOFT ile iletişime geçerek açtırılır';
 // x: programın entegrasyon içeriği. kapali listesindeki sağlayıcı bu programda doğrudan bağlanmaz (koddan doğrulanır)
 function durum(e, p, x) {
@@ -48,7 +48,7 @@ function durum(e, p, x) {
   if (TEMEL.has(p.value)) return ['ki', 'TEST veya temel mod', 'Dış servise bağlanmaz, gönderim yapılmaz.'];
   const kap = x && x.kapali && (x.kapali[p.value] || x.kapali['*']); if (kap && p.value !== 'custom') return ['no', ILETISIM, ''];
   if (p.value === 'custom') return ['ki', 'Özel servis', 'Kendi servisinizi veya çözüm ortağınızı bağlamak içindir, teknik bilgi gerekir.'];
-  if (e.kilit || !g || ['desteklenmiyor', 'yakinda'].includes(g.status) || (g.status === 'erisim' && !g.testVar)) return ['no', ILETISIM, ''];
+  if (p.kilit || !g || g.kapali) return ['no', ILETISIM, ''];
   return ['ok', 'Entegre et', g.test || 'Bağlantı denenerek kurulur.'];
 }
 const kullanilir = (d) => d[0] === 'ok' || d[0] === 'ki';
@@ -56,9 +56,9 @@ const kullanilir = (d) => d[0] === 'ok' || d[0] === 'ki';
 // Akış görüntüsü için alanları doldurulabilen ilk sağlayıcı seçilir; deneme düğmesine basılmaz, hiçbir yere istek gitmez
 // Yarım kalan kurulum taslağı sihirbazı ortadan açtırmasın
 const TASLAK = ['js', `(()=>{const d=new NS.DB('entegrasyon-kurulum');d.load();d.data.drafts={};d.save();})()`];
-const ornekSec = (K, R) => { for (const e of R.ent) for (const p of e.provs) { if (durum(e, p, K.entegrasyon[e.k])[0] !== 'ok' || !p.g || !p.g.sunucu) continue; const zorunlu = p.g.fields.filter((f) => f.required); if (zorunlu.length && zorunlu.every((f) => !f.pattern && f.type !== 'select')) return { e, p, zorunlu }; } return null; };
+const ornekSec = (K, R) => { for (const e of R.ent) { if (e.provs.length < 2) continue; for (const p of e.provs) { if (durum(e, p, K.entegrasyon[e.k])[0] !== 'ok' || !p.g || !p.g.sunucu) continue; const zorunlu = p.g.fields.filter((f) => f.required); if (zorunlu.length && zorunlu.every((f) => !f.pattern && f.type !== 'select')) return { e, p, zorunlu }; } } return null; };
 function entegrasyonHazirla(K, R) {
-  K.entSahne = [{ git: 'entegrasyonlar', kirp: 'ana', adimlar: [['Sol menüden **Entegrasyonlar** sayfasını açın. Üstteki kutular kaç bağlantının **Bağlı** olduğunu, hata verdiğini veya beklediğini gösterir.', '.ic-kpi'], ['Bağlantıyı bulmak için arama kutusunu veya kategorileri kullanın.', '#icq'], ['Bağlamak istediğiniz kartta **Entegre et** düğmesine basın.', 'button[data-wz]@Entegre et']] }];
+  K.entSahne = [{ git: 'entegrasyonlar', kirp: 'ana', once: [['js', `(()=>{const L=[...document.querySelectorAll('button[data-wz]')];const b=L.find((x)=>x.innerText.trim()==='Entegre et')||L[0];if(b)b.setAttribute('data-klv','1')})()`]], adimlar: [['Sol menüden **Entegrasyonlar** sayfasını açın. Üstteki kutular kaç bağlantının **Bağlı** olduğunu, hata verdiğini veya beklediğini gösterir.', '.ic-kpi'], ['Bağlantıyı bulmak için arama kutusunu veya kategorileri kullanın.', '#icq'], ['Karttaki **{dugme}** düğmesine basın.', '[data-klv]']] }];
   const o = ornekSec(K, R);
   if (o) { const ac = [TASLAK, ['tikla', `[data-wz="${o.e.k}"]`], ['tikla', `[data-prov="${o.p.value}"]`], ['tikla', '[data-nav=next]']]; const doldur = o.zorunlu.map((f) => ['yaz', `[data-f="${f.name}"]`, 'ornek']);
     K.entSahne.push({ git: 'entegrasyonlar', once: ac, kirp: 'pencere', boy: 980, baslik: `${o.e.title} · ${o.p.label}`, adimlar: [['Sihirbazın üstünde üç adım görünür: **Sağlayıcı**, **Bilgiler**, **Bağlantıyı dene**. Sağlayıcıyı seçtikten sonra **Bilgiler** adımına geçersiniz.', '.wz-steps'], ['Bilgileri girin. Alanların yanındaki **?** simgesi bilginin ne olduğunu ve nereden alınacağını açıklar.', '.wz-body h2']] },
@@ -114,4 +114,4 @@ function bolumler(K, R, X) {
   yeni((n) => { const sss = [...(X.yardim ? X.yardim.sss : []), ...(X.urun.faq || []), ...(K.sss || [])].filter(([q]) => !(K.sssHaric || []).includes(q)); return { kisim: KIS.des, capa: 'sss', baslik: 'Sık sorulan sorular ve destek', html: `<section class="b" id="sss">${bolumBas(n, 'Sık sorulan sorular ve destek')}${sss.map(([q, a]) => `<h4>${esc(q)}</h4><p>${md(a)}</p>`).join('')}<h3>Destek</h3><p>Takıldığınız yerde programın sağ altındaki destek balonuna yazabilir veya bize ulaşabilirsiniz.</p><ul><li>Telefon: ${esc(X.CFG.phone)}</li><li>E-posta: ${esc(X.CFG.email)}</li><li>Yardım merkezi: <a href="${X.CFG.domain}/#/yardim/${X.id}">${X.CFG.domain.replace('https://', '')}/#/yardim/${X.id}</a></li></ul></section>` }; });
   return B;
 }
-module.exports = { belgeler, ebelge, entegrasyonlar, bildirimler, imzali, ayarlar, E, durum, entegrasyonHazirla, entegrasyonBolum, bolumler };
+module.exports = { ornekSec, belgeler, ebelge, entegrasyonlar, bildirimler, imzali, ayarlar, E, durum, entegrasyonHazirla, entegrasyonBolum, bolumler };

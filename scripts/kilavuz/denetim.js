@@ -29,4 +29,7 @@ function kapsam(K, nav) { const var_ = new Set(K.moduller.map((m) => m.id)); con
 function entegrasyonKapsam(K, liste) { const E = K.entegrasyon || {}; const hata = liste.filter((k) => !E[k] || !(E[k].degisir || []).length).map((k) => `Entegrasyon anlatılmadı: ${k} (Bu programda ne değişir yazılmalı)`); Object.keys(E).forEach((k) => { if (!liste.includes(k)) hata.push(`Kılavuzda var, Entegrasyon Merkezi'nde yok: ${k}`); }); return hata; }
 // Ekranda görünmemesi gereken gerçek kişi verisi kalıpları: yalnız kurgu olduğu bilinenler geçer
 function kisiVerisi(metin) { const m = String(metin).match(/\b[1-9]\d{9}[02468]\b/g) || []; return [...new Set(m)]; }
-module.exports = { nor, kalinlar, kodMetni, yazilar, adlar, vaat, kapsam, entegrasyonKapsam, kisiVerisi };
+// Entegrasyon kartındaki düğme durumuna göre değişir: yazı ekrandaki addan gelir, bilinmeyen ad üretimi durdurur
+const DUGMELER = ['Entegre et', 'Yönet', 'İletişim talebi', 'Devam et'];
+const dugmeYaz = (metin, ad) => (DUGMELER.includes(ad) ? metin.replace('{dugme}', ad) : null);
+module.exports = { dugmeYaz, nor, kalinlar, kodMetni, yazilar, adlar, vaat, kapsam, entegrasyonKapsam, kisiVerisi };

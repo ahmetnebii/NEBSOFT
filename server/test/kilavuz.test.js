@@ -24,10 +24,19 @@ assert.strictEqual(D.kisiVerisi('no 10000000146 son').length, 1); ok('Kimlik num
 
 // Entegrasyon sınıfları: doğrulanmamış olan canlıda "kullanılabilir" yazılamaz
 const e = { kilit: false }; const d = (x, p) => O.durum(x, p)[0];
-assert.strictEqual(d({ kilit: true }, { value: 'ingenico', g: { status: 'dogrulandi' } }), 'no'); assert.strictEqual(d(e, { value: 'amazon' }), 'no'); assert.strictEqual(d(e, { value: 'x', g: { status: 'yakinda' } }), 'no'); assert.strictEqual(d(e, { value: 'x', g: { status: 'dogrulandi' } }), 'ok'); assert.strictEqual(d(e, { value: 'x', g: { status: 'erisim' } }), 'no'); assert.strictEqual(d(e, { value: 'x', g: { status: 'erisim', testVar: true } }), 'ok'); assert.strictEqual(d(e, { value: 'sim' }), 'ki');
-assert.strictEqual(O.durum(e, { value: 'x', g: { status: 'dogrulandi' } }, { kapali: { x: 'neden' } })[0], 'no'); assert.ok(O.durum({ kilit: true }, { value: 'y' })[1].includes('NEBSOFT ile iletişime geçerek'));
+assert.strictEqual(d(e, { value: 'ingenico', kilit: true, g: { status: 'dogrulandi' } }), 'no'); assert.strictEqual(d(e, { value: 'amazon' }), 'no'); assert.strictEqual(d(e, { value: 'x', g: { kapali: true } }), 'no'); assert.strictEqual(d(e, { value: 'x', g: { status: 'dogrulandi', kapali: false } }), 'ok'); assert.strictEqual(d(e, { value: 'sim' }), 'ki');
+assert.strictEqual(O.durum(e, { value: 'x', g: { status: 'dogrulandi' } }, { kapali: { x: 'neden' } })[0], 'no'); assert.ok(O.durum(e, { value: 'y', kilit: true })[1].includes('NEBSOFT ile iletişime geçerek'));
+// Gerçek rehberler: üreticinin sınıfı sihirbazla aynı kaynaktan gelir. POS ve terazi markalarında test yönteme göre yazılıdır, kapalı sayılmaz
+global.window = {}; ['integ-guides.js', 'integ-guides-ek.js', 'integ-guides-sunucu.js'].forEach((f) => require(path.join(ROOT, 'core', f))); const NB = window.NB_GUIDES;
+assert.strictEqual(NB.kapali(NB.get('pos', 'ingenico')), false); assert.strictEqual(NB.kapali(NB.get('scale', 'cas')), false); assert.strictEqual(NB.kapali(null), false); assert.strictEqual(NB.kapali({ status: 'erisim', test: { type: 'none' } }), true); assert.strictEqual(NB.kapali({ status: 'erisim' }), true); assert.strictEqual(NB.kapali({ status: 'yakinda' }), true);
+assert.ok(fs.readFileSync(path.join(ROOT, 'core', 'integ-wizard.js'), 'utf8').includes('GU().kapali(g)')); const UR = fs.readFileSync(path.join(K, 'uret.js'), 'utf8'); assert.ok(UR.includes('G.kapali(g)') && UR.includes('I.unverified(k, p.value)'));
 assert.strictEqual(D.vaat({ moduller: [{ ne: 'Bu bağlantı henüz kullanılamıyor' }] }).length, 1); assert.strictEqual(D.vaat({ moduller: [{ ne: 'Bu entegrasyon kesin çalışır' }] }).length, 1);
 ok('Kapalı sağlayıcı "NEBSOFT ile iletişime geçerek açtırılır" yazılır, eski ifade ve kesinlik iddiası yakalanır');
+
+// Akış görüntüsü: tek sağlayıcılı kart seçilmez, düğme adı ekrandan gelir, bilinmeyen ad reddedilir
+const G = (ad) => ({ value: ad, label: ad, g: { status: 'dogrulandi', testVar: true, sunucu: true, fields: [{ name: 'a', required: true }] } });
+assert.strictEqual(O.ornekSec({ entegrasyon: {} }, { ent: [{ k: 'webhook', provs: [G('http')] }] }), null); assert.strictEqual(O.ornekSec({ entegrasyon: {} }, { ent: [{ k: 'webhook', provs: [G('http')] }, { k: 'sms', provs: [{ value: 'sim' }, G('netgsm')] }] }).p.value, 'netgsm');
+assert.strictEqual(D.dugmeYaz('Karttaki **{dugme}** düğmesine', 'Yönet'), 'Karttaki **Yönet** düğmesine'); assert.strictEqual(D.dugmeYaz('Karttaki **{dugme}** düğmesine', 'Sil'), null); ok('Tek sağlayıcılı kart atlanır, düğme adı ekrandan gelir, yanlış düğme yakalanır');
 
 // PDF okuma: içindekiler sayfa numarası buradan gelir
 const pdf = Buffer.from('%PDF-1.4\n1 0 obj\n<</Type/Catalog/Pages 2 0 R/Dests 5 0 R>>\nendobj\n2 0 obj\n<</Type/Pages/Kids[3 0 R 4 0 R]/Count 2>>\nendobj\n3 0 obj\n<</Type/Page/Parent 2 0 R>>\nendobj\n4 0 obj\n<</Type/Page/Parent 2 0 R>>\nendobj\n5 0 obj\n<</Names[(m-a)[3 0 R/XYZ 0 0 0](m-b)[4 0 R/XYZ 0 0 0]]>>\nendobj\n');

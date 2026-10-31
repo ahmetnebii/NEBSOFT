@@ -431,5 +431,7 @@
   // Ek rehber dosyaları (ör. integ-guides-ek.js) kayıt eklemek için kullanır; aynı anahtar varsa ilk kayıt korunur
   const addMore = (g) => { if (byKey[g.key]) return; G.push(g); byKey[g.key] = g; };
   const STATUS = { dogrulandi: ['Entegre et', 'ok'], genel: ['Entegre et', 'info'], erisim: ['Sözleşme gerekir', 'acc'], desteklenmiyor: ['Sözleşme gerekir', 'acc'], yakinda: ['Sözleşme gerekir', 'acc'] };
-  window.NB_GUIDES = { add: addMore, BRAND_KINDS: { scale: 1, pos: 1 }, METHOD_NAMES, list: G, get: (kind, prov) => byKey[`${kind}:${prov}`] || null, forKind: (kind) => G.filter((g) => g.key.startsWith(kind + ':')), STATUS };
+  // Sözleşme gerektiren sağlayıcı: sihirbaz ve kullanım kılavuzu aynı kararı buradan okur
+  const kapali = (g) => !!g && (['desteklenmiyor', 'yakinda'].includes(g.status) || (g.status === 'erisim' && (!g.test || g.test.type === 'none')));
+  window.NB_GUIDES = { kapali, add: addMore, BRAND_KINDS: { scale: 1, pos: 1 }, METHOD_NAMES, list: G, get: (kind, prov) => byKey[`${kind}:${prov}`] || null, forKind: (kind) => G.filter((g) => g.key.startsWith(kind + ':')), STATUS };
 })();
